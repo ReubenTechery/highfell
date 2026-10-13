@@ -13,7 +13,7 @@ import { $, GLYPH } from './dom';
 import { SFX } from './sound';
 import { Toasts } from './toasts';
 import { Hearth } from './hearth';
-import { Sheets } from './sheets';
+import { Sheets, type SheetSpec } from './sheets';
 import { RunScene, type RunOpts } from './run';
 import { Reveal, type RevealExtra } from './reveal';
 
@@ -47,7 +47,10 @@ export class App {
 
   get p() { return this.store.profile; }
 
-  async boot(): Promise<void> {
+  /** what an update of the page should carry over: the open panel. A run in progress cannot be carried. */
+  snapshot(): { sheet: SheetSpec | null } { return { sheet: this.scene === 'hearth' ? this.sheets.spec : null }; }
+
+  async boot(carry: { sheet?: SheetSpec | null } = {}): Promise<void> {
     this.touch = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     this.root.classList.toggle('touchy', this.touch);
     SFX.on = this.p.settings.sound;
@@ -65,6 +68,7 @@ export class App {
       else this.hearth.syncState();
     });
     this.show('hearth');
+    if (carry.sheet) this.sheets.open(carry.sheet);
     $('loading').hidden = true;
     void this.store.connect();
     requestAnimationFrame((t) => this.frame(t));
