@@ -8,6 +8,7 @@ import { botTick, inHaz } from './bots.js';
 import { heroBy, heroTick, isFoe, later, projHit } from './heroes.js';
 import { chainTick, mobTick, nearestHeroTo, spawnMob } from './mobs.js';
 import { canStand, inWalk, moveEnt, roomIndexOf } from './world.js';
+import { tickWalkout } from './walkout.js';
 
 /* dg: a dungeon definition (map, mobs, packs, script). opts:
    { role, loadouts: {tank, healer, dps}, start, solo, seed, auto, quiet, testGear } */
@@ -17,7 +18,7 @@ export function newGame(dg, opts) {
     dg, t: 0, frame: 0, seq: 1, opts, heroes: [], mobs: [], packs: [], projs: [], hazards: [], zones: [], fx: [], texts: [], parts: [], timers: [], rings: [], chains: [],
     gates: JSON.parse(JSON.stringify(dg.gates)), props: [],
     inCombat: false, lastCombat: -99, combatStart: 0, boss: null, bossFight: null, ring: null, dark: 0, darkTarget: 0, shake: 0, hitstop: 0, hurtFlash: 0,
-    banner: null, call: null, stats: { deaths: 0, perfect: 0, kicks: 0, cuts: 0, cages: 0, wipes: 0, start: 0 }, hints: {}, over: false, chest: null,
+    banner: null, call: null, walkout: null, hush: false, looks: new Set(opts.looks || []), stats: { deaths: 0, perfect: 0, kicks: 0, cuts: 0, cages: 0, wipes: 0, start: 0 }, hints: {}, over: false, chest: null,
     cp: 0, quiet: !!opts.quiet, auto: !!opts.auto, noEvents: !!opts.noEvents, cleared: 0, total: dg.packs.length, startedAt: 0,
   });
   S.props = dg.props.map((p) => Object.assign({}, p, { room: roomIndexOf(p.x, p.y), sp0: p.sp }));
@@ -71,8 +72,10 @@ export function onBossDead(m) {
   const f = S.bossFight || { started: S.t, smashes: 0, smashPerfect: 0 };
   S.bossFight = null;
   const up = S.heroes.filter((h) => h.alive);
+  // where its loot lands: a boss with a lantern drops the lantern
+  const L = m.M.light, x = L ? m.x + L.dx * (m.flip ? -1 : 1) : m.x, y = m.y;
   emit({ type: 'boss.killed', boss: m.type, time: S.t - f.started, armorUp: m.armorUp > 0, onlyPlayerAlive: up.length === 1 && up[0] === S.player && S.heroes.length > 1,
-    smashes: f.smashes, smashPerfect: f.smashPerfect, playerIsTank: S.player.role === 'tank' });
+    smashes: f.smashes, smashPerfect: f.smashPerfect, playerIsTank: S.player.role === 'tank', x, y });
   if (S.dg.script.onBossDead) S.dg.script.onBossDead(m);
 }
 /* the final chest: the run is cleared once the party opens it */
@@ -167,6 +170,7 @@ export function update(dt) {
   if (fighting) { if (!S.inCombat) { S.inCombat = true; S.combatStart = S.t; } S.lastCombat = S.t; }
   else if (S.inCombat) { S.inCombat = false; onCombatEnd(); }
   if (S.dg.script.triggers) S.dg.script.triggers();
+  if (S.walkout) tickWalkout(dt);
   if (!S.inCombat) { const r = roomIndexOf(S.player.x, S.player.y); if (r > S.cp) S.cp = r; }
   S.mobs = S.mobs.filter((m) => m.alive || m.deadT < 1.2);
   // wipe?
@@ -183,8 +187,9 @@ export function update(dt) {
   }
   if (S.chest && !S.chest.open) {
     S.chest.t += dt;
+    if (S.chest.knockT > 0) S.chest.knockT -= dt;
     const near = S.heroes.some((h) => h.alive && dist(h, S.chest) < 95);
-    if (near && S.t - S.lastCombat > 1.0) {
+    if (near && S.t - S.lastCombat > 1.0 && (!S.walkout || S.walkout.done)) {
       S.chest.open = true; sfx('chest');
       bits(S.chest.x, S.chest.y - 40, 'shard_ice', 1, 10);
       dots(S.chest.x, S.chest.y - 50, '#F2C230', 26, 260);

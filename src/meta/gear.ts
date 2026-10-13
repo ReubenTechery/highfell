@@ -90,3 +90,13 @@ export function rerollTrait(p: Profile, role: RoleId, dungeon: string, pick: () 
   reg.trait = t.id;
   return t.id;
 }
+
+/** Spend marks to set the trait on an Epic regular weapon to the one you pick. */
+export function buyTrait(p: Profile, role: RoleId, dungeon: string, trait: string): boolean {
+  const reg = p.heroes[role].regular.weapon;
+  const rec = p.dungeons[dungeon];
+  if (reg.rar !== EPIC || !rec || rec.marks < REROLL_COST || reg.trait === trait || !TRAITS[role].some((t) => t.id === trait)) return false;
+  rec.marks -= REROLL_COST;
+  reg.trait = trait;
+  return true;
+}

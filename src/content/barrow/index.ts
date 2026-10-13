@@ -6,7 +6,7 @@ import { BARROW_LOOT } from './loot';
 export const BARROW: DungeonInfo = {
   id: 'barrow',
   name: 'Barrow Crypt',
-  blurb: 'Five packs, a knight who will not stay down, and the Gravekeeper in his yard. About five minutes, all three seats needed.',
+  blurb: 'Five packs, a knight who will not stay down, and the Gravekeeper in his yard. About four minutes, all three seats needed.',
   bosses: [
     { id: 'knight', name: 'Sir Rattlebones', phases: 2, enrage: 180, room: 3 },
     { id: 'keeper', name: 'The Gravekeeper', phases: 3, enrage: 300, room: 5 },

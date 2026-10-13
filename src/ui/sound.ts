@@ -1,10 +1,20 @@
-/* ---------- sound: everything is synthesised, nothing to download ---------- */
-export const SFX = {
-  ctx: null, out: null, on: true, last: {}, nb: null,
-  unlock() {
-    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
+/**
+ * Sound: everything is synthesised, nothing to download. The engine asks for sounds by name through
+ * HOOKS.sound; the screens use the same table for the hearth, the walkout and the reveal.
+ */
+type Play = (t: number, v: number) => void;
+
+class Synth {
+  ctx: AudioContext | null = null;
+  out: GainNode | null = null;
+  on = true;
+  private last: Record<string, number> = {};
+  private nb: AudioBuffer | null = null;
+
+  unlock(): void {
+    if (this.ctx) { if (this.ctx.state === 'suspended') void this.ctx.resume(); return; }
     try {
-      const AC = window.AudioContext || window.webkitAudioContext;
+      const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AC) return;
       this.ctx = new AC();
       this.out = this.ctx.createGain(); this.out.gain.value = 0.42;
@@ -13,35 +23,39 @@ export const SFX = {
       const len = this.ctx.sampleRate;
       this.nb = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
       const d = this.nb.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-    } catch (e) { this.ctx = null; }
-  },
-  play(name, vol) {
+    } catch { this.ctx = null; }
+  }
+  play(name: string, vol?: number): void {
     if (!this.on || !this.ctx || this.ctx.state !== 'running') return;
     const now = this.ctx.currentTime;
     if (now - (this.last[name] || 0) < 0.045) return;
     this.last[name] = now;
     const f = SOUNDS[name];
-    if (f) try { f(now, vol === undefined ? 1 : vol); } catch (e) { /* a missed sound is fine */ }
-  },
-  tone(t, f, dur, type, vol, f2, delay) {
-    const c = this.ctx, o = c.createOscillator(), g = c.createGain();
+    if (f) try { f(now, vol === undefined ? 1 : vol); } catch { /* a missed sound is fine */ }
+  }
+  tone(t: number, f: number, dur: number, type?: OscillatorType, vol = 0.1, f2?: number | null, delay?: number): void {
+    const c = this.ctx!, o = c.createOscillator(), g = c.createGain();
     const t0 = t + (delay || 0);
     o.type = type || 'sine'; o.frequency.setValueAtTime(f, t0);
     if (f2) o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), t0 + dur);
     g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    o.connect(g); g.connect(this.out); o.start(t0); o.stop(t0 + dur + 0.02);
-  },
-  noise(t, dur, vol, freq, type, q, f2, delay) {
-    const c = this.ctx, s = c.createBufferSource(), fl = c.createBiquadFilter(), g = c.createGain();
+    o.connect(g); g.connect(this.out!); o.start(t0); o.stop(t0 + dur + 0.02);
+  }
+  noise(t: number, dur: number, vol: number, freq: number, type?: BiquadFilterType, q?: number, f2?: number | null, delay?: number): void {
+    const c = this.ctx!, s = c.createBufferSource(), fl = c.createBiquadFilter(), g = c.createGain();
     const t0 = t + (delay || 0);
-    s.buffer = this.nb; s.playbackRate.value = 1;
+    s.buffer = this.nb;
     fl.type = type || 'lowpass'; fl.frequency.setValueAtTime(freq, t0); if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t0 + dur); fl.Q.value = q || 0.8;
     g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    s.connect(fl); fl.connect(g); g.connect(this.out); s.start(t0, Math.random() * 0.5); s.stop(t0 + dur + 0.05);
-  },
-};
-export const T = (...a) => SFX.tone(...a), N = (...a) => SFX.noise(...a);
-export const SOUNDS = {
+    s.connect(fl); fl.connect(g); g.connect(this.out!); s.start(t0, Math.random() * 0.5); s.stop(t0 + dur + 0.05);
+  }
+}
+
+export const SFX = new Synth();
+const T = (t: number, f: number, dur: number, type?: OscillatorType, vol?: number, f2?: number | null, delay?: number) => SFX.tone(t, f, dur, type, vol, f2, delay);
+const N = (t: number, dur: number, vol: number, freq: number, type?: BiquadFilterType, q?: number, f2?: number | null, delay?: number) => SFX.noise(t, dur, vol, freq, type, q, f2, delay);
+
+export const SOUNDS: Record<string, Play> = {
   swing: (t, v) => N(t, 0.12, 0.25 * v, 2600, 'bandpass', 1.2, 700),
   hit: (t, v) => { N(t, 0.08, 0.3 * v, 1400, 'lowpass'); T(t, 160, 0.09, 'triangle', 0.18 * v, 90); },
   thud: (t, v) => { T(t, 110, 0.18, 'sine', 0.45 * v, 50); N(t, 0.12, 0.3 * v, 600); },
@@ -56,7 +70,9 @@ export const SOUNDS = {
   circle: (t, v) => { for (let i = 0; i < 4; i++) T(t, 520 + i * 130, 0.3, 'sine', 0.1 * v, null, i * 0.05); },
   ward: (t, v) => { T(t, 880, 0.3, 'sine', 0.14 * v, 1320); N(t, 0.2, 0.08 * v, 6000, 'highpass'); },
   sunburst: (t, v) => { for (let i = 0; i < 6; i++) T(t, 440 * Math.pow(1.26, i), 0.4, 'triangle', 0.09 * v, null, i * 0.04); },
+  smite: (t, v) => { T(t, 1180, 0.16, 'triangle', 0.13 * v, 1760); N(t, 0.12, 0.12 * v, 5200, 'highpass'); },
   bolt: (t, v) => T(t, 1500, 0.08, 'sine', 0.07 * v, 2400),
+  icicle: (t, v) => { T(t, 2600, 0.1, 'triangle', 0.1 * v, 1700); N(t, 0.1, 0.18 * v, 6500, 'highpass'); },
   holy: (t, v) => T(t, 990, 0.08, 'triangle', 0.06 * v, 1320),
   blizzard: (t, v) => N(t, 1.2, 0.22 * v, 3000, 'bandpass', 0.6, 900),
   nova: (t, v) => { N(t, 0.4, 0.4 * v, 5000, 'highpass'); T(t, 2200, 0.3, 'triangle', 0.1 * v, 600); },
@@ -92,9 +108,24 @@ export const SOUNDS = {
   victory: (t, v) => { [523, 659, 784, 1046].forEach((f, i) => T(t, f, 0.5, 'triangle', 0.14 * v, null, i * 0.12)); },
   chest: (t, v) => { N(t, 0.3, 0.2 * v, 400, 'lowpass'); [784, 988, 1175, 1568].forEach((f, i) => T(t, f, 0.4, 'sine', 0.12 * v, null, 0.2 + i * 0.07)); },
   tick: (t, v) => T(t, 1400 + Math.random() * 400, 0.03, 'square', 0.04 * v),
-  win: (t, v) => { [659, 784, 988].forEach((f, i) => T(t, f, 0.35, 'triangle', 0.13 * v, null, i * 0.09)); },
-  epic: (t, v) => { [523, 659, 784, 1046, 1318].forEach((f, i) => T(t, f, 0.6, 'triangle', 0.13 * v, null, i * 0.09)); N(t, 0.8, 0.08 * v, 7000, 'highpass', 0.7, null, 0.3); },
   nope: (t, v) => T(t, 160, 0.1, 'square', 0.06 * v, 120),
   pulse: (t, v) => { T(t, 70, 0.5, 'sine', 0.35 * v, 40); N(t, 0.5, 0.25 * v, 900, 'bandpass', 0.6, 300); },
   sweep: (t, v) => N(t, 0.3, 0.4 * v, 1800, 'bandpass', 1, 400),
+  // the walkout
+  gutter: (t, v) => { N(t, 0.5, 0.18 * v, 1200, 'bandpass', 2, 200); T(t, 220, 0.4, 'sine', 0.06 * v, 110); },
+  flare: (t, v) => { N(t, 0.4, 0.2 * v, 900, 'lowpass', 1, 4000); [784, 1175, 1568].forEach((f, i) => T(t, f, 0.5, 'triangle', 0.09 * v, null, 0.05 + i * 0.06)); },
+  knock: (t, v) => { T(t, 120, 0.12, 'sine', 0.5 * v, 70); N(t, 0.08, 0.35 * v, 800); },
+  lightsout: (t, v) => { T(t, 160, 0.9, 'sine', 0.3 * v, 40); N(t, 0.7, 0.2 * v, 600, 'lowpass', 1, 80); },
+  petchime: (t, v) => { [1046, 1318, 1568, 2093, 1568, 2637].forEach((f, i) => T(t, f, 0.6, 'sine', 0.08 * v, null, i * 0.22)); },
+  petfound: (t, v) => { [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => T(t, f, 0.7, 'triangle', 0.12 * v, null, i * 0.08)); N(t, 1, 0.08 * v, 7000, 'highpass', 0.7, null, 0.3); },
+  // the reveal
+  flip: (t, v) => { N(t, 0.08, 0.2 * v, 3000, 'bandpass', 1.5, 1200); T(t, 600, 0.06, 'triangle', 0.05 * v, 900); },
+  deal: (t, v) => N(t, 0.07, 0.15 * v, 2200, 'bandpass', 1.4, 900),
+  stamp: (t, v) => { T(t, 140, 0.1, 'square', 0.12 * v, 90); N(t, 0.06, 0.25 * v, 1600); },
+  rare: (t, v) => { [659, 831, 988, 1318].forEach((f, i) => T(t, f, 0.6, 'triangle', 0.13 * v, null, i * 0.07)); N(t, 0.6, 0.06 * v, 6000, 'highpass', 0.7, null, 0.2); },
+  epic: (t, v) => { [523, 659, 784, 1046, 1318].forEach((f, i) => T(t, f, 0.6, 'triangle', 0.13 * v, null, i * 0.09)); N(t, 0.8, 0.08 * v, 7000, 'highpass', 0.7, null, 0.3); },
+  coin: (t, v) => { T(t, 1568, 0.08, 'square', 0.05 * v); T(t, 2093, 0.18, 'square', 0.05 * v, null, 0.06); },
+  ach: (t, v) => { [784, 988, 1175].forEach((f, i) => T(t, f, 0.35, 'triangle', 0.11 * v, null, i * 0.08)); },
+  ui: (t, v) => T(t, 700, 0.05, 'triangle', 0.05 * v, 900),
+  place: (t, v) => { T(t, 300, 0.1, 'sine', 0.2 * v, 180); N(t, 0.06, 0.15 * v, 900); },
 };

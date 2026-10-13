@@ -8,7 +8,8 @@ import { onBossDead, checkPack, startBoss } from './game.js';
 import { breakCage, cutChain, interruptCast } from './mobs.js';
 import { onPerfectBlock } from './heroes.js';
 
-export const sfx = (n, v) => { if (S && !S.quiet) HOOKS.sound(n, v); };
+/* play a sound; during the pet walkout everything is hushed except what forces through */
+export const sfx = (n, v, force) => { if (S && !S.quiet && (!S.hush || force)) HOOKS.sound(n, v); };
 const later = (t, fn) => S.timers.push({ t, fn });
 
 /* loadout: what the meta layer worked out from the hero's gear.
@@ -179,7 +180,9 @@ export function hurtMob(m, amt, src, o) {
   if (m.cast && m.cast.kick) { m.cast.taken += a; if (m.cast.taken >= m.cast.kick) interruptCast(m); }
   if (src && src.kind === 'hero') { aggro(m, src, 0); addThreat(m, src, a * src.threatMod * (o.threat || 1)); src.stats.dmg += a; }
   const big = crit || a >= 250;
-  if (!o.quiet) fxText(m.x, m.y - (m.isBoss ? 170 : m.M.big ? 120 : 70), (crit ? a + '!' : '' + a), o.col || (crit ? '#F2C230' : '#FFFFFF'), o.size || (a >= 600 ? 40 : big ? 30 : 21), { dur: big ? 1.15 : 0.9, crit, mine: !!(src && src.isPlayer) });
+  const iceCrit = crit && src && src.isPlayer && S.looks && S.looks.has('cosmetic.crit_ice');
+  if (iceCrit) bits(m.x, m.y - (m.isBoss ? 150 : 60), 'shard_ice', 6, 220);
+  if (!o.quiet) fxText(m.x, m.y - (m.isBoss ? 170 : m.M.big ? 120 : 70), (crit ? a + '!' : '' + a), iceCrit ? '#8FD6FF' : o.col || (crit ? '#F2C230' : '#FFFFFF'), o.size || (a >= 600 ? 40 : big ? 30 : 21), { dur: big ? 1.15 : 0.9, crit, mine: !!(src && src.isPlayer) });
   if (o.knock && !m.isBoss && !m.M.big) { const an = Math.atan2(m.y - src.y, m.x - src.x); m.st.kx += Math.cos(an) * o.knock; m.st.ky += Math.sin(an) * o.knock; }
   if (crit && src && src.isPlayer) hitstop(0.035);
   if (crit && src && src.kind === 'hero') emit({ type: 'crit', amount: a, player: !!src.isPlayer });

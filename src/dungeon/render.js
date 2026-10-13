@@ -5,14 +5,18 @@ import { RARITY } from '../content/gear';
 import { S } from './state.js';
 import { BAKE_S, PAT, bakeAll, drawSpr, mkCanvas } from './art.js';
 import { PERFECT_WINDOW, dots } from './entities.js';
-import { IN, aimPoint } from './input.js';
+import { drawWalkout, walkoutFocus } from './walkout.js';
 import { chainEnds } from './mobs.js';
 import { roomIndexOf } from './world.js';
 
 /* ---------- drawing: the crypt, everyone in it, and the effects ---------- */
+/** @type {any} */
 export const VIEW = { cv: null, ctx: null, W: 0, H: 0, dpr: 1, scale: 1, S: 1, fx: 0, fy: 0, cam: { x: 500, y: 5600 }, dark: null };
 export const K = '#1E1A1A';
 export const FONT = "'Lilita One', 'Trebuchet MS', sans-serif";
+/* the screen layer tells the renderer what the player is aiming, if anything: () => { key, range, x, y, r } | null */
+/** @type {{ get: null | (() => any) }} */
+export const AIM = { get: null };
 
 export function resizeView() {
   const cv = VIEW.cv, box = cv.parentElement.getBoundingClientRect();
@@ -33,6 +37,8 @@ export function camTarget() {
   const b = S.boss && S.boss.alive ? S.boss : null;
   if (b && !b.hidden) { x = lerp(x, b.x, 0.25); y = lerp(y, b.y, 0.3); }
   if (S.chest && !S.chest.open && dist(p, S.chest) < 500) { x = lerp(x, S.chest.x, 0.3); y = lerp(y, S.chest.y, 0.3); }
+  const wf = walkoutFocus();
+  if (wf) { x = lerp(x, wf.x, 0.75); y = lerp(y, wf.y, 0.75); }
   VIEW.fx = VIEW.W * (VIEW.portrait && VIEW.W < 700 ? (p.role === 'healer' && S.player === p ? 0.4 : 0.47) : 0.5);
   const ri = Math.max(0, roomIndexOf(p.x, p.y));
   const room = S.dg.map.rooms[ri] || S.dg.map.rooms[0];
@@ -63,6 +69,7 @@ export function render() {
   drawGround(ctx, v);
   drawObjects(ctx, v);
   drawAir(ctx, v);
+  if (S.walkout) drawWalkout(ctx, drawSpr);
   if (S.dark > 0.02) drawDark(ctx);
   drawTexts(ctx, v);
   drawAim(ctx);
@@ -135,7 +142,6 @@ export function drawMap(ctx, v) {
     ctx.beginPath(); ctx.moveTo(c.x0, c.y0); ctx.lineTo(c.x0, c.y1); ctx.moveTo(c.x1, c.y0); ctx.lineTo(c.x1, c.y1); ctx.stroke();
   }
 }
-export 
 /* ---------- ground layer: shadows, telegraphs, zones ---------- */
 export function drawGround(ctx, v) {
   for (const z of S.zones) drawZone(ctx, z);
@@ -282,7 +288,13 @@ export function drawObjects(ctx, v) {
     else if (it.k === 3) drawHero(ctx, o);
     else if (it.k === 4) drawMob(ctx, o);
     else if (it.k === 5) { const k = clamp(o.t / 0.15, 0, 1), out = 1 - clamp((o.t - o.dur + 0.3) / 0.3, 0, 1); drawSpr(ctx, 'hand', o.x, o.y, { sy: k * out, alpha: out }); }
-    else if (it.k === 6) { const s = o.open ? 'chest_open' : 'chest'; if (!o.open) { ctx.globalAlpha = 0.25 + Math.sin(S.t * 4) * 0.1; ctx.fillStyle = '#F2C230'; ctx.beginPath(); ctx.arc(o.x, o.y - 30, 70, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; } drawSpr(ctx, s, o.x, o.y, { sx: 1.15, sy: 1.15 + (o.open ? 0 : Math.sin(S.t * 5) * 0.02) }); }
+    else if (it.k === 6) {
+      const s = o.open ? 'chest_open' : 'chest';
+      const ready = !S.walkout || S.walkout.done;
+      if (!o.open && ready) { ctx.globalAlpha = 0.25 + Math.sin(S.t * 4) * 0.1; ctx.fillStyle = '#F2C230'; ctx.beginPath(); ctx.arc(o.x, o.y - 30, 70, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
+      const hop = o.knockT > 0 ? Math.sin((o.knockT / 0.22) * Math.PI) * 14 : 0;
+      drawSpr(ctx, s, o.x, o.y - hop, { sx: 1.15 + hop * 0.004, sy: 1.15 - hop * 0.004 + (o.open || !ready ? 0 : Math.sin(S.t * 5) * 0.02) });
+    }
   }
 }
 export const WEAPON_AT = { tank_f: [-36, -66], tank_b: [36, -66], healer_f: [-31, -104], healer_b: [31, -104], dps_f: [28, -96], dps_b: [-28, -96] };
@@ -311,12 +323,21 @@ export function drawHero(ctx, h) {
     ctx.beginPath(); ctx.arc(x + fx_, y + w[1], h.weaponRar === 3 ? 24 : 17, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
     if (h.weaponRar === 3 && S.frame % 7 === 0) S.parts.push({ x: h.x + fx_ + vrand(-14, 14), y: h.y, z: -w[1] + vrand(-14, 14), vx: 0, vy: 0, vz: 0, up: true, col: '#C9B2FF', size: vrand(2.5, 4.5), t: 0, dur: 0.7 });
   }
+  if (h.isPlayer && h.role === 'healer' && S.looks.has('cosmetic.glow_staff')) {
+    const w = WEAPON_AT[name]; const fx_ = (h.flip ? -w[0] : w[0]);
+    ctx.globalAlpha = 0.28 + Math.sin(S.t * 4) * 0.08; ctx.fillStyle = '#FFE08A';
+    ctx.beginPath(); ctx.arc(x + fx_, y + w[1], 30, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+    if (S.frame % 9 === 0) S.parts.push({ x: h.x + fx_ + vrand(-12, 12), y: h.y, z: -w[1] + vrand(-10, 10), vx: 0, vy: 0, vz: 0, up: true, col: '#FFF6D0', size: vrand(2.5, 4), t: 0, dur: 0.8 });
+  }
   const yy = h.dodgeT > 0 ? y + 26 : y;
-  drawSpr(ctx, name, x, yy, { flip: h.flip, sx, sy, rot: rot, tint: h.flash > 0 ? 'flash' : h.hurtT > 0.12 ? null : null, tintA: Math.max(0, h.flash) / 0.12 });
+  const ghost = h.isPlayer && S.opts.ghostly;
+  drawSpr(ctx, name, x, yy, { flip: h.flip, sx, sy, rot: rot, alpha: ghost ? 0.78 : 1, tint: h.flash > 0 ? 'flash' : ghost ? 'ghost' : null, tintA: h.flash > 0 ? Math.max(0, h.flash) / 0.12 : 0.45 });
   if (h.blocking) {
     const a = h.face, cx = h.x + Math.cos(a) * 24, cy = h.y - 34 + Math.sin(a) * 12;
     ctx.lineWidth = 11; ctx.strokeStyle = K; ctx.beginPath(); ctx.arc(cx - Math.cos(a) * 14, cy - Math.sin(a) * 8, 34, a - 1.05, a + 1.05); ctx.stroke();
-    ctx.lineWidth = 6; ctx.strokeStyle = h.blockT < PERFECT_WINDOW ? '#F2C230' : '#C9D2DC'; ctx.stroke();
+    const rim = h.isPlayer && S.looks.has('cosmetic.glow_shield');
+    if (rim) { ctx.globalAlpha = 0.35; ctx.lineWidth = 22; ctx.strokeStyle = '#F2C230'; ctx.stroke(); ctx.globalAlpha = 1; }
+    ctx.lineWidth = 6; ctx.strokeStyle = h.blockT < PERFECT_WINDOW || rim ? '#F2C230' : '#C9D2DC'; ctx.stroke();
   }
   if (h.absorb > 0) {
     ctx.globalAlpha = 0.22; ctx.fillStyle = '#DDF3FF'; ctx.beginPath(); ctx.ellipse(h.x, h.y - 44, 40, 58, 0, 0, TAU); ctx.fill();
@@ -383,7 +404,7 @@ export function drawMob(ctx, m) {
 export function drawAir(ctx, v) {
   for (const p of S.projs) {
     const a = p.team === 'hero' ? Math.atan2(p.vy || 0, p.vx || 1) : Math.atan2(p.vy, p.vx);
-    drawSpr(ctx, p.sp, p.x, p.y - p.z, { rot: a });
+    drawSpr(ctx, p.sp, p.x, p.y - p.z, { rot: a, sx: p.big ? 1.6 : 1, sy: p.big ? 1.6 : 1 });
   }
   for (const ch of S.chains) drawChain(ctx, ch);
   for (const f of S.fx) if (!f.ground && f.type !== 'hand') drawFx(ctx, f);
@@ -444,7 +465,8 @@ export function drawFx(ctx, f) {
   } else if (f.type === 'swipe') {
     ctx.globalAlpha = 1 - k;
     ctx.lineWidth = 12; ctx.strokeStyle = K; ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(lerp(f.x, f.x2, Math.min(1, k * 2)), lerp(f.y, f.y2, Math.min(1, k * 2))); ctx.stroke();
-    ctx.lineWidth = 6; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
+    if (f.col) { ctx.globalAlpha = (1 - k) * 0.4; ctx.lineWidth = 26; ctx.strokeStyle = f.col; ctx.stroke(); ctx.globalAlpha = 1 - k; }
+    ctx.lineWidth = 6; ctx.strokeStyle = f.col || '#FFFFFF'; ctx.stroke();
     ctx.globalAlpha = 1;
   }
 }
@@ -462,7 +484,9 @@ export function drawDark(ctx) {
   g.globalCompositeOperation = 'destination-out';
   const hole = (x, y, r) => { g.globalAlpha = 0.5; g.beginPath(); g.arc(x, y, r * 1.35, 0, TAU); g.fill(); g.globalAlpha = 1; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); };
   g.fillStyle = '#000';
-  for (const h of S.heroes) if (h.alive) hole(h.x, h.y - 40, 120);
+  const w = S.walkout && !S.walkout.done && S.walkout.tell === 'pet' ? S.walkout : null;
+  for (const h of S.heroes) if (h.alive) hole(h.x, h.y - 40, w ? 46 : 120);
+  if (w) { const ly = w.y - 50 - 60 * w.lift; hole(w.x, ly - 26, 96 + Math.sin(S.t * 7) * 4); if (w.pet) hole(w.pet.x, w.y - 40, 56); }
   for (const m of S.mobs) { if (!m.alive) continue; if (m.M.light && !m.hidden) hole(m.x + m.M.light.dx * (m.flip ? -1 : 1), m.y + m.M.light.dy, m.M.light.r); if (m.M.wisp) hole(m.x, m.y - 40, 60); }
   for (const z of S.hazards) if (!z.noDmg) hole(z.x, z.y, (z.r || 60) * 0.9 + 20);
   for (const z of S.zones) hole(z.x, z.y, z.r);
@@ -485,10 +509,10 @@ export function drawTexts(ctx) {
   ctx.globalAlpha = 1;
 }
 export function drawAim(ctx) {
-  const a = IN.aim;
-  if (!a || !a.live || !S.player.alive) return;
+  const a = AIM.get && AIM.get();
+  if (!a || !S.player.alive) return;
   const def = AB[S.player.role][a.slot];
-  const p = aimPoint(a);
+  const p = { x: a.x, y: a.y };
   const r = def.key === 'circle' ? 110 : 120;
   const col = def.key === 'circle' ? '#F2C230' : '#DDF3FF';
   ctx.globalAlpha = 0.9;

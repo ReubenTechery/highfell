@@ -39,7 +39,9 @@ export interface Profile {
   titles: string[];
   title: string | null;
   hearth: { spots: Record<string, string | null> };
-  settings: { sound: boolean };
+  /** looksOff: cosmetics you own but have switched off */
+  settings: { sound: boolean; looksOff: string[] };
+  /** collection ids you have looked at in the log since they arrived */
   seen: Record<string, number>;
 }
 
@@ -56,7 +58,7 @@ export function freshProfile(now = Date.now()): Profile {
     dungeons: {}, bosses: {}, collection: {}, achievements: {}, counters: {},
     titles: [], title: null,
     hearth: { spots: {} },
-    settings: { sound: true },
+    settings: { sound: true, looksOff: [] },
     seen: {},
   };
 }
@@ -104,6 +106,8 @@ export function normalize(d: any, now = Date.now()): Profile {
   p.title = typeof d.title === 'string' && p.titles.includes(d.title) ? d.title : null;
   for (const [k, v] of Object.entries(obj(obj(d.hearth).spots))) p.hearth.spots[k] = typeof v === 'string' ? v : null;
   p.settings.sound = obj(d.settings).sound !== false;
+  const off = obj(d.settings).looksOff;
+  p.settings.looksOff = Array.isArray(off) ? off.filter((x: unknown) => typeof x === 'string') : [];
   for (const [k, v] of Object.entries(obj(d.seen))) p.seen[k] = num(v, 0);
   return p;
 }

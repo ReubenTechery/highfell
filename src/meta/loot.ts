@@ -128,33 +128,59 @@ export interface RunEnd {
   time: number;
 }
 
-/** Rolls everything a finished run earned and writes it into the profile. Returns what happened, for the reveal. */
-export function resolveRun(p: Profile, dg: DungeonInfo, end: RunEnd, rng: Rng, now = Date.now()): RunLoot {
-  const out: RunLoot = { dungeon: dg.id, role: end.role, drops: [], tell: 'normal', kc: {}, marks: 0, clears: 0, time: end.time, pb: null, newPb: false, firstClear: false };
-  const rec = dungeonRecord(p, dg.id);
-  if (end.practice) { out.clears = rec.clears; out.pb = rec.pb; return out; }
-  for (const boss of end.bosses) {
-    const br = bossRecord(p, dg.id, boss);
-    br.kc++;
-    out.kc[boss] = br.kc;
-    const bt = end.bossTimes[boss];
-    if (typeof bt === 'number' && (br.pb === null || bt < br.pb)) br.pb = bt;
-    const table = dg.loot.find((t) => t.boss === boss);
-    if (table) for (const d of rollTable(table, end.role, rng)) out.drops.push(grant(p, end.role, d.id, { source: 'table', boss, rate: d.rate, kc: br.kc }, now));
-  }
-  if (end.cleared) {
-    rec.clears++;
-    out.clears = rec.clears;
-    out.firstClear = rec.clears === 1;
-    if (rec.pb === null || end.time < rec.pb) { out.newPb = rec.pb !== null; rec.pb = end.time; }
-    out.pb = rec.pb;
-    out.marks += CLEAR_MARKS;
-    out.drops.push(regularDrop(p, end.role, rng));
-    const spare = spareDrop(p, end.role, rng);
-    if (spare) out.drops.push(spare);
-  }
-  for (const d of out.drops) out.marks += d.marks;
-  rec.marks += out.marks;
-  out.tell = tellOf(out.drops);
+/** What one boss kill gave: rolled the moment it dies, like loot hitting the floor. */
+export interface KillLoot { boss: string; kc: number; time: number; newPb: boolean; drops: Drop[]; marks: number }
+
+/** A kill counts and rolls its table. Practice runs never call this. */
+export function resolveKill(p: Profile, dg: DungeonInfo, boss: string, role: RoleId, time: number | null, rng: Rng, now = Date.now()): KillLoot {
+  const br = bossRecord(p, dg.id, boss);
+  br.kc++;
+  const newPb = typeof time === 'number' && (br.pb === null || time < br.pb);
+  if (newPb) br.pb = time;
+  const out: KillLoot = { boss, kc: br.kc, time: time ?? 0, newPb: newPb && br.kc > 1, drops: [], marks: 0 };
+  const table = dg.loot.find((t) => t.boss === boss);
+  if (table) for (const d of rollTable(table, role, rng)) out.drops.push(grant(p, role, d.id, { source: 'table', boss, rate: d.rate, kc: br.kc }, now));
+  out.marks = out.drops.reduce((a, d) => a + d.marks, 0);
+  dungeonRecord(p, dg.id).marks += out.marks;
   return out;
+}
+
+/** What finishing the dungeon gave: the clear, the ladder piece, the spare piece and a mark. */
+export interface ClearLoot { clears: number; time: number; pb: number | null; newPb: boolean; firstClear: boolean; drops: Drop[]; marks: number }
+
+export function resolveClear(p: Profile, dg: DungeonInfo, role: RoleId, time: number, rng: Rng): ClearLoot {
+  const rec = dungeonRecord(p, dg.id);
+  rec.clears++;
+  const out: ClearLoot = { clears: rec.clears, time, pb: null, newPb: false, firstClear: rec.clears === 1, drops: [], marks: CLEAR_MARKS };
+  if (rec.pb === null || time < rec.pb) { out.newPb = rec.pb !== null; rec.pb = time; }
+  out.pb = rec.pb;
+  out.drops.push(regularDrop(p, role, rng));
+  const spare = spareDrop(p, role, rng);
+  if (spare) out.drops.push(spare);
+  rec.marks += out.marks;
+  return out;
+}
+
+/** Everything a run gave, put together for the reveal. The final boss's drops decide the tell. */
+export function runLoot(p: Profile, dg: DungeonInfo, role: RoleId, kills: KillLoot[], clear: ClearLoot | null): RunLoot {
+  const rec = dungeonRecord(p, dg.id);
+  const out: RunLoot = { dungeon: dg.id, role, drops: [], tell: 'normal', kc: {}, marks: 0, clears: rec.clears, time: clear ? clear.time : 0, pb: rec.pb, newPb: !!clear?.newPb, firstClear: !!clear?.firstClear };
+  for (const k of kills) { out.kc[k.boss] = k.kc; out.drops.push(...k.drops); out.marks += k.marks; }
+  if (clear) { out.drops.push(...clear.drops); out.marks += clear.marks; }
+  const last = kills.find((k) => k.boss === dg.finalBoss);
+  out.tell = last ? tellOf(last.drops) : 'normal';
+  return out;
+}
+
+/** A run from the entrance starts: count it. */
+export function countRunStart(p: Profile, dg: DungeonInfo): void { dungeonRecord(p, dg.id).runs++; }
+/** The party wiped on a boss: count it against that boss. */
+export function countBossWipe(p: Profile, dg: DungeonInfo, boss: string): void { bossRecord(p, dg.id, boss).wipes++; }
+
+/** A whole run in one go (tests and sims). The game itself resolves each kill as it happens. */
+export function resolveRun(p: Profile, dg: DungeonInfo, end: RunEnd, rng: Rng, now = Date.now()): RunLoot {
+  if (end.practice) return runLoot(p, dg, end.role, [], null);
+  const kills = end.bosses.map((b) => resolveKill(p, dg, b, end.role, end.bossTimes[b] ?? null, rng, now));
+  const clear = end.cleared ? resolveClear(p, dg, end.role, end.time, rng) : null;
+  return runLoot(p, dg, end.role, kills, clear);
 }

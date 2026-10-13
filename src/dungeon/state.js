@@ -3,6 +3,7 @@
    headless sims leave them as no-ops. */
 import { bus } from '../core/events';
 
+/** @type {any} */
 export let S = null;
 export function setS(v) { S = v; }
 

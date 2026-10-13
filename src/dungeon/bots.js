@@ -119,6 +119,7 @@ export function nextObjective() {
     if (p.def.approach === 'arena') return { x: S.dg.map.arena.x, y: S.dg.map.arena.y + 200 };
     return { x: c.x, y: c.y + 40 };
   }
+  if (S.walkout && !S.walkout.done) return null; // everyone stops to watch the lantern
   if (S.chest && !S.chest.open) return { x: S.chest.x, y: S.chest.y + 60 };
   return null;
 }

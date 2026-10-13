@@ -24,7 +24,7 @@ export type GameEvent =
   | { type: 'run.start'; dungeon: string; role: RoleId; practice: boolean; solo: boolean }
   | { type: 'mob.killed'; mob: string; boss: boolean; undead: boolean; byPlayer: boolean }
   | { type: 'boss.pulled'; boss: string }
-  | { type: 'boss.killed'; boss: string; time: number; armorUp: boolean; onlyPlayerAlive: boolean; smashes: number; smashPerfect: number; playerIsTank: boolean }
+  | { type: 'boss.killed'; boss: string; time: number; armorUp: boolean; onlyPlayerAlive: boolean; smashes: number; smashPerfect: number; playerIsTank: boolean; x?: number; y?: number }
   | { type: 'hero.died'; role: RoleId; player: boolean }
   | { type: 'block'; perfect: boolean; player: boolean; smash: boolean }
   | { type: 'dodge'; player: boolean }

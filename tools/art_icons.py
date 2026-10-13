@@ -119,6 +119,99 @@ T['i_icestaff'] = tile(IB, inked('M18 58 L36 26', '#A0703F', 4.5) + '<circle cx=
 T['i_robe'] = tile(IB, F('M24 12 C28 16 36 16 40 12 L48 20 L44 26 L46 54 H18 L20 26 L16 20 Z', '#4F86C6') + F('M28 18 L32 22 L36 18 L34 54 H30 Z', '#F2C230', 2.6) + F('M22 12 C28 20 36 20 42 12 C38 9 26 9 22 12 Z', '#F6F1E4', 2.6))
 T['i_charm'] = tile(IB, P('M20 10 C24 26 40 26 44 10', '#C9D2DC', 3) + '<circle cx="32" cy="38" r="15" style="fill: #B79CFF; opacity: 0.3"/>' + F('M32 24 L44 38 L32 54 L20 38 Z', '#B79CFF', 3.2) + P('M30 32 L26 38', '#FFFFFF', 2.2))
 
+# ---- v2 abilities: every role has a fourth button
+rings = ('<ellipse cx="32" cy="50" rx="27" ry="8" style="fill: none; stroke: #1E1A1A; stroke-width: 7"/>'
+         '<ellipse cx="32" cy="50" rx="27" ry="8" style="fill: none; stroke: #FFF3C4; stroke-width: 3"/>')
+star = ''.join(f"{'M' if k == 0 else 'L'}{f1(32 + (22 if k % 2 == 0 else 9) * math.cos(math.radians(k * 36 - 90)))} {f1(48 + (12 if k % 2 == 0 else 5) * math.sin(math.radians(k * 36 - 90)))} " for k in range(10)) + 'Z'
+T['slam'] = tile('#E07A2E',
+                 F(star, '#FFE08A', 3) +
+                 P('M14 58 L22 52 M50 58 L42 52 M32 62 V56', '#1E1A1A', 3) +
+                 inked('M46 6 L34 38', '#A0703F', 5) +
+                 F('M30 34 C22 30 18 40 22 50 C28 46 34 46 40 46 C40 40 36 36 30 34 Z', '#D7DEE6') +
+                 P('M8 22 L14 28 M56 22 L50 28 M10 36 H16', '#FFF3C4', 3) +
+                 C(12, 50, 3, '#C9B79A', 2) + C(54, 48, 2.6, '#C9B79A', 2))
+T['cleave'] = tile('#C8403F',
+                   '<path d="M8 44 C14 20 38 8 58 14" style="fill: none; stroke: #1E1A1A; stroke-width: 13; stroke-linecap: round"/>'
+                   '<path d="M8 44 C14 20 38 8 58 14" style="fill: none; stroke: #FFE08A; stroke-width: 7; stroke-linecap: round"/>'
+                   '<path d="M14 40 C20 24 38 15 52 18" style="fill: none; stroke: #FFFFFF; stroke-width: 2.6; stroke-linecap: round"/>' +
+                   inked('M22 58 L40 30', '#A0703F', 4.5) + F('M36 24 C46 16 58 24 54 38 C46 36 40 32 36 24 Z', '#D7DEE6'))
+T['smite'] = tile('#E7B53C',
+                  '<circle cx="34" cy="30" r="20" style="fill: #FFF3C4; opacity: 0.5"/>' +
+                  C(34, 30, 12, '#FFFFFF', 3.5) + inked('M34 22 V38 M26 30 H42', '#F2C230', 3.4) +
+                  inked('M10 56 L24 40', '#FFF3C4', 4) + F('M10 50 L4 58 L14 56 Z', '#FFF3C4', 2.4) +
+                  P('M50 10 L54 6 M56 18 H61 M46 6 V2', '#FFFFFF', 2.6))
+T['icicle'] = tile('#1F4F7A',
+                   '<circle cx="40" cy="22" r="16" style="fill: #8FD6FF; opacity: 0.3"/>' +
+                   F('M8 58 L44 10 L54 18 Z', '#DDF3FF', 3.5) + P('M16 50 L44 16', '#FFFFFF', 2.4) + P('M30 42 L48 22', '#8FD6FF', 2.4) +
+                   P('M52 44 V54 M47 49 H57', '#FFFFFF', 2.8) + P('M14 14 V20 M11 17 H17', '#FFFFFF', 2.4))
+
+# ---- the four gear slots for every role
+HELM = (F('M18 40 C18 18 46 18 46 40 Z', '#9AA7B8') + F('M16 38 H48 V46 H16 Z', '#7D8FA3', 3) +
+        F('M18 28 C8 26 4 16 6 6 C10 14 16 18 22 20 Z', '#F0E8D2', 3) + F('M46 28 C56 26 60 16 58 6 C54 14 48 18 42 20 Z', '#F0E8D2', 3) +
+        C(26, 42, 1.6, '#1E1A1A', 0) + C(32, 42, 1.6, '#1E1A1A', 0) + C(38, 42, 1.6, '#1E1A1A', 0))
+PAUL = (F('M6 40 C4 22 22 14 30 26 C24 36 14 42 6 40 Z', '#9AA7B8') + F('M58 40 C60 22 42 14 34 26 C40 36 50 42 58 40 Z', '#9AA7B8') +
+        P('M10 34 C14 28 20 26 26 28 M54 34 C50 28 44 26 38 28', '#C9D2DC', 2.4) + C(16, 30, 2.4, '#F2C230', 1.6) + C(48, 30, 2.4, '#F2C230', 1.6))
+HOOD = (F('M14 52 C10 30 18 10 32 10 C46 10 54 30 50 52 C42 46 22 46 14 52 Z', '#F6F1E4') +
+        F('M22 44 C20 30 24 22 32 22 C40 22 44 30 42 44 C38 40 26 40 22 44 Z', '#3A2E40', 3) + P('M32 10 V20', '#E7B53C', 3))
+MANT = (F('M6 42 C8 26 20 18 32 18 C44 18 56 26 58 42 C48 38 40 40 32 46 C24 40 16 38 6 42 Z', '#F6F1E4') +
+        P('M14 34 C20 28 26 26 32 26 C38 26 44 28 50 34', '#E7B53C', 3) + C(32, 30, 4, '#F2C230', 2.4))
+HAT = (F('M8 50 C20 44 44 44 56 50 C46 56 18 56 8 50 Z', '#4F86C6') + F('M20 48 C22 34 30 22 44 8 C42 22 42 36 44 48 Z', '#4F86C6') +
+       F('M20 46 C30 42 38 42 44 46 L44 50 C36 47 28 47 20 50 Z', '#F2C230', 2.6) + P('M40 14 L44 8', '#FFFFFF', 2) + C(36, 30, 2.4, '#DDF3FF', 1.6))
+T['i_helm'] = tile(IB, HELM)
+T['i_pauldrons'] = tile(IB, PAUL)
+T['i_hood'] = tile(IB, HOOD)
+T['i_mantle'] = tile(IB, MANT)
+T['i_hat'] = tile(IB, HAT)
+
+# ---- Barrow set pieces: the slot shape on the set's colour, with the set's mark in the corner
+MARKS = {
+    'barrowguard': ('#3F5A3A', C(52, 52, 8, '#F0E8D2', 2.6) + C(49.5, 51, 1.6, '#1E1A1A', 0) + C(54.5, 51, 1.6, '#1E1A1A', 0)),
+    'candlewake': ('#5E3FA3', F('M48 60 V48 H56 V60 Z', '#F6F1E4', 2.4) + F('M52 46 C55 42 54 39 52 36 C50 39 49 42 52 46 Z', '#F2C230', 2)),
+    'rimebone': ('#1F4F7A', P('M52 44 V60 M45 48 L59 56 M45 56 L59 48', '#1E1A1A', 5) + P('M52 44 V60 M45 48 L59 56 M45 56 L59 48', '#DDF3FF', 2.2)),
+}
+SET_SHAPES = {'barrowguard': {'helm': HELM, 'shoulders': PAUL, 'chest': None}, 'candlewake': {'helm': HOOD, 'shoulders': MANT, 'chest': None}, 'rimebone': {'helm': HAT, 'shoulders': MANT, 'chest': None}}
+PLATE = F('M18 16 C26 12 38 12 46 16 L50 28 L44 30 V52 H20 V30 L14 28 Z', '#9AA7B8') + P('M32 18 V50', '#7D8FA3', 3)
+ROBE_G = F('M24 12 C28 16 36 16 40 12 L48 20 L44 26 L46 54 H18 L20 26 L16 20 Z', '#F6F1E4') + F('M28 18 L32 22 L36 18 L34 54 H30 Z', '#E7B53C', 2.6)
+ROBE_B = F('M24 12 C28 16 36 16 40 12 L48 20 L44 26 L46 54 H18 L20 26 L16 20 Z', '#4F86C6') + F('M28 18 L32 22 L36 18 L34 54 H30 Z', '#DDF3FF', 2.6)
+for set_id, (bg, mark) in MARKS.items():
+    shapes = SET_SHAPES[set_id]
+    chest = PLATE if set_id == 'barrowguard' else ROBE_G if set_id == 'candlewake' else ROBE_B
+    T[f's_{set_id}_helm'] = tile(bg, shapes['helm'] + mark)
+    T[f's_{set_id}_shoulders'] = tile(bg, shapes['shoulders'] + mark)
+    T[f's_{set_id}_chest'] = tile(bg, chest + mark)
+
+# ---- the Gravekeeper's three weapons
+T['u_gravedigger'] = tile('#4E6B45', inked('M18 58 L42 14', '#A0703F', 5) +
+                          F('M36 10 C48 2 62 12 58 30 C48 28 40 22 36 10 Z', '#D7DEE6') +
+                          F('M12 48 L24 54 L20 64 L6 58 Z', '#8E96A3', 3) + C(30, 36, 3, '#9BE15D', 1.8))
+T['u_longnight'] = tile('#2F6F5A', inked('M14 60 L34 22', '#A0703F', 4.5) + P('M34 22 L42 18', '#1E1A1A', 3) +
+                        '<circle cx="46" cy="30" r="14" style="fill: #9BE15D; opacity: 0.3"/>' +
+                        F('M38 22 H54 L52 42 H40 Z', '#4A4458', 3) + F('M42 26 H50 V38 H42 Z', '#E9FFD9', 2) +
+                        F('M46 28 C49 31 49 35 46 37 C43 35 43 31 46 28 Z', '#9BE15D', 1.6))
+T['u_gravefrost'] = tile('#1F4F7A', inked('M16 60 L36 26', '#6B5A70', 4.5) +
+                         '<circle cx="40" cy="18" r="14" style="fill: #8FD6FF; opacity: 0.35"/>' +
+                         F('M30 22 C30 10 50 10 50 22 C50 26 48 28 46 29 V33 H34 V29 C32 28 30 26 30 22 Z', '#F0E8D2', 3) +
+                         C(36, 21, 2.8, '#8FD6FF', 0) + C(44, 21, 2.8, '#8FD6FF', 0) + P('M38 30 V33 M42 30 V33', '#1E1A1A', 1.6))
+
+# ---- looks: rewards that change how you look, never how hard you hit
+T['c_dye'] = tile('#5C5070', '<circle cx="32" cy="38" r="20" style="fill: #DCFFF0; opacity: 0.25"/>' +
+                  F('M24 22 H40 V28 C48 32 50 40 46 48 C42 56 22 56 18 48 C14 40 16 32 24 28 Z', '#DCFFF0') +
+                  F('M26 14 H38 V22 H26 Z', '#A0703F', 3) + P('M24 40 C30 44 36 44 42 40', '#9FD9C6', 2.4) + P('M26 32 L22 38', '#FFFFFF', 2))
+T['c_trail'] = tile('#2F6F5A', '<path d="M6 52 C20 48 30 30 58 12" style="fill: none; stroke: #C8F5E8; stroke-width: 12; stroke-linecap: round; opacity: 0.35"/>' +
+                    inked('M6 52 C20 48 30 30 58 12', '#C8F5E8', 4) + C(16, 46, 3, '#FFFFFF', 0) + C(34, 30, 2.4, '#FFFFFF', 0) + C(50, 18, 2, '#FFFFFF', 0))
+T['c_glow_shield'] = tile('#C8403F', '<circle cx="32" cy="32" r="27" style="fill: #F2C230; opacity: 0.35"/>' +
+                          C(32, 32, 21, '#F2C230', 3.5) + C(32, 32, 15, '#C8403F', 3) + C(32, 32, 5.5, '#C9D2DC', 3) +
+                          P('M18 18 C24 12 32 11 38 12', '#FFFFFF', 2.6))
+T['c_glow_staff'] = tile('#E07A2E', '<circle cx="40" cy="20" r="18" style="fill: #FFE08A; opacity: 0.45"/>' +
+                         inked('M16 60 L38 24', '#A0703F', 4.5) + rays + C(40, 20, 7, '#FFF6D0', 3))
+T['c_crit_ice'] = tile('#1F4F7A', '<text x="32" y="47" text-anchor="middle" style="font: 40px \'Lilita One\', sans-serif; fill: #DDF3FF; stroke: #1E1A1A; stroke-width: 3; paint-order: stroke">!</text>' +
+                       F('M10 20 L16 12 L22 20 L16 28 Z', '#DDF3FF', 2.4) + F('M44 50 L50 44 L56 50 L50 56 Z', '#DDF3FF', 2.4) + F('M46 14 L50 10 L54 14 L50 18 Z', '#8FD6FF', 2))
+# ---- account things: marks, kill count, achievements
+T['marks'] = tile('#3A3150', C(32, 32, 20, '#C9A040', 3.5) + C(32, 32, 14, '#E7C25A', 2.4) +
+                  F('M24 32 C24 24 40 24 40 32 C40 35 38 37 36 38 V41 H28 V38 C26 37 24 35 24 32 Z', '#3A3150', 2) +
+                  C(29, 31, 2, '#E7C25A', 0) + C(35, 31, 2, '#E7C25A', 0))
+
+
 if __name__ == '__main__':
     os.makedirs(OUT, exist_ok=True)
     json.dump(T, open(OUT + 'icons.json', 'w'))

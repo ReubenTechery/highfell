@@ -130,7 +130,7 @@ test('achievements: counters, live checks, run checks, rewards and the meta', ()
   assert.deepEqual(a.event({ type: 'crit', amount: 1600, player: true }), ['barrow.bignumber']);
   const tankOnly = new Achiever(p, { dungeon: 'barrow', role: 'healer', practice: false, testGear: false });
   assert.deepEqual(tankOnly.event({ type: 'boss.killed', boss: 'keeper', time: 1, armorUp: false, onlyPlayerAlive: false, smashes: 5, smashPerfect: 5, playerIsTank: true }), []);
-  const sum: RunSummary = { dungeon: 'barrow', role: 'dps', practice: false, testGear: false, time: 230, deaths: 0, wipes: 0, handHits: 0, ringHits: 0, saves: 0, playerDeaths: 0, kicks: 0, perfectBlocks: 0 };
+  const sum: RunSummary = { dungeon: 'barrow', role: 'dps', practice: false, testGear: false, time: 190, deaths: 0, wipes: 0, handHits: 0, ringHits: 0, saves: 0, playerDeaths: 0, kicks: 0, perfectBlocks: 0 };
   const got = a.cleared(sum);
   for (const id of ['barrow.into', 'barrow.nobody', 'barrow.sprint', 'barrow.flawless']) assert.ok(got.includes(id), id);
   assert.ok(p.collection['trophy.barrow_key']);
@@ -154,4 +154,20 @@ test('hearth: spots only take their own kind, and only what you own', () => {
   assert.equal(p.hearth.spots['pet.fire'], null, 'moving it frees the old spot');
   assert.ok(HEARTH_SPOTS.every((s) => ['pet', 'mount', 'trophy', 'banner'].includes(s.kind)));
   assert.ok(COLLECTIBLES['mount.gravehound']);
+});
+
+test('art: every icon and sprite the content names exists', async () => {
+  const fs = await import('node:fs');
+  const read = (f: string) => JSON.parse(fs.readFileSync(new URL('../../art/' + f, import.meta.url), 'utf8'));
+  const tiles = { ...read('icons.json'), ...read('collect_icons.json') };
+  const sprites = { ...read('sprites.json'), ...read('hearth.json') };
+  const missing: string[] = [];
+  for (const it of Object.values(ITEMS)) if (!tiles[it.icon]) missing.push('icon ' + it.icon + ' for ' + it.id);
+  for (const c of Object.values(COLLECTIBLES)) {
+    if (!tiles[c.icon]) missing.push('icon ' + c.icon + ' for ' + c.id);
+    if (c.sprite && !sprites[c.sprite]) missing.push('sprite ' + c.sprite + ' for ' + c.id);
+  }
+  for (const n of ['lantern', 'lantern_gold', 'lantern_out', 'pet_keeper', 'pet_keeper_reach', 'fireplace', 'fire_a', 'fire_b', 'rug', 'stall']) if (!sprites[n]) missing.push('sprite ' + n);
+  for (const n of ['slam', 'cleave', 'smite', 'icicle', 'shield', 'charge', 'circle', 'ward', 'sunburst', 'blizzard', 'nova', 'comet', 'dodge', 'mend', 'marks']) if (!tiles[n]) missing.push('icon ' + n);
+  assert.deepEqual(missing, []);
 });
