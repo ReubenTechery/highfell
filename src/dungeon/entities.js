@@ -13,14 +13,15 @@ export const sfx = (n, v, force) => { if (S && !S.quiet && (!S.hush || force)) H
 const later = (t, fn) => S.timers.push({ t, fn });
 
 /* loadout: what the meta layer worked out from the hero's gear.
-   { power, traits: Set, bonuses: Set, weaponRar, unique } */
+   { power, traits: Set, bonuses: Set, weaponRar, unique, name?, sprite? }
+   name and sprite are your hero's; the bots in the other seats use the role's own. */
 export function makeHero(role, isPlayer, loadout) {
   const R = ROLES[role];
   const L = loadout || {};
   const power = L.power || 1;
   const maxHp = Math.round(R.hp * hpMultiplier(power));
   return {
-    id: 'h_' + role, kind: 'hero', role, name: R.name, isPlayer, x: 0, y: 0, r: R.r,
+    id: 'h_' + role, kind: 'hero', role, name: L.name || R.name, sprite: L.sprite || R.sprite, isPlayer, x: 0, y: 0, r: R.r,
     face: -Math.PI / 2, back: true, flip: false, hp: maxHp, maxHp, armor: R.armor, power,
     traits: new Set(L.traits || []), bonuses: new Set(L.bonuses || []), unique: L.unique || null,
     weaponRar: L.weaponRar || 0, threatMod: R.threat, speed: R.speed, alive: true,

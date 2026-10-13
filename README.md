@@ -1,8 +1,9 @@
 # Highfell
 
 A three-seat co-op dungeon game for phone and desktop: a tank, a healer and a DPS, with bots in the seats
-nobody is sitting in. Short dungeons, OSRS-style loot (every drop rolls on its own, kill counts, a collection
-log), a home to show off what you find, and a lantern that tells you what is in the chest before you open it.
+nobody is sitting in. Make heroes (a race and a class each, for keeps) and keep alts at the camp. Short
+dungeons, OSRS-style loot (every drop rolls on its own, kill counts, a collection log by boss), a home to show
+off what you find, and a lantern that tells you what is in the chest before you open it.
 
 The first dungeon is **Barrow Crypt**: five packs, Sir Rattlebones, and the Gravekeeper in his yard.
 

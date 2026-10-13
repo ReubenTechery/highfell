@@ -23,13 +23,17 @@ import { lootGlint, startWalkout } from '../dungeon/walkout.js';
 import { Achiever } from '../meta/achievements';
 import { loadoutFor, partyRar, plainLoadout, worn } from '../meta/gear';
 import { countBossWipe, countRunStart, resolveClear, resolveKill, runLoot, tellOf, type ClearLoot, type KillLoot } from '../meta/loot';
+import { activeHero, heroById, roleOf, type Hero } from '../meta/profile';
+import { heroArt } from '../content/folk';
 import type { App } from './app';
 import { $, esc, flash, fmtT } from './dom';
 import { nameOf, tile } from './art';
 import { IN, aimPoint, bindInput, mashCage, playerIntent, resetInput, type InputUI } from './input';
 import { SFX } from './sound';
 
-export interface RunOpts { role: RoleId; start: string; testRar: Rar | null }
+/** A run plays the hero you are playing. `role` is for testing: it picks one of your heroes in that seat,
+ *  and if you have none the run is practice in plain gear. */
+export interface RunOpts { start: string; testRar: Rar | null; role?: RoleId }
 const STEP = 1 / 60;
 const KEY: Record<string, string> = { a1: '1', a2: '2', a3: '3', a4: '4', dodge: 'Space' };
 const ROLE_ICON: Record<string, string> = { tank: 'shield', healer: 'mend', dps: 'blizzard' };
@@ -54,6 +58,9 @@ export class RunScene implements InputUI {
   private acc = 0;
   private live = false;
   private opts: RunOpts | null = null;
+  /** the hero this run is for, by id, so a save that changes underneath us is looked up fresh */
+  private heroId: string | null = null;
+  private role: RoleId = 'tank';
   private practice = false;
   private ach: Achiever | null = null;
   private kills: KillLoot[] = [];
@@ -101,13 +108,19 @@ export class RunScene implements InputUI {
     const app = this.app, p = app.p;
     this.stop();
     this.opts = o;
-    const test = o.testRar !== null;
+    let h: Hero | null = activeHero(p);
+    if (o.role && (!h || roleOf(h) !== o.role)) h = p.roster.find((x) => roleOf(x) === o.role) || null;
+    const role: RoleId = h ? roleOf(h) : o.role || 'tank';
+    this.heroId = h ? h.id : null;
+    this.role = role;
+    const test = o.testRar !== null || !h;
     this.practice = o.start !== 'entrance' || test;
-    const rar = test ? (o.testRar as Rar) : partyRar(p, o.role);
+    const rar: Rar = o.testRar !== null ? o.testRar : h ? partyRar(p, h) : 0;
     const loadouts: Record<string, unknown> = {};
-    for (const r of ['tank', 'healer', 'dps'] as RoleId[]) loadouts[r] = r === o.role ? (test ? plainLoadout(r, rar) : loadoutFor(p, r)) : plainLoadout(r, rar);
+    for (const r of ['tank', 'healer', 'dps'] as RoleId[]) loadouts[r] = r === role ? (test || !h ? plainLoadout(r, rar) : loadoutFor(p, h)) : plainLoadout(r, rar);
+    if (h) loadouts[role] = { ...(loadouts[role] as object), name: h.name, sprite: heroArt(h.race, h.cls) || undefined };
     const looks = Object.keys(p.collection).filter((id) => COLLECTIBLES[id] && (COLLECTIBLES[id].kind === 'cosmetic') && !p.settings.looksOff.includes(id));
-    const wornSet = Object.values(worn(p, o.role)).some((w) => w.def.setId && SETS[w.def.setId]);
+    const wornSet = !!h && Object.values(worn(p, h)).some((w) => w.def.setId && SETS[w.def.setId]);
     const ghostly = looks.includes('dye.ghostly') && wornSet && !test;
     if (!this.practice) { countRunStart(p, BARROW); app.store.save(); }
     if (!this.bound) { bindInput($('touch'), this); this.bound = true; }
@@ -121,9 +134,9 @@ export class RunScene implements InputUI {
       onChest: () => this.finish(),
       playerIntent,
     });
-    newGame(BARROW_ENGINE, { role: o.role, loadouts, start: o.start, seed: (Math.random() * 0x7fffffff) | 1, looks, ghostly, testGear: test });
+    newGame(BARROW_ENGINE, { role, loadouts, start: o.start, seed: (Math.random() * 0x7fffffff) | 1, looks, ghostly, testGear: test });
     S.startedAt = S.t;
-    this.ach = this.practice ? null : new Achiever(p, { dungeon: BARROW.id, role: o.role, practice: false, testGear: false });
+    this.ach = this.practice ? null : new Achiever(p, { dungeon: BARROW.id, role, practice: false, testGear: false });
     this.kills = []; this.clear = null; this.unlocked = [];
     this.off = bus.on((e) => this.onEvent(e));
     resetInput();
@@ -137,7 +150,7 @@ export class RunScene implements InputUI {
     this.lastRoom = -1;
     this.live = true; this.acc = 0;
     setTimeout(() => this.hint('move'), 600);
-    if (o.role === 'healer') setTimeout(() => this.hint('heal'), 9000);
+    if (role === 'healer') setTimeout(() => this.hint('heal'), 9000);
   }
   stop(): void {
     this.live = false;
@@ -147,19 +160,22 @@ export class RunScene implements InputUI {
   }
 
   /* ---------------------------------------------------------------- the meta glue */
+  /** the hero this run is for, looked up in the save as it is now */
+  private hero(): Hero | null { return heroById(this.app.p, this.heroId); }
+
   private onEvent(e: GameEvent): void {
     if (!S || !this.opts) return;
-    const p = this.app.p, role = this.opts.role;
+    const p = this.app.p, hero = this.hero();
     if (this.ach) for (const id of this.ach.event(e)) this.unlockedNow(id);
     if (e.type === 'boss.killed') {
       const x = e.x ?? S.player.x, y = e.y ?? S.player.y;
       const last = e.boss === BARROW.finalBoss;
-      if (!this.practice) {
-        const kl = resolveKill(p, BARROW, e.boss, role, e.time, this.lootRng);
+      if (!this.practice && hero) {
+        const kl = resolveKill(p, BARROW, e.boss, hero, e.time, this.lootRng);
         this.kills.push(kl);
         for (const d of kl.drops) if (d.isNew && this.ach) for (const id of this.ach.collected(d.id)) this.unlockedNow(id);
         if (last) {
-          this.clear = resolveClear(p, BARROW, role, S.t - S.startedAt, this.lootRng);
+          this.clear = resolveClear(p, BARROW, hero, S.t - S.startedAt, this.lootRng);
           startWalkout(tellOf(kl.drops), x, y);
         } else if (kl.drops.length) {
           lootGlint(x, y, nameOf(kl.drops[0].id));
@@ -186,10 +202,11 @@ export class RunScene implements InputUI {
     if (!this.opts || !S) return;
     const summary = { time: S.clearTime || S.t - S.startedAt, deaths: S.stats.deaths, perfect: S.player.stats.perfect, dmg: S.player.stats.dmg, heal: S.player.stats.heal };
     this.live = false;
-    if (this.practice) { this.showPracticeDone(summary.time); return; }
-    const loot = runLoot(this.app.p, BARROW, this.opts.role, this.kills, this.clear);
+    const hero = this.hero();
+    if (this.practice || !hero) { this.showPracticeDone(summary.time); return; }
+    const loot = runLoot(this.app.p, BARROW, hero, this.kills, this.clear);
     this.stop();
-    this.app.showReveal(loot, { unlocked: this.unlocked.slice(), role: this.opts.role, deaths: summary.deaths, again: this.opts });
+    this.app.showReveal(loot, { unlocked: this.unlocked.slice(), hero: hero.id, role: this.role, deaths: summary.deaths, again: this.opts });
   }
 
   /* ---------------------------------------------------------------- menus */

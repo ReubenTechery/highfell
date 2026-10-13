@@ -1,7 +1,8 @@
 /**
- * The app: one save, three scenes (the hearth, a run, the reveal) and sheets that slide over them
- * (the dungeon picker, gear, logs, settings). Every change to the profile goes through `save()`, which
- * writes it and redraws whatever is on screen.
+ * The app: one save, five scenes (the hearth, the camp where your heroes wait, the hero maker, a run
+ * and the reveal) and sheets that slide over them (the dungeon picker, gear, logs, settings). Every
+ * change to the profile goes through `save()`, which writes it and redraws whatever is on screen.
+ * With no heroes yet, the game opens on the hero maker.
  */
 import { GAME_NAME } from '../content';
 import { Store } from '../core/store';
@@ -9,15 +10,21 @@ import { loadArt } from '../dungeon/art.js';
 import { setHooks } from '../dungeon/state.js';
 import { VIEW, resizeView } from '../dungeon/render.js';
 import type { RunLoot } from '../meta/loot';
+import { activeHero } from '../meta/profile';
 import { $, GLYPH } from './dom';
 import { SFX } from './sound';
 import { Toasts } from './toasts';
 import { Hearth } from './hearth';
-import { Sheets, type SheetSpec } from './sheets';
+import { Sheets, normSpec } from './sheets';
 import { RunScene, type RunOpts } from './run';
 import { Reveal, type RevealExtra } from './reveal';
+import { Camp } from './camp';
+import { Creator } from './creator';
 
-export type SceneId = 'hearth' | 'run' | 'reveal';
+export type SceneId = 'hearth' | 'camp' | 'create' | 'run' | 'reveal';
+const SCENES: SceneId[] = ['hearth', 'camp', 'create', 'run', 'reveal'];
+/** what an update of the page carries over */
+export interface Carry { sheet?: unknown; scene?: SceneId }
 
 /** Testing switches that live on this device only, never in the save. */
 export interface Dev { walkout: 'off' | 'normal' | 'unique' | 'pet' }
@@ -30,6 +37,8 @@ export class App {
   readonly sheets: Sheets;
   readonly run: RunScene;
   readonly reveal: Reveal;
+  readonly camp: Camp;
+  readonly creator: Creator;
   scene: SceneId = 'hearth';
   touch = false;
   dev: Dev = { walkout: 'off' };
@@ -42,15 +51,17 @@ export class App {
     this.sheets = new Sheets(this, $('sheets'));
     this.run = new RunScene(this, $('sc-run'));
     this.reveal = new Reveal(this, $('sc-reveal'));
+    this.camp = new Camp(this, $('sc-camp'));
+    this.creator = new Creator(this, $('sc-create'));
     try { this.dev = { ...this.dev, ...JSON.parse(localStorage.getItem(DEV_KEY) || '{}') }; } catch { /* defaults */ }
   }
 
   get p() { return this.store.profile; }
 
-  /** what an update of the page should carry over: the open panel. A run in progress cannot be carried. */
-  snapshot(): { sheet: SheetSpec | null } { return { sheet: this.scene === 'hearth' ? this.sheets.spec : null }; }
+  /** what an update of the page should carry over: the open panel and the camp. A run in progress cannot be carried. */
+  snapshot(): Carry { return { sheet: this.scene === 'hearth' || this.scene === 'camp' ? this.sheets.spec : null, scene: this.scene === 'camp' ? 'camp' : 'hearth' }; }
 
-  async boot(carry: { sheet?: SheetSpec | null } = {}): Promise<void> {
+  async boot(carry: Carry = {}): Promise<void> {
     this.touch = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     this.root.classList.toggle('touchy', this.touch);
     SFX.on = this.p.settings.sound;
@@ -67,8 +78,9 @@ export class App {
       if (why === 'remote') { SFX.on = this.p.settings.sound; this.refresh(); }
       else this.hearth.syncState();
     });
-    this.show('hearth');
-    if (carry.sheet) this.sheets.open(carry.sheet);
+    if (carry.scene === 'camp') this.showCamp(); else this.showHearth();
+    const sheet = normSpec(carry.sheet);
+    if (sheet && this.p.roster.length) this.sheets.open(sheet);
     $('loading').hidden = true;
     void this.store.connect();
     requestAnimationFrame((t) => this.frame(t));
@@ -76,7 +88,8 @@ export class App {
 
   private onResize(): void {
     if (this.scene === 'run') resizeView();
-    this.hearth.layout();
+    if (this.scene === 'hearth') this.hearth.layout();
+    if (this.scene === 'camp') this.camp.render();
   }
 
   private frame(ts: number): void {
@@ -90,9 +103,28 @@ export class App {
 
   show(id: SceneId): void {
     this.scene = id;
-    for (const s of ['hearth', 'run', 'reveal'] as SceneId[]) $('sc-' + s).hidden = s !== id;
+    for (const s of SCENES) $('sc-' + s).hidden = s !== id;
     if (id === 'hearth') { this.hearth.render(); }
     if (id === 'run') resizeView();
+  }
+  /** home: your hero by the fire. With no heroes yet, the hero maker instead. */
+  showHearth(): void {
+    if (!activeHero(this.p)) { this.showCreate(); return; }
+    this.sheets.close();
+    this.show('hearth');
+  }
+  /** the camp, with every hero you have made */
+  showCamp(sel?: string): void {
+    if (!activeHero(this.p)) { this.showCreate(); return; }
+    this.sheets.close();
+    this.show('camp');
+    this.camp.show(sel);
+  }
+  /** the hero maker */
+  showCreate(): void {
+    this.sheets.close();
+    this.show('create');
+    this.creator.open(this.p.roster.length === 0);
   }
 
   /** Write the save and redraw what is showing. */
@@ -101,7 +133,12 @@ export class App {
     this.refresh();
   }
   refresh(): void {
+    // the last hero went (a reset here or on another device): back to the maker
+    if (!activeHero(this.p) && this.scene !== 'run' && this.scene !== 'create') { this.showCreate(); return; }
     if (this.scene === 'hearth') this.hearth.render();
+    if (this.scene === 'camp') this.camp.render();
+    // a hero made on another device while the maker was open on its first screen: offer the way back
+    if (this.scene === 'create' && this.p.roster.length) this.creator.open(false);
     this.sheets.refresh();
   }
 
@@ -122,13 +159,14 @@ export class App {
   }
   home(): void {
     this.run.stop();
-    this.sheets.close();
-    this.show('hearth');
+    this.showHearth();
   }
 }
 
 const SHELL = `
 <div class="scene hearth" id="sc-hearth"></div>
+<div class="scene camp" id="sc-camp" hidden></div>
+<div class="scene create" id="sc-create" hidden></div>
 <div class="scene run" id="sc-run" hidden>
   <canvas id="cv" aria-label="The dungeon"></canvas>
   <div class="touch" id="touch"></div>

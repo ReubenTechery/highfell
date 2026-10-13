@@ -10,13 +10,14 @@ import { ROLES } from '../content/roles';
 import type { Rar, RoleId, SlotId } from '../content/types';
 import { gearId } from '../content/gear';
 import { takeTrait, type Drop, type RunLoot, type Tell } from '../meta/loot';
+import { activeHero, heroById, roleOf } from '../meta/profile';
 import type { App } from './app';
 import { actions, esc, fmtN, fmtRate, fmtT, reducedMotion, wait } from './dom';
 import { colourOf, iconOf, nameOf, spriteURL } from './art';
 import { SFX } from './sound';
 import type { RunOpts } from './run';
 
-export interface RevealExtra { unlocked: string[]; role: RoleId; deaths: number; again: RunOpts | null; preview?: boolean }
+export interface RevealExtra { unlocked: string[]; hero: string | null; role: RoleId; deaths: number; again: RunOpts | null; preview?: boolean }
 
 /** rarest last: regular gear, then table drops from most to least common */
 const order = (d: Drop): number => (d.source === 'regular' ? 0 : d.source === 'spare' ? 1 : 2 + (1 - (d.rate || 0)) * 1000);
@@ -37,9 +38,9 @@ export class Reveal {
       flip: (el) => this.flip(+el.dataset.i!),
       again: () => { SFX.play('ui'); if (this.extra?.again) this.app.startRun(this.extra.again); },
       home: () => { SFX.play('ui'); this.goHome(); },
-      gear: () => { SFX.play('ui'); this.goHome(); this.app.sheets.open({ kind: 'gear', role: this.extra!.role }); },
+      gear: () => { SFX.play('ui'); this.goHome(); const id = this.extra?.hero || activeHero(this.app.p)?.id; if (id) this.app.sheets.open({ kind: 'gear', hero: id }); },
       keep: () => { this.trait = null; SFX.play('ui'); this.renderOffer(); },
-      take: (el) => { const t = el.dataset.trait!; if (!this.extra?.preview) { takeTrait(this.app.p, this.extra!.role, t); this.app.store.save(); } this.trait = t; SFX.play('coin'); this.renderOffer(); },
+      take: (el) => { const t = el.dataset.trait!; const h = heroById(this.app.p, this.extra?.hero); if (!this.extra?.preview && h) { takeTrait(h, t); this.app.store.save(); } this.trait = t; SFX.play('coin'); this.renderOffer(); },
       moment: () => this.closeMoment(),
     });
   }
@@ -124,8 +125,8 @@ export class Reveal {
       const slotName = ROLE_SLOTS[d.role as RoleId][d.slot as SlotId].name.toLowerCase();
       if (d.offerTrait) { const t = traitDef(d.role as RoleId, d.offerTrait)!; sub = `Trait offer · ${esc(t.name)}`; note = esc(t.desc); }
       else {
-        sub = `${r.name} ${slotName}${d.source === 'spare' ? ` · for ${esc(ROLES[d.role as RoleId].name)}` : ''}`;
-        note = d.prevRar !== undefined && d.prevRar !== d.rar ? `Up from ${RARITY[d.prevRar].name}` : '';
+        sub = `${r.name} ${slotName}${d.source === 'spare' ? ` · shared` : ''}`;
+        note = d.source === 'spare' ? `Every ${ROLES[d.role as RoleId].title.toLowerCase()} hero gets it` : d.prevRar !== undefined && d.prevRar !== d.rar ? `Up from ${RARITY[d.prevRar].name}` : '';
         if (d.trait) note += `${note ? '. ' : ''}Trait: ${esc(traitDef(d.role as RoleId, d.trait)?.name || '')}`;
       }
     } else {
@@ -219,7 +220,7 @@ export class Reveal {
 
   /** the reveal with made-up loot, for testing the look. Touches nothing in the save. */
   preview(tell: Tell): void {
-    const p = this.app.p, role = p.role;
+    const p = this.app.p, h = activeHero(p), role: RoleId = h ? roleOf(h) : 'tank';
     const kcK = (p.bosses['barrow.keeper']?.kc || 0) + 1, kcN = (p.bosses['barrow.knight']?.kc || 0) + 1;
     const drops: Drop[] = [
       { id: gearId(role, 'helm', 2), source: 'regular', role, slot: 'helm', rar: 2, prevRar: 1, isNew: true, dupe: false, marks: 0 },
@@ -229,9 +230,9 @@ export class Reveal {
     if (tell !== 'normal') drops.push({ id: `${set}.helm`, source: 'table', boss: 'keeper', rate: 1 / 50, kc: kcK, role, isNew: true, dupe: false, marks: 0 });
     if (tell === 'unique') drops.push({ id: 'trophy.rattlebones_plume', source: 'table', boss: 'knight', rate: 1 / 50, kc: kcN, role, isNew: false, dupe: true, marks: 3 });
     if (tell === 'pet') drops.push({ id: 'pet.pint_gravekeeper', source: 'table', boss: 'keeper', rate: 1 / 5000, kc: kcK, role, isNew: true, dupe: false, marks: 0 });
-    const loot: RunLoot = { dungeon: 'barrow', role, drops, tell, kc: { knight: kcN, keeper: kcK }, marks: 1 + drops.reduce((a, d) => a + d.marks, 0), clears: (p.dungeons.barrow?.clears || 0) + 1, time: 247, pb: p.dungeons.barrow?.pb ?? 247, newPb: false, firstClear: false };
+    const loot: RunLoot = { dungeon: 'barrow', role, hero: h?.id || '', drops, tell, kc: { knight: kcN, keeper: kcK }, marks: 1 + drops.reduce((a, d) => a + d.marks, 0), clears: (p.dungeons.barrow?.clears || 0) + 1, time: 247, pb: p.dungeons.barrow?.pb ?? 247, newPb: false, firstClear: false };
     this.app.show('reveal');
-    this.show(loot, { unlocked: [], role, deaths: 0, again: null, preview: true });
+    this.show(loot, { unlocked: [], hero: h?.id || null, role, deaths: 0, again: null, preview: true });
   }
 }
 

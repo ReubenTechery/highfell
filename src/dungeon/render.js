@@ -299,7 +299,7 @@ export function drawObjects(ctx, v) {
 }
 export const WEAPON_AT = { tank_f: [-36, -66], tank_b: [36, -66], healer_f: [-31, -104], healer_b: [31, -104], dps_f: [28, -96], dps_b: [-28, -96] };
 export function drawHero(ctx, h) {
-  const name = ROLES[h.role].sprite + (h.back ? '_b' : '_f');
+  const name = (h.sprite || ROLES[h.role].sprite) + (h.back ? '_b' : '_f');
   if (!h.alive) {
     drawSpr(ctx, name, h.x, h.y - 6, { rot: -Math.PI / 2 * (h.flip ? -1 : 1) * Math.min(1, h.deadT * 5), alpha: 0.5, sx: 0.9, sy: 0.9 });
     return;
@@ -317,14 +317,14 @@ export function drawHero(ctx, h) {
   if (h.st.stun > 0) rot += Math.sin(S.t * 12) * 0.06;
   // gear glow behind the weapon
   if (h.weaponRar >= 2) {
-    const w = WEAPON_AT[name]; const fx_ = (h.flip ? -w[0] : w[0]);
+    const w = WEAPON_AT[name] || [0, -80]; const fx_ = (h.flip ? -w[0] : w[0]);
     const col = RARITY[h.weaponRar].color;
     ctx.globalAlpha = 0.3 + Math.sin(S.t * 3) * 0.08; ctx.fillStyle = col;
     ctx.beginPath(); ctx.arc(x + fx_, y + w[1], h.weaponRar === 3 ? 24 : 17, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
     if (h.weaponRar === 3 && S.frame % 7 === 0) S.parts.push({ x: h.x + fx_ + vrand(-14, 14), y: h.y, z: -w[1] + vrand(-14, 14), vx: 0, vy: 0, vz: 0, up: true, col: '#C9B2FF', size: vrand(2.5, 4.5), t: 0, dur: 0.7 });
   }
   if (h.isPlayer && h.role === 'healer' && S.looks.has('cosmetic.glow_staff')) {
-    const w = WEAPON_AT[name]; const fx_ = (h.flip ? -w[0] : w[0]);
+    const w = WEAPON_AT[name] || [0, -80]; const fx_ = (h.flip ? -w[0] : w[0]);
     ctx.globalAlpha = 0.28 + Math.sin(S.t * 4) * 0.08; ctx.fillStyle = '#FFE08A';
     ctx.beginPath(); ctx.arc(x + fx_, y + w[1], 30, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
     if (S.frame % 9 === 0) S.parts.push({ x: h.x + fx_ + vrand(-12, 12), y: h.y, z: -w[1] + vrand(-10, 10), vx: 0, vy: 0, vz: 0, up: true, col: '#FFF6D0', size: vrand(2.5, 4), t: 0, dur: 0.8 });

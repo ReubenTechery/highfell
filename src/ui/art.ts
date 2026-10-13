@@ -6,6 +6,8 @@ import HEARTH from '../../art/hearth.json';
 import PORTRAITS from '../../art/portraits.json';
 import { COLLECTIBLES, ITEMS } from '../content';
 import { RARITY, ROLE_SLOTS } from '../content/gear';
+import { heroArt } from '../content/folk';
+import { ROLES } from '../content/roles';
 import type { RoleId } from '../content/types';
 
 type Sprite = { svg: string; vb: number[] };
@@ -24,10 +26,19 @@ export function iconOf(id: string): string {
   if (c) return tile(c.icon);
   return tile('mend');
 }
-/** The frame colour for an id: rarity for gear, gold for uniques, pale for collectibles. */
+/** How an item's rarity reads: regular gear by its rarity, set pieces are Epic, dungeon weapons are Unique. */
+export interface RarLook { key: string; name: string; color: string; ink: string; light: string }
+const LIGHT = ['#D9D4CB', '#86D872', '#6FB0F2', '#BE98FF'];
+export function rarLook(id: string): RarLook {
+  const it = ITEMS[id];
+  if (it && it.kind === 'unique') return { key: 'unique', name: 'Unique', color: '#E7B53C', ink: '#8A5A10', light: '#F7C948' };
+  const r = it ? (it.kind === 'set' ? 3 : it.rar) : 0;
+  return { key: RARITY[r].key, name: RARITY[r].name, color: RARITY[r].color, ink: RARITY[r].ink, light: LIGHT[r] };
+}
+/** The frame colour for an id: rarity for gear and set pieces, gold for uniques, pale for collectibles. */
 export function colourOf(id: string): string {
   const it = ITEMS[id];
-  if (it) return it.kind === 'gear' ? RARITY[it.rar].color : '#E7B53C';
+  if (it) return rarLook(id).color;
   const c = COLLECTIBLES[id];
   if (c) return c.kind === 'pet' ? '#9BE15D' : c.kind === 'mount' ? '#8FD6FF' : '#C9A27A';
   return '#8E8A84';
@@ -58,3 +69,15 @@ export function placeSprite(name: string, x: number, y: number, o: { k?: number;
   return `<g class="${o.cls || ''}" ${o.attrs || ''}>${body}</g>`;
 }
 export const portrait = (role: RoleId): string => PORTRAIT[role] || '';
+
+/** The sprite set a hero is drawn with: its race and class art, or its seat's art if this build has none. */
+export function heroSprite(h: { race: string; cls: string }, role: RoleId): string {
+  return heroArt(h.race, h.cls) || ROLES[role].sprite;
+}
+/** A hero's front sprite as an <img>, sized by its own height so a dwarf stands shorter than an elf. */
+export function heroImg(sprite: string, o: { cls?: string; alt?: string } = {}): string {
+  const s = ART[sprite + '_f'];
+  if (!s) return '';
+  const [vx, , w, h] = s.vb;
+  return `<img class="${o.cls || ''}" src="${spriteURL(sprite + '_f')}" alt="${o.alt || ''}" style="--sh: ${(h / 130).toFixed(3)}; --sx: ${((vx / w) * 100).toFixed(1)}%; aspect-ratio: ${w} / ${h}" draggable="false">`;
+}
