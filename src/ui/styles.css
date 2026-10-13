@@ -525,7 +525,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .cr-lore p:last-child { margin-bottom: 0; }
 .cr-lore p b { font-family: var(--f-display); font-weight: 400; color: #5E3FA3; }
 .cr-lore .look { font-style: italic; color: var(--dim); }
-.cr-foot { position: sticky; bottom: 0; z-index: 3; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 12px; padding: 18px 16px calc(var(--pad-b) + 12px); background: linear-gradient(to top, rgba(23, 18, 31, 0.97) 62%, rgba(23, 18, 31, 0)); }
+.cr-foot { position: sticky; bottom: 0; z-index: 3; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 12px; padding: 18px 16px calc(var(--pad-b) + 12px); background: linear-gradient(to top, var(--night) calc(100% - 18px), rgba(23, 18, 31, 0)); }
 .cr-namebox { display: flex; align-items: center; gap: 4px; background: #FFFFFF; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 4px 0 var(--ink); padding: 2px 3px 2px 12px; }
 .cr-namebox input { width: min(250px, 46vw); }
 .cr-namebox .icon-btn { box-shadow: none; border-width: 2px; width: 42px; height: 42px; }
@@ -547,7 +547,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
   .cr-chip em { position: absolute; right: -4px; top: -9px; font-size: 9px; padding: 0 4px; border-radius: 6px; background: var(--ink); color: var(--panel); border-color: var(--ink); }
   .cr-lore { grid-template-columns: minmax(0, 1fr); }
   .cr-lore p { font-size: 14px; }
-  .cr-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; padding: 22px 12px calc(var(--pad-b) + 10px); background: linear-gradient(to top, rgba(23, 18, 31, 0.98) 78%, rgba(23, 18, 31, 0)); }
+  .cr-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; padding: 22px 12px calc(var(--pad-b) + 10px); background: linear-gradient(to top, var(--night) calc(100% - 22px), rgba(23, 18, 31, 0)); }
   .cr-namebox { min-width: 0; padding-left: 10px; }
   .cr-namebox input { width: 100%; flex: 1 1 auto; font-size: 18px; }
   .cr-foot .btn.big { min-height: 52px; font-size: 19px; padding: 0 14px; }
@@ -753,7 +753,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
   .cr-chips { gap: 6px; }
   .cr-chip { padding: 5px 8px; }
   .cr-chip b { font-size: 16px; }
-  .cr-foot { padding: 10px 12px calc(var(--pad-b) + 6px); gap: 4px 10px; background: linear-gradient(to top, rgba(23, 18, 31, 0.98) 80%, rgba(23, 18, 31, 0)); }
+  .cr-foot { padding: 10px 12px calc(var(--pad-b) + 6px); gap: 4px 10px; background: linear-gradient(to top, var(--night) calc(100% - 10px), rgba(23, 18, 31, 0)); }
   .cr-foot .btn.big { min-height: 44px; font-size: 18px; }
   .cr-namebox input { min-height: 38px; font-size: 18px; }
   .cr-namebox .icon-btn { width: 36px; height: 36px; }
