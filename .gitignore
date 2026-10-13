@@ -8,3 +8,4 @@ shots/
 art/_*_preview.html
 /tmp*.html
 .cache/
+site/

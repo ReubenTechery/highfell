@@ -10,7 +10,9 @@
     "check": "tsc -p .",
     "sim": "node scripts/sim.mjs",
     "test": "node scripts/test.mjs",
-    "all": "npm run check && npm test && npm run build"
+    "all": "npm run check && npm test && npm run build",
+    "preview": "node scripts/preview.mjs",
+    "site": "node scripts/site.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

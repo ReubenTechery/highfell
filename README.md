@@ -12,13 +12,17 @@ to visit. The first is **Bramblewick Hollow**, where you gather herbs in close-u
 errand for Dottle the inventor (each one turns up a page of the hollow's story) and chase rare pets, trophies
 and a mount. What you gather you brew at the cauldron at home, and a brew is a small twist for one run.
 
-## Build
+## Build and play
 
 ```bash
 npm ci
 npm run all      # type-check, tests, build -> dist/highfell.html (one self-contained page)
+npm run preview  # play it locally: prints a link for this computer and one for a phone on the same Wi-Fi
 npm run sim      # balance numbers from headless bot runs
 ```
+
+**Agents (Claude, Gemini or any other): read [AGENTS.md](AGENTS.md) first.** It is the brief: what the game is
+for, the pillars, decisions already made, and the rules for code and art.
 
 The page is a fragment meant for a host that adds the document skeleton; `tools/pw_check.py` wraps it for
 local screenshots.
@@ -26,4 +30,5 @@ local screenshots.
 ## Layout
 
 `src/content` is data, `src/dungeon` is the engine, `src/meta` is progression, `src/ui` is the screens,
-`tools/` draws the art. See `CLAUDE.md` for the full map and the rules the systems follow.
+`tools/` draws the art. See `AGENTS.md` for the full map, `docs/design.md` for the systems design and
+`docs/art.md` for the art style.
