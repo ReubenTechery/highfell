@@ -1,0 +1,2 @@
+# Text files keep LF line endings on every computer (Windows included), so a change never shows up as every line changed.
+* text=auto eol=lf

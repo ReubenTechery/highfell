@@ -4,6 +4,7 @@
 # is installed (pip install playwright, then python3 -m playwright install chromium).
 # Usage: python3 tools/art_sheet.py OUT.png art/vale.json [art/hearth.json ...] [--only a,b,c] [--cols 6]
 import json, os, sys
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -24,7 +25,7 @@ def main():
     out, files = args[0], args[1:]
     sprites, icons = {}, {}
     for f in files:
-        data = json.load(open(f if os.path.isabs(f) else os.path.join(os.getcwd(), f)))
+        data = json.load(open(f if os.path.isabs(f) else os.path.join(os.getcwd(), f), encoding='utf-8'))
         for name, v in data.items():
             if only and name not in only:
                 continue
@@ -47,7 +48,7 @@ def main():
     H = top + ((len(icons) + icols - 1) // icols) * 110 + 20
     html = f'<!doctype html><meta charset="utf-8"><body style="margin:0;background:#4A4060"><svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">{"".join(cells)}</svg></body>'
     base = out[:-4] if out.endswith('.png') else out
-    open(base + '.html', 'w').write(html)
+    open(base + '.html', 'w', encoding='utf-8').write(html)
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
@@ -55,7 +56,7 @@ def main():
     with sync_playwright() as p:
         b = p.chromium.launch()
         pg = b.new_page(viewport={'width': W, 'height': H})
-        pg.goto('file://' + os.path.abspath(base + '.html'))
+        pg.goto(Path(base + '.html').resolve().as_uri())
         pg.wait_for_timeout(200)
         pg.screenshot(path=base + '.png', full_page=True)
         b.close()

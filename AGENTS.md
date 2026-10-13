@@ -142,6 +142,17 @@ python3 tools/pw_check.py shot.png --w 1440 --h 900           # a desktop screen
 python3 tools/art_sheet.py shots/art.png art/vale.json        # a contact sheet of the art
 ```
 
+**First time on a new computer** (once):
+
+1. Install Git, Node.js 22 or newer and Python 3 (Windows: `winget install -e --id Git.Git`, and the same for
+   `OpenJS.NodeJS.LTS` and `Python.Python.3.13`), then restart the editor so it finds them. On Windows, type
+   `python` where this file says `python3`.
+2. `npm ci`, then `npm run all`. It must pass before you change anything.
+3. Screenshots and art sheets need Playwright: `python3 -m pip install playwright`, then
+   `python3 -m playwright install chromium`.
+4. GitHub: the owner signs in once with the GitHub CLI (`gh auth login`; Windows: `winget install -e --id
+   GitHub.cli`). Then push your branch and open the pull request with `gh pr create`.
+
 In the page, `window.highfell` is the running app: `highfell.startRun({ start, testRar, role? })`,
 `highfell.run.autoplay(seconds)`, `highfell.reveal.preview('normal' | 'unique' | 'pet')`, `highfell.showVale()`,
 `highfell.showBrew()`, `highfell.showCamp()`, and `highfell.p` is the live save (change it, then
