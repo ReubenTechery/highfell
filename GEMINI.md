@@ -1,8 +1,10 @@
 @./AGENTS.md
 
-# Notes for Gemini
+# Notes for Gemini, and any model working in Antigravity
 
-AGENTS.md above is the whole brief. These notes are only about working here as Gemini.
+AGENTS.md above is the whole brief. These notes are about working here through Antigravity or the Gemini CLI,
+whichever model you are. That includes Claude models: `CLAUDE.md` is only for Claude on claude.ai, which can
+publish.
 
 - **You can't publish the live game** (it lives on claude.ai). Show your work with `npm run preview`, which
   prints a link for this computer and one for a phone on the same Wi-Fi, and with screenshots from

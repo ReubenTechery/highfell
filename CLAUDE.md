@@ -4,7 +4,9 @@
 
 AGENTS.md is the whole brief: the vision, the pillars, decisions already made, the rules of the systems, the
 code map, the commands and the code rules. Read it first. This file only adds what Claude can do here that
-other agents can't.
+other agents can't. It is for Claude working through claude.ai (Claude Code, with the Artifact tool). A Claude
+model picked inside another tool, such as Antigravity, follows `GEMINI.md` there: branches and pull requests,
+no publishing.
 
 ## Publishing (Claude only)
 
