@@ -1,8 +1,10 @@
-import { MAP, MEND, TAU, angDiff, dist, distXY, lerp, norm, rand, rng } from './core.js';
-import { S, fx } from './entities.js';
+import { angDiff, dist, distXY, lerp, norm, TAU } from '../core/math';
+import { rand, rng } from '../core/rng';
+import { MEND } from '../content/roles';
+import { S } from './state.js';
+import { fx } from './entities.js';
 import { bestCluster, doDodge, heroBy, isFoe, mend, useAbility } from './heroes.js';
 import { chainEnds, cutChain } from './mobs.js';
-import { esc } from './ui.js';
 import { canStand, freeSpot, navPoint } from './world.js';
 
 /* ---------- bots: the two seats you are not in (in the real game, your mates) ---------- */
@@ -32,14 +34,14 @@ export function dangerAt(h, x, y, horizon, forSpot) {
     if (z.live && z.t >= z.warn + z.live - 0.2) continue;
     if (inHaz(z, x, y, h.r + 6)) { if (!best || tti < best.tti) best = { tti, z }; }
   }
-  if (S.ring && distXY(x, y, MAP.arena.x, MAP.arena.y) > S.ring.r - h.r - 14) best = { tti: 0, fire: true };
+  if (S.ring && distXY(x, y, S.dg.map.arena.x, S.dg.map.arena.y) > S.ring.r - h.r - 14) best = { tti: 0, fire: true };
   return best;
 }
 export function okHere(h) {
   if (dangerAt(h, h.x, h.y, 1.6)) return false;
   const boss = S.boss && S.boss.alive && !S.boss.hidden ? S.boss : null;
   if (boss && inFrontOf(boss, h.x, h.y)) return false;
-  if (S.ring && dist(h, MAP.arena) > S.ring.r - h.r - 40) return false;
+  if (S.ring && dist(h, S.dg.map.arena) > S.ring.r - h.r - 40) return false;
   if (smashBubble(h.x, h.y, h)) return false;
   if (boss && dist(boss, h) < boss.r + h.r + 110) return false;
   if (h.role === 'dps') {
@@ -110,11 +112,11 @@ export function partyReady(h) {
 export function nextObjective() {
   for (const p of S.packs) {
     if (p.cleared) continue;
-    if (p.def.ambush) { if (!p.triggered) return { x: 500, y: 1730 }; const al = p.mobs.filter((m) => m.alive); if (!al.length) continue; return centroid(al); }
+    if (p.def.ambush) { if (!p.triggered) return { x: p.def.goTo.x, y: p.def.goTo.y }; const al = p.mobs.filter((m) => m.alive); if (!al.length) continue; return centroid(al); }
     const al = p.mobs.filter((m) => m.alive);
     if (!al.length) continue;
     const c = centroid(al);
-    if (p.def.boss === 'keeper') return { x: MAP.arena.x, y: MAP.arena.y + 200 };
+    if (p.def.approach === 'arena') return { x: S.dg.map.arena.x, y: S.dg.map.arena.y + 200 };
     return { x: c.x, y: c.y + 40 };
   }
   if (S.chest && !S.chest.open) return { x: S.chest.x, y: S.chest.y + 60 };
@@ -167,7 +169,7 @@ export function backSpot(h, b, dd, side) {
 }
 export function ringClamp(p, h) {
   if (!S.ring) return p;
-  const A = MAP.arena, d = distXY(p.x, p.y, A.x, A.y), lim = S.ring.r - h.r - 50;
+  const A = S.dg.map.arena, d = distXY(p.x, p.y, A.x, A.y), lim = S.ring.r - h.r - 50;
   if (d > lim) { p.x = A.x + ((p.x - A.x) / d) * lim; p.y = A.y + ((p.y - A.y) / d) * lim; }
   return p;
 }

@@ -1,9 +1,10 @@
-import { MAP, clamp, distXY, rng } from './core.js';
-import { S } from './entities.js';
-
 /* ---------- world: where you can stand, how to get somewhere ---------- */
+import { clamp, distXY } from '../core/math';
+import { rng } from '../core/rng';
+import { S } from './state.js';
+
 export function inWalk(x, y, r) {
-  const W = MAP.walk;
+  const W = S.dg.map.walk;
   for (let i = 0; i < W.length; i++) {
     const a = W[i];
     if (x >= a.x0 + r && x <= a.x1 - r && y >= a.y0 + r && y <= a.y1 - r) return true;
@@ -67,25 +68,26 @@ export function moveEnt(e, dx, dy) {
 
 /* chain index of the area a point is in (rooms first) */
 export function areaOf(x, y) {
-  const C = MAP.chain;
+  const C = S.dg.map.chain;
   for (let i = 0; i < C.length; i += 2) { const a = C[i]; if (x >= a.x0 && x <= a.x1 && y >= a.y0 && y <= a.y1) return i; }
   for (let i = 1; i < C.length; i += 2) { const a = C[i]; if (x >= a.x0 - 10 && x <= a.x1 + 10 && y >= a.y0 && y <= a.y1) return i; }
   let best = 0, bd = 1e9;
   C.forEach((a, i) => { const cx = (a.x0 + a.x1) / 2, cy = (a.y0 + a.y1) / 2; const d = Math.abs(cy - y) + Math.abs(cx - x) * 0.2; if (d < bd) { bd = d; best = i; } });
   return best;
 }
-export function roomIndexOf(x, y) { const i = areaOf(x, y); return MAP.chain[i].kind === 'room' ? MAP.chain[i].idx : -1; }
+export function roomIndexOf(x, y) { const i = areaOf(x, y); const a = S.dg.map.chain[i]; return a.kind === 'room' ? a.idx : -1; }
 
 /* next point to walk to on the way to (tx, ty) */
 export function navPoint(e, tx, ty) {
+  const M = S.dg.map;
   const a = areaOf(e.x, e.y), b = areaOf(tx, ty);
   if (a === b) return { x: tx, y: ty };
-  for (const w of MAP.walk) {
+  for (const w of M.walk) {
     if (e.x >= w.x0 && e.x <= w.x1 && e.y >= w.y0 && e.y <= w.y1 && tx >= w.x0 && tx <= w.x1 && ty >= w.y0 && ty <= w.y1) return { x: tx, y: ty };
   }
-  const cur = MAP.chain[a];
-  if (b > a) return { x: MAP.CX, y: cur.y0 - 24 };
-  return { x: MAP.CX, y: cur.y1 + 24 };
+  const cur = M.chain[a];
+  if (b > a) return { x: M.CX, y: cur.y0 - 24 };
+  return { x: M.CX, y: cur.y1 + 24 };
 }
 
 /* walk e toward (tx, ty) at speed; returns remaining distance. Unsticks itself around pillars. */

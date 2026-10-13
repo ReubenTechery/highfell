@@ -1,7 +1,10 @@
+import { TAU, angTo, clamp, dist, lerp } from '../core/math';
+import { vrand } from '../core/rng';
+import { AB, ROLES } from '../content/roles';
+import { RARITY } from '../content/gear';
+import { S } from './state.js';
 import { BAKE_S, PAT, bakeAll, drawSpr, mkCanvas } from './art.js';
-import { T } from './audio.js';
-import { AB, DECALS, MAP, RARITY, ROLES, TAU, WALLDECOR, angTo, clamp, dist, lerp, vrand } from './core.js';
-import { S, dots } from './entities.js';
+import { dots } from './entities.js';
 import { IN, aimPoint } from './input.js';
 import { chainEnds } from './mobs.js';
 import { roomIndexOf } from './world.js';
@@ -32,7 +35,7 @@ export function camTarget() {
   if (S.chest && !S.chest.open && dist(p, S.chest) < 500) { x = lerp(x, S.chest.x, 0.3); y = lerp(y, S.chest.y, 0.3); }
   VIEW.fx = VIEW.W * (VIEW.portrait && VIEW.W < 700 ? (p.role === 'healer' && S.player === p ? 0.4 : 0.47) : 0.5);
   const ri = Math.max(0, roomIndexOf(p.x, p.y));
-  const room = MAP.rooms[ri] || MAP.rooms[0];
+  const room = S.dg.map.rooms[ri] || S.dg.map.rooms[0];
   const lo = room.x0 - 40 + VIEW.fx / VIEW.scale, hi = room.x1 + 40 - (VIEW.W - VIEW.fx) / VIEW.scale;
   x = lo > hi ? (room.x0 + room.x1) / 2 - (VIEW.fx - VIEW.W / 2) / VIEW.scale : clamp(x, lo, hi);
   return { x, y };
@@ -67,25 +70,26 @@ export function render() {
 
 /* ---------- the map ---------- */
 export function drawMap(ctx, v) {
+  const M = S.dg.map;
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  for (let i = 0; i < MAP.rooms.length; i++) {
-    const r = MAP.rooms[i];
+  for (let i = 0; i < S.dg.map.rooms.length; i++) {
+    const r = M.rooms[i];
     if (r.y1 + 40 < v.y0 || r.y0 - r.wall - 40 > v.y1) continue;
     ctx.fillStyle = PAT[r.floor === 'yard' ? 'yard' : r.floor === 'tomb' ? 'tomb' : 'stone'] || '#4A4060';
     ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0);
-    floorArt(ctx, i, r);
+    if (S.dg.floorArt) S.dg.floorArt(ctx, i, r, K);
   }
-  for (const c of MAP.corridors) {
+  for (const c of S.dg.map.corridors) {
     if (c.y1 < v.y0 || c.y0 > v.y1) continue;
     ctx.fillStyle = PAT.corr || '#453B5A';
     ctx.fillRect(c.x0, c.y0, c.x1 - c.x0, c.y1 - c.y0);
   }
-  for (const d of DECALS) { if (d.y < v.y0 || d.y > v.y1 + 100) continue; drawSpr(ctx, d.sp, d.x, d.y, { sx: d.sc, sy: d.sc, rot: d.rot * 0.25 }); }
+  for (const d of S.dg.decals) { if (d.y < v.y0 || d.y > v.y1 + 100) continue; drawSpr(ctx, d.sp, d.x, d.y, { sx: d.sc, sy: d.sc, rot: d.rot * 0.25 }); }
   const CAP = '#2E2638', T = 30;
-  for (let i = 0; i < MAP.rooms.length; i++) {
-    const r = MAP.rooms[i];
+  for (let i = 0; i < S.dg.map.rooms.length; i++) {
+    const r = S.dg.map.rooms[i];
     if (r.y1 + 40 < v.y0 || r.y0 - r.wall - 60 > v.y1) continue;
-    const up = MAP.corridors[i], down = MAP.corridors[i - 1];
+    const up = S.dg.map.corridors[i], down = S.dg.map.corridors[i - 1];
     const top = r.y0 - r.wall;
     // contact shadow under the north wall
     ctx.fillStyle = 'rgba(16, 10, 24, 0.3)';
@@ -112,7 +116,7 @@ export function drawMap(ctx, v) {
     else { ctx.moveTo(r.x0, r.y1); ctx.lineTo(r.x1, r.y1); }
     if (up) { ctx.moveTo(up.x0, top); ctx.lineTo(up.x0, r.y0); ctx.moveTo(up.x1, top); ctx.lineTo(up.x1, r.y0); }
     ctx.stroke();
-    for (const w of WALLDECOR) {
+    for (const w of S.dg.walldecor) {
       if (w[2] !== i) continue;
       if (w[0] === 'torch') {
         const fl = 0.75 + Math.sin(S.t * 9 + w[1]) * 0.12 + Math.sin(S.t * 23 + w[1] * 2) * 0.06;
@@ -123,7 +127,7 @@ export function drawMap(ctx, v) {
       } else drawSpr(ctx, 'banner', w[1], top + 10, {});
     }
   }
-  for (const c of MAP.corridors) {
+  for (const c of S.dg.map.corridors) {
     if (c.y1 < v.y0 || c.y0 > v.y1) continue;
     ctx.fillStyle = CAP;
     ctx.fillRect(c.x0 - 26, c.y0, 26, c.y1 - c.y0); ctx.fillRect(c.x1, c.y0, 26, c.y1 - c.y0);
@@ -131,27 +135,7 @@ export function drawMap(ctx, v) {
     ctx.beginPath(); ctx.moveTo(c.x0, c.y0); ctx.lineTo(c.x0, c.y1); ctx.moveTo(c.x1, c.y0); ctx.lineTo(c.x1, c.y1); ctx.stroke();
   }
 }
-export function floorArt(ctx, i, r) {
-  if (i === 0) {
-    for (let k = 0; k < 3; k++) {
-      const y = r.y1 - 66 + k * 22;
-      ctx.fillStyle = ['#5C5070', '#4F4466', '#433A58'][k];
-      ctx.fillRect(r.x0 + 40 + k * 10, y, r.x1 - r.x0 - 80 - k * 20, 22);
-      ctx.strokeStyle = K; ctx.lineWidth = 3; ctx.strokeRect(r.x0 + 40 + k * 10, y, r.x1 - r.x0 - 80 - k * 20, 22);
-    }
-  } else if (i === 3) {
-    ctx.fillStyle = '#6A4BA3'; ctx.fillRect(452, 2660, 96, 520);
-    ctx.strokeStyle = '#E7B53C'; ctx.lineWidth = 3; ctx.strokeRect(458, 2666, 84, 514);
-    ctx.strokeStyle = K; ctx.lineWidth = 3; ctx.strokeRect(452, 2660, 96, 520);
-  } else if (i === 5) {
-    const A = MAP.arena;
-    ctx.fillStyle = 'rgba(159, 195, 232, 0.08)'; ctx.beginPath(); ctx.arc(A.x, A.y, 300, 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(159, 195, 232, 0.07)'; ctx.beginPath(); ctx.arc(A.x, A.y, 180, 0, TAU); ctx.fill();
-    ctx.strokeStyle = 'rgba(30, 26, 26, 0.35)'; ctx.lineWidth = 4; ctx.setLineDash([18, 16]);
-    ctx.beginPath(); ctx.arc(A.x, A.y, A.r, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
-  }
-}
-
+export 
 /* ---------- ground layer: shadows, telegraphs, zones ---------- */
 export function drawGround(ctx, v) {
   for (const z of S.zones) drawZone(ctx, z);
@@ -263,7 +247,7 @@ export function drawZone(ctx, z) {
   ctx.globalAlpha = 1;
 }
 export function drawFireRing(ctx) {
-  const A = MAP.arena, R = S.ring.r;
+  const A = S.dg.map.arena, R = S.ring.r;
   ctx.fillStyle = 'rgba(80, 160, 60, 0.18)';
   ctx.beginPath(); ctx.arc(A.x, A.y, A.r + 200, 0, TAU); ctx.arc(A.x, A.y, R, 0, TAU, true); ctx.fill();
   ctx.lineWidth = 8; ctx.strokeStyle = K; ctx.beginPath(); ctx.arc(A.x, A.y, R, 0, TAU); ctx.stroke();
@@ -282,7 +266,7 @@ export function drawObjects(ctx, v) {
   const list = [];
   for (const p of S.props) if (p.y > v.y0 - 40 && p.y < v.y1 + 220) list.push({ y: p.y, k: 0, o: p });
   const arches = [];
-  for (let i = 0; i < MAP.corridors.length; i++) { const lo = MAP.rooms[i]; arches.push({ y: lo.y0 + 2, k: 1, o: { x: 500, y: lo.y0 + 2 } }); }
+  for (let i = 0; i < S.dg.map.corridors.length; i++) { const lo = S.dg.map.rooms[i]; arches.push({ y: lo.y0 + 2, k: 1, o: { x: 500, y: lo.y0 + 2 } }); }
   for (const a of arches) if (a.y > v.y0 - 40 && a.y < v.y1 + 260) list.push(a);
   for (const [id, g] of Object.entries(S.gates)) if (g.closed && g.y > v.y0 && g.y < v.y1 + 200) list.push({ y: g.y + 10, k: 2, o: g });
   for (const h of S.heroes) list.push({ y: h.y, k: 3, o: h });
@@ -368,7 +352,7 @@ export function drawMob(ctx, m) {
   if (m.cage) { if (!m.alive) return; const k = m.hp / m.maxHp; drawSpr(ctx, 'cage', m.x, m.y + 2, { sy: 1 + Math.sin(S.t * 30) * (m.flash > 0 ? 0.04 : 0), tint: m.flash > 0 ? 'flash' : null, tintA: 0.6 }); castBar(ctx, m.x, m.y - 136, 60, k, '#F0E8D2'); return; }
   if (m.hidden) return;
   let name = m.M.sp;
-  if (m.type === 'keeper' && m.pose === 'smash') name = 'keeper_smash';
+  if (m.pose && m.M.poseSprites && m.M.poseSprites[m.pose]) name = m.M.poseSprites[m.pose];
   let x = m.x, y = m.y, sx = 1, sy = 1, rot = 0, alpha = 1;
   if (!m.alive) { const k = clamp(m.deadT / 0.25, 0, 1); alpha = 1 - k; sy = 1 - k * 0.5; if (alpha <= 0) return; }
   if (m.rise > 0) { const k = 1 - m.rise / (m.riseDur || 0.75); alpha = Math.min(1, k * 1.6); sy = 0.3 + k * 0.7; y += (1 - k) * 10; }
@@ -479,7 +463,7 @@ export function drawDark(ctx) {
   const hole = (x, y, r) => { g.globalAlpha = 0.5; g.beginPath(); g.arc(x, y, r * 1.35, 0, TAU); g.fill(); g.globalAlpha = 1; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); };
   g.fillStyle = '#000';
   for (const h of S.heroes) if (h.alive) hole(h.x, h.y - 40, 120);
-  for (const m of S.mobs) { if (!m.alive) continue; if (m.type === 'keeper' && !m.hidden) hole(m.x + 104 * (m.flip ? -1 : 1), m.y - 90, 170); if (m.M.wisp) hole(m.x, m.y - 40, 60); }
+  for (const m of S.mobs) { if (!m.alive) continue; if (m.M.light && !m.hidden) hole(m.x + m.M.light.dx * (m.flip ? -1 : 1), m.y + m.M.light.dy, m.M.light.r); if (m.M.wisp) hole(m.x, m.y - 40, 60); }
   for (const z of S.hazards) if (!z.noDmg) hole(z.x, z.y, (z.r || 60) * 0.9 + 20);
   for (const z of S.zones) hole(z.x, z.y, z.r);
   for (const g2 of S.rings) { g.globalAlpha = 1; g.lineWidth = g2.w + 40; g.beginPath(); g.arc(g2.x, g2.y, g2.r, 0, TAU); g.stroke(); }

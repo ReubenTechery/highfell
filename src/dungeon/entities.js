@@ -1,28 +1,32 @@
-import { SFX } from './audio.js';
-import { MOBS, ROLES, TAU, angDiff, gearPower, gearScore, rand, rng, vrand } from './core.js';
-import { checkPack, onBossDead, startBoss } from './game.js';
+/* ---------- entities: heroes, mobs, damage, healing, threat ---------- */
+import { angDiff, TAU } from '../core/math';
+import { rand, rng, vrand } from '../core/rng';
+import { hpMultiplier } from '../content/gear';
+import { ROLES } from '../content/roles';
+import { HOOKS, S, emit } from './state.js';
+import { onBossDead, checkPack, startBoss } from './game.js';
 import { breakCage, cutChain, interruptCast } from './mobs.js';
 
-/* ---------- entities: heroes, mobs, damage, healing, threat ---------- */
-export let S = null;
-export function setS(v) { S = v; }
-export const sfx = (n, v) => { if (typeof SFX !== 'undefined' && !S.quiet) SFX.play(n, v); };
+export const sfx = (n, v) => { if (S && !S.quiet) HOOKS.sound(n, v); };
 
-export function makeHero(role, isPlayer, set) {
+/* loadout: what the meta layer worked out from the hero's gear.
+   { power, traits: Set, bonuses: Set, weaponRar, unique } */
+export function makeHero(role, isPlayer, loadout) {
   const R = ROLES[role];
-  const gs = gearScore(set), power = gearPower(gs);
-  const traits = new Set(Object.values(set).filter((i) => i.trait).map((i) => i.trait));
-  const maxHp = Math.round(R.hp * (1 + (power - 1) * 0.6));
+  const L = loadout || {};
+  const power = L.power || 1;
+  const maxHp = Math.round(R.hp * hpMultiplier(power));
   return {
     id: 'h_' + role, kind: 'hero', role, name: R.name, isPlayer, x: 0, y: 0, r: R.r,
-    face: -Math.PI / 2, back: true, flip: false, hp: maxHp, maxHp, armor: R.armor, power, gs, traits,
-    weaponRar: set.weapon ? set.weapon.rar : 0, threatMod: R.threat, speed: R.speed, alive: true,
-    mana: 100, maxMana: 100, cd: { a1: 0, a2: 0, a3: 0, dodge: 0 }, gcd: 0, atkT: 0.4,
+    face: -Math.PI / 2, back: true, flip: false, hp: maxHp, maxHp, armor: R.armor, power,
+    traits: new Set(L.traits || []), bonuses: new Set(L.bonuses || []), unique: L.unique || null,
+    weaponRar: L.weaponRar || 0, threatMod: R.threat, speed: R.speed, alive: true,
+    mana: 100, maxMana: 100, cd: { a1: 0, a2: 0, a3: 0, a4: 0, dodge: 0 }, gcd: 0, atkT: 0.4,
     target: null, picked: null, stillT: 1, dodgeT: 0, dodgeX: 0, dodgeY: -1, iframe: 0,
     blocking: false, blockT: 9, dash: null, cast: null,
     st: { stun: 0, root: 0, haunt: 0, air: 0, kx: 0, ky: 0, chained: null, caged: null },
     absorb: 0, absorbT: 0, flash: 0, hurtT: 0, lunge: 0, lungeA: 0, walkT: 0, squash: 0, moving: 0,
-    say: null, sayT: 0, deadT: 0,
+    say: null, sayT: 0, deadT: 0, swings: 0, hots: [],
     intent: { mx: 0, my: 0, block: false },
     bot: { think: 0, react: rand(0.18, 0.34), skill: isPlayer ? 0.97 : 0.93, goal: null, lastPos: null, waitT: 0, blockFor: null, cutAt: 0, side: rng() < 0.5 ? -1 : 1, dodged: new Set() },
     stats: { dmg: 0, heal: 0, taken: 0, dodges: 0, blocks: 0, perfect: 0, deaths: 0, overheal: 0 },
@@ -30,7 +34,7 @@ export function makeHero(role, isPlayer, set) {
 }
 
 export function makeMob(type, x, y, pack) {
-  const M = MOBS[type];
+  const M = S.dg.mobs[type];
   return {
     id: 'm' + (S.seq++), kind: 'mob', type, M, name: M.name, x, y, r: M.r, home: { x, y }, home0: { x, y }, pack,
     hp: M.hp, maxHp: M.hp, speed: M.speed, alive: true, state: 'idle',
@@ -78,7 +82,7 @@ export function aggro(m, h, v) {
   if (m.state === 'idle') { m.state = 'fight'; m.fightT = 0; m.atkT = Math.max(m.atkT, 0.5); onMobAggro(m); }
   if (h) addThreat(m, h, v || 1);
 }
-export function onMobAggro(m) {
+function onMobAggro(m) {
   if (m.pack && !m.pack.pulled) {
     m.pack.pulled = true;
     m.pack.mobs.forEach((o) => { if (o !== m && o.alive && o.state === 'idle') { o.state = 'fight'; o.fightT = 0; m.threat.forEach((v, k) => o.threat.set(k, Math.max(o.threat.get(k) || 0, 1))); } });
@@ -109,10 +113,14 @@ export function hurtHero(h, amt, src, o) {
         if (src.kind === 'mob' && src.alive) { src.st.stun = Math.max(src.st.stun, src.isBoss ? 1.6 : 1.2); src.wind = 0; src.busy = 0; fxText(src.x, src.y - (src.isBoss ? 200 : 110), 'Stunned', '#FFE08A', 20); }
         sfx('perfect'); shake(6); hitstop(0.08);
         fx({ type: 'ring', x: h.x, y: h.y - 30, r0: 20, r1: 110, col: '#F2C230', dur: 0.35, w: 6 });
+        if (o.smash && S.bossFight && h.isPlayer) S.bossFight.smashPerfect++;
+        emit({ type: 'block', perfect: true, player: !!h.isPlayer, smash: !!o.smash });
+        if (h.onPerfect) h.onPerfect(src);
       } else {
         a *= 0.25; h.stats.blocks++;
         fxText(h.x, h.y - 90, 'Blocked', '#C9D2DC', 18); sfx('block');
         fx({ type: 'ring', x: h.x + Math.cos(h.face) * 22, y: h.y - 30 + Math.sin(h.face) * 12, r0: 6, r1: 40, col: '#FFFFFF', dur: 0.2, w: 4 });
+        emit({ type: 'block', perfect: false, player: !!h.isPlayer, smash: !!o.smash });
       }
       if (h.traits.has('spiked') && src.kind === 'mob' && src.alive) hurtMob(src, 40, h, { raw: true, noCrit: true });
     }
@@ -122,13 +130,14 @@ export function hurtHero(h, amt, src, o) {
   if (h.absorb > 0 && a > 0) {
     const t = Math.min(h.absorb, a); h.absorb -= t; a -= t;
     if (t > 0 && !o.quiet) fxText(h.x, h.y - 70, 'Absorbed', '#DDF3FF', 16);
-    if (h.absorb <= 0.5) { h.absorb = 0; const hl = S.heroes.find((x) => x.role === 'healer' && x.alive); if (hl && hl.traits.has('secondwind')) hl.mana = Math.min(hl.maxMana, hl.mana + 6); }
+    if (h.absorb <= 0.5) { h.absorb = 0; if (h.onWardBreak) h.onWardBreak(); const hl = S.heroes.find((x) => x.role === 'healer' && x.alive); if (hl && hl.traits.has('secondwind')) hl.mana = Math.min(hl.maxMana, hl.mana + 6); }
   }
   a = Math.round(a);
   if (a > 0) {
     h.hp -= a; h.flash = 0.12; h.hurtT = 0.25; h.stats.taken += a;
     if (!o.quiet) fxText(h.x, h.y - 60, '-' + a, '#FF6B5E', a >= 100 ? 26 : 20);
     if (h.isPlayer) { shake(a >= 100 ? 7 : 3); S.hurtFlash = Math.min(1, S.hurtFlash + a / 300); }
+    if (o.kind) { S.stats[o.kind + 'Hits'] = (S.stats[o.kind + 'Hits'] || 0) + 1; emit({ type: 'hazard.hit', kind: o.kind, player: !!h.isPlayer }); }
     if (h.hp <= 0) killHero(h);
   }
   return a;
@@ -142,16 +151,18 @@ export function killHero(h) {
   sfx('down');
   bits(h.x, h.y - 30, 'shard_dirt', 5, 120);
   for (const m of S.mobs) { m.threat.delete(h.id); if (m.target === h) m.target = null; if (m.forced === h) { m.forced = null; m.forcedT = 0; } }
+  emit({ type: 'hero.died', role: h.role, player: !!h.isPlayer });
 }
 
 /* ---------- damage to mobs ---------- */
 export function hurtMob(m, amt, src, o) {
   o = o || {};
   if (!m.alive || m.untargetable || S.over) return 0;
-  if (m.cage) { m.hp -= 1; m.flash = 0.1; sfx('cagehit'); bits(m.x, m.y - 50, 'shard_bone', 1, 90); if (m.hp <= 0) breakCage(m, true); return 1; }
+  if (m.cage) { m.hp -= 1; m.flash = 0.1; sfx('cagehit'); bits(m.x, m.y - 50, 'shard_bone', 1, 90); if (m.hp <= 0) breakCage(m, true, src); return 1; }
   let a = amt * (o.raw ? 1 : (src && src.power) || 1);
   let crit = false;
   if (!o.noCrit && rng() < (o.crit === undefined ? 0.12 : o.crit)) { a *= 2; crit = true; }
+  else if (!o.noCrit && src && src.traits && src.traits.has('headsman') && m.st.stun > 0) { a *= 2; crit = true; }
   if (o.shatter && m.st.freeze > 0) a *= o.shatter;
   if (m.armorUp > 0) a *= 1 - m.armorUp;
   a = Math.round(a);
@@ -161,14 +172,16 @@ export function hurtMob(m, amt, src, o) {
   if (m.cast && m.cast.kick) { m.cast.taken += a; if (m.cast.taken >= m.cast.kick) interruptCast(m); }
   if (src && src.kind === 'hero') { aggro(m, src, 0); addThreat(m, src, a * src.threatMod * (o.threat || 1)); src.stats.dmg += a; }
   const big = crit || a >= 250;
-  if (!o.quiet) fxText(m.x, m.y - (m.isBoss ? 170 : m.M.big ? 120 : 70), (crit ? a + '!' : '' + a), o.col || (crit ? '#F2C230' : '#FFFFFF'), o.size || (a >= 600 ? 40 : big ? 30 : 21), { dur: big ? 1.15 : 0.9 });
+  if (!o.quiet) fxText(m.x, m.y - (m.isBoss ? 170 : m.M.big ? 120 : 70), (crit ? a + '!' : '' + a), o.col || (crit ? '#F2C230' : '#FFFFFF'), o.size || (a >= 600 ? 40 : big ? 30 : 21), { dur: big ? 1.15 : 0.9, crit, mine: !!(src && src.isPlayer) });
   if (o.knock && !m.isBoss && !m.M.big) { const an = Math.atan2(m.y - src.y, m.x - src.x); m.st.kx += Math.cos(an) * o.knock; m.st.ky += Math.sin(an) * o.knock; }
   if (crit && src && src.isPlayer) hitstop(0.035);
+  if (crit && src && src.kind === 'hero') emit({ type: 'crit', amount: a, player: !!src.isPlayer });
   if (m.hp <= 0) killMob(m, src);
   return a;
 }
 export function killMob(m, src) {
   m.hp = 0; m.alive = false; m.deadT = 0; m.cast = null; m.state = 'dead';
+  emit({ type: 'mob.killed', mob: m.type, boss: !!m.isBoss, undead: !!m.M.skeleton, byPlayer: !!(src && src.isPlayer) });
   if (m.M.wisp) { dots(m.x, m.y - 40, '#C8F5E8', 10, 160); fx({ type: 'ring', x: m.x, y: m.y - 40, r0: 8, r1: 46, col: '#C8F5E8', dur: 0.25, w: 4 }); sfx('pop'); return; }
   const big = m.M.big;
   bits(m.x, m.y - (big ? 70 : 40), 'shard_bone', big ? 10 : 5, big ? 260 : 190);
@@ -183,6 +196,7 @@ export function killMob(m, src) {
 export function healHero(src, t, amt, o) {
   o = o || {};
   if (!t.alive) return 0;
+  const before = t.hp / t.maxHp;
   const a = Math.round(amt * ((src && src.power) || 1));
   const real = Math.min(a, t.maxHp - t.hp);
   t.hp += real;
@@ -190,5 +204,10 @@ export function healHero(src, t, amt, o) {
   if (real > 0 || o.show) fxText(t.x, t.y - 74, '+' + a, '#7BE05A', o.size || (a >= 150 ? 22 : 18), { dur: 0.9 });
   // healing pulls a little threat from everything in the fight
   if (src && real > 0) { const fighting = S.mobs.filter((m) => m.alive && m.state === 'fight' && !m.cage && !m.M.wisp); fighting.forEach((m) => addThreat(m, src, (real * 0.5) / Math.max(1, fighting.length))); }
+  // a save: the player catches someone under 15% and they are still up three seconds later
+  if (src && src.isPlayer && real > 0 && before < 0.15 && S.t >= (t.saveLock || 0)) {
+    t.saveLock = S.t + 6;
+    S.timers.push({ t: 3, fn: () => { if (t.alive) { S.stats.saves = (S.stats.saves || 0) + 1; emit({ type: 'heal.save', player: true }); } } });
+  }
   return real;
 }

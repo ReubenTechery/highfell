@@ -1,41 +1,40 @@
+/* ---------- the run: state, the loop, packs, bosses, wipes, the chest ---------- */
+import { dist, distXY, lerp } from '../core/math';
+import { setSeed } from '../core/rng';
+import { ORDER } from '../content/roles';
+import { HOOKS, S, emit, setS } from './state.js';
+import { aggro, banner, bits, dots, fxText, healHero, hurtHero, hurtMob, makeHero, makeMob, sfx, shake } from './entities.js';
 import { botTick, inHaz } from './bots.js';
-import { CHECKPOINTS, GATES, MAP, ORDER, PACKS, PROPS, dist, distXY, lerp, setSeed } from './core.js';
-import { S, aggro, banner, bits, call, dots, fxText, healHero, hurtHero, hurtMob, killMob, makeHero, makeMob, setS, sfx, shake } from './entities.js';
 import { heroBy, heroTick, isFoe, later, projHit } from './heroes.js';
-import { playerIntent } from './input.js';
-import { breakCage, chainTick, cutChain, mobTick, nearestHeroTo, spawnMob } from './mobs.js';
-import { K } from './render.js';
-import { G, UI } from './ui.js';
+import { chainTick, mobTick, nearestHeroTo, spawnMob } from './mobs.js';
 import { canStand, inWalk, moveEnt, roomIndexOf } from './world.js';
 
-/* ---------- the run: state, the loop, packs, bosses, wipes, the chest ---------- */
-export function newGame(opts) {
+/* dg: a dungeon definition (map, mobs, packs, script). opts:
+   { role, loadouts: {tank, healer, dps}, start, solo, seed, auto, quiet, testGear } */
+export function newGame(dg, opts) {
   setSeed(opts.seed || ((Date.now() & 0xfffffff) | 1));
   setS({
-    t: 0, frame: 0, seq: 1, opts, heroes: [], mobs: [], packs: [], projs: [], hazards: [], zones: [], fx: [], texts: [], parts: [], timers: [], rings: [], chains: [],
-    gates: JSON.parse(JSON.stringify(GATES)), props: PROPS.map((p) => Object.assign({}, p, { room: roomIndexOf(p.x, p.y), sp0: p.sp })),
-    inCombat: false, lastCombat: -99, combatStart: 0, boss: null, ring: null, dark: 0, darkTarget: 0, shake: 0, hitstop: 0, hurtFlash: 0,
+    dg, t: 0, frame: 0, seq: 1, opts, heroes: [], mobs: [], packs: [], projs: [], hazards: [], zones: [], fx: [], texts: [], parts: [], timers: [], rings: [], chains: [],
+    gates: JSON.parse(JSON.stringify(dg.gates)), props: [],
+    inCombat: false, lastCombat: -99, combatStart: 0, boss: null, bossFight: null, ring: null, dark: 0, darkTarget: 0, shake: 0, hitstop: 0, hurtFlash: 0,
     banner: null, call: null, stats: { deaths: 0, perfect: 0, kicks: 0, cuts: 0, cages: 0, wipes: 0, start: 0 }, hints: {}, over: false, chest: null,
-    cp: 0, quiet: !!opts.quiet, auto: !!opts.auto, cleared: 0, total: PACKS.length, startedAt: 0,
+    cp: 0, quiet: !!opts.quiet, auto: !!opts.auto, noEvents: !!opts.noEvents, cleared: 0, total: dg.packs.length, startedAt: 0,
   });
+  S.props = dg.props.map((p) => Object.assign({}, p, { room: roomIndexOf(p.x, p.y), sp0: p.sp }));
   const roles = opts.solo ? ['dps'] : ORDER;
-  for (const r of roles) S.heroes.push(makeHero(r, r === opts.role, opts.sets[r]));
+  const L = opts.loadouts || {};
+  for (const r of roles) S.heroes.push(makeHero(r, r === opts.role, L[r]));
   S.player = S.heroes.find((h) => h.isPlayer) || S.heroes[0];
   S.player.isPlayer = true;
-  for (const def of PACKS) {
+  for (const def of dg.packs) {
     const p = { def, mobs: [], pulled: false, cleared: false, triggered: !def.ambush };
     if (!def.ambush) for (const [type, x, y] of def.mobs) { const m = makeMob(type, x, y, p); p.mobs.push(m); S.mobs.push(m); }
     S.packs.push(p);
   }
-  const start = opts.start || 'entrance';
-  if (start !== 'entrance') {
-    const upto = start === 'knight' ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'K', 'D', 'E'];
-    for (const p of S.packs) if (upto.includes(p.def.id)) { p.cleared = true; p.pulled = true; p.triggered = true; p.mobs.forEach((m) => { m.alive = false; m.state = 'dead'; m.deadT = 99; }); S.cleared++; }
-    if (start === 'keeper') { S.gates.g3b.closed = false; S.gates.g3t.closed = false; S.props.forEach((p) => { if (p.room === 4 && p.sp === 'coffin') p.sp = 'coffin_open'; }); }
-    S.cp = start === 'knight' ? 3 : 5;
-  }
-  placeParty(CHECKPOINTS[S.cp]);
+  if (dg.script.setup) dg.script.setup(opts.start || 'entrance');
+  placeParty(dg.checkpoints[S.cp]);
   S.mobs = S.mobs.filter((m) => m.alive);
+  emit({ type: 'run.start', dungeon: dg.id, role: S.player.role, practice: (opts.start || 'entrance') !== 'entrance', solo: !!opts.solo });
   return S;
 }
 export function placeParty(cp) {
@@ -52,12 +51,14 @@ export function placeParty(cp) {
 export function startBoss(pack) {
   const m = pack.mobs[0];
   S.boss = m; m.fightT = 0;
-  if (pack.def.boss === 'knight') { S.gates.g3b.closed = true; pullIn(3, 3120); }
-  else { S.gates.g5.closed = true; pullIn(5, 1120); }
+  S.bossFight = { boss: m.type, started: S.t, smashes: 0, smashPerfect: 0 };
+  if (S.dg.script.onBossPulled) S.dg.script.onBossPulled(pack);
   banner(m.name, 'boss', 2.2);
   sfx('gate'); sfx('roar');
   shake(4);
+  emit({ type: 'boss.pulled', boss: m.type });
 }
+/* move everyone not already inside the boss room to its doorway */
 export function pullIn(room, y) {
   for (const h of S.heroes) {
     if (roomIndexOf(h.x, h.y) === room && h.y < y - 10) continue;
@@ -67,20 +68,17 @@ export function pullIn(room, y) {
 }
 export function onBossDead(m) {
   S.boss = null;
-  if (m.type === 'knight') {
-    S.gates.g3b.closed = false; S.gates.g3t.closed = false;
-    S.mobs.forEach((o) => { if (o.alive && o.rally) { o.hp = 1; killMob(o, null); } });
-    banner('Sir Rattlebones falls. The way on is open.', 'good', 2.8);
-    sfx('victory');
-  } else {
-    S.gates.g5.closed = false; S.darkTarget = 0; S.ring = null; S.rings = []; S.hazards = [];
-    S.chains.slice().forEach((c) => cutChain(c, null));
-    S.mobs.forEach((o) => { if (o.alive && (o.M.wisp || o.cage)) { if (o.cage) breakCage(o, false); else { o.alive = false; o.state = 'dead'; } } });
-    S.chest = { x: 500, y: 660, open: false, t: 0 };
-    banner('The Gravekeeper is buried for good!', 'good', 3.2);
-    sfx('victory');
-    S.clearTime = S.t - S.startedAt;
-  }
+  const f = S.bossFight || { started: S.t, smashes: 0, smashPerfect: 0 };
+  S.bossFight = null;
+  const up = S.heroes.filter((h) => h.alive);
+  emit({ type: 'boss.killed', boss: m.type, time: S.t - f.started, armorUp: m.armorUp > 0, onlyPlayerAlive: up.length === 1 && up[0] === S.player && S.heroes.length > 1,
+    smashes: f.smashes, smashPerfect: f.smashPerfect, playerIsTank: S.player.role === 'tank' });
+  if (S.dg.script.onBossDead) S.dg.script.onBossDead(m);
+}
+/* the final chest: the run is cleared once the party opens it */
+export function spawnChest(x, y, boss) {
+  S.chest = { x, y, open: false, t: 0, boss: boss.type };
+  S.clearTime = S.t - S.startedAt;
 }
 export function checkPack(p) {
   if (p.cleared || p.mobs.some((m) => m.alive)) return;
@@ -95,24 +93,25 @@ export function triggerAmbush(p) {
     const near = nearestHeroTo(x, y);
     if (near) aggro(m, near, 3);
   }
-  S.props.forEach((pr) => { if (pr.room === 4 && pr.sp === 'coffin') pr.sp = 'coffin_open'; });
-  banner('Ambush! The coffins are opening!', 'warn', 2.4);
+  if (S.dg.script.onAmbush) S.dg.script.onAmbush(p);
   shake(7); sfx('rise'); sfx('roar');
 }
 
 /* ---------- wipes and coming back ---------- */
 export function respawn() {
   const room = S.wipeRoom !== undefined ? S.wipeRoom : S.cp;
-  const cp = CHECKPOINTS[Math.min(room, CHECKPOINTS.length - 1)];
+  const cps = S.dg.checkpoints;
+  const cp = cps[Math.min(room, cps.length - 1)];
   S.hazards = []; S.zones = []; S.projs = []; S.rings = []; S.chains = []; S.timers = []; S.ring = null; S.dark = 0; S.darkTarget = 0;
   for (const h of S.heroes) {
-    Object.assign(h, { alive: true, hp: h.maxHp, mana: h.maxMana, absorb: 0, absorbT: 0, dodgeT: 0, dash: null, cast: null, blocking: false, target: null, picked: null, holdFire: false });
+    Object.assign(h, { alive: true, hp: h.maxHp, mana: h.maxMana, absorb: 0, absorbT: 0, dodgeT: 0, dash: null, cast: null, blocking: false, target: null, picked: null, holdFire: false, hots: [] });
     h.st = { stun: 0, root: 0, haunt: 0, air: 0, kx: 0, ky: 0, chained: null, caged: null };
     for (const k in h.cd) h.cd[k] = 0;
     h.bot.ignore = new Set(); h.bot.seen = new Set();
   }
   placeParty(cp);
   S.mobs = S.mobs.filter((m) => m.alive && !m.cage && !m.M.wisp && !m.extra && !m.rally);
+  let resetAmbush = false;
   for (const p of S.packs) {
     if (p.cleared) continue;
     if (p.def.ambush && p.triggered) {
@@ -120,7 +119,7 @@ export function respawn() {
       p.mobs.forEach((m) => { m.alive = false; });
       S.mobs = S.mobs.filter((m) => m.pack !== p);
       p.mobs = [];
-      S.props.forEach((pr) => { if (pr.room === 4 && pr.sp === 'coffin_open') pr.sp = 'coffin'; });
+      resetAmbush = true;
       continue;
     }
     p.pulled = false;
@@ -132,13 +131,19 @@ export function respawn() {
       if (m.home0) m.home = { x: m.home0.x, y: m.home0.y };
     }
   }
-  S.props.forEach((pr) => { if (pr.room === 3 && pr.sp === 'coffin_open' && pr.sc === 1 && !S.packs.find((p) => p.def.id === 'K').cleared) pr.sp = 'coffin'; });
-  const K = S.packs.find((p) => p.def.id === 'K'), G = S.packs.find((p) => p.def.id === 'G');
-  if (!K.cleared) S.gates.g3b.closed = false;
-  if (!G.cleared) S.gates.g5.closed = false;
-  S.boss = null; S.inCombat = false; S.lastCombat = S.t - 10; S.over = false; S.wipeRoom = undefined;
+  if (S.dg.script.onRespawn) S.dg.script.onRespawn(resetAmbush);
+  S.boss = null; S.bossFight = null; S.inCombat = false; S.lastCombat = S.t - 10; S.over = false; S.wipeRoom = undefined;
   S.stats.wipes++;
   banner('Back on your feet. Go again.', 'good', 2.2);
+}
+
+export function runSummary() {
+  return {
+    dungeon: S.dg.id, role: S.player.role, practice: (S.opts.start || 'entrance') !== 'entrance', testGear: !!S.opts.testGear,
+    time: S.clearTime || S.t - S.startedAt, deaths: S.stats.deaths, wipes: S.stats.wipes,
+    handHits: S.stats.handHits || 0, ringHits: S.stats.ringHits || 0, saves: S.stats.saves || 0,
+    playerDeaths: S.player.stats.deaths, kicks: S.stats.kicks, perfectBlocks: S.player.stats.perfect,
+  };
 }
 
 /* ---------- the loop ---------- */
@@ -149,7 +154,7 @@ export function update(dt) {
   for (let i = S.timers.length - 1; i >= 0; i--) { const tm = S.timers[i]; tm.t -= dt; if (tm.t <= 0) { S.timers.splice(i, 1); tm.fn(); } }
   if (S.over) { tickFx(dt); return; }
   S.healerUp = S.heroes.some((x) => x.role === 'healer' && x.alive);
-  if (!S.auto) playerIntent(S.player);
+  if (!S.auto) HOOKS.playerIntent(S.player);
   for (const h of S.heroes) { h.botDriven = !h.isPlayer || S.auto; if (h.botDriven) botTick(h, dt); }
   for (const h of S.heroes) heroTick(h, dt);
   for (const m of S.mobs) mobTick(m, dt);
@@ -161,32 +166,35 @@ export function update(dt) {
   const fighting = S.mobs.some((m) => m.alive && m.state === 'fight' && !m.cage);
   if (fighting) { if (!S.inCombat) { S.inCombat = true; S.combatStart = S.t; } S.lastCombat = S.t; }
   else if (S.inCombat) { S.inCombat = false; onCombatEnd(); }
-  triggers();
+  if (S.dg.script.triggers) S.dg.script.triggers();
+  if (!S.inCombat) { const r = roomIndexOf(S.player.x, S.player.y); if (r > S.cp) S.cp = r; }
   S.mobs = S.mobs.filter((m) => m.alive || m.deadT < 1.2);
   // wipe?
   const up = S.heroes.filter((h) => h.alive);
   if (!up.length && !S.over) {
     S.over = 'wipe';
-    S.wipeRoom = S.boss ? (S.boss.type === 'knight' ? 3 : 5) : Math.max(0, roomIndexOf(S.player.x, S.player.y));
+    S.wipeRoom = S.boss ? S.boss.pack.def.room : Math.max(0, roomIndexOf(S.player.x, S.player.y));
     if (S.wipeRoom < 0) S.wipeRoom = S.cp;
     sfx('wipe');
-    later(1.6, () => { if (S.opts.solo) { S.over = 'lost'; UI.showLost(); } else UI.showWipe(); });
+    later(1.6, () => {
+      if (S.opts.solo) { S.over = 'lost'; emit({ type: 'run.lost', dungeon: S.dg.id, packsCleared: S.packs.filter((p) => p.cleared).length }); HOOKS.onLost(); }
+      else { emit({ type: 'run.wipe', dungeon: S.dg.id }); HOOKS.onWipe(); }
+    });
   }
   if (S.chest && !S.chest.open) {
     S.chest.t += dt;
-    const p = S.player;
     const near = S.heroes.some((h) => h.alive && dist(h, S.chest) < 95);
     if (near && S.t - S.lastCombat > 1.0) {
       S.chest.open = true; sfx('chest');
       bits(S.chest.x, S.chest.y - 40, 'shard_ice', 1, 10);
       dots(S.chest.x, S.chest.y - 50, '#F2C230', 26, 260);
-      later(1.1, () => { S.over = 'victory'; UI.showLoot(); });
+      later(1.1, () => { S.over = 'victory'; emit({ type: 'run.cleared', summary: runSummary() }); HOOKS.onChest(); });
     }
   }
   S.dark = lerp(S.dark, S.darkTarget, Math.min(1, dt * 2.2));
   tickFx(dt);
 }
-export function onCombatEnd() {
+function onCombatEnd() {
   const dead = S.heroes.filter((h) => !h.alive);
   if (!dead.length || S.over) return;
   later(2.4, () => {
@@ -195,29 +203,14 @@ export function onCombatEnd() {
     for (const h of S.heroes) {
       if (h.alive) continue;
       h.alive = true; h.hp = Math.round(h.maxHp * 0.5); h.st = { stun: 0, root: 0, haunt: 0, air: 0, kx: 0, ky: 0, chained: null, caged: null };
-      fxText(h.x, h.y - 100, healer && healer.alive && healer !== h ? 'Maren brings ' + (h.isPlayer ? 'you' : h.name) + ' back' : 'Back up', '#9BE15D', 20, { dur: 1.6 });
+      fxText(h.x, h.y - 100, healer && healer.alive && healer !== h ? healer.name + ' brings ' + (h.isPlayer ? 'you' : h.name) + ' back' : 'Back up', '#9BE15D', 20, { dur: 1.6 });
       dots(h.x, h.y - 40, '#FFE08A', 14, 160);
     }
     sfx('revive');
   });
 }
-export function triggers() {
-  const E = S.packs.find((p) => p.def.id === 'E'), D = S.packs.find((p) => p.def.id === 'D');
-  if (E && !E.triggered && D.cleared) {
-    for (const h of S.heroes) if (h.alive && roomIndexOf(h.x, h.y) === 4 && h.y < 1800) { triggerAmbush(E); break; }
-  }
-  const G = S.packs.find((p) => p.def.id === 'G');
-  if (G && !G.cleared && !G.pulled) {
-    const k = G.mobs[0];
-    if (k && k.alive) for (const h of S.heroes) if (h.alive && roomIndexOf(h.x, h.y) === 5 && dist(h, MAP.arena) < MAP.arena.r - 30) { aggro(k, h, 1); break; }
-  }
-  if (!S.inCombat) {
-    const r = roomIndexOf(S.player.x, S.player.y);
-    if (r > S.cp) S.cp = r;
-  }
-}
 
-export function separate() {
+function separate() {
   const L = [];
   for (const h of S.heroes) if (h.alive && h.dodgeT <= 0 && !h.dash) L.push(h);
   for (const m of S.mobs) if (m.alive && !m.cage && !m.M.wisp && !m.hidden && m.rise <= 0) L.push(m);
@@ -236,7 +229,7 @@ export function separate() {
   }
 }
 
-export function tickProjs(dt) {
+function tickProjs(dt) {
   for (let i = S.projs.length - 1; i >= 0; i--) {
     const p = S.projs[i];
     p.life -= dt;
@@ -260,7 +253,7 @@ export function tickProjs(dt) {
     }
   }
 }
-export function tickHazards(dt) {
+function tickHazards(dt) {
   for (let i = S.hazards.length - 1; i >= 0; i--) {
     const z = S.hazards[i];
     z.t += dt;
@@ -285,18 +278,18 @@ export function tickHazards(dt) {
     if (z.t >= end) S.hazards.splice(i, 1);
   }
 }
-export function fireHazard(z) {
+function fireHazard(z) {
   if (z.onFire) z.onFire(z);
   if (z.noDmg || z.smash || z.burrow || z.live) return;
   const mul = (z.src && z.src.dmgMul) || 1;
   for (const h of S.heroes) {
     if (!h.alive || !inHaz(z, h.x, h.y, h.r)) continue;
-    const got = hurtHero(h, z.dmg * mul, z.src, { heavy: z.heavy, block: z.block === true, magic: z.magic });
+    const got = hurtHero(h, z.dmg * mul, z.src, { heavy: z.heavy, block: z.block === true, magic: z.magic, kind: z.kind });
     if (got > 0 && z.knock) { const a = Math.atan2(h.y - z.y, h.x - z.x); h.st.kx += Math.cos(a) * z.knock; h.st.ky += Math.sin(a) * z.knock; }
     if (got > 0 && z.root) { h.st.root = z.root; fxText(h.x, h.y - 112, 'Grabbed', '#C9B79A', 17); }
   }
 }
-export function tickZones(dt) {
+function tickZones(dt) {
   for (let i = S.zones.length - 1; i >= 0; i--) {
     const z = S.zones[i];
     z.t += dt; z.tickT -= dt;
@@ -316,7 +309,7 @@ export function tickZones(dt) {
     if (z.t >= z.dur) S.zones.splice(i, 1);
   }
 }
-export function tickRings(dt) {
+function tickRings(dt) {
   for (let i = S.rings.length - 1; i >= 0; i--) {
     const g = S.rings[i];
     g.r += g.speed * dt;
@@ -327,24 +320,24 @@ export function tickRings(dt) {
         g.hit.add(h.id);
         if (h.st.air > 0) continue;
         if (h.iframe > 0) { fxText(h.x, h.y - 80, 'Dodged', '#DDF3FF', 18); h.stats.dodges++; continue; }
-        hurtHero(h, g.dmg * ((g.src && g.src.dmgMul) || 1), g.src, { block: false, dodge: false });
+        hurtHero(h, g.dmg * ((g.src && g.src.dmgMul) || 1), g.src, { block: false, dodge: false, kind: 'ring' });
         h.st.kx += ((h.x - g.x) / (d || 1)) * 140; h.st.ky += ((h.y - g.y) / (d || 1)) * 140;
       }
     }
     if (g.r > g.max) S.rings.splice(i, 1);
   }
 }
-export function tickFireRing(dt) {
-  const R = S.ring;
+function tickFireRing(dt) {
+  const R = S.ring, A = S.dg.map.arena;
   R.r = Math.max(R.target, R.r - 22 * dt);
   R.tick -= dt;
   if (R.tick <= 0) {
     R.tick = 0.5;
-    for (const h of S.heroes) if (h.alive && dist(h, MAP.arena) > R.r - h.r * 0.5) { hurtHero(h, 26, null, { magic: true, pierce: true, block: false, dodge: false, quiet: true }); fxText(h.x, h.y - 70, '-26', '#9BE15D', 16, { dur: 0.6 }); if (h.isPlayer && !S.hints.fire) { S.hints.fire = 1; call('Get inside the ring!', 'alarm', 1.4); } }
+    for (const h of S.heroes) if (h.alive && dist(h, A) > R.r - h.r * 0.5) { hurtHero(h, 26, null, { magic: true, pierce: true, block: false, dodge: false, quiet: true }); fxText(h.x, h.y - 70, '-26', '#9BE15D', 16, { dur: 0.6 }); if (h.isPlayer && !S.hints.fire) { S.hints.fire = 1; S.call = { str: 'Get inside the ring!', kind: 'alarm', t: 0, dur: 1.4 }; } }
   }
 }
 
-export function tickFx(dt) {
+function tickFx(dt) {
   for (let i = S.fx.length - 1; i >= 0; i--) { const f = S.fx[i]; f.t += dt; if (f.t >= f.dur) S.fx.splice(i, 1); }
   for (let i = S.parts.length - 1; i >= 0; i--) {
     const p = S.parts[i];

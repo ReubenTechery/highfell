@@ -1,6 +1,5 @@
+import { TAU } from '../core/math';
 import { ART } from './assets.js';
-import { TAU } from './core.js';
-import { S } from './entities.js';
 
 /* ---------- art: SVG sprites baked to bitmaps at the current zoom, plus floor and wall patterns ---------- */
 export const SPR = {};

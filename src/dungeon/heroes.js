@@ -1,7 +1,9 @@
-import { AB, MEND, angDiff, angTo, dist, distXY, norm, rng } from './core.js';
-import { S, addThreat, aggro, banner, bits, dots, fx, fxText, healHero, hitstop, hurtMob, say, sfx, shake, taunt } from './entities.js';
+import { angDiff, angTo, dist, distXY, norm } from '../core/math';
+import { rng } from '../core/rng';
+import { AB, MEND } from '../content/roles';
+import { HOOKS, S, emit } from './state.js';
+import { addThreat, aggro, banner, bits, dots, fx, fxText, healHero, hitstop, hurtMob, say, sfx, shake, taunt } from './entities.js';
 import { interruptCast } from './mobs.js';
-import { UI } from './ui.js';
 import { moveEnt } from './world.js';
 
 /* ---------- heroes: moving, auto attacks, abilities, dodge, block ---------- */
@@ -149,8 +151,8 @@ export function useAbility(h, slot, aim) {
   const def = AB[h.role][slot];
   if (!h.alive || S.over || def.hold) return false;
   if (h.st.stun > 0 || h.st.caged || h.st.air > 0 || h.dodgeT > 0 || h.dash) return false;
-  if (h.cd[slot] > 0) { if (h.isPlayer) UI.nope(slot); return false; }
-  if (def.mana && h.mana < def.mana) { if (h.isPlayer) { UI.nope(slot); banner('Not enough mana', 'warn', 0.9); } return false; }
+  if (h.cd[slot] > 0) { if (h.isPlayer) HOOKS.nope(slot); return false; }
+  if (def.mana && h.mana < def.mana) { if (h.isPlayer) { HOOKS.nope(slot); banner('Not enough mana', 'warn', 0.9); } return false; }
   if (h.cast) return false;
   let ok = false;
   switch (def.key) {
@@ -166,8 +168,8 @@ export function useAbility(h, slot, aim) {
   if (ok) {
     h.cd[slot] = def.cd - (def.key === 'sunburst' && h.traits.has('dawn') ? 6 : 0);
     if (def.mana) h.mana -= def.mana;
-    if (h.isPlayer) UI.fired(slot);
-  } else if (h.isPlayer) UI.nope(slot);
+    if (h.isPlayer) HOOKS.fired(slot);
+  } else if (h.isPlayer) HOOKS.nope(slot);
   return ok;
 }
 
@@ -278,7 +280,7 @@ export function mend(h, t) {
   if (t !== h) { h.face = angTo(h, t); }
   h.lunge = 0.1; h.lungeA = h.face;
   sfx('heal');
-  if (h.isPlayer) UI.pulseFrame(t.role);
+  if (h.isPlayer) HOOKS.pulseFrame(t.role);
   return true;
 }
 export function abBlizzard(h, aim) {
@@ -310,7 +312,7 @@ export function abNova(h) {
 export function abComet(h, aim) {
   let t = aim && aim.kind === 'mob' && isFoe(aim) ? aim : null;
   if (!t) t = autoTarget(h);
-  if (!t || dist(h, t) > 540) { if (h.isPlayer) { fxText(h.x, h.y - 100, 'No target', '#DDF3FF', 16); UI.nope('a3'); } return false; }
+  if (!t || dist(h, t) > 540) { if (h.isPlayer) { fxText(h.x, h.y - 100, 'No target', '#DDF3FF', 16); HOOKS.nope('a3'); } return false; }
   h.cast = { key: 'comet', t: 0, dur: AB.dps.a3.cast * (h.traits.has('icyveins') ? 0.5 : 1), target: t };
   sfx('castup');
   return true;
@@ -319,7 +321,7 @@ export function finishCast(h) {
   const c = h.cast; h.cast = null;
   if (c.key !== 'comet') return;
   h.cd.a3 = AB.dps.a3.cd;
-  if (h.isPlayer) UI.fired('a3');
+  if (h.isPlayer) HOOKS.fired('a3');
   const t = c.target;
   const tx = t.x, ty = t.y;
   fx({ type: 'comet', x: tx, y: ty, dur: 0.32 });
@@ -345,5 +347,6 @@ export function doDodge(h, dx, dy) {
   if (h.traits.has('coldsnap')) S.zones.push({ kind: 'ice', x: h.x, y: h.y, r: 70, t: 0, dur: 3, tick: 0.25, tickT: 0, src: h, hit: new Set() });
   dots(h.x, h.y, '#C9B79A', 6, 90, { size: 6 });
   sfx('dodge');
+  emit({ type: 'dodge', player: !!h.isPlayer });
   return true;
 }
