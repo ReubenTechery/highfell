@@ -8,7 +8,10 @@ publish.
 
 - **You can't publish the live game** (it lives on claude.ai). Show your work with `npm run preview`, which
   prints a link for this computer and one for a phone on the same Wi-Fi, and with screenshots from
-  `tools/pw_check.py`.
+  `tools/pw_check.py`. Other agents may be running at the same time: if port 5173 is taken, use
+  `npm run preview -- --port 5174` (or the next free port) and give the owner the new links.
+- **Start every task from the latest `main`:** `git fetch`, then make your branch from `origin/main`, so you
+  build on what has already been merged. In a new worktree, run `npm ci` first.
 - **Branches and pull requests only.** Work on a branch named `gemini/<topic>`, commit with plain-English
   messages, push the branch and open a pull request. Never push to `main`, never force-push. The owner merges.
 - **Plan first.** For anything bigger than a small fix, write the plan (what, which files, which tests) and
