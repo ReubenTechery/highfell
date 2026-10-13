@@ -82,6 +82,8 @@ export interface AchievementDef {
   run?: (r: RunSummary) => boolean;
   /** other achievements it needs */
   needs?: string[];
+  /** completes when this collectible is obtained */
+  collect?: string;
 }
 
 export interface BossInfo { id: string; name: string; phases: number; enrage: number; room: number }
