@@ -53,7 +53,7 @@ def eye(x, y, r=4.2, look=(0.6, 0.4), lid=None):
 
 
 # ================================================================ mounts
-def goat():
+def goat(saddle=True):
     o = []
     # far legs, darker
     for x in (-40, 30):
@@ -66,11 +66,12 @@ def goat():
     o.append(s(body, GOAT, 4))
     for (x, y) in ((-44, -92), (-26, -96), (-6, -98), (14, -96), (34, -92), (-36, -72), (-14, -70), (8, -72), (30, -70), (46, -76)):
         o.append(ln(f'M{x} {y} C{x + 3} {y + 5} {x + 2} {y + 9} {x - 1} {y + 12}', GOAT_D, 2.6))
-    # saddle blanket and saddle
-    o.append(s('M-34 -104 C-30 -114 18 -114 22 -104 L26 -80 C10 -74 -26 -74 -38 -80 Z', RED, 3.5))
-    o.append(ln('M-34 -82 C-20 -77 10 -77 24 -83', GOLD, 3))
-    o.append(s('M-24 -112 C-22 -122 12 -122 14 -112 L12 -102 H-22 Z', '#7A4A2A', 3.5))
-    o.append(s('M8 -124 C8 -132 16 -132 16 -124 L14 -112 H8 Z', '#7A4A2A', 3))
+    # saddle blanket and saddle (Dottle's goats at home go without)
+    if saddle:
+        o.append(s('M-34 -104 C-30 -114 18 -114 22 -104 L26 -80 C10 -74 -26 -74 -38 -80 Z', RED, 3.5))
+        o.append(ln('M-34 -82 C-20 -77 10 -77 24 -83', GOLD, 3))
+        o.append(s('M-24 -112 C-22 -122 12 -122 14 -112 L12 -102 H-22 Z', '#7A4A2A', 3.5))
+        o.append(s('M8 -124 C8 -132 16 -132 16 -124 L14 -112 H8 Z', '#7A4A2A', 3))
     # near legs
     for x in (-32, 38):
         o.append(beam(f'M{x} -52 L{x + 1} -10', GOAT, 9.5, 4) + s(f'M{x - 7} -12 H{x + 8} L{x + 8} 0 H{x - 8} Z', HOOF, 3))
@@ -92,6 +93,9 @@ def goat():
     # collar and bell
     o.append(s('M56 -94 C62 -102 72 -106 80 -104 L82 -96 C72 -98 64 -94 58 -88 Z', BLUE, 3))
     o.append(s('M66 -92 C66 -84 74 -84 74 -92 Z', GOLD, 3) + c(70, -83, 2, K, 0))
+    if not saddle:
+        sprite('goat', (-80, -160, 196, 166), o)
+        return
     sprite('mount_goat', (-80, -160, 196, 166), o)
     icon('c_goat', '#4E9A4A', o, k=0.34, dx=-4, ground=58)
 
@@ -485,7 +489,7 @@ def icons():
 
 
 def build():
-    goat(); hare(); pets(); trophies(); gnome(); cauldron(); place_bits(); icons()
+    goat(); goat(saddle=False); hare(); pets(); trophies(); gnome(); cauldron(); place_bits(); icons()
     os.makedirs(OUT, exist_ok=True)
     json.dump(SP, open(OUT + 'vale.json', 'w'))
     json.dump(ICONS, open(OUT + 'vale_icons.json', 'w'))

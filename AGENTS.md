@@ -56,6 +56,13 @@ slice). Nothing else gets added to that shape without the owner saying so.
 | Duplicates become 3 Marks; Marks swap Epic weapon traits (5 each) | Nothing that drops is ever wasted |
 | Heroes: race and class are for keeps, up to 6 alts | Alts, like WoW; the collection, kill counts and Marks are shared |
 | Shared gear floor per role, capped at Rare; Epic is earned on the hero | Alts never start cold, mains still mean something |
+| Gear is never put on for you: new pieces wait until you put them on in Gear | Putting it on yourself is the dopamine |
+| The tank earns threat: his hits make only a third more threat, Slam taunts and drags in, Charge grabs one | Tanking has a job; mobs off the tank go for the squishies |
+| Barrow Crypt hits 1.5 times as hard as its numbers, ordinary mobs have 1.3 times the health (`tune`) | So tanking and healing matter; one knob for harder tiers later |
+| Only the tank is caged; inside, the boss turns on someone else | The party feels the tank's absence |
+| You see only your own numbers (your hits, your heals, what hits you); mates' spell effects stay | Less noise, your numbers mean more |
+| No free mount: you start on foot, Dottle's first errand (herding goats) gives the Hill Goat | A mount is earned; it makes rides quicker, nothing else |
+| No trading or selling between players, ever | The collection log has to mean "I did this" |
 | A DPS alone dies before the mini boss (a test checks it) | All three roles are needed |
 | The Vale stays small: one place per race's hometown, about 5 minutes a trip | A cosy break, not a second game |
 | Brews are one-run twists, never power a raid needs | Fun, not a tax |
@@ -78,14 +85,26 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
   ladder gear, title and clears. Shared by all heroes: the collection (a unique fits any hero of its role),
   kill counts, Marks, achievements, titles, the hearth, the Vale. A race and class combo is playable once it
   has a ready class and art in `HERO_ART`; the rest show as "Soon".
-- **Balance targets** (guarded by `tests/balance.test.ts`): a Common bot clear in about 4:00 with no wipes,
-  the Gravekeeper about two minutes, full Epic at least 15% faster, the DPS alone dies before Sir Rattlebones.
-- **Save versions:** v2 to v3 turned one hero per role into the roster; v3 to v4 added the Vale (`p.vale`).
+- **Gear:** nothing goes on by itself. A ladder piece (and the shared floor) waits in the hero's bag; a new
+  unique waits in their `fresh` list. The Gear button counts what's waiting; you put it on in the doll.
+- **Threat:** every hit adds threat (the tank's 1.3 times, Slam's double), heals add a little on everything in the fight,
+  and a mob switches once someone beats its target by a tenth. Slam taunts and drags mobs in; Charge makes its
+  target turn. Mobs off the tank for 3 seconds go wild. A caged tank can't be targeted and loses half his threat.
+- **Difficulty:** each dungeon's `tune` in its engine file: `hit` scales everything that hurts a hero,
+  `trashHp` the health of everything but the bosses. Barrow Crypt: 1.5 and 1.3.
+- **Balance targets** (guarded by `tests/balance.test.ts`): a Common bot clear in about 4:00 (4:10 at the new
+  difficulty) with no wipes, the Gravekeeper about two minutes, full Epic at least 15% faster, the DPS alone
+  dies before Sir Rattlebones.
+- **Save versions:** v2 to v3 turned one hero per role into the roster; v3 to v4 added the Vale (`p.vale`);
+  v4 to v5 gave every hero an empty bag and fresh list (gear stopped going on by itself).
 - **The Vale:** a place regrows 2 harvests a day and banks 6; errands come 1 a day and bank 3. A harvest is
-  rolled when its close-up starts (like a kill) and Perfects add on at the end. A duplicate rare becomes 2
-  Starlight Dew. Every errand gives the next page of that place's story. Everyone's first ride gives a Hill Goat.
-- **Brews:** one bottle a run, drunk at the door; practice uses the brew but keeps the bottle. Effects live in
-  the engine under the recipe id (`tonic`, `fizz`, `glow`, `elixir`).
+  rolled when its close-up starts (like a kill) and Perfects add on at the end. Every cut pays Gathering XP as
+  it lands and every lap of the stir pays Brewing XP. A duplicate rare becomes 2 Starlight Dew. Every errand
+  gives the next page of that place's story. You start on foot; the first errand (the goats) gives a Hill Goat,
+  and a mount only makes rides quicker (5 s on foot, 3 on the goat, 2 on the hare or the hound).
+- **Brews:** the ingredients go in when the stir starts (leaving still bottles it). One bottle a run, drunk
+  at the door; practice uses the brew but keeps the bottle. Effects live in the engine under the recipe id
+  (`tonic`, `fizz`, `glow`, `elixir`).
 - The game's name isn't final: it lives in one constant, `GAME_NAME` in `src/content/index.ts`.
 
 ## Map of the code
@@ -108,7 +127,8 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
 - `src/sim` and `scripts/sim.mjs`: headless bot runs of the real engine (the balance numbers).
 - `tools/`: the art pipeline (Python writes SVG into `art/*.json`), `art_sheet.py` (look at your art),
   `pw_check.py` (screenshot the built game).
-- `tests/`: `balance.test.ts` (bot clears must stay in their bands), `meta.test.ts`, `vale.test.ts`.
+- `tests/`: `balance.test.ts` (bot clears must stay in their bands), `dungeon.test.ts` (threat, cages,
+  numbers, tuning), `meta.test.ts`, `vale.test.ts`.
 
 ## Commands
 

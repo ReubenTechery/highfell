@@ -1,15 +1,16 @@
 /**
  * Controls for a run. Phone: left thumb moves, swipe anywhere to dodge, buttons on the right, drag
- * an aimed button to place it, tap a name to heal, swipe through wisps and chains, tap cages.
+ * an aimed button to place it, tap a name to heal, swipe through wisps and chains, tap cages. A touch
+ * that lands on a cage, a chain or a wisp is never taken as the move stick, wherever it is.
  * Keyboard: WASD or arrows, Space dodges, 1 to 4 for the buttons (hold 2 to block as the tank),
- * Z X C heal the tank, you and the DPS, E cuts a chain, Esc pauses.
+ * Z X C heal the tank, you and the DPS, Esc pauses. Chains and wisps are cut with a mouse drag.
  */
 import { dist, distXY } from '../core/math';
 import { AB } from '../content/roles';
 import { S, emit } from '../dungeon/state.js';
-import { bits, fx, killMob, sfx } from '../dungeon/entities.js';
+import { fx, killMob } from '../dungeon/entities.js';
 import { autoTarget, bestCluster, clampRange, doDodge, heroBy, isFoe, mend, useAbility } from '../dungeon/heroes.js';
-import { breakCage, chainEnds, cutChain } from '../dungeon/mobs.js';
+import { chainEnds, cutChain, mashCage as mashEngine } from '../dungeon/mobs.js';
 import { AIM, VIEW, toWorld } from '../dungeon/render.js';
 import { segPointDist, segsCross } from '../dungeon/world.js';
 
@@ -70,13 +71,35 @@ AIM.get = () => (IN.aim && IN.aim.live && S ? { slot: IN.aim.slot, ...aimPoint(I
 
 const localXY = (e: PointerEvent | MouseEvent) => { const r = VIEW.cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
 const inStickZone = (x: number, y: number) => x < VIEW.W * 0.52 && y > VIEW.H * 0.42;
+/** the two straight halves of a chain as drawn (it sags in the middle) */
+function chainHalves(ch: any): [{ x: number; y: number }, { x: number; y: number }, { x: number; y: number }] {
+  const e = chainEnds(ch);
+  return [{ x: e.ax, y: e.ay }, { x: (e.ax + e.bx) / 2, y: (e.ay + e.by) / 2 + 22 }, { x: e.bx, y: e.by }];
+}
+/** a mate's cage under this world point */
+const cageAt = (w: { x: number; y: number }) => S.mobs.find((m: any) => m.alive && m.cage && m.hero !== S.player && distXY(w.x, w.y, m.x, m.y - 50) < 80) || null;
+/** is there a chain or a wisp under this screen point? Those touches are swipes, never the stick */
+function onMechanic(x: number, y: number): boolean {
+  if (!S) return false;
+  const w = toWorld(x, y);
+  for (const m of S.mobs) if (m.alive && m.M.wisp && distXY(w.x, w.y, m.x, m.y - 40) < 70) return true;
+  for (const ch of S.chains) {
+    const [a, mid, b] = chainHalves(ch);
+    if (segPointDist(a.x, a.y, mid.x, mid.y, w.x, w.y) < 60 || segPointDist(mid.x, mid.y, b.x, b.y, w.x, w.y) < 60) return true;
+  }
+  return false;
+}
 
 export function bindInput(layer: HTMLElement, ui: InputUI): void {
   layer.addEventListener('pointerdown', (e) => {
     if (!S || S.over || S.paused) return;
     e.preventDefault();
     const p = localXY(e);
-    if (e.pointerType !== 'mouse' && !IN.stick && inStickZone(p.x, p.y)) {
+    // caged: every touch anywhere is a tap on the bars. A touch on a mate's cage hits it, wherever it is.
+    if (S.player.alive && S.player.st.caged) { mashCage(S.player, ui); return; }
+    const cage = S.player.alive ? cageAt(toWorld(p.x, p.y)) : null;
+    if (cage) { mashCage(cage.hero, ui); return; }
+    if (e.pointerType !== 'mouse' && !IN.stick && inStickZone(p.x, p.y) && !onMechanic(p.x, p.y)) {
       IN.stick = { id: e.pointerId, ox: p.x, oy: p.y, x: p.x, y: p.y };
       try { layer.setPointerCapture(e.pointerId); } catch { /* fine */ }
       ui.stick(IN.stick);
@@ -136,7 +159,6 @@ export function bindInput(layer: HTMLElement, ui: InputUI): void {
       return;
     }
     if (h.role === 'healer' && (c === 'KeyZ' || c === 'KeyX' || c === 'KeyC')) { const r = ({ KeyZ: 'tank', KeyX: 'healer', KeyC: 'dps' } as Record<string, string>)[c]; const t = heroBy(r); if (t) mend(h, t); ui.hintDone('heal'); return; }
-    if (c === 'KeyE') { const ch = S.chains[0]; if (ch) { cutChain(ch, h); ui.hintDone('chain'); } }
   });
   window.addEventListener('keyup', (e) => {
     IN.keys[e.code] = false;
@@ -155,9 +177,8 @@ export function trySlice(a: { x: number; y: number }, b: { x: number; y: number 
     if (segPointDist(p.x, p.y, q.x, q.y, m.x, m.y - 40) < m.r + 26) { killMob(m, S.player); hit = true; S.stats.slices = (S.stats.slices || 0) + 1; emit({ type: 'wisp.sliced', player: true }); }
   }
   for (const ch of S.chains.slice()) {
-    const e = chainEnds(ch);
-    const mid = { x: (e.ax + e.bx) / 2, y: (e.ay + e.by) / 2 + 22 };
-    if (segsCross(p, q, { x: e.ax, y: e.ay }, mid) || segsCross(p, q, mid, { x: e.bx, y: e.by })) { cutChain(ch, S.player); hit = true; }
+    const [ca, mid, cb] = chainHalves(ch);
+    if (segsCross(p, q, ca, mid) || segsCross(p, q, mid, cb)) { cutChain(ch, S.player); hit = true; }
   }
   if (hit) {
     const trail = S.looks && S.looks.has('cosmetic.trail_wisp');
@@ -166,18 +187,17 @@ export function trySlice(a: { x: number; y: number }, b: { x: number; y: number 
   }
   return hit;
 }
+/** a tap on a cage, by you inside it or by you breaking a mate out (h is whoever is in the cage) */
 export function mashCage(h: any, ui: InputUI): void {
-  const c = h.st.caged;
-  if (!c) return;
-  c.hp -= 1; c.flash = 0.1; sfx('cagehit');
-  bits(c.x, c.y - 50, 'shard_bone', 1, 120);
-  if (c.hp <= 0) breakCage(c, true, h);
-  ui.hintDone('cageSelf');
+  if (!h || !h.st.caged) return;
+  mashEngine(h);
+  ui.hintDone(h === S.player ? 'cageSelf' : 'cage');
 }
 export function tapWorld(w: { x: number; y: number }, ui: InputUI): void {
   const h = S.player;
   if (h.st.caged) { mashCage(h, ui); return; }
-  for (const m of S.mobs) if (m.alive && m.cage && distXY(w.x, w.y, m.x, m.y - 50) < 70) { mashCage(m.hero, ui); ui.hintDone('cage'); return; }
+  const cage = cageAt(w);
+  if (cage) { mashCage(cage.hero, ui); return; }
   let best: any = null, bd = 1e9;
   for (const a of S.heroes) { if (!a.alive) continue; const d = distXY(w.x, w.y, a.x, a.y - 40); if (d < 52 && d < bd) { bd = d; best = a; } }
   if (best && h.role === 'healer') { mend(h, best); ui.hintDone('heal'); return; }

@@ -30,7 +30,13 @@ export function mobTick(m, dt) {
   if (m.state === 'idle') { idleTick(m, dt); return; }
   m.fightT += dt;
   if (st.freeze > 0 || st.stun > 0) { m.wind = 0; if (m.cast) interruptCast(m); if (m.act && m.act.k !== 'rally') { m.act = null; m.pose = null; } return; }
+  const prev = m.target;
   m.target = pickTarget(m);
+  if (prev && m.target && m.target !== prev) {
+    if (m.isBoss) bossTurned(m, prev, m.target);
+    // you out-did the tank and it came for you: once a run, say why
+    if (m.target.isPlayer && m.target.role !== 'tank' && prev.role === 'tank' && !S.hints.pulled) { S.hints.pulled = 1; HOOKS.hint('pulled'); }
+  }
   if (!m.target) {
     const n = nearestHeroTo(m.x, m.y);
     if (n && dist(m, n) < 700) { addThreat(m, n, 1); m.target = n; } else return;
@@ -42,11 +48,19 @@ export function mobTick(m, dt) {
     if (m.wild && !was) { fxText(m.x, m.y - (m.M.big ? 150 : 100), 'Wild!', '#FF6B5E', 20, { dur: 1 }); if (!S.hints.wild) { S.hints.wild = 1; HOOKS.hint('wild'); } }
   }
   if (m.M.ai && m.M.ai(m, dt)) return;
+  // a boss's own move (a party-wide hit) can knock its target down mid-frame
+  if (!m.target || !m.target.alive) return;
   if (m.cast) { castTick(m, dt); return; }
   if (m.M.kind === 'caller' && callerTick(m, dt)) return;
   if (m.M.kind === 'brute' && bruteTick(m, dt)) return;
   if (m.M.ranged && archerTick(m, dt)) return;
   meleeTick(m, dt);
+}
+
+/* the boss just turned to someone new: tell the player if it's about them */
+function bossTurned(m, from, to) {
+  if (to.isPlayer && to.role !== 'tank') call('He’s after you! Keep moving', 'alarm', 1.6);
+  else if (from.isPlayer && from.role === 'tank' && from.alive && !from.st.caged) call('He’s off you! Slam him back', 'alarm', 1.6);
 }
 
 function idleTick(m, dt) {
@@ -173,16 +187,22 @@ function wispTick(m, dt) {
   m.flip = Math.cos(a) < 0; m.moving = 0.1; m.walkT += dt * 4;
   if (dist(m, t) < m.r + t.r + 6) {
     const got = hurtHero(t, 85, m, { magic: true, block: false });
-    if (got > 0) { t.st.haunt = 3; fxText(t.x, t.y - 110, 'Haunted', '#C8F5E8', 16); }
+    if (got > 0) { t.st.haunt = 3; if (t.isPlayer) fxText(t.x, t.y - 110, 'Haunted', '#C8F5E8', 16); }
     killMob(m, null);
   }
 }
 
 /* ---------- cages, chains: the swipe and tap mechanics ---------- */
+/* Only the tank is ever caged. Inside, nothing can target him and every mob forgets half of what he did,
+   so the boss turns on someone else until he mashes out (or a mate breaks him out) and Slams it back. */
 export function makeCage(h, boss) {
   const c = makeMob('rattler', h.x, h.y, null);
   Object.assign(c, { cage: true, hp: 10, maxHp: 10, name: 'Bone cage', r: 30, hero: h, life: 6, state: 'fight', ghostProps: true, born: S.t });
-  h.st.caged = c; h.cast = null; h.blocking = false; h.dodgeT = 0;
+  h.st.caged = c; h.cast = null; h.blocking = false; h.dodgeT = 0; h.dash = null;
+  for (const m of S.mobs) {
+    if (m.threat.has(h.id)) m.threat.set(h.id, m.threat.get(h.id) * 0.5);
+    if (m.forced === h) { m.forced = null; m.forcedT = 0; }
+  }
   S.mobs.push(c);
   bits(h.x, h.y - 30, 'shard_bone', 6, 160);
   sfx('cage');
@@ -200,6 +220,14 @@ function cageTick(c, dt) {
     fxText(h.x, h.y - 120, 'Crushed', '#FF6B5E', 22);
   }
 }
+/* one tap on a cage: by the hero inside (mashing) or a mate outside */
+export function mashCage(h) {
+  const c = h && h.st.caged;
+  if (!c || !c.alive) return;
+  c.hp -= 1; c.flash = 0.1; sfx('cagehit');
+  bits(c.x, c.y - 50, 'shard_bone', 1, 120);
+  if (c.hp <= 0) breakCage(c, true, h);
+}
 /* freed: broken from outside or mashed open. by: who did it (a hero or undefined) */
 export function breakCage(c, freed, by) {
   if (!c.alive) return;
@@ -210,6 +238,8 @@ export function breakCage(c, freed, by) {
     fxText(c.x, c.y - 130, 'Free!', '#9BE15D', 24); sfx('cagebreak'); S.stats.cages++;
     const self = !!(c.hero && by === c.hero);
     emit({ type: 'cage.broken', player: !!(by && by.isPlayer), self, secs: S.t - (c.born || S.t) });
+    const h = c.hero;
+    if (h && h.isPlayer && h.alive && S.boss && S.boss.alive && S.boss.target !== h) call('Out! Now Slam him back', 'alarm', 1.6);
   }
 }
 export function makeChain(boss, h) {
@@ -218,7 +248,7 @@ export function makeChain(boss, h) {
   S.chains.push(ch);
   sfx('chain');
   if (!S.hints.chain) { S.hints.chain = 1; HOOKS.hint('chain'); }
-  if (h.isPlayer) call('Cut the chain!', 'alarm', 1.4);
+  call('Cut the chain!', 'alarm', 1.6);
   return ch;
 }
 export function chainEnds(ch) { const b = ch.boss, h = ch.hero; return { ax: b.x + 70, ay: b.y - 120, bx: h.x, by: h.y - 44 }; }
@@ -226,7 +256,7 @@ export function chainTick(ch, dt) {
   const h = ch.hero;
   ch.t += dt; ch.tick -= dt;
   if (!h.alive || !ch.boss.alive || ch.t >= ch.max) { cutChain(ch, false); return; }
-  if (ch.tick <= 0) { ch.tick = 0.5; hurtHero(h, 18, ch.boss, { magic: true, pierce: true, block: false, dodge: false, quiet: true }); fxText(h.x, h.y - 64, '-18', '#C8F5E8', 15, { dur: 0.6 }); }
+  if (ch.tick <= 0) { ch.tick = 0.5; hurtHero(h, 18, ch.boss, { magic: true, pierce: true, block: false, dodge: false, numCol: '#C8F5E8', numSize: 15, numDur: 0.6 }); }
 }
 export function cutChain(ch, byWho) {
   if (ch.dead) return;

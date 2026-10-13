@@ -11,6 +11,7 @@ import type { Rar, RoleId, SlotId } from '../content/types';
 import { gearId } from '../content/gear';
 import { takeTrait, type Drop, type RunLoot, type Tell } from '../meta/loot';
 import { activeHero, heroById, roleOf } from '../meta/profile';
+import { waiting } from '../meta/gear';
 import type { App } from './app';
 import { actions, esc, fmtN, fmtRate, fmtT, reducedMotion, wait } from './dom';
 import { colourOf, iconOf, nameOf, spriteURL } from './art';
@@ -126,13 +127,15 @@ export class Reveal {
       if (d.offerTrait) { const t = traitDef(d.role as RoleId, d.offerTrait)!; sub = `Trait offer · ${esc(t.name)}`; note = esc(t.desc); }
       else {
         sub = `${r.name} ${slotName}${d.source === 'spare' ? ` · shared` : ''}`;
-        note = d.source === 'spare' ? `Every ${ROLES[d.role as RoleId].title.toLowerCase()} hero gets it` : d.prevRar !== undefined && d.prevRar !== d.rar ? `Up from ${RARITY[d.prevRar].name}` : '';
+        note = d.source === 'spare' ? `Every ${ROLES[d.role as RoleId].title.toLowerCase()} hero can put it on` : d.prevRar !== undefined && d.prevRar !== d.rar ? `Better than your ${RARITY[d.prevRar].name}` : '';
         if (d.trait) note += `${note ? '. ' : ''}Trait: ${esc(traitDef(d.role as RoleId, d.trait)?.name || '')}`;
+        if (d.toEquip) note += `${note ? '. ' : ''}Put it on in Gear`;
       }
     } else {
       const boss = BARROW.bosses.find((b) => b.id === d.boss)?.name || '';
       sub = `${fmtRate(d.rate)} · ${esc(boss)} KC ${fmtN(d.kc || 0)}`;
       note = d.dupe ? `Duplicate: +${d.marks} ${esc(BARROW.marksName)}` : c ? (c.kind === 'pet' ? 'Waiting by the fire' : c.kind === 'mount' ? 'In the stall at home' : c.kind === 'cosmetic' ? 'A new look' : 'On the mantel') : it?.setId ? `${esc(it.name.split(' ')[0])} set piece` : it?.effectDesc ? esc(it.effectDesc) : '';
+      if (d.toEquip && !d.dupe) note += `${note ? '. ' : ''}Put it on in Gear`;
     }
     const stamp = table ? (d.dupe ? '<span class="stamp dupe">Dupe</span>' : '<span class="stamp">New</span>') : d.offerTrait ? '' : '<span class="stamp" style="background: var(--green)">Up</span>';
     return `<button type="button" class="lc ${cls}" data-act="flip" data-i="${i}" aria-label="Card ${i + 1}">
@@ -196,6 +199,11 @@ export class Reveal {
       ach.hidden = false;
       ach.innerHTML = `<h3>Achievements</h3>${extra.unlocked.map((id) => { const a = ACHIEVEMENTS[id]; return `<div class="ach"><span class="medal ${a.tier}" aria-hidden="true">${a.points}</span><div><div class="n">${esc(a.name)}</div><div class="rw">${esc(a.reward.title ? 'Title: ' + (TITLES[a.reward.title]?.text || '') : a.reward.text)}</div></div><div class="pts">${a.points}<small>points</small></div></div>`; }).join('')}`;
     }
+    // new gear waits for you: the Gear button says how much
+    const h = heroById(p, extra.hero);
+    const up = h && !extra.preview ? waiting(p, h).length : 0;
+    const gb = this.root.querySelector<HTMLElement>('#rv-actions [data-act="gear"]');
+    if (gb && up) { gb.classList.add('gold', 'has-up'); gb.innerHTML = `Put on new gear<i class="badge" aria-hidden="true">${up}</i>`; }
     $('rv-actions', this.root).hidden = false;
     (this.root.querySelector('#rv-actions .btn') as HTMLElement | null)?.focus({ preventScroll: true });
   }
@@ -223,11 +231,11 @@ export class Reveal {
     const p = this.app.p, h = activeHero(p), role: RoleId = h ? roleOf(h) : 'tank';
     const kcK = (p.bosses['barrow.keeper']?.kc || 0) + 1, kcN = (p.bosses['barrow.knight']?.kc || 0) + 1;
     const drops: Drop[] = [
-      { id: gearId(role, 'helm', 2), source: 'regular', role, slot: 'helm', rar: 2, prevRar: 1, isNew: true, dupe: false, marks: 0 },
+      { id: gearId(role, 'helm', 2), source: 'regular', role, slot: 'helm', rar: 2, prevRar: 1, isNew: true, dupe: false, marks: 0, toEquip: true },
       { id: gearId(role === 'tank' ? 'healer' : 'tank', 'chest', 1), source: 'spare', role: role === 'tank' ? 'healer' : 'tank', slot: 'chest', rar: 1, prevRar: 0, isNew: true, dupe: false, marks: 0 },
     ];
     const set = { tank: 'barrowguard', healer: 'candlewake', dps: 'rimebone' }[role];
-    if (tell !== 'normal') drops.push({ id: `${set}.helm`, source: 'table', boss: 'keeper', rate: 1 / 50, kc: kcK, role, isNew: true, dupe: false, marks: 0 });
+    if (tell !== 'normal') drops.push({ id: `${set}.helm`, source: 'table', boss: 'keeper', rate: 1 / 50, kc: kcK, role, isNew: true, dupe: false, marks: 0, toEquip: true });
     if (tell === 'unique') drops.push({ id: 'trophy.rattlebones_plume', source: 'table', boss: 'knight', rate: 1 / 50, kc: kcN, role, isNew: false, dupe: true, marks: 3 });
     if (tell === 'pet') drops.push({ id: 'pet.pint_gravekeeper', source: 'table', boss: 'keeper', rate: 1 / 5000, kc: kcK, role, isNew: true, dupe: false, marks: 0 });
     const loot: RunLoot = { dungeon: 'barrow', role, hero: h?.id || '', drops, tell, kc: { knight: kcN, keeper: kcK }, marks: 1 + drops.reduce((a, d) => a + d.marks, 0), clears: (p.dungeons.barrow?.clears || 0) + 1, time: 247, pb: p.dungeons.barrow?.pb ?? 247, newPb: false, firstClear: false };

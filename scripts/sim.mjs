@@ -50,7 +50,7 @@ const results = await new Promise((done, fail) => {
   }
 });
 
-const mmss = (t) => (t == null ? '  -  ' : `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}`);
+const mmss = (t) => { if (t == null) return '  -  '; const r = Math.round(t); return `${Math.floor(r / 60)}:${String(r % 60).padStart(2, '0')}`; };
 const avg = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
 const pct = (a, q) => { const b = [...a].sort((x, y) => x - y); return b[Math.min(b.length - 1, Math.floor(q * b.length))]; };
 

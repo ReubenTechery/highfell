@@ -4,7 +4,7 @@ import { MEND } from '../content/roles';
 import { S } from './state.js';
 import { fx } from './entities.js';
 import { bestCluster, doDodge, heroBy, isFoe, mend, useAbility } from './heroes.js';
-import { chainEnds, cutChain } from './mobs.js';
+import { chainEnds, cutChain, mashCage } from './mobs.js';
 import { canStand, freeSpot, navPoint } from './world.js';
 
 /* ---------- bots: the two seats you are not in (in the real game, your mates) ---------- */
@@ -328,6 +328,8 @@ export function botTick(h, dt) {
   B.think -= dt;
   if (B.think > 0) return;
   B.think = 0.1;
+  // caged: mash your way out, about five taps a second
+  if (h.st.caged) { h.intent.mx = h.intent.my = 0; if (rng() < 0.5 * B.skill / 0.93) mashCage(h); return; }
   botMechanics(h);
   if (h.role === 'healer' && S.inCombat) healerActions(h);
   let goal = S.inCombat ? combatGoal(h) : idleGoal(h);

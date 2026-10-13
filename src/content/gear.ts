@@ -51,7 +51,7 @@ const NAMES: Record<RoleId, Record<SlotId, [string, string, string, string]>> = 
 export const TRAITS: Record<RoleId, TraitDef[]> = {
   tank: [
     { id: 'wide', name: 'Wide Swings', desc: 'Your swings hit everything in front of you at full damage.' },
-    { id: 'ringing', name: 'Ringing Blow', desc: 'Charge hits twice and taunts what it hits.' },
+    { id: 'ringing', name: 'Ringing Blow', desc: 'Charge hits twice, and everything it hits turns on you.' },
     { id: 'headsman', name: 'Headsman', desc: 'Hits on stunned mobs always crit.' },
   ],
   healer: [

@@ -24,7 +24,7 @@ export const BARROW_ACHIEVEMENTS: AchievementDef[] = [
     reward: { collectible: 'cosmetic.crit_ice', text: 'Ice-burst crits' }, live: (e, c) => e.type === 'crit' && e.player && c.role === 'dps' && e.amount >= 1500 },
   { id: 'barrow.armour', dungeon: D, tier: 'silver', points: POINTS.silver, name: 'Armour On', how: 'Kill Sir Rattlebones while his rally armour is still up.',
     reward: { title: 'title.knightbreaker', text: 'Title: Knight-breaker' }, live: (e) => e.type === 'boss.killed' && e.boss === 'knight' && e.armorUp },
-  { id: 'barrow.jailbreak', dungeon: D, tier: 'silver', points: POINTS.silver, name: 'Jailbreak', how: 'Mash your way out of a Gravekeeper cage in under 1.5 seconds.',
+  { id: 'barrow.jailbreak', dungeon: D, tier: 'silver', points: POINTS.silver, name: 'Jailbreak', how: 'As the tank, mash your way out of a Gravekeeper cage in under 1.5 seconds.',
     reward: { collectible: 'trophy.bent_bars', text: 'Trophy: Bent Bars' }, live: (e) => e.type === 'cage.broken' && e.player && e.self && e.secs < 1.5 },
   { id: 'barrow.sprint', dungeon: D, tier: 'gold', points: POINTS.gold, name: 'Gravedigger’s Sprint', how: 'Clear in under 3 minutes 20.',
     reward: { title: 'title.quick', text: 'Title: the Quick' }, run: (r) => r.time < 200 },

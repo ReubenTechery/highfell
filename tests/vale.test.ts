@@ -6,7 +6,8 @@ import { COLLECTIBLES, checkContent } from '../src/content';
 import { NODE_BANK, PLACES, RECIPES, SHIMMER } from '../src/content/vale';
 import { freshProfile, migrate, PROFILE_VERSION } from '../src/meta/profile';
 import { Achiever } from '../src/meta/achievements';
-import { beginHarvest, brew, canBrew, completeErrand, dayOf, drinkForRun, endHarvest, ensureStarter, errandAt, errandShort, placeState, rankOf, rideMount, skillRank } from '../src/meta/vale';
+import { BOTTLE_XP, CUT_XP, HARVEST_XP, LAP_XP, SHIMMER_XP, beginHarvest, brew, canBrew, completeErrand, cutXp, dayOf, drinkForRun, endHarvest, errandAt, errandShort, finishBrew, lapXp, placeState, rankOf, rideMount, rideSecs, skillRank, startBrew } from '../src/meta/vale';
+import { FOOT_SECS } from '../src/content/vale';
 import { simRun } from '../src/sim/run';
 import { newGame } from '../src/dungeon/game.js';
 import { S } from '../src/dungeon/state.js';
@@ -49,8 +50,13 @@ test('vale: a harvest rolls at the start, Perfects add at the end, shimmer drops
   const h = beginHarvest(p, 'bramblewick', 'moonpetal', makeRng(5), T0)!;
   assert.ok(h.base >= 1 && h.base <= 2);
   assert.equal(p.vale.satchel.moonpetal, h.base, 'the roll is in the satchel already');
+  // every cut pays XP the moment it lands, and finishing pays a little more
+  const before = p.vale.xp.gather || 0;
+  for (let i = 0; i < 3; i++) { const x = cutXp(p, h, 'perfect'); assert.equal(x.xp, CUT_XP.perfect + (h.shimmer ? SHIMMER_XP : 0)); assert.equal(x.total, p.vale.xp.gather); }
   const end = endHarvest(p, h, 3);
   assert.equal(end.gained, h.base + 3);
+  assert.equal(end.xp, 3 * (CUT_XP.perfect + (h.shimmer ? SHIMMER_XP : 0)) + HARVEST_XP);
+  assert.equal(p.vale.xp.gather - before, end.xp);
   assert.equal(p.vale.satchel.moonpetal, h.base + 3);
   assert.equal(p.counters['vale.bramblewick.moonpetal'], 1);
   assert.equal(p.counters['vale.perfects'], 3);
@@ -85,6 +91,7 @@ test('vale: errands go in a fixed order, deliveries need the goods, each one pay
     const now = T0 + d * DAY;
     const e = errandAt(p, 'bramblewick', now)!;
     assert.ok(e, `day ${d} has an errand`);
+    if (d === 0) assert.equal(e.kind, 'herd', 'the first errand is always the goats');
     seen.add(e.id);
     if (e.kind === 'deliver') {
       assert.ok(errandShort(p, e));
@@ -104,8 +111,18 @@ test('vale: brewing uses the recipe, a Perfect stir adds a bottle, ranks unlock 
   p.vale.satchel = { moonpetal: 9, glowcap: 8, brambleberry: 2, dew: 2 };
   assert.equal(canBrew(p, 'tonic'), 2);
   assert.equal(canBrew(p, 'glow'), 0, 'Glowcap Draught needs Brewing rank 2');
+  // the ingredients go in when the stir starts; each lap pays; leaving mid-stir still bottles it
+  const run = startBrew(p, 'tonic')!;
+  assert.equal(p.vale.satchel.moonpetal, 5, 'in the pot');
+  assert.equal(lapXp(p, run, 'perfect').xp, LAP_XP.perfect);
+  const left = finishBrew(p, run, 'rough');
+  assert.equal(left.bottles, RECIPES.tonic.makes);
+  assert.equal(left.xp, LAP_XP.perfect + BOTTLE_XP);
+  assert.equal(p.vale.xp.brew, left.xp);
+  p.vale.satchel.moonpetal = 9;
   const a = brew(p, 'tonic', 'perfect')!;
   assert.equal(a.bottles, RECIPES.tonic.makes + 1);
+  assert.equal(a.xp, 3 * LAP_XP.perfect + BOTTLE_XP);
   assert.equal(p.vale.satchel.moonpetal, 5);
   assert.equal(brew(p, 'tonic', 'rough')!.bottles, RECIPES.tonic.makes);
   assert.equal(brew(p, 'tonic', 'good'), null, 'out of moonpetals');
@@ -123,12 +140,21 @@ test('vale: brewing uses the recipe, a Perfect stir adds a bottle, ranks unlock 
   assert.equal(rankOf(0), 1); assert.equal(rankOf(2220), 10); assert.equal(rankOf(99999), 10);
 });
 
-test('vale: everyone gets a goat, the stall decides what you ride, achievements count', () => {
+test('vale: you start on foot, the goats errand gives you a goat, a mount rides quicker, achievements count', () => {
   const p = freshProfile(T0);
-  assert.equal(ensureStarter(p, T0), true);
-  assert.equal(ensureStarter(p, T0), false);
-  assert.equal(p.hearth.spots['mount.stall'], 'mount.goat');
+  assert.equal(rideMount(p), null, 'nobody is given a mount for nothing');
+  assert.equal(rideSecs(null), FOOT_SECS);
+  const e = errandAt(p, 'bramblewick', T0)!;
+  assert.equal(e.gives, 'mount.goat');
+  const done = completeErrand(p, 'bramblewick', makeRng(1), T0)!;
+  assert.equal(done.gift, 'mount.goat');
+  assert.equal(p.hearth.spots['mount.stall'], 'mount.goat', 'she moves into the stall');
   assert.equal(rideMount(p), 'mount.goat');
+  assert.ok(rideSecs('mount.goat') < FOOT_SECS, 'and gets you there quicker');
+  // the goats come round again later, but the goat is only given once
+  p.vale.places.bramblewick.errands.next = 8; p.vale.places.bramblewick.errands.n = 1;
+  assert.equal(errandAt(p, 'bramblewick', T0)!.id, 'goats');
+  assert.equal(completeErrand(p, 'bramblewick', makeRng(2), T0)!.gift, null);
   p.collection['mount.gravehound'] = { n: 1, kc: 1, at: T0 };
   p.hearth.spots['mount.stall'] = 'mount.gravehound';
   assert.equal(rideMount(p), 'mount.gravehound');

@@ -6,7 +6,7 @@ import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, SETS, checkContent } from 
 import { BARROW } from '../src/content/barrow';
 import { activeHero, freshProfile, migrate, nameProblem, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
 import { DUPE_MARKS, resolveRun, rollTable } from '../src/meta/loot';
-import { equip, loadoutFor, newHero, plainLoadout, worn } from '../src/meta/gear';
+import { bestRegular, buyTrait, equip, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, worn } from '../src/meta/gear';
 import { FOUNDERS, MAX_HEROES, canMake, cleanName } from '../src/content/folk';
 import { SLOT_IDS } from '../src/content/gear';
 import { INGREDIENTS, RECIPES } from '../src/content/vale';
@@ -104,17 +104,20 @@ test('heroes: race and class are fixed, names are yours, up to six, the last one
   assert.equal(removeHero(p, a.id), false, 'the last hero stays');
 });
 
-test('heroes: a new hero starts in shared gear and wears the uniques the roster owns', () => {
+test('heroes: a new hero starts in shared gear, and the uniques the roster owns wait to be put on', () => {
   const p = freshProfile();
   p.warband.healer.helm = { rar: 2 };
   p.collection['candlewake.chest'] = { n: 1, kc: 3, at: 1 };
   p.collection['barrowguard.helm'] = { n: 1, kc: 3, at: 1 };
   const h = newHero(p, { name: 'Annis Brightwell', race: 'human', cls: 'cleric' })!;
-  assert.equal(h.regular.helm.rar, 2);
+  assert.equal(h.regular.helm.rar, 2, 'starting kit: the shared gear');
   assert.equal(h.regular.weapon.rar, 0);
-  assert.equal(h.equip.chest, 'candlewake.chest');
-  assert.equal(h.equip.helm, null, 'a tank set piece does not go on a healer');
+  assert.equal(h.equip.chest, null, 'never put on for you');
+  assert.deepEqual(h.fresh, ['candlewake.chest'], 'a tank set piece does not wait for a healer');
+  assert.equal(waitingFor(p, h, 'chest')?.id, 'candlewake.chest');
+  assert.ok(putOn(p, h, 'chest'));
   assert.equal(worn(p, h).chest.def.id, 'candlewake.chest');
+  assert.equal(waiting(p, h).length, 0);
 });
 
 test('loot: each line rolls at its own rate and role locks hold', () => {
@@ -154,7 +157,9 @@ test('loot: a clear counts kills, gives marks, a ladder piece and a spare piece'
   assert.equal(r.pb, 290);
   const reg = r.drops.find((d) => d.source === 'regular')!;
   assert.ok(reg && reg.rar! >= 1);
-  assert.equal(h.regular[reg.slot!].rar, reg.rar);
+  assert.ok(reg.toEquip);
+  assert.equal(h.regular[reg.slot!].rar, 0, 'the new piece is not put on for you');
+  assert.equal(h.bag[reg.slot!]!.rar, reg.rar, 'it waits in the bag');
   assert.equal(h.clears, 1);
   assert.equal(r.hero, h.id);
   const spare = r.drops.find((d) => d.source === 'spare')!;
@@ -178,7 +183,7 @@ test('loot: the ladder reaches full Epic in about ten clears, then offers traits
     const { p, h } = withHero('tank');
     const rng = makeRng(seed);
     let n = 0;
-    while (Object.values(h.regular).some((s) => s.rar < 3)) { resolveRun(p, BARROW, clear(h), rng); n++; }
+    while (SLOT_IDS.some((s) => bestRegular(h, s).rar < 3)) { resolveRun(p, BARROW, clear(h), rng); n++; if (seed % 2) for (const s of SLOT_IDS) putOn(p, h, s); }
     runs.push(n);
     const r = resolveRun(p, BARROW, clear(h), rng);
     assert.ok(r.drops.find((d) => d.source === 'regular')!.offerTrait);
@@ -194,17 +199,18 @@ test('loot: shared gear lifts every hero of a role, now and later, up to Rare', 
   for (let i = 0; i < 40; i++) resolveRun(p, BARROW, clear(h), rng);
   for (const s of SLOT_IDS) {
     assert.equal(p.warband.tank[s].rar, WARBAND_CAP, 'your own ladder raises your role\'s shared gear');
-    assert.equal(alt.regular[s].rar, WARBAND_CAP, 'and lifts your alts of that role');
-    assert.equal(h.regular[s].rar, 3, 'Epic stays on the hero who earned it');
+    assert.equal(bestRegular(alt, s).rar, WARBAND_CAP, 'and your alts of that role can put it on');
+    assert.equal(alt.regular[s].rar, 0, 'but nobody puts it on for them');
+    assert.equal(bestRegular(h, s).rar, 3, 'Epic stays with the hero who earned it');
     assert.equal(p.warband.healer[s].rar, WARBAND_CAP);
   }
   const later = newHero(p, { name: 'Edda Thatcher', race: 'human', cls: 'cleric' })!;
-  assert.ok(SLOT_IDS.every((s) => later.regular[s].rar === WARBAND_CAP), 'a healer made later starts at Rare');
+  assert.ok(SLOT_IDS.every((s) => later.regular[s].rar === WARBAND_CAP), 'a healer made later starts in Rare');
   assert.equal(alt.clears, 0);
   assert.equal(h.clears, 40);
 });
 
-test('loot: uniques are worn on arrival, duplicates turn into marks', () => {
+test('loot: uniques wait to be put on, duplicates turn into marks', () => {
   const { p, h } = withHero('healer');
   let got = 0, dupes = 0;
   const rng = makeRng(9);
@@ -215,8 +221,53 @@ test('loot: uniques are worn on arrival, duplicates turn into marks', () => {
   assert.ok(got >= 3, 'expected some Candlewake pieces in 400 clears');
   assert.ok(dupes > 0);
   const w = worn(p, h);
-  if (p.collection['candlewake.chest']) assert.equal(w.chest.def.id, 'candlewake.chest');
+  assert.ok(Object.values(w).every((x) => !x.unique), 'nothing goes on by itself');
+  if (p.collection['candlewake.chest']) { assert.ok(h.fresh.includes('candlewake.chest')); putOn(p, h, 'chest'); assert.equal(worn(p, h).chest.def.id, 'candlewake.chest'); }
   assert.ok(p.dungeons.barrow.marks > 400);
+});
+
+test('gear: nothing goes on by itself, and putting it on is yours to do', () => {
+  const { p, h } = withHero('dps');
+  const alt = newHero(p, { name: 'Wren Hollowell', race: 'elf', cls: 'mage' })!;
+  resolveRun(p, BARROW, clear(h), makeRng(5));
+  const up = waiting(p, h);
+  assert.equal(up.length, 1, 'one ladder piece waits');
+  const before = loadoutFor(p, h).score;
+  const w = putOn(p, h, up[0].slot)!;
+  assert.equal(w.kind, 'regular');
+  assert.ok(loadoutFor(p, h).score > before, 'and it counts once it is on');
+  assert.equal(h.bag[up[0].slot], null);
+  assert.equal(putOn(p, h, up[0].slot), null, 'nothing left to put on');
+  // the same piece raised the shared floor: the alt can put it on too
+  assert.equal(waiting(p, alt).length, 1);
+  // a unique arrives for every hero of its role and glows until they look
+  p.collection['rimebone.helm'] = { n: 1, kc: 1, at: 1 };
+  h.fresh.push('rimebone.helm');
+  assert.equal(waitingFor(p, h, 'helm')?.kind, 'unique');
+  assert.ok(seenSlot(h, 'helm'));
+  assert.equal(waitingFor(p, h, 'helm'), null, 'looked at: no more glow');
+  assert.ok(equip(p, h, 'helm', 'rimebone.helm'), 'still yours to wear');
+  // a bag piece under a unique waits quietly for when you go back to regular gear
+  h.bag.helm = { rar: 3 };
+  assert.equal(waitingFor(p, h, 'helm'), null);
+  equip(p, h, 'helm', null);
+  assert.equal(waitingFor(p, h, 'helm')?.kind, 'regular');
+  // an Epic weapon in the bag takes trait swaps and offers even before it is on
+  h.bag.weapon = { rar: 3, trait: 'splinter' }; p.dungeons.barrow.marks = 10;
+  assert.ok(buyTrait(p, h, 'barrow', 'quickfrost'));
+  assert.equal(h.bag.weapon!.trait, 'quickfrost');
+});
+
+test('profile: a v4 save keeps what everyone wears, with empty bags', () => {
+  const v4 = { v: 4, rev: 2, roster: [{ id: 'a', name: 'Hollis Coalbeard', race: 'dwarf', cls: 'warrior', regular: { weapon: { rar: 3, trait: 'wide' }, helm: { rar: 2 } }, equip: { chest: 'barrowguard.chest' } }], collection: { 'barrowguard.chest': { n: 1, kc: 3, at: 1 } } };
+  const p = migrate(v4);
+  assert.equal(p.v, PROFILE_VERSION);
+  const h = p.roster[0];
+  assert.equal(h.regular.weapon.trait, 'wide');
+  assert.equal(h.regular.helm.rar, 2);
+  assert.equal(h.equip.chest, 'barrowguard.chest');
+  assert.ok(SLOT_IDS.every((s) => h.bag[s] === null));
+  assert.deepEqual(h.fresh, []);
 });
 
 test('gear: power runs 1.00 at Common to 1.45 at Epic, sets add bonuses', () => {
@@ -282,7 +333,7 @@ test('art: every icon and sprite the content names exists', async () => {
     if (c.sprite && !sprites[c.sprite]) missing.push('sprite ' + c.sprite + ' for ' + c.id);
   }
   for (const n of ['lantern', 'lantern_gold', 'lantern_out', 'pet_keeper', 'pet_keeper_reach', 'fireplace', 'fire_a', 'fire_b', 'rug', 'stall']) if (!sprites[n]) missing.push('sprite ' + n);
-  for (const n of ['npc_gnome', 'cauldron', 'burrow', 'burrow_red', 'windmill', 'windmill_sails', 'fence', 'cabbages', 'node_moonpetal', 'node_moonpetal_shim', 'node_glowcap', 'node_bramble', 'goggles', 'crow', 'spark', 'kettle_walk', 'pet_rootling_calm']) if (!sprites[n]) missing.push('sprite ' + n);
+  for (const n of ['npc_gnome', 'cauldron', 'burrow', 'burrow_red', 'windmill', 'windmill_sails', 'fence', 'cabbages', 'node_moonpetal', 'node_moonpetal_shim', 'node_glowcap', 'node_bramble', 'goggles', 'crow', 'spark', 'kettle_walk', 'pet_rootling_calm', 'goat']) if (!sprites[n]) missing.push('sprite ' + n);
   for (const x of [...Object.values(INGREDIENTS), ...Object.values(RECIPES)]) if (!tiles[x.icon]) missing.push('icon ' + x.icon + ' for ' + x.id);
   for (const n of ['s_gather', 's_brew']) if (!tiles[n]) missing.push('icon ' + n);
   for (const c of Object.values(COLLECTIBLES)) if (c.kind === 'mount' && !c.saddle) missing.push('saddle for ' + c.id);

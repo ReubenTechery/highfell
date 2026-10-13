@@ -40,11 +40,14 @@ export const VALE_MAP: MapPlace[] = [
   { id: 'emberdeep', name: 'Emberdeep', kind: 'soon', x: 740, y: 300, blurb: 'The dwarves’ forges, burning day and night just in case. Coming later.' },
 ];
 
+/** Seconds a ride out takes on foot. A mount says how long it takes on its back (`ride`). */
+export const FOOT_SECS = 5;
+
 /** Skill ranks: the XP each rank needs, rank 1 to 10. */
 export const RANK_XP = [0, 60, 150, 280, 450, 670, 950, 1300, 1720, 2220];
 export const SKILLS: Record<string, { name: string; blurb: string }> = {
-  gather: { name: 'Gathering', blurb: 'Every Perfect counts. Ranks 4, 7 and 10 add one to every harvest.' },
-  brew: { name: 'Brewing', blurb: 'Rank 2 learns Glowcap Draught, rank 3 Starlight Elixir.' },
+  gather: { name: 'Gathering', blurb: 'Every cut gives XP, a Perfect most. Ranks 4, 7 and 10 add one to every harvest.' },
+  brew: { name: 'Brewing', blurb: 'Every lap of the stir gives XP. Rank 2 learns Glowcap Draught, rank 3 Starlight Elixir.' },
 };
 
 /** Nodes regrow overnight and bank up to three days, so missing a day costs nothing. */

@@ -113,10 +113,11 @@ export function keeperTick(m, dt) {
   const P = m.phase;
   if (ab.smash <= 0) { ab.smash = P === 3 ? 12 : P === 2 ? 15 : 13; return startSmash(m); }
   if (P === 3 && ab.burrow <= 0) { ab.burrow = 16; return startBurrow(m); }
+  // only the tank is ever caged: the boss turns on someone else until he's out and Slams it back
   if (P === 3 && ab.cage <= 0) {
     ab.cage = 18;
-    const v = randomHero(true);
-    if (v && v.role !== 'tank') { makeCage(v, m); m.act = { k: 'gesture', t: 0, dur: 0.7 }; m.pose = 'smash'; return true; }
+    const v = S.heroes.find((h) => h.role === 'tank' && h.alive && !h.st.caged && !h.st.air);
+    if (v) { makeCage(v, m); m.act = { k: 'gesture', t: 0, dur: 0.7 }; m.pose = 'smash'; return true; }
   }
   if (P === 2 && ab.wisps <= 0) {
     ab.wisps = 7;

@@ -222,7 +222,6 @@ const SHELL = `
       <div class="pad" id="pad" hidden></div>
       <div class="abar" id="abar"></div>
     </div>
-    <button type="button" class="cutbtn" id="cutbtn" hidden>Cut the chain</button>
   </div>
   <div class="hurt" id="hurt"></div>
   <section class="overlay" id="ov-msg" hidden>

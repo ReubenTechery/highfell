@@ -1,19 +1,22 @@
 /**
  * The close-ups: a gathering spot seen up close, one gesture at a time, three goes a harvest. Snip a
  * stem on the dotted line, pluck a glowcap at its brightest. Each Perfect puts one more in your
- * satchel. If a pet dropped, the plant gives it away before you finish: the gathering walkout.
+ * satchel, and every cut pays Gathering XP the moment it lands (the bar at the foot fills as you go).
+ * If a pet dropped, the plant gives it away before you finish: the gathering walkout.
  *
  * Everything is drawn in the house style (one black line, flat colour) and animated by hand, so a
  * close-up is one SVG and a requestAnimationFrame loop. Keys work too: Space snips, 1 to 3 pluck.
  */
 import type { NodeDef } from '../content/types';
+import type { Grade, XpGain } from '../meta/vale';
 import { esc, GLYPH, reducedMotion } from './dom';
 import { placeSprite } from './art';
 import { SFX } from './sound';
+import { XpBar } from './xpbar';
 
-export interface ToyRun { node: NodeDef; shimmer: boolean; pet: string | null }
+/** onGrade pays the XP for a cut as it lands; xp is your Gathering XP when the close-up opens */
+export interface ToyRun { node: NodeDef; shimmer: boolean; pet: string | null; xp: number; onGrade?: (g: Grade) => XpGain | null }
 export interface ToyResult { perfects: number; goods: number; roughs: number }
-type Grade = 'perfect' | 'good' | 'rough' | 'ouch';
 
 const K = '#1E1A1A';
 const ink = (fill: string, w = 4) => `fill: ${fill}; stroke: ${K}; stroke-width: ${w}; stroke-linejoin: round; stroke-linecap: round`;
@@ -51,12 +54,14 @@ abstract class Toy {
   protected step = 0;
   protected readonly quick = reducedMotion();
   private keyFn = (e: KeyboardEvent) => this.onKey(e);
+  private bar: XpBar;
 
   constructor(protected host: HTMLElement, protected run: ToyRun, private resolve: (r: ToyResult) => void) {
     this.el = document.createElement('div');
     this.el.className = `toy ${run.shimmer ? 'shimmer' : ''}`;
     this.el.setAttribute('role', 'dialog');
     this.el.setAttribute('aria-label', `${run.node.name}, up close`);
+    this.bar = new XpBar(this.el, 'gather', 's_gather', run.xp);
   }
   abstract hint(): string;
   abstract scene(): string;
@@ -69,8 +74,9 @@ abstract class Toy {
         <button type="button" class="icon-btn toy-x" aria-label="Leave the close-up">${GLYPH.close}</button></div>
       <svg class="toy-stage" viewBox="0 0 400 560" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${this.backdrop()}${this.scene()}${this.basket()}<g class="fxl"></g></svg>
       <p class="toy-hint">${esc(this.hint())}</p>
-      <div class="toy-pips" aria-hidden="true"><i></i><i></i><i></i></div>`;
+      <div class="toy-pips" aria-hidden="true"><i></i><i></i><i></i></div>${this.bar.html()}`;
     this.host.appendChild(this.el);
+    this.bar.bind();
     this.svg = this.el.querySelector<SVGSVGElement>('svg.toy-stage')!;
     this.fx = this.svg.querySelector('.fxl') as SVGGElement;
     this.el.querySelector('.toy-x')!.addEventListener('click', () => this.finish(true));
@@ -115,11 +121,14 @@ abstract class Toy {
     this.float(GRADE_WORD[g], x, y - 20, GRADE_COL[g], g === 'perfect' ? 34 : 26);
     if (g === 'perfect') SFX.play('perfect', 0.6); else if (g === 'ouch') SFX.play('ouch');
     if (this.run.shimmer) { this.float('+ Starlight Dew', x, y + 14, '#BDE8FF', 18); SFX.play('dew', 0.7); }
+    // the XP for this cut, right now
+    const xp = this.run.onGrade?.(g);
+    if (xp) { this.float(`+${xp.xp} XP`, x, y + (this.run.shimmer ? 46 : 16), '#9BE15D', 20, 'xp'); setTimeout(() => this.bar.gain(xp), this.quick ? 0 : 260); }
   }
-  protected float(text: string, x: number, y: number, col: string, size: number): void {
+  protected float(text: string, x: number, y: number, col: string, size: number, cls = ''): void {
     const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     t.setAttribute('x', String(x)); t.setAttribute('y', String(y));
-    t.setAttribute('class', 'toy-word');
+    t.setAttribute('class', `toy-word ${cls}`);
     t.setAttribute('style', `fill: ${col}; font-size: ${size}px`);
     t.textContent = text;
     this.fx.appendChild(t);

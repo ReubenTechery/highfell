@@ -5,7 +5,10 @@
  * Heroes work like alts: each is one race and one class, fixed when made, with its own gear and
  * title. Everything else is shared by the whole roster: the collection (so a unique you own can be
  * worn by any hero of its role), kill counts, Marks, achievements and the hearth. Warband gear is a
- * floor per role: spare pieces from your clears raise it, and every hero of that role wears at least it.
+ * floor per role: spare pieces from your clears raise it, and every hero of that role can put it on.
+ *
+ * Nothing is ever put on for you. A new piece waits in the hero's bag (regular gear) or in their list
+ * of fresh uniques until you put it on yourself in Gear.
  *
  * Changing its shape: bump PROFILE_VERSION and add a step to MIGRATIONS that turns the previous
  * version into the new one. Old saves are upgraded on load; nothing is ever thrown away silently.
@@ -15,7 +18,7 @@ import { ORDER } from '../content/roles';
 import { SLOT_IDS } from '../content/gear';
 import { CLASSES, FOUNDERS, MAX_HEROES, canMake, cleanName, type ClassId, type RaceId } from '../content/folk';
 
-export const PROFILE_VERSION = 4;
+export const PROFILE_VERSION = 5;
 /** Shared gear climbs to Rare. Epic is earned on the hero. */
 export const WARBAND_CAP: Rar = 2;
 
@@ -28,10 +31,14 @@ export interface Hero {
   cls: ClassId | string;
   createdAt: number;
   playedAt: number;
-  /** the best regular piece per slot: the Common to Epic ladder */
+  /** the regular piece worn in each slot: the Common to Epic ladder */
   regular: Record<SlotId, RegularSlot>;
+  /** a better regular piece you have got but not put on yet, per slot (null when there is none) */
+  bag: Record<SlotId, RegularSlot | null>;
   /** a unique item id worn in the slot, or null to wear the regular piece */
   equip: Record<SlotId, string | null>;
+  /** uniques this hero could wear that arrived since they last looked at that slot */
+  fresh: string[];
   /** a title id from the shared titles, or null */
   title: string | null;
   /** false for a hero the game named for you (the move from one hero per role): it can be renamed once */
@@ -89,6 +96,7 @@ export interface Profile {
 
 const blankSlots = (): Record<SlotId, RegularSlot> => Object.fromEntries(SLOT_IDS.map((s) => [s, { rar: 0 as Rar }])) as Record<SlotId, RegularSlot>;
 const blankEquip = (): Record<SlotId, string | null> => Object.fromEntries(SLOT_IDS.map((s) => [s, null])) as Record<SlotId, string | null>;
+const blankBag = (): Record<SlotId, RegularSlot | null> => Object.fromEntries(SLOT_IDS.map((s) => [s, null])) as Record<SlotId, RegularSlot | null>;
 
 export function freshProfile(now = Date.now()): Profile {
   return {
@@ -136,6 +144,9 @@ const MIGRATIONS: Record<number, (raw: any) => any> = {
   },
   /* v3 had no Vale: riding out, gathering and brewing start empty. */
   3: (d) => ({ ...d, vale: freshVale() }),
+  /* v4 put new gear straight on. From v5 it waits in a bag until you put it on, so every hero starts
+     with an empty bag and nothing fresh; what they were wearing stays on. */
+  4: (d) => ({ ...d, roster: (Array.isArray(d.roster) ? d.roster : []).map((h: any) => ({ ...obj(h), bag: {}, fresh: [] })) }),
 };
 
 /** Reads any stored value into a valid current profile. Unknown or broken data starts fresh. */
@@ -160,12 +171,16 @@ function normHero(x: unknown, now: number): Hero | null {
   const h = obj(x);
   const id = str(h.id), name = str(h.name), race = str(h.race), cls = str(h.cls);
   if (!id || !name || !race || !cls) return null;
-  const out: Hero = { id, name, race, cls, createdAt: num(h.createdAt, now), playedAt: num(h.playedAt, now), regular: blankSlots(), equip: blankEquip(), title: str(h.title), named: h.named !== false, clears: num(h.clears, 0) };
+  const out: Hero = { id, name, race, cls, createdAt: num(h.createdAt, now), playedAt: num(h.playedAt, now), regular: blankSlots(), bag: blankBag(), equip: blankEquip(), fresh: [], title: str(h.title), named: h.named !== false, clears: num(h.clears, 0) };
   for (const s of SLOT_IDS) {
     out.regular[s] = normRegular(obj(h.regular)[s]);
+    const b = obj(h.bag)[s];
+    // a bag piece only counts while it is better than the one worn
+    if (b && typeof b === 'object') { const r = normRegular(b); if (r.rar > out.regular[s].rar) out.bag[s] = r; }
     const eq = obj(h.equip)[s];
     out.equip[s] = typeof eq === 'string' ? eq : null;
   }
+  out.fresh = Array.isArray(h.fresh) ? [...new Set(h.fresh.filter((x: unknown): x is string => typeof x === 'string'))] : [];
   return out;
 }
 
@@ -238,7 +253,7 @@ export function nameProblem(p: Profile, raw: string, except?: string): string | 
   return null;
 }
 
-/** Make a new hero. It starts in your shared gear for its role. Race and class can't change later. */
+/** Make a new hero. It starts wearing your shared gear for its role. Race and class can't change later. */
 export function createHero(p: Profile, o: { name: string; race: RaceId; cls: ClassId }, now = Date.now(), id?: string): Hero | null {
   if (p.roster.length >= MAX_HEROES || !canMake(o.race, o.cls) || nameProblem(p, o.name)) return null;
   o = { ...o, name: cleanName(o.name)! };
@@ -246,7 +261,7 @@ export function createHero(p: Profile, o: { name: string; race: RaceId; cls: Cla
   const h: Hero = {
     id: id || 'h_' + now.toString(36) + Math.floor(Math.random() * 1e6).toString(36),
     name: o.name, race: o.race, cls: o.cls, createdAt: now, playedAt: now,
-    regular: blankSlots(), equip: blankEquip(), title: null, named: true, clears: 0,
+    regular: blankSlots(), bag: blankBag(), equip: blankEquip(), fresh: [], title: null, named: true, clears: 0,
   };
   for (const s of SLOT_IDS) h.regular[s] = { ...p.warband[role][s] };
   p.roster.push(h);

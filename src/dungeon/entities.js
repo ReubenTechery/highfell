@@ -10,6 +10,8 @@ import { onPerfectBlock } from './heroes.js';
 
 /* play a sound; during the pet walkout everything is hushed except what forces through */
 export const sfx = (n, v, force) => { if (S && !S.quiet && (!S.hush || force)) HOOKS.sound(n, v); };
+/* floating numbers and hit words are only shown when they are about you: your hits, your heals, what hits you */
+export const mine = (a, b) => !!((a && a.isPlayer) || (b && b.isPlayer));
 const later = (t, fn) => S.timers.push({ t, fn });
 
 /* loadout: what the meta layer worked out from the hero's gear.
@@ -41,9 +43,11 @@ export function makeHero(role, isPlayer, loadout) {
 
 export function makeMob(type, x, y, pack) {
   const M = S.dg.mobs[type];
+  // the dungeon's tuning: ordinary mobs get its health multiplier, bosses keep theirs as written
+  const hp = M.boss ? M.hp : Math.max(1, Math.round(M.hp * S.tune.trashHp));
   return {
     id: 'm' + (S.seq++), kind: 'mob', type, M, name: M.name, x, y, r: M.r, home: { x, y }, home0: { x, y }, pack,
-    hp: M.hp, maxHp: M.hp, speed: M.speed, alive: true, state: 'idle',
+    hp, maxHp: hp, speed: M.speed, alive: true, state: 'idle',
     threat: new Map(), target: null, forced: null, forcedT: 0,
     atkT: rand(0.3, 0.9), wind: 0, ab: {}, cast: null, busy: 0,
     st: { stun: 0, freeze: 0, slow: 0, slowT: 0, kx: 0, ky: 0 },
@@ -73,14 +77,18 @@ export function say(h, str, dur) { h.say = str; h.sayT = dur || 1.2; }
 export function banner(str, kind, dur) { S.banner = { str, kind: kind || '', t: 0, dur: dur || 2.2 }; }
 export function call(str, kind, dur) { S.call = { str, kind: kind || '', t: 0, dur: dur || 1.1 }; }
 
-/* ---------- threat ---------- */
+/* ---------- threat ----------
+   Every hit adds threat (the tank's 1.3 times, Slam's twice that), heals add a little on everything in the fight, and a mob
+   goes for whoever has the most, switching once someone beats its target by a tenth. Slam and Charge are how
+   the tank grabs things back. A caged hero can't be targeted, so the boss turns on whoever is next. */
 export function addThreat(m, h, v) { if (m.cage || m.M.wisp) return; m.threat.set(h.id, (m.threat.get(h.id) || 0) + v); }
 export function topThreat(m) { let v = 0; m.threat.forEach((x) => { if (x > v) v = x; }); return v; }
+const targetable = (h) => h.alive && !h.st.caged;
 export function pickTarget(m) {
-  if (m.forcedT > 0 && m.forced && m.forced.alive) return m.forced;
+  if (m.forcedT > 0 && m.forced && targetable(m.forced)) return m.forced;
   let best = null, bv = -1;
-  for (const h of S.heroes) { if (!h.alive) continue; const v = m.threat.get(h.id) || 0; if (v > bv) { bv = v; best = h; } }
-  if (m.target && m.target.alive && best !== m.target) { const cv = m.threat.get(m.target.id) || 0; if (bv < cv * 1.1 + 2) return m.target; }
+  for (const h of S.heroes) { if (!targetable(h)) continue; const v = m.threat.get(h.id) || 0; if (v > bv) { bv = v; best = h; } }
+  if (m.target && targetable(m.target) && best !== m.target) { const cv = m.threat.get(m.target.id) || 0; if (bv < cv * 1.1 + 2) return m.target; }
   return best;
 }
 export function aggro(m, h, v) {
@@ -109,16 +117,17 @@ export const PERFECT_WINDOW = 0.5;
 export function hurtHero(h, amt, src, o) {
   o = o || {};
   if (!h.alive || S.over) return 0;
-  if (h.iframe > 0 && o.dodge !== false) { if (!o.quiet) { fxText(h.x, h.y - 80, 'Dodged', '#DDF3FF', 18); h.stats.dodges++; } return 0; }
+  if (h.iframe > 0 && o.dodge !== false) { if (!o.quiet) { if (h.isPlayer) fxText(h.x, h.y - 80, 'Dodged', '#DDF3FF', 18); h.stats.dodges++; } return 0; }
   if (o.ground && h.st.air > 0) return 0;
-  let a = amt;
+  // the dungeon's tuning: everything that hurts a hero hits this much harder
+  let a = amt * S.tune.hit;
   if (o.block !== false && h.blocking && src) {
     const off = Math.abs(angDiff(h.face, Math.atan2(src.y - h.y, src.x - h.x)));
     if (off < 1.45) {
       if (o.heavy && o.perfectable !== false && h.blockT <= PERFECT_WINDOW) {
         a = 0; h.stats.perfect++; S.stats.perfect++;
-        fxText(h.x, h.y - 96, 'PERFECT!', '#F2C230', 30, { dur: 1.3 });
-        if (src.kind === 'mob' && src.alive) { src.st.stun = Math.max(src.st.stun, src.isBoss ? 1.6 : 1.2); src.wind = 0; src.busy = 0; fxText(src.x, src.y - (src.isBoss ? 200 : 110), 'Stunned', '#FFE08A', 20); }
+        if (h.isPlayer) fxText(h.x, h.y - 96, 'PERFECT!', '#F2C230', 30, { dur: 1.3 });
+        if (src.kind === 'mob' && src.alive) { src.st.stun = Math.max(src.st.stun, src.isBoss ? 1.6 : 1.2); src.wind = 0; src.busy = 0; if (h.isPlayer) fxText(src.x, src.y - (src.isBoss ? 200 : 110), 'Stunned', '#FFE08A', 20); }
         sfx('perfect'); shake(6); hitstop(0.08);
         fx({ type: 'ring', x: h.x, y: h.y - 30, r0: 20, r1: 110, col: '#F2C230', dur: 0.35, w: 6 });
         if (o.smash && S.bossFight && h.isPlayer) S.bossFight.smashPerfect++;
@@ -126,7 +135,8 @@ export function hurtHero(h, amt, src, o) {
         onPerfectBlock(h, src);
       } else {
         a *= 0.25; h.stats.blocks++;
-        fxText(h.x, h.y - 90, 'Blocked', '#C9D2DC', 18); sfx('block');
+        if (h.isPlayer) fxText(h.x, h.y - 90, 'Blocked', '#C9D2DC', 18);
+        sfx('block');
         fx({ type: 'ring', x: h.x + Math.cos(h.face) * 22, y: h.y - 30 + Math.sin(h.face) * 12, r0: 6, r1: 40, col: '#FFFFFF', dur: 0.2, w: 4 });
         emit({ type: 'block', perfect: false, player: !!h.isPlayer, smash: !!o.smash });
       }
@@ -145,7 +155,7 @@ export function hurtHero(h, amt, src, o) {
   }
   if (h.absorb > 0 && a > 0) {
     const t = Math.min(h.absorb, a); h.absorb -= t; a -= t;
-    if (t > 0 && !o.quiet) fxText(h.x, h.y - 70, 'Absorbed', '#DDF3FF', 16);
+    if (t > 0 && !o.quiet && h.isPlayer) fxText(h.x, h.y - 70, 'Absorbed', '#DDF3FF', 16);
     if (h.absorb <= 0.5) {
       h.absorb = 0;
       // Kindle: a Ward that breaks heals whoever wore it
@@ -156,7 +166,7 @@ export function hurtHero(h, amt, src, o) {
   a = Math.round(a);
   if (a > 0) {
     h.hp -= a; h.flash = 0.12; h.hurtT = 0.25; h.stats.taken += a;
-    if (!o.quiet) fxText(h.x, h.y - 60, '-' + a, '#FF6B5E', a >= 100 ? 26 : 20);
+    if (!o.quiet && h.isPlayer) fxText(h.x, h.y - 60, '-' + a, o.numCol || '#FF6B5E', o.numSize || (a >= 100 ? 26 : 20), o.numDur ? { dur: o.numDur } : undefined);
     if (h.isPlayer) { shake(a >= 100 ? 7 : 3); S.hurtFlash = Math.min(1, S.hurtFlash + a / 300); }
     if (o.kind) { S.stats[o.kind + 'Hits'] = (S.stats[o.kind + 'Hits'] || 0) + 1; emit({ type: 'hazard.hit', kind: o.kind, player: !!h.isPlayer }); }
     if (h.hp <= 0) killHero(h);
@@ -197,7 +207,7 @@ export function hurtMob(m, amt, src, o) {
   const big = crit || a >= 250;
   const iceCrit = crit && src && src.isPlayer && S.looks && S.looks.has('cosmetic.crit_ice');
   if (iceCrit) bits(m.x, m.y - (m.isBoss ? 150 : 60), 'shard_ice', 6, 220);
-  if (!o.quiet) fxText(m.x, m.y - (m.isBoss ? 170 : m.M.big ? 120 : 70), (crit ? a + '!' : '' + a), iceCrit ? '#8FD6FF' : o.col || (crit ? '#F2C230' : '#FFFFFF'), o.size || (a >= 600 ? 40 : big ? 30 : 21), { dur: big ? 1.15 : 0.9, crit, mine: !!(src && src.isPlayer) });
+  if (!o.quiet && src && src.isPlayer) fxText(m.x, m.y - (m.isBoss ? 170 : m.M.big ? 120 : 70), (crit ? a + '!' : '' + a), iceCrit ? '#8FD6FF' : o.col || (crit ? '#F2C230' : '#FFFFFF'), o.size || (a >= 600 ? 40 : big ? 30 : 21), { dur: big ? 1.15 : 0.9, crit });
   if (o.knock && !m.isBoss && !m.M.big) { const an = Math.atan2(m.y - src.y, m.x - src.x); m.st.kx += Math.cos(an) * o.knock; m.st.ky += Math.sin(an) * o.knock; }
   if (crit && src && src.isPlayer) hitstop(0.035);
   if (crit && src && src.kind === 'hero') emit({ type: 'crit', amount: a, player: !!src.isPlayer });
@@ -226,7 +236,7 @@ export function healHero(src, t, amt, o) {
   const real = Math.min(a, t.maxHp - t.hp);
   t.hp += real;
   if (src) { src.stats.heal += real; src.stats.overheal += a - real; }
-  if (real > 0 || o.show) fxText(t.x, t.y - 74, '+' + a, '#7BE05A', o.size || (a >= 150 ? 22 : 18), { dur: 0.9 });
+  if ((real > 0 || o.show) && mine(src, t)) fxText(t.x, t.y - 74, '+' + a, '#7BE05A', o.size || (a >= 150 ? 22 : 18), { dur: 0.9 });
   // healing pulls a little threat from everything in the fight
   if (src && real > 0) { const fighting = S.mobs.filter((m) => m.alive && m.state === 'fight' && !m.cage && !m.M.wisp); fighting.forEach((m) => addThreat(m, src, (real * 0.5) / Math.max(1, fighting.length))); }
   // a save: the player catches someone under 15% and they are still up three seconds later

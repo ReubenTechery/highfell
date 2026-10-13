@@ -1,18 +1,20 @@
 /**
  * The cauldron at home. Pick a recipe, tip the ingredients in one at a time, then stir: steady
- * circles, not too fast, three times round. A Perfect stir fills one more bottle. Brews are small fun
- * twists for one dungeon run each, never power a raid needs.
+ * circles, not too fast, three times round. Every lap pays Brewing XP as you finish it. A Perfect
+ * stir fills one more bottle. Once the stir starts the ingredients are in: leaving still bottles it.
+ * Brews are small fun twists for one dungeon run each, never power a raid needs.
  */
 import { ACHIEVEMENTS } from '../content';
 import { INGREDIENTS, RECIPES, RECIPE_ORDER, SKILLS } from '../content/vale';
 import type { RecipeDef } from '../content/types';
 import { Achiever } from '../meta/achievements';
 import { activeHero, roleOf } from '../meta/profile';
-import { brew, canBrew, ingredientName, rankProgress, recipeUnlocked, skillRank, type BrewDone, type BrewQuality } from '../meta/vale';
+import { canBrew, finishBrew, ingredientName, lapXp, rankProgress, recipeUnlocked, skillRank, startBrew, type BrewDone, type BrewQuality, type BrewRun, type XpGain } from '../meta/vale';
 import type { App } from './app';
 import { actions, esc, fmtN, GLYPH, reducedMotion, wait } from './dom';
 import { placeSprite, tile } from './art';
 import { SFX } from './sound';
+import { XpBar } from './xpbar';
 
 const K = '#1E1A1A';
 const ink = (fill: string, w = 4) => `fill: ${fill}; stroke: ${K}; stroke-width: ${w}; stroke-linejoin: round; stroke-linecap: round`;
@@ -104,10 +106,15 @@ export class Brewing {
     this.busy = true;
     const card = this.root.querySelector<HTMLElement>('#bw-card');
     if (card) { card.hidden = true; card.innerHTML = ''; }
-    const q = await new Pot(this.root, r).play();
-    if (!q) { this.busy = false; this.render(); return; }
-    const done = brew(p, r.id, q);
-    if (!done) { this.busy = false; this.render(); return; }
+    // the ingredients go in when the stir starts, and every lap pays as it ends
+    let run: BrewRun | null = null, ranked = 0;
+    const q = await new Pot(this.root, r, p.vale.xp.brew || 0, {
+      start: () => { run = startBrew(p, r.id); if (run) app.store.save(); return !!run; },
+      lap: (lq) => { if (!run) return null; const g = lapXp(p, run, lq); app.store.save(); if (g.rankUp) ranked = g.rankUp.rank; return g; },
+    }).play();
+    if (!run) { this.busy = false; this.render(); return; }
+    // left mid-stir: it still bottles, just not well
+    const done = finishBrew(p, run, q || 'rough');
     const h = activeHero(p);
     const ach = new Achiever(p, { dungeon: 'bramblewick', role: h ? roleOf(h) : 'tank', practice: false, testGear: false });
     const unlocked = ach.check();
@@ -116,11 +123,13 @@ export class Brewing {
     this.busy = false;
     this.result = { done, unlocked };
     this.render();
-    if (done.rankUp) {
-      const note = done.rankUp.rank === 2 ? 'You can brew Glowcap Draught' : done.rankUp.rank === 3 ? 'You can brew Starlight Elixir' : '';
-      app.toasts.rank(SKILLS.brew.name, done.rankUp.rank, 's_brew', note);
-    }
+    if (done.rankUp || ranked) this.rankToast(done.rankUp?.rank || ranked);
     for (const id of unlocked) app.toasts.achievement(id);
+  }
+  /** a new Brewing rank: the toast says what it unlocked */
+  private rankToast(rank: number): void {
+    const note = rank === 2 ? 'You can brew Glowcap Draught' : rank === 3 ? 'You can brew Starlight Elixir' : '';
+    this.app.toasts.rank(SKILLS.brew.name, rank, 's_brew', note);
   }
 
   private resultCard(): string {
@@ -144,6 +153,8 @@ export class Brewing {
 
 /* ---------------------------------------------------------------- the close-up */
 interface Token { id: string; x: number; done: boolean }
+/** start: the stir begins (the ingredients leave the satchel); lap: one lap is done, pay its XP */
+interface PotHooks { start: () => boolean; lap: (q: BrewQuality) => XpGain | null }
 class Pot {
   private el: HTMLDivElement;
   private svg!: SVGSVGElement;
@@ -169,10 +180,12 @@ class Pot {
   private readonly quick = reducedMotion();
   private keyDown = (e: KeyboardEvent) => this.onKey(e, true);
   private keyUp = (e: KeyboardEvent) => this.onKey(e, false);
+  private bar: XpBar;
 
-  constructor(private host: HTMLElement, private r: RecipeDef) {
+  constructor(private host: HTMLElement, private r: RecipeDef, xp: number, private hooks: PotHooks) {
     this.el = document.createElement('div');
     this.el.className = 'toy pot';
+    this.bar = new XpBar(this.el, 'brew', 's_brew', xp);
     this.el.setAttribute('role', 'dialog');
     this.el.setAttribute('aria-label', `Brewing ${r.name}`);
     let i = 0;
@@ -189,8 +202,9 @@ class Pot {
         <svg class="toy-stage" viewBox="0 0 400 560" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${this.scene()}</svg>
         <p class="toy-hint" id="pot-hint">Tap each ingredient to tip it in.</p>
         <div class="stir-meter" id="pot-meter" hidden><span class="band" style="left: ${(BAND[0] / MAX_TURNS) * 100}%; width: ${((BAND[1] - BAND[0]) / MAX_TURNS) * 100}%"></span><i class="needle"></i><small class="lo">Slow</small><small class="hi">Too fast</small></div>
-        <div class="pot-foot"><div class="toy-pips" aria-hidden="true"><i></i><i></i><i></i></div><button type="button" class="btn small" id="pot-auto" hidden>Stir for me</button></div>`;
+        <div class="pot-foot"><div class="toy-pips" aria-hidden="true"><i></i><i></i><i></i></div><button type="button" class="btn small" id="pot-auto" hidden>Stir for me</button></div>${this.bar.html()}`;
       this.host.appendChild(this.el);
+      this.bar.bind();
       this.svg = this.el.querySelector<SVGSVGElement>('svg.toy-stage')!;
       this.el.querySelector('.toy-x')!.addEventListener('click', () => this.finish(null));
       this.el.querySelector('#pot-auto')!.addEventListener('click', () => { if (this.phase === 'stir' && !this.auto) { this.auto = performance.now(); this.usedAuto = true; SFX.play('ui'); } });
@@ -280,6 +294,7 @@ class Pot {
     }
   }
   private toStir(): void {
+    if (!this.hooks.start()) { this.finish(null); return; }
     this.phase = 'stir';
     (this.svg.querySelector('.ladle') as SVGElement).style.display = '';
     this.el.querySelector<HTMLElement>('#pot-meter')!.hidden = false;
@@ -316,10 +331,14 @@ class Pot {
     const newLap = Math.min(LAPS, Math.floor(this.turns));
     if (newLap > lap) {
       const k = this.lapIn[lap] / Math.max(0.001, this.lapAll[lap]);
+      // "Stir for me" laps are never better than Good
+      const lq: BrewQuality = k >= 0.7 && !this.usedAuto ? 'perfect' : k >= 0.4 ? 'good' : 'rough';
       const pip = this.el.querySelectorAll('.toy-pips i')[lap];
-      if (pip) pip.className = k >= 0.7 ? 'perfect' : k >= 0.4 ? 'good' : 'rough';
-      if (k >= 0.7) SFX.play('twinkle', 0.6);
+      if (pip) pip.className = lq;
+      if (lq === 'perfect') SFX.play('twinkle', 0.6);
       if (newLap < LAPS) this.el.querySelector('#pot-step')!.textContent = `Lap ${newLap + 1} of ${LAPS}`;
+      const g = this.hooks.lap(lq);
+      if (g) { this.floatXp(g.xp); setTimeout(() => this.bar.gain(g), this.quick ? 0 : 240); }
     }
     if (this.turns >= LAPS) void this.bottle();
   }
@@ -353,6 +372,19 @@ class Pot {
         pops.appendChild(c); setTimeout(() => c.remove(), 900);
       }
     }
+  }
+
+  /** +XP rising off the pot */
+  private floatXp(n: number): void {
+    const fx = this.svg.querySelector('.fxl');
+    if (!fx) return;
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t.setAttribute('x', String(POT.x + 110)); t.setAttribute('y', String(POT.y - 40));
+    t.setAttribute('class', 'toy-word xp');
+    t.setAttribute('style', 'fill: #9BE15D; font-size: 22px');
+    t.textContent = `+${n} XP`;
+    fx.appendChild(t);
+    setTimeout(() => t.remove(), 1100);
   }
 
   private async bottle(): Promise<void> {

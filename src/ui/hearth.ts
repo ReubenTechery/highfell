@@ -9,7 +9,7 @@ import { COLLECTIBLES, DUNGEONS, GAME_NAME, TITLES } from '../content';
 import { CLASSES, RACES, type ClassId, type RaceId } from '../content/folk';
 import { ROLES } from '../content/roles';
 import { HEARTH_SPOTS, ownedOfKind } from '../meta/hearth';
-import { loadoutFor } from '../meta/gear';
+import { loadoutFor, waiting } from '../meta/gear';
 import { activeHero, roleOf, type Hero } from '../meta/profile';
 import type { App } from './app';
 import { actions, esc, GLYPH } from './dom';
@@ -73,6 +73,8 @@ export class Hearth {
     const rec = p.dungeons.barrow;
     const log = logTotal(p);
     const unseen = Object.keys(p.collection).filter((id) => !p.seen[id]).length;
+    // new gear never goes on by itself: the Gear button counts what is waiting
+    const up = waiting(p, h).length;
     this.measure();
     this.root.innerHTML = `
       ${this.roomSvg(h)}
@@ -94,7 +96,7 @@ export class Hearth {
           <button type="button" class="btn side" data-act="heroes" aria-label="Heroes">${GLYPH.people}<span class="bl">Heroes</span></button>
           <button type="button" class="btn ride" data-act="ride">${GLYPH.sign}Ride out</button>
           <button type="button" class="btn gold big" data-act="dungeon"><span><span class="long">Into the </span>Barrow</span></button>
-          <button type="button" class="btn side" data-act="gear" aria-label="Gear">${GLYPH.shield}<span class="bl">Gear</span></button>
+          <button type="button" class="btn side${up ? ' has-up' : ''}" data-act="gear" aria-label="Gear${up ? `: ${up} new to put on` : ''}">${GLYPH.shield}<span class="bl">Gear</span>${up ? `<i class="badge" aria-hidden="true">${up}</i>` : ''}</button>
         </div>
       </div>`;
     this.svg = this.root.querySelector('svg.room');

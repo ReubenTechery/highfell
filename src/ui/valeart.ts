@@ -220,6 +220,14 @@ export function bramblewickScenery(lay: Lay): string {
   return o.join('');
 }
 
+/** Dottle's goat pen: where the goats live, and where the herding errand sends them */
+export const BW_PEN: Record<Lay, At> = { wide: { x: 905, y: 830, k: 0.9 }, tall: { x: 450, y: 1112, k: 0.85 } };
+/** the top of Dottle's chimney, where the sparks come from */
+export function sparkSky(lay: Lay): At {
+  const d = BW_AT[lay].burrowRed, k = d.k || 1;
+  return { x: d.x - 79 * k, y: d.y - 168 * k };
+}
+
 /** spots where a lost thing can be hiding, for the find errands */
 export const BW_HIDE: Record<Lay, At[]> = {
   wide: [{ x: 1020, y: 682 }, { x: 196, y: 566 }, { x: 1300, y: 552 }, { x: 760, y: 548 }, { x: 470, y: 838 }, { x: 1052, y: 572 }],

@@ -57,6 +57,8 @@ export interface CollectibleDef {
   source: string;       // where it comes from, in plain words
   /** mounts: where the rider sits on the sprite, and how big the rider is drawn */
   saddle?: { x: number; y: number; k: number };
+  /** mounts: seconds a ride out takes on it (walking takes FOOT_SECS) */
+  ride?: number;
 }
 
 /* ---------------------------------------------------------------- the Vale: riding out, gathering, brewing */
@@ -81,14 +83,17 @@ export interface NodeDef {
 /** A small job from a villager. find: spot something hidden; shoo: tap them all; deliver: hand over ingredients. */
 export interface ErrandDef {
   id: string;
-  kind: 'find' | 'shoo' | 'deliver';
+  /** find something hidden, shoo things away, herd things into a pen, or hand over ingredients */
+  kind: 'find' | 'shoo' | 'herd' | 'deliver';
   title: string;
   ask: string;
   thanks: string;
-  /** find: what is hidden; shoo: what to tap */
-  thing?: 'kettle' | 'goggles' | 'crow' | 'spark';
+  /** find: what is hidden; shoo and herd: what to tap */
+  thing?: 'kettle' | 'goggles' | 'crow' | 'spark' | 'goat';
   target?: number;
   needs?: Record<string, number>;
+  /** given the first time this errand is done (a mount, a pet): a thank-you, not a roll */
+  gives?: string;
 }
 export interface LorePage { id: string; title: string; text: string }
 /** A place you can ride out to. */

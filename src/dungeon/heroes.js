@@ -155,7 +155,7 @@ export function projHit(p) {
   } else if (p.kind === 'icicle') {
     const frozen = t.st && t.st.freeze > 0;
     hurtMob(t, 75, h, { shatter: 3, crit: 0.25, col: frozen ? '#8FD6FF' : '#DDF3FF' });
-    if (frozen) fxText(t.x, t.y - 130, 'Shatter', '#8FD6FF', 22, { dur: 0.9 });
+    if (frozen && h.isPlayer) fxText(t.x, t.y - 130, 'Shatter', '#8FD6FF', 22, { dur: 0.9 });
     bits(t.x, t.y - 40, 'shard_ice', frozen ? 7 : 3, 180);
   } else if (p.kind === 'smite') {
     const got = hurtMob(t, 70, h, { col: '#FFE08A', size: 20 });
@@ -204,13 +204,14 @@ export function useAbility(h, slot, aim) {
   return ok;
 }
 
-/* Slam: hit everything around you; everything hit turns on you */
+/* Slam: hit everything around you; everything hit turns on you and gets dragged in */
 function abSlam(h) {
   let n = 0;
   for (const m of S.mobs) {
     if (!isFoe(m) || m.cage || m.M.wisp || dist(m, h) > 200 + m.r || Math.abs(m.y - h.y) > 600) continue;
     taunt(m, h, 4);
-    hurtMob(m, 55, h, { knock: m.isBoss || m.M.big ? 0 : 60, threat: 2 });
+    hurtMob(m, 55, h, { threat: 2 });
+    if (m.alive && !m.isBoss) yank(m, h, m.M.big ? 0.45 : 1);
     n++;
   }
   say(h, n ? (rng() < 0.5 ? 'Oi!' : 'Over here!') : 'Oi?', 0.9);
@@ -219,6 +220,17 @@ function abSlam(h) {
   if (n) shake(4);
   sfx('slam', 0.7); sfx('taunt');
   return true;
+}
+/* pull a mob in towards the hero, to just outside arm's reach (knockback decays at 0.01 a second, so the
+   push it needs is about 4.6 times the distance) */
+function yank(m, h, k) {
+  const gap = dist(m, h) - (m.r + h.r + 14);
+  if (gap < 10) return;
+  const a = angTo(m, h), v = gap * 4.6 * k;
+  m.st.kx += Math.cos(a) * v; m.st.ky += Math.sin(a) * v;
+  m.wind = 0;
+  fx({ type: 'beam', x: m.x, y: m.y - 30, x2: h.x, y2: h.y - 30, col: '#F2C230', dur: 0.16 });
+  dots(m.x, m.y, '#C9B79A', 4, 90, { size: 5 });
 }
 /* Cleave: a big swing through everything in front of you */
 function abCleave(h, aim) {
@@ -269,7 +281,9 @@ function chargeImpact(h, d) {
   for (const m of hits) {
     aggro(m, h, 0);
     hurtMob(m, 80, h, { knock: 140 });
-    if (ring) { hurtMob(m, 80, h, { knock: 60 }); taunt(m, h, 2.5); }
+    // the mob you charged turns on you; Ringing Charge makes everything you hit turn
+    if (ring) hurtMob(m, 80, h, { knock: 60 });
+    if (ring || m === d.mob) taunt(m, h, 2.5);
     addThreat(m, h, 260);
     if (!m.isBoss) { m.st.stun = Math.max(m.st.stun, 1.0); m.wind = 0; if (m.cast) interruptCast(m); }
   }
@@ -284,7 +298,7 @@ export function onPerfectBlock(h, src) {
     hurtMob(src, 150, h, { col: '#F2C230', size: 26, noCrit: true });
     fx({ type: 'slash', x: h.x + Math.cos(h.face) * 20, y: h.y - 34, a: h.face, r: 70, dur: 0.2, col: '#F2C230' });
   }
-  if (h.bonuses.has('barrowguard2')) { h.absorb = Math.max(h.absorb, Math.round(150 * h.power)); h.absorbT = 6; fxText(h.x, h.y - 120, 'Bone shield', '#F0E8D2', 18); }
+  if (h.bonuses.has('barrowguard2')) { h.absorb = Math.max(h.absorb, Math.round(150 * h.power)); h.absorbT = 6; if (h.isPlayer) fxText(h.x, h.y - 120, 'Bone shield', '#F0E8D2', 18); }
 }
 
 export function clampRange(h, x, y, r) { const d = distXY(h.x, h.y, x, y); if (d <= r) return { x, y }; return { x: h.x + ((x - h.x) / d) * r, y: h.y + ((y - h.y) / d) * r }; }
@@ -306,7 +320,7 @@ function abWard(h, aim) {
   if (!t || dist(t, h) > MEND.range + 40) return false;
   t.absorb = Math.round(220 * h.power); t.absorbT = 8; t.wardBy = h;
   fx({ type: 'ring', x: t.x, y: t.y - 40, r0: 10, r1: 52, col: '#DDF3FF', dur: 0.3, w: 5 });
-  fxText(t.x, t.y - 96, 'Ward', '#DDF3FF', 18);
+  if (h.isPlayer || t.isPlayer) fxText(t.x, t.y - 96, 'Ward', '#DDF3FF', 18);
   fx({ type: 'beam', x: h.x, y: h.y - 50, x2: t.x, y2: t.y - 40, col: '#DDF3FF', dur: 0.25 });
   sfx('ward');
   return true;
@@ -403,7 +417,7 @@ function finishCast(h) {
   later(0.32, () => {
     const frozen = t.alive && t.st.freeze > 0;
     if (t.alive) hurtMob(t, 320, h, { shatter: h.traits.has('shatterlance') ? 3 : 2, crit: 0.15, col: frozen ? '#8FD6FF' : '#DDF3FF' });
-    if (frozen) fxText(tx, ty - 150, 'Shatter!', '#8FD6FF', 32, { dur: 1.2 });
+    if (frozen && h.isPlayer) fxText(tx, ty - 150, 'Shatter!', '#8FD6FF', 32, { dur: 1.2 });
     if (frozen && h.bonuses.has('rimebone2')) h.cd.a3 = Math.min(h.cd.a3, AB.dps.a3.cd / 2);
     const splash = foesNear(tx, ty, 90, false).filter((o) => o !== t && !o.cage);
     for (const o of splash) hurtMob(o, 110, h, { size: 19 });

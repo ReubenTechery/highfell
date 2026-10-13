@@ -128,6 +128,14 @@ export const SOUNDS: Record<string, Play> = {
   ach: (t, v) => { [784, 988, 1175].forEach((f, i) => T(t, f, 0.35, 'triangle', 0.11 * v, null, i * 0.08)); },
   ui: (t, v) => T(t, 700, 0.05, 'triangle', 0.05 * v, 900),
   place: (t, v) => { T(t, 300, 0.1, 'sine', 0.2 * v, 180); N(t, 0.06, 0.15 * v, 900); },
+  // the Vale: footsteps, a combo, a bucket of water, XP landing, a new rank
+  step: (t, v) => { N(t, 0.05, 0.16 * v, 700, 'lowpass', 1); T(t, 110, 0.05, 'sine', 0.1 * v, 80); },
+  combo: (t, v) => { T(t, 880 + v * 400, 0.12, 'triangle', 0.09, 1320 + v * 500); },
+  splash: (t, v) => { N(t, 0.5, 0.3 * v, 1800, 'lowpass', 0.8, 400); for (let i = 0; i < 4; i++) T(t, 900 + i * 230, 0.08, 'sine', 0.05 * v, 500, 0.05 + i * 0.05); },
+  xp: (t, v) => { T(t, 1320, 0.09, 'sine', 0.07 * v, 1760); T(t, 1976, 0.12, 'sine', 0.05 * v, null, 0.05); },
+  rankup: (t, v) => { [523, 659, 784, 1046, 1318].forEach((f, i) => T(t, f, 0.45, 'triangle', 0.12 * v, null, i * 0.07)); N(t, 0.7, 0.07 * v, 7000, 'highpass', 0.7, null, 0.25); },
+  // putting on a new piece: a clank of metal, then a bright climb
+  equip: (t, v) => { T(t, 180, 0.14, 'square', 0.12 * v, 110); N(t, 0.12, 0.3 * v, 3200, 'bandpass', 2.2); [784, 988, 1175, 1568].forEach((f, i) => T(t, f, 0.32, 'triangle', 0.1 * v, null, 0.08 + i * 0.06)); N(t, 0.5, 0.06 * v, 7000, 'highpass', 0.7, null, 0.2); },
   // the Vale: close-up gathering and brewing. Small, crisp and soft: these are the ASMR ones.
   snip: (t, v) => { N(t, 0.03, 0.34 * v, 7200, 'highpass', 0.8); N(t, 0.05, 0.22 * v, 3200, 'bandpass', 2.5, null, 0.012); T(t, 3400, 0.03, 'triangle', 0.05 * v, 2600, 0.01); },
   crunch: (t, v) => { for (let i = 0; i < 3; i++) N(t, 0.03, 0.2 * v, 2400 - i * 500, 'bandpass', 3, null, i * 0.018); },
@@ -147,5 +155,4 @@ export const SOUNDS: Record<string, Play> = {
   flap: (t, v) => { for (let i = 0; i < 3; i++) N(t, 0.05, 0.15 * v, 800, 'bandpass', 1, null, i * 0.07); },
   sizzle: (t, v) => N(t, 0.25, 0.15 * v, 6000, 'highpass', 0.7, 3000),
   page: (t, v) => N(t, 0.18, 0.14 * v, 3000, 'bandpass', 0.8, 1200),
-  rankup: (t, v) => { [523, 659, 784, 1046].forEach((f, i) => T(t, f, 0.4, 'triangle', 0.1 * v, null, i * 0.07)); },
 };

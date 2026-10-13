@@ -52,6 +52,7 @@ export function checkContent(): string[] {
     }
     for (const dr of pl.errandTable) if (!thing(dr.id)) bad.push(`${pl.id} errand drop ${dr.id}`);
     for (const er of pl.errands) for (const k of Object.keys(er.needs || {})) if (!INGREDIENTS[k]) bad.push(`${pl.id} errand ${er.id} needs ${k}`);
+    for (const er of pl.errands) if (er.gives && !COLLECTIBLES[er.gives]) bad.push(`${pl.id} errand ${er.id} gives ${er.gives}`);
   }
   for (const r of Object.values(RECIPES)) for (const k of Object.keys(r.needs)) if (!INGREDIENTS[k]) bad.push(`recipe ${r.id} needs ${k}`);
   for (const a of ACHIEVEMENT_LIST) {

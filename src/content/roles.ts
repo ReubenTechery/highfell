@@ -5,8 +5,8 @@ export const ORDER: RoleId[] = ['tank', 'healer', 'dps'];
 export const SLOTS_AB: AbilitySlot[] = ['a1', 'a2', 'a3', 'a4'];
 
 export const ROLES: Record<RoleId, RoleDef> = {
-  tank: { id: 'tank', name: 'Brannoc', title: 'Tank', hp: 1250, armor: 0.55, speed: 176, r: 18, threat: 3.6, color: '#4F6FA8', sprite: 'tank',
-    blurb: 'Slam the pack, hold the boss, block the big hits, swing a lot.' },
+  tank: { id: 'tank', name: 'Brannoc', title: 'Tank', hp: 1250, armor: 0.55, speed: 176, r: 18, threat: 1.3, color: '#4F6FA8', sprite: 'tank',
+    blurb: 'Slam to grab the pack, Charge whatever runs at your mates, block the big hits.' },
   healer: { id: 'healer', name: 'Maren', title: 'Healer', hp: 820, armor: 0.2, speed: 182, r: 16, threat: 1, color: '#E7B53C', sprite: 'healer',
     blurb: 'Tap a frame to heal. Smite when everyone is topped up.' },
   dps: { id: 'dps', name: 'Ivy', title: 'DPS', hp: 720, armor: 0.15, speed: 186, r: 16, threat: 1, color: '#3D7FC1', sprite: 'dps',
@@ -15,9 +15,9 @@ export const ROLES: Record<RoleId, RoleDef> = {
 
 export const AB: Record<RoleId, Record<AbilitySlot, AbilityDef>> = {
   tank: {
-    a1: { key: 'slam', name: 'Slam', cd: 6, desc: 'Hit everything around you. Everything you hit turns on you.' },
+    a1: { key: 'slam', name: 'Slam', cd: 6, desc: 'Hit everything around you. It all turns on you and gets dragged in.' },
     a2: { key: 'shield', name: 'Shield', cd: 0, hold: true, desc: 'Hold to block from the front. Block right before a big hit to stun it and hit back.' },
-    a3: { key: 'charge', name: 'Charge', cd: 7, desc: 'Dash to a mob, smash it and stun what is around it.' },
+    a3: { key: 'charge', name: 'Charge', cd: 7, desc: 'Dash to a mob and smash it. It turns on you, and what is around it is stunned.' },
     a4: { key: 'cleave', name: 'Cleave', cd: 3.5, desc: 'A big swing through everything in front of you.' },
   },
   healer: {

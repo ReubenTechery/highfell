@@ -1,5 +1,7 @@
-/** What a hero is wearing, what it adds up to, and changing it. */
+/** What a hero is wearing, what it adds up to, and changing it. Nothing goes on by itself: new pieces
+ *  wait in the hero's bag (regular gear) or as fresh uniques until you put them on. */
 import type { ItemDef, Rar, RoleId, SlotId } from '../content/types';
+import type { RegularSlot } from './profile';
 import { ITEMS, SETS } from '../content';
 import { EPIC, RARITY, SLOTS, SLOT_IDS, TRAITS, gearId, hpMultiplier, powerFromScore, weightedScore } from '../content/gear';
 import type { ClassId, RaceId } from '../content/folk';
@@ -75,9 +77,56 @@ export function equip(p: Profile, h: Hero, slot: SlotId, uniqueId: string | null
   if (uniqueId) {
     const d = ITEMS[uniqueId];
     if (!d || !p.collection[uniqueId] || d.role !== roleOf(h) || d.slot !== slot) return false;
+    h.fresh = h.fresh.filter((x) => x !== uniqueId);
   }
   h.equip[slot] = uniqueId;
   return true;
+}
+
+/** The best regular piece a hero has for a slot, worn or waiting in the bag. The ladder climbs from this. */
+export const bestRegular = (h: Hero, slot: SlotId): RegularSlot => (h.bag[slot] && h.bag[slot]!.rar > h.regular[slot].rar ? h.bag[slot]! : h.regular[slot]);
+
+/** Put a regular piece in the hero's bag if it beats everything they have for that slot. */
+export function bagIt(h: Hero, slot: SlotId, piece: RegularSlot): boolean {
+  if (piece.rar <= bestRegular(h, slot).rar) return false;
+  h.bag[slot] = { ...piece };
+  return true;
+}
+
+/** What is waiting to go on in a slot: a better regular piece (while the regular piece is worn there) or a fresh unique. */
+export type Waiting = { kind: 'regular'; slot: SlotId; piece: RegularSlot; id: string } | { kind: 'unique'; slot: SlotId; id: string };
+export function waitingFor(p: Profile, h: Hero, slot: SlotId): Waiting | null {
+  const role = roleOf(h);
+  const u = h.fresh.find((id) => ITEMS[id] && ITEMS[id].slot === slot && ITEMS[id].role === role && p.collection[id] && h.equip[slot] !== id);
+  if (u) return { kind: 'unique', slot, id: u };
+  const b = h.bag[slot];
+  if (b && !h.equip[slot] && b.rar > h.regular[slot].rar) return { kind: 'regular', slot, piece: b, id: gearId(role, slot, b.rar) };
+  return null;
+}
+/** Every slot with something waiting: the dot on the Gear button. */
+export const waiting = (p: Profile, h: Hero): Waiting[] => SLOT_IDS.map((s) => waitingFor(p, h, s)).filter((w): w is Waiting => !!w);
+
+/** Put on what is waiting in a slot. Returns what went on, or null. */
+export function putOn(p: Profile, h: Hero, slot: SlotId): Waiting | null {
+  const w = waitingFor(p, h, slot);
+  if (!w) return null;
+  if (w.kind === 'unique') equip(p, h, slot, w.id);
+  else { h.regular[slot] = { ...w.piece }; h.bag[slot] = null; h.equip[slot] = null; }
+  return w;
+}
+
+/** You looked at a slot: its fresh uniques stop glowing (they stay yours to wear). */
+export function seenSlot(h: Hero, slot: SlotId): boolean {
+  const before = h.fresh.length;
+  h.fresh = h.fresh.filter((id) => ITEMS[id]?.slot !== slot);
+  return h.fresh.length !== before;
+}
+
+/** A unique arrived: every hero of its role can wear it, and it glows for them until they look. */
+export function freshForRole(p: Profile, id: string): void {
+  const it = ITEMS[id];
+  if (!it || it.kind === 'gear') return;
+  for (const h of p.roster) if (roleOf(h) === it.role && h.equip[it.slot] !== id && !h.fresh.includes(id)) h.fresh.push(id);
 }
 
 /** Uniques the roster owns that this hero could wear in a slot. */
@@ -86,23 +135,19 @@ export function ownedFor(p: Profile, h: Hero, slot: SlotId): ItemDef[] {
   return Object.keys(p.collection).map((id) => ITEMS[id]).filter((d): d is ItemDef => !!d && d.kind !== 'gear' && d.role === role && d.slot === slot);
 }
 
-/** Put on any owned uniques for empty slots: set pieces and the dungeon's weapons. */
-export function wearOwned(p: Profile, h: Hero): void {
-  for (const slot of SLOT_IDS) if (!h.equip[slot]) { const u = ownedFor(p, h, slot)[0]; if (u) h.equip[slot] = u.id; }
-}
-
-/** Make a hero and dress it: warband gear for its role plus any uniques the roster owns. */
+/** Make a hero: it starts wearing the shared gear for its role, and the uniques the roster owns for
+ *  that role wait for it to put them on. */
 export function newHero(p: Profile, o: { name: string; race: RaceId; cls: ClassId }, now = Date.now()): Hero | null {
   const h = createHero(p, o, now);
-  if (h) wearOwned(p, h);
+  if (h) for (const slot of SLOT_IDS) for (const u of ownedFor(p, h, slot)) h.fresh.push(u.id);
   return h;
 }
 
 export const REROLL_COST = 5;
-/** Spend marks to set the trait on an Epic regular weapon to the one you pick. */
+/** Spend marks to set the trait on an Epic regular weapon to the one you pick (the one in the bag, if that is the Epic one). */
 export function buyTrait(p: Profile, h: Hero, dungeon: string, trait: string): boolean {
   const role = roleOf(h);
-  const reg = h.regular.weapon;
+  const reg = bestRegular(h, 'weapon');
   const rec = p.dungeons[dungeon];
   if (reg.rar !== EPIC || !rec || rec.marks < REROLL_COST || reg.trait === trait || !TRAITS[role].some((t) => t.id === trait)) return false;
   rec.marks -= REROLL_COST;

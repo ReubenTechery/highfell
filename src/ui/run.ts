@@ -16,7 +16,6 @@ import { S, setHooks } from '../dungeon/state.js';
 import { banner } from '../dungeon/entities.js';
 import { bestCluster, doDodge, heroBy, isFoe, mend, useAbility } from '../dungeon/heroes.js';
 import { inHaz } from '../dungeon/bots.js';
-import { cutChain } from '../dungeon/mobs.js';
 import { render, resizeView, updateCam, VIEW } from '../dungeon/render.js';
 import { roomIndexOf } from '../dungeon/world.js';
 import { lootGlint, startWalkout } from '../dungeon/walkout.js';
@@ -49,10 +48,11 @@ const HINTS: Record<string, [string, string, string, number?]> = {
   shatter: ['Frozen? Icicle (4) and Comet hit frozen mobs much harder.', 'Frozen? Icicle (4) and Comet hit frozen mobs much harder.', 'Shatter', 6],
   kick: ['He is casting. Hit him hard, Charge him or Rime burst him to stop it.', 'He is casting. Hit him hard, Charge him or Rime burst him to stop it.', 'Interrupt', 6],
   wisp: ['Swipe through the wisps before they reach anyone.', 'Click and drag through the wisps before they reach anyone.', 'Wisps', 6],
-  chain: ['Swipe across the chain to cut it.', 'Drag across the chain, or press E, to cut it.', 'Chain', 6],
-  cage: ['Tap the cage to break your mate out.', 'Click the cage to break your mate out.', 'Cage', 6],
-  cageSelf: ['Tap fast to break out!', 'Mash Space to break out!', 'Caged', 4],
+  chain: ['Swipe across the chain to cut it.', 'Drag the mouse across the chain to cut it.', 'Chain', 6],
+  cage: ['The tank is caged and the boss is loose. Tap the cage to break him out.', 'The tank is caged and the boss is loose. Click the cage to break him out.', 'Cage', 7],
+  cageSelf: ['Tap fast to break out, then Slam him back!', 'Mash Space to break out, then Slam him back!', 'Caged', 5],
   wild: ['Mobs that aren’t on the tank go wild after a few seconds. Tanks, grab them.', 'Mobs that aren’t on the tank go wild after a few seconds. Tanks, grab them.', 'Wild', 7],
+  pulled: ['You pulled one off the tank. Let the tank hit first, then go.', 'You pulled one off the tank. Let the tank hit first, then go.', 'Aggro', 6],
   rings: ['Dodge-roll through the rings as they reach you.', 'Space through the rings as they reach you.', 'Rings', 6],
 };
 
@@ -81,7 +81,6 @@ export class RunScene implements InputUI {
 
   constructor(private app: App, private root: HTMLElement) {
     $('pause-btn').addEventListener('click', (e) => { e.stopPropagation(); this.pause(); });
-    $('cutbtn').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); const ch = S && S.chains[0]; if (ch && S.player.alive) { cutChain(ch, S.player); this.hintDone('chain'); } });
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.active() && S && !S.paused && !S.over) this.pause(); });
   }
 
@@ -395,7 +394,6 @@ export class RunScene implements InputUI {
     const ctxt = S.call ? S.call.str : '';
     if (cl.textContent !== ctxt) { cl.textContent = ctxt; cl.className = 'call' + (S.call ? ' show ' + S.call.kind : ''); if (ctxt) flash(cl, 'pop', 260); }
     $('hurt').style.opacity = String(clamp(S.hurtFlash, 0, 0.9));
-    $('cutbtn').hidden = !(S.chains.length && p.alive && !p.st.caged);
     if (this.hintKey) { this.hintT -= dt; if (this.hintT <= 0) { $('hint').hidden = true; this.hintsDone.add(this.hintKey); this.hintKey = null; } }
     if (!this.live) return;
     if (!this.hintsDone.has('dodge') && S.hazards.some((z: any) => !z.noDmg && inHaz(z, p.x, p.y, p.r))) this.hint('dodge');

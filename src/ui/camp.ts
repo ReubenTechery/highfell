@@ -6,7 +6,7 @@
 import { TITLES } from '../content';
 import { CLASSES, MAX_HEROES, RACES, type ClassId, type RaceId } from '../content/folk';
 import { ROLES } from '../content/roles';
-import { loadoutFor } from '../meta/gear';
+import { loadoutFor, waiting } from '../meta/gear';
 import { activeHero, heroById, nameProblem, removeHero, renameHero, roleOf, setActive, type Hero } from '../meta/profile';
 import type { App } from './app';
 import { actions, esc, fmtDate, fmtN, GLYPH } from './dom';
@@ -110,7 +110,7 @@ export class Camp {
     return `<button type="button" class="ch ${on ? 'sel' : ''}" data-act="pick" data-id="${esc(h.id)}" aria-pressed="${on}" style="--x: ${s.x}%; --y: ${s.y}%; --k: ${s.k}; z-index: ${Math.round(s.y)}; --light: ${race?.light || '#F4B942'}" aria-label="${esc(h.name)}, ${esc(race?.name || '')} ${esc(cls?.name || '')}${playing ? ', playing now' : ''}">
       <span class="ch-glow"></span><span class="ch-ring"></span>
       ${heroImg(heroSprite(h, role), { cls: 'ch-img' })}
-      <span class="ch-plate"><b>${esc(h.name)}</b><span>${esc(cls?.name || h.cls)} · <i class="rdot ${role}"></i>${esc(cls?.roleName || ROLES[role].title)}</span>${playing ? '<em>Playing</em>' : ''}</span>
+      <span class="ch-plate"><b>${esc(h.name)}</b><span>${esc(cls?.name || h.cls)} · <i class="rdot ${role}"></i>${esc(cls?.roleName || ROLES[role].title)}</span>${playing ? '<em>Playing</em>' : ''}${waiting(p, h).length ? '<em class="up">New gear</em>' : ''}</span>
     </button>`;
   }
 
@@ -128,7 +128,7 @@ export class Camp {
       <p class="cp-sub"><i class="rdot ${role}" aria-hidden="true"></i>${esc(race?.name || h.race)} ${esc(cls?.name || h.cls)} · ${esc(cls?.roleName || ROLES[role].title)} · Item level ${ilvl(L.score)} · ${fmtN(h.clears)} clear${h.clears === 1 ? '' : 's'} · made ${fmtDate(h.createdAt)}</p>
       <div class="cp-actions">
         <button type="button" class="btn gold big" data-act="play">${GLYPH.play}${h.id === p.active ? 'Play' : `Play as ${esc(first)}`}</button>
-        <button type="button" class="btn" data-act="gear">${GLYPH.shield}Gear</button>
+        <button type="button" class="btn${waiting(p, h).length ? ' has-up' : ''}" data-act="gear">${GLYPH.shield}Gear${waiting(p, h).length ? `<i class="badge" aria-hidden="true">${waiting(p, h).length}</i>` : ''}</button>
         ${!h.named && !this.renaming ? `<button type="button" class="btn" data-act="rename">${GLYPH.pen}Rename</button>` : ''}
         ${p.roster.length > 1 ? `<button type="button" class="btn ${this.delArmed ? 'danger' : 'icon-only'}" data-act="del" aria-label="${this.delArmed ? `Tap again to delete ${esc(h.name)} for good` : `Delete ${esc(h.name)}`}">${GLYPH.trash}${this.delArmed ? `Delete ${esc(first)} for good?` : ''}</button>` : ''}
       </div>

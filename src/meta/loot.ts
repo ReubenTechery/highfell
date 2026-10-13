@@ -11,6 +11,7 @@ import { EPIC, SLOT_IDS, TRAITS, gearId } from '../content/gear';
 import { ORDER } from '../content/roles';
 import type { Rng } from '../core/rng';
 import { autoPlace } from './hearth';
+import { bagIt, bestRegular, freshForRole } from './gear';
 import { WARBAND_CAP, bossRecord, dungeonRecord, roleOf, type Hero, type Profile } from './profile';
 
 export type Tell = 'normal' | 'unique' | 'pet';
@@ -32,7 +33,8 @@ export interface Drop {
   offerTrait?: string;
   prevTrait?: string;
   trait?: string;
-  equipped?: boolean;
+  /** new gear the hero who got it can put on (it is never put on for you) */
+  toEquip?: boolean;
   placed?: string | null;
 }
 
@@ -61,7 +63,7 @@ export function rollTable(t: BossLootDef, role: RoleId, rng: Rng): DropDef[] {
   return hit;
 }
 
-/** Add something to the collection, wearing it on the hero who got it or placing it in the hearth. */
+/** Add something to the collection. Gear waits for every hero of its role to put it on; a pet, mount or trophy finds its spot in the hearth. */
 function grant(p: Profile, h: Hero, id: string, meta: Pick<Drop, 'source' | 'boss' | 'rate' | 'kc'>, now: number): Drop {
   const role = roleOf(h);
   const ent = p.collection[id];
@@ -69,39 +71,39 @@ function grant(p: Profile, h: Hero, id: string, meta: Pick<Drop, 'source' | 'bos
   p.collection[id] = { n: 1, kc: meta.kc || 0, at: now };
   const d: Drop = { id, ...meta, role, isNew: true, dupe: false, marks: 0 };
   const it = ITEMS[id];
-  if (it) {
-    if (it.role === role && !h.equip[it.slot]) { h.equip[it.slot] = id; d.equipped = true; }
-  } else if (COLLECTIBLES[id]) d.placed = autoPlace(p, id);
+  if (it) { freshForRole(p, id); d.toEquip = it.role === role; }
+  else if (COLLECTIBLES[id]) d.placed = autoPlace(p, id);
   return d;
 }
 
 const ladderStep = (rng: Rng): number => (rng() < 0.75 ? 1 : 2);
 
-/** The regular piece for the hero you played: their weakest slot moves up. At full Epic it offers a new weapon trait instead. */
+/** The regular piece for the hero you played: their weakest slot (counting what waits in the bag) moves up,
+ *  and the new piece goes in the bag. At full Epic it offers a new weapon trait instead. */
 export function regularDrop(p: Profile, h: Hero, rng: Rng): Drop {
   const role = roleOf(h);
-  const reg = h.regular;
-  const minR = Math.min(...SLOT_IDS.map((s) => reg[s].rar)) as Rar;
+  const best = (s: SlotId) => bestRegular(h, s);
+  const minR = Math.min(...SLOT_IDS.map((s) => best(s).rar)) as Rar;
   if (minR >= EPIC) {
-    const cur = reg.weapon.trait;
+    const cur = best('weapon').trait;
     const others = TRAITS[role].filter((t) => t.id !== cur);
     const t = others[Math.floor(rng() * others.length)];
     return { id: gearId(role, 'weapon', EPIC), source: 'regular', role, slot: 'weapon', rar: EPIC, prevRar: EPIC, isNew: false, dupe: false, marks: 0, offerTrait: t.id, prevTrait: cur };
   }
-  const slots = SLOT_IDS.filter((s) => reg[s].rar === minR);
+  const slots = SLOT_IDS.filter((s) => best(s).rar === minR);
   const slot = slots[Math.floor(rng() * slots.length)];
   const rar = Math.min(EPIC, minR + ladderStep(rng)) as Rar;
   const trait = rar === EPIC && slot === 'weapon' ? TRAITS[role][Math.floor(rng() * TRAITS[role].length)].id : undefined;
-  reg[slot] = trait ? { rar, trait } : { rar };
+  bagIt(h, slot, trait ? { rar, trait } : { rar });
   raiseFloor(p, role, slot, rar);
-  return { id: gearId(role, slot, rar), source: 'regular', role, slot, rar, prevRar: minR, trait, isNew: true, dupe: false, marks: 0, equipped: !h.equip[slot] };
+  return { id: gearId(role, slot, rar), source: 'regular', role, slot, rar, prevRar: h.regular[slot].rar, trait, isNew: true, dupe: false, marks: 0, toEquip: true };
 }
 
-/** Raise the shared floor for a role (never past the cap) and lift every hero of that role who is below it. */
+/** Raise the shared floor for a role (never past the cap): every hero of that role below it gets the piece in their bag. */
 function raiseFloor(p: Profile, role: RoleId, slot: SlotId, rar: Rar): void {
   const r = Math.min(rar, WARBAND_CAP) as Rar;
   if (p.warband[role][slot].rar < r) p.warband[role][slot] = { rar: r };
-  for (const h of p.roster) if (roleOf(h) === role && h.regular[slot].rar < r) h.regular[slot] = { rar: r };
+  for (const h of p.roster) if (roleOf(h) === role) bagIt(h, slot, { rar: r });
 }
 
 /** One shared piece for a role you are not playing, so a hero of that role is never a cold start.
@@ -119,9 +121,9 @@ export function spareDrop(p: Profile, played: RoleId, rng: Rng): Drop | null {
   return { id: gearId(who, slot, rar), source: 'spare', role: who, slot, rar, prevRar: minR, isNew: true, dupe: false, marks: 0 };
 }
 
-/** Accept or refuse a sideways trait offer. */
+/** Accept or refuse a sideways trait offer. It goes on your Epic regular weapon, worn or in the bag. */
 export function takeTrait(h: Hero, trait: string): void {
-  const reg = h.regular.weapon;
+  const reg = bestRegular(h, 'weapon');
   if (reg.rar === EPIC && TRAITS[roleOf(h)].some((t) => t.id === trait)) reg.trait = trait;
 }
 

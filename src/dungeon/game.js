@@ -20,6 +20,8 @@ export function newGame(dg, opts) {
     inCombat: false, lastCombat: -99, combatStart: 0, boss: null, bossFight: null, ring: null, dark: 0, darkTarget: 0, shake: 0, hitstop: 0, hurtFlash: 0,
     banner: null, call: null, walkout: null, hush: false, looks: new Set(opts.looks || []), stats: { deaths: 0, perfect: 0, kicks: 0, cuts: 0, cages: 0, wipes: 0, start: 0 }, hints: {}, over: false, chest: null,
     cp: 0, quiet: !!opts.quiet, auto: !!opts.auto, noEvents: !!opts.noEvents, cleared: 0, total: dg.packs.length, startedAt: 0,
+    // how hard this dungeon is: hit (everything that hurts a hero), trashHp (health of everything but the bosses)
+    tune: Object.assign({ hit: 1, trashHp: 1 }, dg.tune || {}),
   });
   S.props = dg.props.map((p) => Object.assign({}, p, { room: roomIndexOf(p.x, p.y), sp0: p.sp }));
   const roles = opts.solo ? ['dps'] : ORDER;
@@ -291,7 +293,7 @@ function fireHazard(z) {
     if (!h.alive || !inHaz(z, h.x, h.y, h.r)) continue;
     const got = hurtHero(h, z.dmg * mul, z.src, { heavy: z.heavy, block: z.block === true, magic: z.magic, kind: z.kind });
     if (got > 0 && z.knock) { const a = Math.atan2(h.y - z.y, h.x - z.x); h.st.kx += Math.cos(a) * z.knock; h.st.ky += Math.sin(a) * z.knock; }
-    if (got > 0 && z.root) { h.st.root = z.root; fxText(h.x, h.y - 112, 'Grabbed', '#C9B79A', 17); }
+    if (got > 0 && z.root) { h.st.root = z.root; if (h.isPlayer) fxText(h.x, h.y - 112, 'Grabbed', '#C9B79A', 17); }
   }
 }
 function tickZones(dt) {
@@ -324,7 +326,7 @@ function tickRings(dt) {
       if (Math.abs(d - g.r) <= g.w / 2 + h.r) {
         g.hit.add(h.id);
         if (h.st.air > 0) continue;
-        if (h.iframe > 0) { fxText(h.x, h.y - 80, 'Dodged', '#DDF3FF', 18); h.stats.dodges++; continue; }
+        if (h.iframe > 0) { if (h.isPlayer) fxText(h.x, h.y - 80, 'Dodged', '#DDF3FF', 18); h.stats.dodges++; continue; }
         hurtHero(h, g.dmg * ((g.src && g.src.dmgMul) || 1), g.src, { block: false, dodge: false, kind: 'ring' });
         h.st.kx += ((h.x - g.x) / (d || 1)) * 140; h.st.ky += ((h.y - g.y) / (d || 1)) * 140;
       }
@@ -338,7 +340,7 @@ function tickFireRing(dt) {
   R.tick -= dt;
   if (R.tick <= 0) {
     R.tick = 0.5;
-    for (const h of S.heroes) if (h.alive && dist(h, A) > R.r - h.r * 0.5) { hurtHero(h, 26, null, { magic: true, pierce: true, block: false, dodge: false, quiet: true }); fxText(h.x, h.y - 70, '-26', '#9BE15D', 16, { dur: 0.6 }); if (h.isPlayer && !S.hints.fire) { S.hints.fire = 1; S.call = { str: 'Get inside the ring!', kind: 'alarm', t: 0, dur: 1.4 }; } }
+    for (const h of S.heroes) if (h.alive && dist(h, A) > R.r - h.r * 0.5) { hurtHero(h, 26, null, { magic: true, pierce: true, block: false, dodge: false, numCol: '#9BE15D', numSize: 16, numDur: 0.6 }); if (h.isPlayer && !S.hints.fire) { S.hints.fire = 1; S.call = { str: 'Get inside the ring!', kind: 'alarm', t: 0, dur: 1.4 }; } }
   }
 }
 

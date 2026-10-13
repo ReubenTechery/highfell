@@ -15,12 +15,13 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 14 
 | Heroes | Race and class picked once, for keeps; up to 6 heroes; the camp to switch, rename once or let one go; your hero big on the Hearth | Gnomes and the other race and class combos, the Rogue, Ranger and Bard kits, racial tricks |
 | Abilities | Four buttons per role plus the dodge; a perfect block stuns and hits back | Ults, Openings, team combos |
 | Talents | Epic weapon traits, swappable for 5 Barrow Marks | The three paths and four rows per role, hero levels |
-| Gear and sets | 4 slots on a gear doll that shows rarity, set count and what each piece adds; Common to Epic in about ten clears, Barrow sets with their 2-piece bonuses, the three Gravekeeper weapons | 3-piece bonuses (they need summons), the wardrobe, gear drawn on your hero |
+| Gear and sets | 4 slots on a gear doll that shows rarity, set count and what each piece adds; Common to Epic in about ten clears, Barrow sets with their 2-piece bonuses, the three Gravekeeper weapons. Nothing goes on by itself: new pieces glow on the doll until you put them on | 3-piece bonuses (they need summons), the wardrobe, gear drawn on your hero |
+| Threat and difficulty | The tank earns threat (Slam taunts and drags mobs in, Charge grabs one), loose mobs go wild on the squishies, a caged tank loses the boss; Barrow hits 1.5 times as hard and its packs have more health; you see only your own numbers | Ults, Openings |
 | Loot | Every line rolls on its own, kill counts, duplicates to Marks, the walkout and the chest reveal |  |
 | Achievements | All 12, the meta and the 3 hidden ones, with titles, trophies, looks and the Lantern Ghost |  |
 | Home | The Hearth: pets by the fire and on the rug, the mount's stall, the mantel and the banner | Inviting people over |
 | Logs | Collection log by boss and gathering spot, grouped by dungeon and place, OSRS style: drops, kill count, fastest kill, wipes; achievements; the Vale's story; stats |  |
-| Riding out | The Vale map and a ride on your mount (a Hill Goat on your first ride); Bramblewick Hollow with three gathering close-ups, Dottle's daily errands and 8 story pages; Gathering and Brewing ranks; 3 pets, 4 trophies, bunting and a hare | Moonmere and Emberdeep, friends seen out riding, more close-ups |
+| Riding out | The Vale map (Bramblewick is the one place open); walking out, or riding once you have a mount; Bramblewick Hollow with three gathering close-ups that pay XP every cut, Dottle's errands (goats, crows, sparks, the kettle, deliveries) and 8 story pages; Gathering and Brewing ranks; the Hill Goat from the goats errand; 3 pets, 4 trophies, bunting and a hare | Moonmere and Emberdeep, friends seen out riding, more close-ups |
 | Brews | The cauldron by your fire, 4 brews, one bottle a run, picked on the dungeon sheet | More recipes as places open |
 
 ## At a glance
@@ -46,9 +47,20 @@ Every role gets three core buttons, one Ult and the swipe dodge, and each role's
 
 **Built so far:** four buttons per role plus the dodge, cooldowns about 20% shorter than v1. Taunt is folded into Slam, and the tank now does about a third of the party's damage (it was a quarter). Ults, Openings and the combos below are still to build.
 
+**Threat (built 14 Oct):** holding mobs is the tank's job, not a given. The tank's hits make a third more threat than anyone else's (it was 3.6 times as much, so mobs just clung to him); the DPS out-damages him, and heals pull a little on everything in the fight. A mob switches once someone beats its target by a tenth.
+
+- **Slam** taunts everything around you for 4 seconds and drags it in to arm's reach (big mobs half as far, bosses not at all).
+- **Charge** makes the mob you hit turn on you; Ringing Blow makes everything it hits turn.
+- A mob that isn't on the tank for 3 seconds goes **wild**: it hits harder and faster. A DPS or healer who pulls one gets told to let the tank hit first.
+- In the Gravekeeper's last phase **only the tank is caged**. Inside, nothing can target him and every mob forgets half his threat, so the boss turns on someone else until he mashes out (or a mate breaks him out) and Slams it back. The bars pop and the game says so.
+- **Chains** have no button any more: the game calls "Cut the chain!" and you swipe across it (drag the mouse on desktop). A touch on a chain, a wisp or a cage counts even in the move-stick corner.
+- **Numbers:** you see only your own (your hits, your heals, what hits you). Your mates' spell effects still show.
+
+**Difficulty (built 14 Oct):** a dungeon has a `tune`. Barrow Crypt's: everything that hurts a hero hits 1.5 times as hard as written, and every mob but the bosses has 1.3 times the health. With no healing at all a party now wipes; with a tank who never Slams or Charges, the DPS takes about six times the damage. Clears went from 3:57 to about 4:10.
+
 | Role | 1 | 2 | 3 | 4 (new) |
 | --- | --- | --- | --- | --- |
-| Tank | Slam: hits everything around you and taunts it, 6s | Shield (hold): a perfect block stuns and hits back for 150 | Charge: dash, hit for 80, stun around, 7s | Cleave: a big swing through everything in front, 3.5s |
+| Tank | Slam: hits everything around you, taunts it and drags it in, 6s | Shield (hold): a perfect block stuns and hits back for 150 | Charge: dash, hit for 80, it turns on you, stun around, 7s | Cleave: a big swing through everything in front, 3.5s |
 | Healer | Prayer circle, 5s | Ward, 4s | Sunburst, 14s | Smite: heals your most hurt ally for the damage dealt and gives mana back, 2.5s |
 | DPS | Blizzard, 7.5s | Rime burst, 11s | Comet: 0.9s cast, 5.5s | Icicle: instant, triple damage on frozen mobs, 2.5s |
 
@@ -135,19 +147,21 @@ A hero is one race and one class, picked when you make them and fixed after. You
 - **The camp:** every hero round a campfire on the hill above Highfell. Pick one to play, check their gear, or let one go (the last one stays).
 - **Each hero keeps:** their regular gear (the Common to Epic ladder), their title and their clears.
 - **Every hero shares:** the collection (a unique fits any hero of its role), kill counts, Marks, achievements, titles and the Hearth.
-- **Shared gear:** a floor per role, up to Rare. Spare pieces and your own ladder raise it, and every hero of that role wears at least it, including heroes made later. Epic is earned on the hero.
+- **Shared gear:** a floor per role, up to Rare. Spare pieces and your own ladder raise it, and every hero of that role can put it on, including heroes made later (a new hero starts wearing it). Epic is earned on the hero.
+- **Nothing goes on by itself.** A new piece waits in the hero's bag and glows on the gear doll with "Up" (a better regular piece) or "New" (a unique). The Gear button counts what's waiting; tap the slot, compare, and Put it on: the slot bursts, the item level counts up. The chest reveal says "Put it on in Gear".
 - **Drawn today:** Dwarf Warrior (tank), Human Cleric (healer), Elf Mage (DPS). The rest show in the hero maker as Soon.
 - **Old saves:** became one hero, named for the role you last played, with a one-time rename.
 
 ## Riding out (the Vale)
 
-Between dungeons you ride out: one button on the hearth, about five minutes a trip, built as a playable test slice on 14 Oct. It stays small on purpose: no open world, no crafted gear, no inventory to manage, no streaks.
+Between dungeons you ride out: one button on the hearth, about five minutes a trip, built as a playable test slice on 14 Oct and reworked the same day after a play test. It stays small on purpose: no open world, no crafted gear, no inventory to manage, no streaks.
 
-1. **Ride out** from the hearth to the Vale map. Everyone's first ride gives a Hill Goat.
-2. **Ride** to a place, about three seconds, tap to skip. Bramblewick Hollow is the first.
-3. **Gather** in close-up: snip a stem on the dotted line, pluck a glowcap at its brightest. Three goes a harvest; each Perfect adds one more.
-4. **Do Dottle's errand**: find a lost thing, shoo crows or sparks, or hand over ingredients. Each one turns up a page of the hollow's story.
-5. **Brew** at the cauldron by your fire, then pick the brew on the dungeon sheet.
+1. **Ride out** from the hearth to the Vale map. Bramblewick Hollow is the one place open: it glows, its road is lit and the card has the button. The other places are locked ("Later"); the Barrow is through the door at home.
+2. **Walk or ride there.** You start on foot (5 seconds). There's no skip: a mount is what makes it quicker (the Hill Goat 3 seconds, the hare and the hound 2).
+3. **Dottle's first errand is the goats:** tap them back into the pen, and the last one out decides she likes you. She's your Hill Goat, your first mount.
+4. **Gather** in close-up: snip a stem on the dotted line, pluck a glowcap at its brightest. Three goes a harvest; each Perfect adds one more. **Every cut pays Gathering XP as it lands**, with a bar that fills at the foot of the close-up and a burst on a new rank.
+5. **Do Dottle's errands**: crows come in gangs, hop between cabbages and chain into combos; sparks drift from the chimney onto the roof while the heat bar rises (never a fail: Dottle throws a bucket); the kettle runs off the first time you find it; or hand over ingredients. She shouts as you go. Each one turns up a page of the hollow's story.
+6. **Brew** at the cauldron by your fire (every lap of the stir pays Brewing XP), then pick the brew on the dungeon sheet.
 
 - A place regrows 2 harvests a day and saves up to 6; errands come 1 a day and save up to 3. A missed day costs nothing.
 - A harvest rolls when its close-up starts, like a boss kill. One in seven shimmers and gives Starlight Dew.
@@ -162,11 +176,12 @@ Between dungeons you ride out: one button on the hearth, about five minutes a tr
 | Puffcap (pet) | Glowcap ring | 1/600 |
 | Bramble Crown (trophy) | Bramble hedge | 1/80 |
 | Thimble (pet) | Bramble hedge | 1/600 |
+| Hill Goat (mount) | Dottle's first errand, the goats | Given |
 | Bramblewick Bunting (banner) | Dottle's errands | 1/20 |
 | Wobbly Kettle (trophy) | Dottle's errands | 1/25 |
 | Thistledown Hare (mount) | Dottle's errands | 1/40 |
 
-Brews are small twists for one run, never power a raid needs. One bottle a run, drunk at the door; practice uses the brew but keeps the bottle. A Perfect stir fills one extra bottle.
+Brews are small twists for one run, never power a raid needs. One bottle a run, drunk at the door; practice uses the brew but keeps the bottle. A Perfect stir fills one extra bottle. The ingredients go in when the stir starts, so leaving mid-stir still bottles it.
 
 | Brew | Needs | For one run | Learned at |
 | --- | --- | --- | --- |
@@ -186,7 +201,7 @@ The weapon is the upgrade you feel; Helm, Shoulders and Chest are the set. Power
 - 4 slots: Weapon, Helm, Shoulders, Chest (up from 3).
 - Rarity climbs Common → Uncommon → Rare → Epic, the cap. Target: Rare in about 3 runs, full Epic in about 10 (roughly an hour).
 - The weapon carries about 40% of your power, so a new one means bigger hits, bigger crits and its own glow.
-- Every clear drops a regular item at least the rarity you wear in that slot. No dead drops. It also drops a shared piece for another role, up to Rare, so a new alt never starts cold.
+- Every clear drops a regular item better than the best you have in your weakest slot. No dead drops. It waits until you put it on. It also drops a shared piece for another role, up to Rare, so a new alt never starts cold.
 - Everything shows on your hero. Every set you earn goes in your wardrobe, to wear over any gear.
 - **Barrow Marks**: 1 per clear, 3 per duplicate. Spend 5 to swap your Epic weapon's trait; never on uniques.
 
@@ -194,7 +209,7 @@ The weapon is the upgrade you feel; Helm, Shoulders and Chest are the set. Power
 
 | Role | Trait | Trait | Trait |
 | --- | --- | --- | --- |
-| Tank | **Wide Swings**: swings hit everything in front at full damage | **Ringing Blow**: Charge hits twice | **Headsman**: hits on stunned mobs always crit |
+| Tank | **Wide Swings**: swings hit everything in front at full damage | **Ringing Blow**: Charge hits twice and everything it hits turns on you | **Headsman**: hits on stunned mobs always crit |
 | Healer | **Sunflare**: Mend splashes half to the next hurt ally | **Quick Hands**: Mend recasts faster | **Kindle**: a Ward that breaks heals for 80 |
 | DPS | **Shatterlance**: Comet on frozen mobs hits 3× | **Splinter**: frostbolts split to a second mob | **Quickfrost**: Comet casts twice as fast |
 
@@ -293,7 +308,7 @@ Each dungeon has 12 achievements that pop mid-run and pay out in looks, titles, 
 | Silver | Not On My Watch | Healer: save 5 allies from under 15% in one run | Staff glow |
 | Silver | Big Number | DPS: land a 1,500+ crit | Ice-burst crit effect |
 | Silver | Armour On | Kill Sir Rattlebones while his rally armour is still up | Title: Knight-breaker |
-| Silver | Jailbreak | Mash out of a Gravekeeper cage in under 1.5s | Trophy: Bent Bars |
+| Silver | Jailbreak | Tank: mash out of a Gravekeeper cage in under 1.5s | Trophy: Bent Bars |
 | Gold | Gravedigger's Sprint | Clear in under 3 minutes 20 | Title: the Quick |
 | Gold | Flawless Barrow | Clear with no deaths and nobody hit by a hand or a ring | Trophy: Golden Skull |
 | Meta | Master of the Barrow | All 12 above | Title: the Barrow-born + a lantern-ghost pet |
@@ -315,4 +330,4 @@ Every talent path, every set and the main hybrids get 20 seeded bot clears each,
 - No trap picks: a talent that no strong build takes gets buffed or replaced.
 - After each pass you get a one-page balance table.
 
-Today's baseline, after the kill-speed pass: bots clear Barrow Crypt in about 4:00 on Common gear and 3:00 on Epic with no wipes, and the Gravekeeper takes about two minutes. The repo's npm run sim prints the full table.
+Today's baseline, after the threat and difficulty pass (14 Oct): bots clear Barrow Crypt in about 4:10 on Common gear and 3:05 on Epic with no wipes, and the Gravekeeper takes about two minutes. The repo's npm run sim prints the full table.
