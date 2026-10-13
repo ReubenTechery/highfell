@@ -251,10 +251,16 @@ export function tankActions(h) {
   const loose = foes.filter((m) => m.target && m.target !== h && m.forcedT <= 0 && !m.cage);
   const near = loose.filter((m) => dist(m, h) <= 240 + m.r);
   const fresh = foes.filter((m) => m.fightT < 1.6 && dist(m, h) <= 240 + m.r);
-  if (h.cd.a1 <= 0 && (near.length >= 1 || fresh.length >= 3)) { useAbility(h, 'a1'); return; }
+  const around = foes.filter((m) => !m.cage && dist(m, h) <= 190 + m.r);
+  if (h.cd.a1 <= 0 && (near.length >= 1 || fresh.length >= 3 || around.length >= 2 || (S.boss && around.includes(S.boss)))) { useAbility(h, 'a1'); return; }
   if (h.cd.a3 <= 0) {
     const far = loose.find((m) => { const d = dist(m, h); return d > 200 && d < 420; });
     if (far) { useAbility(h, 'a3', far); return; }
+  }
+  // Cleave whenever something is in reach in front of you
+  if (h.cd.a4 <= 0) {
+    const t = h.picked && isFoe(h.picked) ? h.picked : h.target;
+    if (t && isFoe(t) && !t.cage && dist(h, t) <= 105 + t.r) { useAbility(h, 'a4', t); return; }
   }
 }
 export function healerActions(h) {
@@ -276,6 +282,8 @@ export function healerActions(h) {
   if (tank && tank.alive && h.cd.a1 <= 0 && mana >= 34 && pct(tank) < 0.86 && dist(tank, h) < 500 && tank.moving <= 0) { useAbility(h, 'a1', { x: tank.x, y: tank.y }); return; }
   if (tank && tank.alive && pct(tank) < 0.76 && mana >= 7 && mend(h, tank)) return;
   if (pct(low[0]) < (mana > 45 ? 0.84 : mana > 20 ? 0.62 : 0.45) && mend(h, low[0])) return;
+  // nobody needs anything: Smite the tank's target (it heals and gives mana back)
+  if (h.cd.a4 <= 0 && pct(low[0]) > 0.5) { const t = tank_or_target(h); if (t && !t.cage && useAbility(h, 'a4', t)) return; }
 }
 export function dpsActions(h) {
   const tank = heroBy('tank');
@@ -302,7 +310,13 @@ export function dpsActions(h) {
     const c = bestCluster(h, 120, 520);
     if (c && (c.score >= 3 || (c.score >= 2.6 && S.boss)) && (tank && tank.alive ? foes.filter((m) => engagedByTank(m)).length >= 2 || !foes.some((m) => m.fightT < 1.0) : true)) { useAbility(h, 'a1', { x: c.x, y: c.y }); return; }
   }
-  if (h.cd.a3 <= 0 && tgt && !tgt.cage && !tgt.M.wisp && h.stillT > 0.2 && (tgt.isBoss || tgt.M.big || tgt.st.freeze > 0.9 || tgt.hp > 300) && !dangerAt(h, h.x, h.y, 1.3)) { useAbility(h, 'a3', tgt); }
+  if (h.cd.a3 <= 0 && tgt && !tgt.cage && !tgt.M.wisp && h.stillT > 0.2 && (tgt.isBoss || tgt.M.big || tgt.st.freeze > 0.9 || tgt.hp > 300) && !dangerAt(h, h.x, h.y, 1.3)) { useAbility(h, 'a3', tgt); return; }
+  // Icicle on cooldown, into something frozen when there is one
+  if (h.cd.a4 <= 0) {
+    const frozen = foes.filter((m) => m.st.freeze > 0.25 && dist(m, h) < 500).sort((a, b) => b.hp - a.hp)[0];
+    const t = frozen || (tgt && !tgt.cage ? tgt : null);
+    if (t) useAbility(h, 'a4', t);
+  }
 }
 
 export function botTick(h, dt) {

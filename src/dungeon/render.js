@@ -4,7 +4,7 @@ import { AB, ROLES } from '../content/roles';
 import { RARITY } from '../content/gear';
 import { S } from './state.js';
 import { BAKE_S, PAT, bakeAll, drawSpr, mkCanvas } from './art.js';
-import { dots } from './entities.js';
+import { PERFECT_WINDOW, dots } from './entities.js';
 import { IN, aimPoint } from './input.js';
 import { chainEnds } from './mobs.js';
 import { roomIndexOf } from './world.js';
@@ -316,7 +316,7 @@ export function drawHero(ctx, h) {
   if (h.blocking) {
     const a = h.face, cx = h.x + Math.cos(a) * 24, cy = h.y - 34 + Math.sin(a) * 12;
     ctx.lineWidth = 11; ctx.strokeStyle = K; ctx.beginPath(); ctx.arc(cx - Math.cos(a) * 14, cy - Math.sin(a) * 8, 34, a - 1.05, a + 1.05); ctx.stroke();
-    ctx.lineWidth = 6; ctx.strokeStyle = h.blockT < (h.traits.has('bulwark') ? 1 : 0.5) ? '#F2C230' : '#C9D2DC'; ctx.stroke();
+    ctx.lineWidth = 6; ctx.strokeStyle = h.blockT < PERFECT_WINDOW ? '#F2C230' : '#C9D2DC'; ctx.stroke();
   }
   if (h.absorb > 0) {
     ctx.globalAlpha = 0.22; ctx.fillStyle = '#DDF3FF'; ctx.beginPath(); ctx.ellipse(h.x, h.y - 44, 40, 58, 0, 0, TAU); ctx.fill();
@@ -489,7 +489,7 @@ export function drawAim(ctx) {
   if (!a || !a.live || !S.player.alive) return;
   const def = AB[S.player.role][a.slot];
   const p = aimPoint(a);
-  const r = def.key === 'circle' ? 110 * (S.player.traits.has('widecircle') ? 1.4 : 1) : 120 * (S.player.traits.has('glacier') ? 1.5 : 1);
+  const r = def.key === 'circle' ? 110 : 120;
   const col = def.key === 'circle' ? '#F2C230' : '#DDF3FF';
   ctx.globalAlpha = 0.9;
   ctx.lineWidth = 3; ctx.strokeStyle = col; ctx.setLineDash([12, 10]);

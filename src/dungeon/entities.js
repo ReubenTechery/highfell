@@ -6,8 +6,10 @@ import { ROLES } from '../content/roles';
 import { HOOKS, S, emit } from './state.js';
 import { onBossDead, checkPack, startBoss } from './game.js';
 import { breakCage, cutChain, interruptCast } from './mobs.js';
+import { onPerfectBlock } from './heroes.js';
 
 export const sfx = (n, v) => { if (S && !S.quiet) HOOKS.sound(n, v); };
+const later = (t, fn) => S.timers.push({ t, fn });
 
 /* loadout: what the meta layer worked out from the hero's gear.
    { power, traits: Set, bonuses: Set, weaponRar, unique } */
@@ -97,6 +99,9 @@ export function taunt(m, h, dur) {
 }
 
 /* ---------- damage to heroes ---------- */
+/** how long after raising the shield a heavy hit counts as a perfect block */
+export const PERFECT_WINDOW = 0.5;
+
 export function hurtHero(h, amt, src, o) {
   o = o || {};
   if (!h.alive || S.over) return 0;
@@ -106,8 +111,7 @@ export function hurtHero(h, amt, src, o) {
   if (o.block !== false && h.blocking && src) {
     const off = Math.abs(angDiff(h.face, Math.atan2(src.y - h.y, src.x - h.x)));
     if (off < 1.45) {
-      const win = h.traits.has('bulwark') ? 1.0 : 0.5;
-      if (o.heavy && o.perfectable !== false && h.blockT <= win) {
+      if (o.heavy && o.perfectable !== false && h.blockT <= PERFECT_WINDOW) {
         a = 0; h.stats.perfect++; S.stats.perfect++;
         fxText(h.x, h.y - 96, 'PERFECT!', '#F2C230', 30, { dur: 1.3 });
         if (src.kind === 'mob' && src.alive) { src.st.stun = Math.max(src.st.stun, src.isBoss ? 1.6 : 1.2); src.wind = 0; src.busy = 0; fxText(src.x, src.y - (src.isBoss ? 200 : 110), 'Stunned', '#FFE08A', 20); }
@@ -115,22 +119,25 @@ export function hurtHero(h, amt, src, o) {
         fx({ type: 'ring', x: h.x, y: h.y - 30, r0: 20, r1: 110, col: '#F2C230', dur: 0.35, w: 6 });
         if (o.smash && S.bossFight && h.isPlayer) S.bossFight.smashPerfect++;
         emit({ type: 'block', perfect: true, player: !!h.isPlayer, smash: !!o.smash });
-        if (h.onPerfect) h.onPerfect(src);
+        onPerfectBlock(h, src);
       } else {
         a *= 0.25; h.stats.blocks++;
         fxText(h.x, h.y - 90, 'Blocked', '#C9D2DC', 18); sfx('block');
         fx({ type: 'ring', x: h.x + Math.cos(h.face) * 22, y: h.y - 30 + Math.sin(h.face) * 12, r0: 6, r1: 40, col: '#FFFFFF', dur: 0.2, w: 4 });
         emit({ type: 'block', perfect: false, player: !!h.isPlayer, smash: !!o.smash });
       }
-      if (h.traits.has('spiked') && src.kind === 'mob' && src.alive) hurtMob(src, 40, h, { raw: true, noCrit: true });
     }
   }
   if (!o.pierce) a *= 1 - h.armor * (o.magic ? 0.4 : 1);
-  if (h.traits.has('laststand') && h.hp < h.maxHp * 0.3) a *= 0.7;
   if (h.absorb > 0 && a > 0) {
     const t = Math.min(h.absorb, a); h.absorb -= t; a -= t;
     if (t > 0 && !o.quiet) fxText(h.x, h.y - 70, 'Absorbed', '#DDF3FF', 16);
-    if (h.absorb <= 0.5) { h.absorb = 0; if (h.onWardBreak) h.onWardBreak(); const hl = S.heroes.find((x) => x.role === 'healer' && x.alive); if (hl && hl.traits.has('secondwind')) hl.mana = Math.min(hl.maxMana, hl.mana + 6); }
+    if (h.absorb <= 0.5) {
+      h.absorb = 0;
+      // Kindle: a Ward that breaks heals whoever wore it
+      const by = h.wardBy; h.wardBy = null;
+      if (by && by.alive && by.traits.has('kindle')) later(0, () => healHero(by, h, 80, { show: true, raw: true }));
+    }
   }
   a = Math.round(a);
   if (a > 0) {
@@ -197,7 +204,7 @@ export function healHero(src, t, amt, o) {
   o = o || {};
   if (!t.alive) return 0;
   const before = t.hp / t.maxHp;
-  const a = Math.round(amt * ((src && src.power) || 1));
+  const a = Math.round(amt * (o.raw ? 1 : (src && src.power) || 1));
   const real = Math.min(a, t.maxHp - t.hp);
   t.hp += real;
   if (src) { src.stats.heal += real; src.stats.overheal += a - real; }
