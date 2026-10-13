@@ -4,9 +4,10 @@
 
 AGENTS.md is the whole brief: the vision, the pillars, decisions already made, the rules of the systems, the
 code map, the commands and the code rules. Read it first. This file only adds what Claude can do here that
-other agents can't. It is for Claude working through claude.ai (Claude Code, with the Artifact tool). A Claude
-model picked inside another tool, such as Antigravity, follows `GEMINI.md` there: branches and pull requests,
-no publishing.
+other agents can't. It is only for the one Claude that can publish the live game: Claude Code on claude.ai, on
+the owner's account that owns it. Any other Claude (Claude Code running on the owner's computer, a Claude on
+another account, or a Claude model picked inside Antigravity) works like the other agents: follow `GEMINI.md`,
+with branches named `claude/<topic>`, pull requests, and no publishing.
 
 ## Publishing (Claude only)
 
@@ -22,7 +23,7 @@ After `npm run all` passes and you've looked at phone and desktop screenshots:
 
 ## Work from other agents
 
-When the owner asks, review open pull requests (for example `gemini/*` branches) against AGENTS.md: the
+When the owner asks, review open pull requests (`gemini/*` and `claude/*` branches) against AGENTS.md: the
 pillars, the code rules, the tests and `docs/art.md`. Check them out, run `npm run all`, look at screenshots,
 then merge into `main` and publish.
 
