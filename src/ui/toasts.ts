@@ -1,7 +1,7 @@
 /** Little cards that drop in from the top: achievements, new collection log slots, drops mid-run. */
 import { ACHIEVEMENTS, COLLECTIBLES, TITLES } from '../content';
 import { esc } from './dom';
-import { iconOf, nameOf } from './art';
+import { iconOf, nameOf, tile } from './art';
 import { SFX } from './sound';
 
 export class Toasts {
@@ -31,10 +31,14 @@ export class Toasts {
     const reward = a.reward.title ? `Title: ${TITLES[a.reward.title]?.text || ''}` : a.reward.text;
     this.push(`<span class="medal ${a.tier}" aria-hidden="true">${a.points}</span><div><small>Achievement</small><b>${esc(a.name)}</b><span>${esc(reward)}</span></div>`, 'ach');
   }
-  collected(id: string, kc?: number): void {
+  collected(id: string, kc?: number, kcWord = 'Kill count'): void {
     const c = COLLECTIBLES[id];
     const what = c ? (c.kind === 'pet' ? 'New pet' : c.kind === 'mount' ? 'New mount' : 'New collection log slot') : 'New collection log slot';
-    this.push(`<span class="tile" aria-hidden="true">${iconOf(id)}</span><div><small>${what}</small><b>${esc(nameOf(id))}</b>${kc ? `<span>Kill count ${kc}</span>` : ''}</div>`, 'rare');
+    this.push(`<span class="tile" aria-hidden="true">${iconOf(id)}</span><div><small>${what}</small><b>${esc(nameOf(id))}</b>${kc ? `<span>${esc(kcWord)} ${kc}</span>` : ''}</div>`, 'rare');
+  }
+  /** a skill went up a rank */
+  rank(skill: string, rank: number, icon: string, note = ''): void {
+    this.push(`<span class="tile" aria-hidden="true">${tile(icon)}</span><div><small>Rank up</small><b>${esc(skill)} ${rank}</b>${note ? `<span>${esc(note)}</span>` : ''}</div>`, 'rankup');
   }
   text(title: string, sub = '', eyebrow = ''): void {
     this.push(`<span class="medal hidden" aria-hidden="true">!</span><div>${eyebrow ? `<small>${esc(eyebrow)}</small>` : ''}<b>${esc(title)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}</div>`);

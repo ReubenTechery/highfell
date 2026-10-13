@@ -53,6 +53,13 @@ export class Achiever {
     return this.unlocked.slice(before);
   }
 
+  /** Check the counter achievements now: for things outside a run, like gathering and brewing. */
+  check(): string[] {
+    const before = this.unlocked.length;
+    for (const a of ACHIEVEMENT_LIST) if (this.eligible(a) && a.counter && (this.p.counters[a.counter.key] || 0) >= a.counter.target) this.unlock(a.id);
+    return this.unlocked.slice(before);
+  }
+
   /** Something new arrived in the collection. */
   collected(id: string): string[] {
     const before = this.unlocked.length;

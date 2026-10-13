@@ -419,9 +419,11 @@ export function doDodge(h, dx, dy) {
   if (!h.alive || S.over || h.cd.dodge > 0 || h.st.stun > 0 || h.st.caged || h.st.root > 0 || h.st.air > 0 || h.dash) return false;
   let v = norm(dx, dy);
   if (!dx && !dy) v = { x: Math.cos(h.face), y: Math.sin(h.face) };
-  h.dodgeT = 0.3; h.iframe = 0.38; h.dodgeX = v.x; h.dodgeY = v.y; h.cd.dodge = 1.6; h.cast = null; h.blocking = false;
+  // Bramble Fizz: the dodge comes back a third sooner. Moonpetal Tonic: every dodge heals a little.
+  h.dodgeT = 0.3; h.iframe = 0.38; h.dodgeX = v.x; h.dodgeY = v.y; h.cd.dodge = h.brew === 'fizz' ? 1.07 : 1.6; h.cast = null; h.blocking = false;
   if (Math.abs(v.x) > 0.2) h.flip = v.x < 0;
   dots(h.x, h.y, '#C9B79A', 6, 90, { size: 6 });
+  if (h.brew === 'tonic') { healHero(null, h, h.maxHp * 0.05, { raw: true, size: 16 }); dots(h.x, h.y - 40, '#8FD6FF', 5, 70, { size: 5 }); }
   sfx('dodge');
   emit({ type: 'dodge', player: !!h.isPlayer });
   return true;

@@ -9,6 +9,7 @@ import { DUPE_MARKS, resolveRun, rollTable } from '../src/meta/loot';
 import { equip, loadoutFor, newHero, plainLoadout, worn } from '../src/meta/gear';
 import { FOUNDERS, MAX_HEROES, canMake, cleanName } from '../src/content/folk';
 import { SLOT_IDS } from '../src/content/gear';
+import { INGREDIENTS, RECIPES } from '../src/content/vale';
 import { Achiever } from '../src/meta/achievements';
 import { HEARTH_SPOTS, place } from '../src/meta/hearth';
 import type { GameEvent, RunSummary } from '../src/content/types';
@@ -272,8 +273,8 @@ test('hearth: spots only take their own kind, and only what you own', () => {
 test('art: every icon and sprite the content names exists', async () => {
   const fs = await import('node:fs');
   const read = (f: string) => JSON.parse(fs.readFileSync(new URL('../../art/' + f, import.meta.url), 'utf8'));
-  const tiles = { ...read('icons.json'), ...read('collect_icons.json') };
-  const sprites = { ...read('sprites.json'), ...read('hearth.json') };
+  const tiles = { ...read('icons.json'), ...read('collect_icons.json'), ...read('vale_icons.json') };
+  const sprites = { ...read('sprites.json'), ...read('hearth.json'), ...read('vale.json') };
   const missing: string[] = [];
   for (const it of Object.values(ITEMS)) if (!tiles[it.icon]) missing.push('icon ' + it.icon + ' for ' + it.id);
   for (const c of Object.values(COLLECTIBLES)) {
@@ -281,6 +282,10 @@ test('art: every icon and sprite the content names exists', async () => {
     if (c.sprite && !sprites[c.sprite]) missing.push('sprite ' + c.sprite + ' for ' + c.id);
   }
   for (const n of ['lantern', 'lantern_gold', 'lantern_out', 'pet_keeper', 'pet_keeper_reach', 'fireplace', 'fire_a', 'fire_b', 'rug', 'stall']) if (!sprites[n]) missing.push('sprite ' + n);
+  for (const n of ['npc_gnome', 'cauldron', 'burrow', 'burrow_red', 'windmill', 'windmill_sails', 'fence', 'cabbages', 'node_moonpetal', 'node_moonpetal_shim', 'node_glowcap', 'node_bramble', 'goggles', 'crow', 'spark', 'kettle_walk', 'pet_rootling_calm']) if (!sprites[n]) missing.push('sprite ' + n);
+  for (const x of [...Object.values(INGREDIENTS), ...Object.values(RECIPES)]) if (!tiles[x.icon]) missing.push('icon ' + x.icon + ' for ' + x.id);
+  for (const n of ['s_gather', 's_brew']) if (!tiles[n]) missing.push('icon ' + n);
+  for (const c of Object.values(COLLECTIBLES)) if (c.kind === 'mount' && !c.saddle) missing.push('saddle for ' + c.id);
   for (const n of ['slam', 'cleave', 'smite', 'icicle', 'shield', 'charge', 'circle', 'ward', 'sunburst', 'blizzard', 'nova', 'comet', 'dodge', 'mend', 'marks']) if (!tiles[n]) missing.push('icon ' + n);
   assert.deepEqual(missing, []);
 });

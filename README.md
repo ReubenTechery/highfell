@@ -7,6 +7,11 @@ off what you find, and a lantern that tells you what is in the chest before you 
 
 The first dungeon is **Barrow Crypt**: five packs, Sir Rattlebones, and the Gravekeeper in his yard.
 
+Between dungeons you can **ride out** into the Vale: a map, a short ride on your mount, and a one-screen place
+to visit. The first is **Bramblewick Hollow**, where you gather herbs in close-up little games, do a daily
+errand for Dottle the inventor (each one turns up a page of the hollow's story) and chase rare pets, trophies
+and a mount. What you gather you brew at the cauldron at home, and a brew is a small twist for one run.
+
 ## Build
 
 ```bash

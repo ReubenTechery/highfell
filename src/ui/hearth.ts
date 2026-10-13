@@ -2,7 +2,8 @@
  * The Hearth: home. A tavern room you can drag around on a phone, with the hero you are playing
  * standing big by the fire. Your pets sit by the fire and on the rug, your mount waits in the stall,
  * trophies go on the mantel and your banner hangs over the fire. Tap a spot to change what is there,
- * tap your hero for their gear, the door goes to the dungeon. Your other heroes wait at the camp.
+ * tap your hero for their gear, the door goes to the dungeon and the cauldron brews. Your other
+ * heroes wait at the camp; Ride out takes you into the Vale.
  */
 import { COLLECTIBLES, DUNGEONS, GAME_NAME, TITLES } from '../content';
 import { CLASSES, RACES, type ClassId, type RaceId } from '../content/folk';
@@ -14,6 +15,8 @@ import type { App } from './app';
 import { actions, esc, GLYPH } from './dom';
 import { heroSprite, placeSprite, tile } from './art';
 import { SFX } from './sound';
+import { RECIPES } from '../content/vale';
+import { logTotal } from './sheets';
 
 /** the room is 1440 wide; the action band is y 0 to 900. Tall screens see the rafters and more floor. */
 const W = 1440, H = 900, TOP = -420, BOTTOM = 1340;
@@ -53,6 +56,8 @@ export class Hearth {
       dungeon: () => { SFX.play('ui'); app.sheets.open({ kind: 'dungeon' }); },
       gear: () => { SFX.play('ui'); const h = activeHero(app.p); if (h) app.sheets.open({ kind: 'gear', hero: h.id }); },
       heroes: () => { SFX.play('ui'); app.showCamp(); },
+      ride: () => { SFX.play('ui'); void app.showVale(); },
+      satchel: () => { SFX.play('ui'); app.sheets.open({ kind: 'satchel' }); },
       logs: () => { SFX.play('ui'); app.sheets.open({ kind: 'logs', tab: 'collection' }); },
       settings: () => { SFX.play('ui'); app.sheets.open({ kind: 'settings' }); },
       panl: () => this.panBy(-this.visW * 0.6),
@@ -66,7 +71,7 @@ export class Hearth {
     if (!h) { this.root.innerHTML = ''; return; }
     const dg = DUNGEONS.barrow;
     const rec = p.dungeons.barrow;
-    const got = dg.collection.filter((id) => p.collection[id]).length;
+    const log = logTotal(p);
     const unseen = Object.keys(p.collection).filter((id) => !p.seen[id]).length;
     this.measure();
     this.root.innerHTML = `
@@ -78,16 +83,18 @@ export class Hearth {
         <div class="right">
           <span class="chip dark" title="${esc(dg.marksName)}"><span class="ic">${tile('marks')}</span><b>${rec ? rec.marks : 0}</b><span class="long">${esc(dg.marksName)}</span></span>
           <span class="chip dark" id="sync-chip"></span>
-          <button type="button" class="btn small dark" data-act="logs" aria-label="Logs: collection ${got} of ${dg.collection.length}">${GLYPH.book}<span class="long">Logs</span><b>${got}/${dg.collection.length}</b>${unseen ? `<i class="dot" aria-hidden="true"></i>` : ''}</button>
+          <button type="button" class="btn small dark" data-act="logs" aria-label="Logs: collection ${log.got} of ${log.total}">${GLYPH.book}<span class="long">Logs</span><b>${log.got}/${log.total}</b>${unseen ? `<i class="dot" aria-hidden="true"></i>` : ''}</button>
+          <button type="button" class="icon-btn" data-act="satchel" aria-label="Satchel">${GLYPH.bag}</button>
           <button type="button" class="icon-btn" data-act="settings" aria-label="Settings">${GLYPH.gear}</button>
         </div>
       </div>
       ${this.plate(h)}
       <div class="h-bottom">
         <div class="h-row">
-          <button type="button" class="btn" data-act="heroes">${GLYPH.people}Heroes</button>
-          <button type="button" class="btn gold big" data-act="dungeon">Into the Barrow</button>
-          <button type="button" class="btn" data-act="gear">${GLYPH.shield}Gear</button>
+          <button type="button" class="btn side" data-act="heroes" aria-label="Heroes">${GLYPH.people}<span class="bl">Heroes</span></button>
+          <button type="button" class="btn ride" data-act="ride">${GLYPH.sign}Ride out</button>
+          <button type="button" class="btn gold big" data-act="dungeon"><span><span class="long">Into the </span>Barrow</span></button>
+          <button type="button" class="btn side" data-act="gear" aria-label="Gear">${GLYPH.shield}<span class="bl">Gear</span></button>
         </div>
       </div>`;
     this.svg = this.root.querySelector('svg.room');
@@ -194,6 +201,7 @@ export class Hearth {
       if (spot) this.app.sheets.open({ kind: 'picker', spot });
       else if (hero) this.app.sheets.open({ kind: 'gear', hero });
       else if (go === 'dungeon') this.app.sheets.open({ kind: 'dungeon' });
+      else if (go === 'brew') this.app.showBrew();
     };
     svg.addEventListener('click', (e) => {
       if (this.suppressClick) return;
@@ -263,6 +271,11 @@ export class Hearth {
     o.push(placeSprite('logs', 720, 594));
     o.push(placeSprite('fire_a', 720, 588, { cls: 'fire-a' }) + placeSprite('fire_b', 720, 588, { cls: 'fire-b' }));
     o.push(placeSprite('woodpile', 1010, 616));
+    // the cauldron, for brewing what you gather in the Vale
+    const drink = p.vale.drink && RECIPES[p.vale.drink] && (p.vale.shelf[p.vale.drink] || 0) > 0 ? RECIPES[p.vale.drink].color : '#9BE15D';
+    o.push(`<g data-go="brew" data-x="1004" tabindex="0" role="button" aria-label="The cauldron: brew" style="cursor: pointer"><ellipse cx="1004" cy="812" rx="70" ry="13" style="fill: rgba(18, 12, 28, 0.4)"/>${placeSprite('cauldron', 1004, 812, { k: 0.86 })}
+      <ellipse cx="1004" cy="728" rx="50" ry="9" style="fill: ${drink}; opacity: 0.6"/><g class="steam">${[984, 1004, 1024].map((x, i) => `<path class="st" style="animation-delay: ${i * 0.6}s" d="M${x} 716 C${x - 10} 700 ${x + 10} 690 ${x} 672"/>`).join('')}</g>
+      <text class="lbl small" x="1004" y="842">Cauldron</text></g>`);
     o.push(placeSprite('rug', 690, 730));
     o.push(placeSprite('barrel', 1418, 676));
     o.push(placeSprite('stool', 214, 750) + placeSprite('table', 314, 766) + placeSprite('stool', 414, 754));

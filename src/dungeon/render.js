@@ -323,6 +323,8 @@ export function drawHero(ctx, h) {
     ctx.beginPath(); ctx.arc(x + fx_, y + w[1], h.weaponRar === 3 ? 24 : 17, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
     if (h.weaponRar === 3 && S.frame % 7 === 0) S.parts.push({ x: h.x + fx_ + vrand(-14, 14), y: h.y, z: -w[1] + vrand(-14, 14), vx: 0, vy: 0, vz: 0, up: true, col: '#C9B2FF', size: vrand(2.5, 4.5), t: 0, dur: 0.7 });
   }
+  // a brew from the Vale: little motes of its colour rising round your feet
+  if (h.brewCol && !(h.brew === 'elixir' && h.brewUsed) && S.frame % 9 === 0) S.parts.push({ x: h.x + vrand(-20, 20), y: h.y, z: vrand(0, 26), vx: 0, vy: 0, vz: 0, up: true, col: h.brewCol, size: vrand(2.5, 4.2), t: 0, dur: 0.9 });
   if (h.isPlayer && h.role === 'healer' && S.looks.has('cosmetic.glow_staff')) {
     const w = WEAPON_AT[name] || [0, -80]; const fx_ = (h.flip ? -w[0] : w[0]);
     ctx.globalAlpha = 0.28 + Math.sin(S.t * 4) * 0.08; ctx.fillStyle = '#FFE08A';

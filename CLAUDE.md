@@ -35,7 +35,8 @@ Then:
 `window.highfell` is the running app in the page: `highfell.startRun({ start, testRar, role? })` plays the active
 hero (`role` picks one of your heroes in that seat; with none, it is practice in plain gear),
 `highfell.run.autoplay(seconds, until?)` lets the bots play your seat fast, `highfell.reveal.preview('normal' | 'unique' | 'pet')`,
-`highfell.showCamp()` / `showCreate()` / `showHearth()`, and `highfell.p` is the live profile (change it, then `highfell.save()`).
+`highfell.showCamp()` / `showCreate()` / `showHearth()` / `showVale()` (the map) / `showBrew()` (the cauldron), and
+`highfell.p` is the live profile (change it, then `highfell.save()`). Settings has Vale testing switches (free harvests, lucky ×50).
 A fresh browser has no heroes, so the page opens on the hero maker: click `#cr-go` to make the rolled one.
 
 ## Map of the code
@@ -45,15 +46,18 @@ A fresh browser has no heroes, so the page opens on the hero maker: click `#cr-g
   which race and class combos have art in `HERO_ART`, name lists), and one folder per dungeon
   (`barrow/`: map, mobs, bosses, script, items, loot tables, collectibles, achievements).
   Register a dungeon in `src/content/index.ts`; `checkContent()` and the tests catch broken ids.
+  `vale/` is the overland: ingredients, recipes, the map, skill ranks, and one file per place (`bramblewick.ts`).
 - `src/dungeon` — the engine (plain JS, DOM-free): state `S`, entities, heroes, mobs, bots, the loop,
   rendering, and `walkout.js` (the lantern tells). It reaches the screen only through `HOOKS` and `emit`.
 - `src/meta` — TypeScript rules for everything that lasts: profile + migrations (heroes live here), loot, gear,
-  achievements, hearth.
+  achievements, hearth, and `vale.ts` (regrowth, harvests, errands, ranks, brewing, the brew a run drinks).
 - `src/ui` — the screens: app shell; scenes for the hearth (your hero by the fire), the camp (all your heroes),
   the hero maker, the run (HUD and input) and the reveal; sheets over them (dungeon, the gear doll, the logs with
-  the collection log by boss, settings, spot picker, item); toasts, sound. `styles.css` is inlined by the build.
+  the collection log by boss and gathering spot, the satchel, settings, spot picker, item); toasts, sound.
+  The Vale: `vale.ts` (the map, the ride, a place, errands), `valeart.ts` (its scenery), `toys.ts` (the gathering
+  close-ups), `brew.ts` (the cauldron). `styles.css` is inlined by the build.
 - `src/sim` + `scripts/sim.mjs` — headless bot runs of the real engine.
-- `tools/` — the art pipeline (Python writes SVG into `art/*.json`: `art_sprites.py`, `art_icons.py`, `art_hearth.py`)
+- `tools/` — the art pipeline (Python writes SVG into `art/*.json`: `art_sprites.py`, `art_icons.py`, `art_hearth.py`, `art_vale.py`)
   and `pw_check.py`. Re-run the matching tool after editing art, then build.
 
 ## Rules of the game's systems
@@ -76,8 +80,15 @@ A fresh browser has no heroes, so the page opens on the hero maker: click `#cr-g
   Gravekeeper about two minutes, full Epic at least 15% faster, the DPS alone dies before Sir Rattlebones.
 - Changing the save's shape: bump `PROFILE_VERSION` in `src/meta/profile.ts` and add a migration step.
   Never drop a field players have. v2 to v3 turned one hero per role into the roster: the role you last played
-  became your first hero, the others' gear became shared gear.
+  became your first hero, the others' gear became shared gear. v3 to v4 added the Vale (`p.vale`), empty.
 - Set 3-piece bonuses are designed but marked `ready: false` until their summons exist.
+- The Vale (riding out) stays small: one button on the hearth, about five minutes a trip, no open world, no crafted
+  gear, no inventory, no streaks. A place regrows 2 harvests a day and banks 6; errands come 1 a day and bank 3.
+  A harvest is rolled when its close-up starts (like a kill); Perfects add on at the end. Rares roll per line,
+  OSRS style; a duplicate becomes 2 Starlight Dew. Every errand gives the next page of that place's story.
+  Everyone's first ride gives a Hill Goat.
+- Brews are fun twists for one run, never power a raid needs. One bottle a run, drunk at the door; practice uses
+  the brew but keeps the bottle. Effects live in the engine under the recipe id (`tonic`, `fizz`, `glow`, `elixir`).
 
 ## House style
 

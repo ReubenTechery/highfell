@@ -4,6 +4,8 @@ import COLLECT_ICONS from '../../art/collect_icons.json';
 import SPRITES from '../../art/sprites.json';
 import HEARTH from '../../art/hearth.json';
 import PORTRAITS from '../../art/portraits.json';
+import VALE from '../../art/vale.json';
+import VALE_ICONS from '../../art/vale_icons.json';
 import { COLLECTIBLES, ITEMS } from '../content';
 import { RARITY, ROLE_SLOTS } from '../content/gear';
 import { heroArt } from '../content/folk';
@@ -11,8 +13,8 @@ import { ROLES } from '../content/roles';
 import type { RoleId } from '../content/types';
 
 type Sprite = { svg: string; vb: number[] };
-export const TILES: Record<string, string> = { ...(ICONS as Record<string, string>), ...(COLLECT_ICONS as Record<string, string>) };
-export const ART: Record<string, Sprite> = { ...(SPRITES as Record<string, Sprite>), ...(HEARTH as Record<string, Sprite>) };
+export const TILES: Record<string, string> = { ...(ICONS as Record<string, string>), ...(COLLECT_ICONS as Record<string, string>), ...(VALE_ICONS as Record<string, string>) };
+export const ART: Record<string, Sprite> = { ...(SPRITES as Record<string, Sprite>), ...(HEARTH as Record<string, Sprite>), ...(VALE as Record<string, Sprite>) };
 export const PORTRAIT: Record<string, string> = PORTRAITS as Record<string, string>;
 
 /** An icon tile as markup. */
@@ -69,6 +71,16 @@ export function placeSprite(name: string, x: number, y: number, o: { k?: number;
   return `<g class="${o.cls || ''}" ${o.attrs || ''}>${body}</g>`;
 }
 export const portrait = (role: RoleId): string => PORTRAIT[role] || '';
+
+/** A hero riding a mount, side on, for a parent SVG with the mount's feet at (x, y). The hero sits
+ *  behind the saddle, so the mount's back hides their legs. Flipped, the mount faces left. */
+export function riderSvg(heroSprite: string, mountId: string, x: number, y: number, o: { k?: number; flip?: boolean; cls?: string } = {}): string {
+  const c = COLLECTIBLES[mountId];
+  const k = o.k ?? 1;
+  const sd = c?.saddle || { x: -8, y: -88, k: 0.92 };
+  const hx = x + (o.flip ? -sd.x : sd.x) * k, hy = y + sd.y * k;
+  return `<g class="${o.cls || ''}">${placeSprite(heroSprite + '_f', hx, hy, { k: sd.k * k, cls: 'rider-h' })}${placeSprite(c?.sprite || 'mount_goat', x, y, { k, flip: o.flip, cls: 'rider-m' })}</g>`;
+}
 
 /** The sprite set a hero is drawn with: its race and class art, or its seat's art if this build has none. */
 export function heroSprite(h: { race: string; cls: string }, role: RoleId): string {

@@ -55,6 +55,69 @@ export interface CollectibleDef {
   icon: string;
   sprite?: string;      // how it is drawn in the hearth
   source: string;       // where it comes from, in plain words
+  /** mounts: where the rider sits on the sprite, and how big the rider is drawn */
+  saddle?: { x: number; y: number; k: number };
+}
+
+/* ---------------------------------------------------------------- the Vale: riding out, gathering, brewing */
+export type ToyId = 'snip' | 'pluck';
+/** Something you gather and keep in your satchel. */
+export interface IngredientDef { id: string; name: string; icon: string; desc: string; rare?: boolean }
+/** A gathering spot inside a place: you play its close-up to harvest it. */
+export interface NodeDef {
+  id: string;
+  name: string;
+  /** the button word: Snip, Pluck */
+  verb: string;
+  toy: ToyId;
+  /** how the close-up draws it */
+  look: 'flower' | 'sprig' | 'cap';
+  gives: string;
+  /** base yield per harvest, before Perfects */
+  yield: [number, number];
+  /** rare drops, each line rolled on its own every harvest */
+  table: DropDef[];
+}
+/** A small job from a villager. find: spot something hidden; shoo: tap them all; deliver: hand over ingredients. */
+export interface ErrandDef {
+  id: string;
+  kind: 'find' | 'shoo' | 'deliver';
+  title: string;
+  ask: string;
+  thanks: string;
+  /** find: what is hidden; shoo: what to tap */
+  thing?: 'kettle' | 'goggles' | 'crow' | 'spark';
+  target?: number;
+  needs?: Record<string, number>;
+}
+export interface LorePage { id: string; title: string; text: string }
+/** A place you can ride out to. */
+export interface PlaceDef {
+  id: string;
+  name: string;
+  /** the folk who live there */
+  race: string;
+  blurb: string;
+  villager: { name: string; title: string };
+  nodes: NodeDef[];
+  errands: ErrandDef[];
+  /** rolled once per errand done */
+  errandTable: DropDef[];
+  lore: LorePage[];
+}
+/** A brew: made at the cauldron, drunk before a dungeon run. One bottle is one run. */
+export interface RecipeDef {
+  id: string;
+  name: string;
+  icon: string;
+  /** the colour it turns in the cauldron */
+  color: string;
+  needs: Record<string, number>;
+  makes: number;
+  /** the Brewing rank it unlocks at */
+  rank: number;
+  /** what it does on a run */
+  desc: string;
 }
 
 export interface TitleDef { id: string; text: string }

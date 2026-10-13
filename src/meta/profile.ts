@@ -15,7 +15,7 @@ import { ORDER } from '../content/roles';
 import { SLOT_IDS } from '../content/gear';
 import { CLASSES, FOUNDERS, MAX_HEROES, canMake, cleanName, type ClassId, type RaceId } from '../content/folk';
 
-export const PROFILE_VERSION = 3;
+export const PROFILE_VERSION = 4;
 /** Shared gear climbs to Rare. Epic is earned on the hero. */
 export const WARBAND_CAP: Rar = 2;
 
@@ -40,6 +40,22 @@ export interface Hero {
   clears: number;
 }
 export interface CollectionEntry { n: number; kc: number; at: number }
+/** A gathering spot's state: harvests ready, the day they were last topped up, whether the next one shimmers. */
+export interface NodeState { n: number; day: number; shimmer: boolean }
+export interface PlaceState { nodes: Record<string, NodeState>; errands: { n: number; day: number; next: number } }
+/** Everything from riding out: what you carry, what is brewed, your skills and where you have been. */
+export interface ValeState {
+  satchel: Record<string, number>;
+  shelf: Record<string, number>;
+  /** XP by skill: gather, brew */
+  xp: Record<string, number>;
+  places: Record<string, PlaceState>;
+  /** lore pages unlocked, in the order they came */
+  lore: string[];
+  /** the brew to drink at the start of your next run from the entrance, or null */
+  drink: string | null;
+  rides: number;
+}
 export interface BossRecord { kc: number; pb: number | null; wipes: number }
 export interface DungeonRecord { runs: number; clears: number; pb: number | null; marks: number }
 
@@ -68,6 +84,7 @@ export interface Profile {
   settings: { sound: boolean; looksOff: string[] };
   /** collection ids you have looked at in the log since they arrived */
   seen: Record<string, number>;
+  vale: ValeState;
 }
 
 const blankSlots = (): Record<SlotId, RegularSlot> => Object.fromEntries(SLOT_IDS.map((s) => [s, { rar: 0 as Rar }])) as Record<SlotId, RegularSlot>;
@@ -83,8 +100,10 @@ export function freshProfile(now = Date.now()): Profile {
     hearth: { spots: {} },
     settings: { sound: true, looksOff: [] },
     seen: {},
+    vale: freshVale(),
   };
 }
+export const freshVale = (): ValeState => ({ satchel: {}, shelf: {}, xp: {}, places: {}, lore: [], drink: null, rides: 0 });
 
 const num = (v: unknown, d: number): number => (typeof v === 'number' && isFinite(v) ? v : d);
 const obj = (v: unknown): Record<string, any> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, any>) : {});
@@ -115,6 +134,8 @@ const MIGRATIONS: Record<number, (raw: any) => any> = {
     delete out.heroes; delete out.role; delete out.title;
     return out;
   },
+  /* v3 had no Vale: riding out, gathering and brewing start empty. */
+  3: (d) => ({ ...d, vale: freshVale() }),
 };
 
 /** Reads any stored value into a valid current profile. Unknown or broken data starts fresh. */
@@ -171,7 +192,30 @@ export function normalize(d: any, now = Date.now()): Profile {
   const off = obj(d.settings).looksOff;
   p.settings.looksOff = Array.isArray(off) ? off.filter((x: unknown) => typeof x === 'string') : [];
   for (const [k, v] of Object.entries(obj(d.seen))) p.seen[k] = num(v, 0);
+  p.vale = normVale(d.vale);
   return p;
+}
+
+const counts = (x: unknown): Record<string, number> => {
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(obj(x))) { const n = Math.floor(num(v, 0)); if (n > 0) out[k] = n; }
+  return out;
+};
+function normVale(x: unknown): ValeState {
+  const v = obj(x), out = freshVale();
+  out.satchel = counts(v.satchel);
+  out.shelf = counts(v.shelf);
+  for (const [k, n] of Object.entries(obj(v.xp))) out.xp[k] = Math.max(0, num(n, 0));
+  for (const [id, raw] of Object.entries(obj(v.places))) {
+    const pl = obj(raw), er = obj(pl.errands);
+    const st: PlaceState = { nodes: {}, errands: { n: Math.max(0, Math.floor(num(er.n, 0))), day: num(er.day, 0), next: Math.max(0, Math.floor(num(er.next, 0))) } };
+    for (const [nid, nraw] of Object.entries(obj(pl.nodes))) { const ns = obj(nraw); st.nodes[nid] = { n: Math.max(0, Math.floor(num(ns.n, 0))), day: num(ns.day, 0), shimmer: ns.shimmer === true }; }
+    out.places[id] = st;
+  }
+  out.lore = Array.isArray(v.lore) ? [...new Set(v.lore.filter((t: unknown): t is string => typeof t === 'string'))] : [];
+  out.drink = str(v.drink);
+  out.rides = Math.max(0, Math.floor(num(v.rides, 0)));
+  return out;
 }
 
 export const bossKey = (dungeon: string, boss: string): string => `${dungeon}.${boss}`;

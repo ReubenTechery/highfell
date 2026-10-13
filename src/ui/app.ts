@@ -1,8 +1,9 @@
 /**
- * The app: one save, five scenes (the hearth, the camp where your heroes wait, the hero maker, a run
- * and the reveal) and sheets that slide over them (the dungeon picker, gear, logs, settings). Every
- * change to the profile goes through `save()`, which writes it and redraws whatever is on screen.
- * With no heroes yet, the game opens on the hero maker.
+ * The app: one save, seven scenes (the hearth, the camp where your heroes wait, the hero maker, the
+ * Vale you ride out to, the cauldron, a run and the reveal) and sheets that slide over them (the
+ * dungeon picker, gear, logs, the satchel, settings). Every change to the profile goes through
+ * `save()`, which writes it and redraws whatever is on screen. With no heroes yet, the game opens on
+ * the hero maker.
  */
 import { GAME_NAME } from '../content';
 import { Store } from '../core/store';
@@ -20,14 +21,16 @@ import { RunScene, type RunOpts } from './run';
 import { Reveal, type RevealExtra } from './reveal';
 import { Camp } from './camp';
 import { Creator } from './creator';
+import { Vale } from './vale';
+import { Brewing } from './brew';
 
-export type SceneId = 'hearth' | 'camp' | 'create' | 'run' | 'reveal';
-const SCENES: SceneId[] = ['hearth', 'camp', 'create', 'run', 'reveal'];
+export type SceneId = 'hearth' | 'camp' | 'create' | 'vale' | 'brew' | 'run' | 'reveal';
+const SCENES: SceneId[] = ['hearth', 'camp', 'create', 'vale', 'brew', 'run', 'reveal'];
 /** what an update of the page carries over */
 export interface Carry { sheet?: unknown; scene?: SceneId }
 
 /** Testing switches that live on this device only, never in the save. */
-export interface Dev { walkout: 'off' | 'normal' | 'unique' | 'pet' }
+export interface Dev { walkout: 'off' | 'normal' | 'unique' | 'pet'; valeFree: boolean; valeLuck: boolean }
 const DEV_KEY = 'highfell.dev';
 
 export class App {
@@ -39,9 +42,11 @@ export class App {
   readonly reveal: Reveal;
   readonly camp: Camp;
   readonly creator: Creator;
+  readonly vale: Vale;
+  readonly brew: Brewing;
   scene: SceneId = 'hearth';
   touch = false;
-  dev: Dev = { walkout: 'off' };
+  dev: Dev = { walkout: 'off', valeFree: false, valeLuck: false };
   private last = 0;
 
   constructor(readonly root: HTMLElement) {
@@ -53,13 +58,18 @@ export class App {
     this.reveal = new Reveal(this, $('sc-reveal'));
     this.camp = new Camp(this, $('sc-camp'));
     this.creator = new Creator(this, $('sc-create'));
+    this.vale = new Vale(this, $('sc-vale'));
+    this.brew = new Brewing(this, $('sc-brew'));
     try { this.dev = { ...this.dev, ...JSON.parse(localStorage.getItem(DEV_KEY) || '{}') }; } catch { /* defaults */ }
   }
 
   get p() { return this.store.profile; }
 
   /** what an update of the page should carry over: the open panel and the camp. A run in progress cannot be carried. */
-  snapshot(): Carry { return { sheet: this.scene === 'hearth' || this.scene === 'camp' ? this.sheets.spec : null, scene: this.scene === 'camp' ? 'camp' : 'hearth' }; }
+  snapshot(): Carry {
+    const keep: SceneId[] = ['camp', 'vale', 'brew'];
+    return { sheet: this.scene === 'hearth' || this.scene === 'camp' ? this.sheets.spec : null, scene: keep.includes(this.scene) ? this.scene : 'hearth' };
+  }
 
   async boot(carry: Carry = {}): Promise<void> {
     this.touch = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
@@ -78,7 +88,10 @@ export class App {
       if (why === 'remote') { SFX.on = this.p.settings.sound; this.refresh(); }
       else this.hearth.syncState();
     });
-    if (carry.scene === 'camp') this.showCamp(); else this.showHearth();
+    if (carry.scene === 'camp') this.showCamp();
+    else if (carry.scene === 'vale' && activeHero(this.p)) void this.showVale();
+    else if (carry.scene === 'brew' && activeHero(this.p)) this.showBrew();
+    else this.showHearth();
     const sheet = normSpec(carry.sheet);
     if (sheet && this.p.roster.length) this.sheets.open(sheet);
     $('loading').hidden = true;
@@ -90,6 +103,7 @@ export class App {
     if (this.scene === 'run') resizeView();
     if (this.scene === 'hearth') this.hearth.layout();
     if (this.scene === 'camp') this.camp.render();
+    if (this.scene === 'vale') this.vale.layout();
   }
 
   private frame(ts: number): void {
@@ -120,6 +134,20 @@ export class App {
     this.show('camp');
     this.camp.show(sel);
   }
+  /** ride out: the map of the Vale */
+  async showVale(): Promise<void> {
+    if (!activeHero(this.p)) { this.showCreate(); return; }
+    this.sheets.close();
+    this.show('vale');
+    await this.vale.enter();
+  }
+  /** the cauldron at home */
+  showBrew(): void {
+    if (!activeHero(this.p)) { this.showCreate(); return; }
+    this.sheets.close();
+    this.show('brew');
+    this.brew.open();
+  }
   /** the hero maker */
   showCreate(): void {
     this.sheets.close();
@@ -137,6 +165,8 @@ export class App {
     if (!activeHero(this.p) && this.scene !== 'run' && this.scene !== 'create') { this.showCreate(); return; }
     if (this.scene === 'hearth') this.hearth.render();
     if (this.scene === 'camp') this.camp.render();
+    if (this.scene === 'vale') this.vale.update();
+    if (this.scene === 'brew') this.brew.update();
     // a hero made on another device while the maker was open on its first screen: offer the way back
     if (this.scene === 'create' && this.p.roster.length) this.creator.open(false);
     this.sheets.refresh();
@@ -167,6 +197,8 @@ const SHELL = `
 <div class="scene hearth" id="sc-hearth"></div>
 <div class="scene camp" id="sc-camp" hidden></div>
 <div class="scene create" id="sc-create" hidden></div>
+<div class="scene vale" id="sc-vale" hidden></div>
+<div class="scene brew" id="sc-brew" hidden></div>
 <div class="scene run" id="sc-run" hidden>
   <canvas id="cv" aria-label="The dungeon"></canvas>
   <div class="touch" id="touch"></div>
@@ -180,7 +212,7 @@ const SHELL = `
         <div class="bb-sub" id="bb-sub"></div>
       </div>
     </div>
-    <span class="chip dark practice-tag" id="practice-tag" hidden>Practice: no loot</span>
+    <div class="run-tags"><span class="chip dark practice-tag" id="practice-tag" hidden>Practice: no loot</span><span class="chip dark brew-tag" id="brew-tag" hidden></span></div>
     <div class="banner" id="banner"></div>
     <div class="call" id="call"></div>
     <div class="hint glass" id="hint" hidden></div>

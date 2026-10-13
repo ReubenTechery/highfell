@@ -25,6 +25,8 @@ import { loadoutFor, partyRar, plainLoadout, worn } from '../meta/gear';
 import { countBossWipe, countRunStart, resolveClear, resolveKill, runLoot, tellOf, type ClearLoot, type KillLoot } from '../meta/loot';
 import { activeHero, heroById, roleOf, type Hero } from '../meta/profile';
 import { heroArt } from '../content/folk';
+import { RECIPES } from '../content/vale';
+import { drinkForRun } from '../meta/vale';
 import type { App } from './app';
 import { $, esc, flash, fmtT } from './dom';
 import { nameOf, tile } from './art';
@@ -62,6 +64,8 @@ export class RunScene implements InputUI {
   private heroId: string | null = null;
   private role: RoleId = 'tank';
   private practice = false;
+  /** the brew drunk at the door, if any */
+  brew: string | null = null;
   private ach: Achiever | null = null;
   private kills: KillLoot[] = [];
   private clear: ClearLoot | null = null;
@@ -118,7 +122,11 @@ export class RunScene implements InputUI {
     const rar: Rar = o.testRar !== null ? o.testRar : h ? partyRar(p, h) : 0;
     const loadouts: Record<string, unknown> = {};
     for (const r of ['tank', 'healer', 'dps'] as RoleId[]) loadouts[r] = r === role ? (test || !h ? plainLoadout(r, rar) : loadoutFor(p, h)) : plainLoadout(r, rar);
-    if (h) loadouts[role] = { ...(loadouts[role] as object), name: h.name, sprite: heroArt(h.race, h.cls) || undefined };
+    // a brew from the Vale, drunk at the door: practice uses it but keeps the bottle
+    const brew = h ? drinkForRun(p, !this.practice) : null;
+    this.brew = brew;
+    if (h) loadouts[role] = { ...(loadouts[role] as object), name: h.name, sprite: heroArt(h.race, h.cls) || undefined, ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) };
+    if (brew && this.practice) app.store.save();
     const looks = Object.keys(p.collection).filter((id) => COLLECTIBLES[id] && (COLLECTIBLES[id].kind === 'cosmetic') && !p.settings.looksOff.includes(id));
     const wornSet = !!h && Object.values(worn(p, h)).some((w) => w.def.setId && SETS[w.def.setId]);
     const ghostly = looks.includes('dye.ghostly') && wornSet && !test;
@@ -143,6 +151,9 @@ export class RunScene implements InputUI {
     this.hintsDone = new Set(); this.hintKey = null; $('hint').hidden = true;
     $('ov-msg').hidden = true;
     $('practice-tag').hidden = !this.practice;
+    const bt = $('brew-tag');
+    bt.hidden = !brew;
+    if (brew) bt.innerHTML = `<span class="ic">${tile(RECIPES[brew].icon)}</span>${esc(RECIPES[brew].name)}`;
     this.app.root.classList.add('in-run');
     this.buildHud();
     resizeView();
