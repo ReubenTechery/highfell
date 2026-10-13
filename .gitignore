@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.cache/
+__pycache__/
+*.pyc
+shots/
+.DS_Store

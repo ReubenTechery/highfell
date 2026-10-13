@@ -1,0 +1,39 @@
+Here's the Barrow, the honest version. What it is, the story, what happens in a run, and the hard parts.
+
+The room first. It's one room, about six metres by six, dressed as a burial vault. Stone-look walls, candles, haze, coloured light, speakers in the corners and one projector.
+
+The most important rule for building it yourself is this. Nothing in the room moves by itself. The room can only do four things. It can change the light, play sound, play video on the stone arch, and let go of a magnetic lock. The players do all the moving. So the sarcophagus lid isn't motorised. It sits on heavy drawer runners, a magnet holds it shut, and when the party earns it, the magnet lets go and they slide it open by hand. Everything you'd wire is a button, a tag reader or a magnet, plus the lights, speakers and projector, all running off Home Assistant and small controller boards. That's work you already know.
+
+The story. Under the hills there's an old tomb, and lately it's been singing at night. Something down there is waking up. The Barrow King. The party goes in to put him back to sleep before he walks out.
+
+Here's a run. You arrive at the inn, check in at the bar, pick a class and take its tool off the rack. The innkeeper briefs you by the fire. Then the door closes behind you, and it's dark.
+
+Act one, about ten minutes. The candles are out. The mage lights them in the right order, the cleric sends the first ghost away, and the skull on the pedestal wakes up. You hold its button, ask it questions, and it tells you whose tomb you're standing in.
+
+Act two, about twenty minutes. You need three keys, in any order. One is in a cabinet the rogue has to pick open. One is hidden in a wall of rune tiles that only show up under the ranger's UV torch. And the third is with the dead knight in the sarcophagus.
+
+Act three, about fifteen minutes. The keys go back to the skull, the arch starts to glow, and the dead start hammering on the door. The warrior holds it while everyone else gets ready.
+
+Act four, the last fifteen minutes. The King rises in the arch, and the fight plays out on the war table, with a map projected from above. You say what you do, roll a real dice, and the room reacts.
+
+Then the door opens back into the inn, and everyone rolls for loot at the bar. Most people get something small. About one roll in a hundred gets the crown, and a real pin to take home.
+
+The tools. Six classes, six tools. A shield, a torch, a staff, lockpicks, a holy symbol and a lute. In the first version, only the torch has a battery. The rest are props with a tag inside. Each class gets about three moments where they're the one who matters.
+
+Replay. Each run, the system re-deals the answers, so knowing last week's answers doesn't help. Add one rule change a week, keep the loot roll, and stop there. Multiple routes and hard modes can come later, once the basics work.
+
+Now the honest part.
+
+This is a fantasy escape room with a dice fight at the end. That's fine. It's a real thing people pay for, as long as the room feels great.
+
+The talking skull is the riskiest piece. A loud, foggy room full of excited people is hard on speech recognition. In version one, the game master listens in and backs it up.
+
+Real lockpicking is hard for most people. Use the simplest locks you can find and give a one-minute lesson at the bar, or the rogue becomes the bottleneck.
+
+The content is a big job. The voice lines, the music, and the video of the ghost and the King. That's what makes the room feel alive or cheap, and it takes time even with good tools.
+
+You still need a person running every session, at least to start.
+
+And even kept simple, one room is months of evenings and weekends. Doing it yourself mostly swaps money for time.
+
+So the first step hasn't changed. Build the skull and one station on the bench. If talking to it and watching the room answer gives you chills, keep going. If it doesn't, you've found out for almost nothing.
