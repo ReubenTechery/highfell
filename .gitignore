@@ -5,3 +5,5 @@ __pycache__/
 *.pyc
 shots/
 .DS_Store
+art/_*_preview.html
+/tmp*.html

@@ -1,12 +1,12 @@
 import os as _hf_os
 HF_ROOT = _hf_os.environ.get('HIGHFELL_ROOT') or _hf_os.path.dirname(_hf_os.path.dirname(_hf_os.path.abspath(__file__)))
 # Ability icons for the Barrow Crypt (64x64 TV tiles: flat bright ground, one black line, one idea each).
-# Usage: dgtiles.py -> build/dungeon/tiles.json + tiles_preview.html
+# Usage: python3 tools/art_icons.py -> art/icons.json + art/_icons_preview.html
 import json, math, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fighttiles import TV_TILES
 
-OUT = HF_ROOT + '/build/dungeon/'
+OUT = HF_ROOT + '/art/'
 K = '#1E1A1A'
 
 
@@ -121,7 +121,7 @@ T['i_charm'] = tile(IB, P('M20 10 C24 26 40 26 44 10', '#C9D2DC', 3) + '<circle 
 
 if __name__ == '__main__':
     os.makedirs(OUT, exist_ok=True)
-    json.dump(T, open(OUT + 'tiles.json', 'w'))
+    json.dump(T, open(OUT + 'icons.json', 'w'))
     cells = ''.join(f'<div style="display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:72px;height:72px;border-radius:13px;overflow:hidden;border:3px solid #1E1A1A;box-shadow:0 4px 0 #1E1A1A">{v.replace("<svg ", "<svg style=\"display:block;width:100%;height:100%\" ")}</div><span style="font:12px monospace">{k}</span></div>' for k, v in T.items())
-    open(OUT + 'tiles_preview.html', 'w').write(f'<body style="margin:0;padding:20px;background:#FFF8EC"><div style="display:flex;gap:14px;flex-wrap:wrap;width:900px">{cells}</div></body>')
+    open(OUT + '_icons_preview.html', 'w').write(f'<body style="margin:0;padding:20px;background:#FFF8EC"><div style="display:flex;gap:14px;flex-wrap:wrap;width:900px">{cells}</div></body>')
     print('tiles', len(T))

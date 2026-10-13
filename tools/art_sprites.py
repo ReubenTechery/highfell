@@ -2,12 +2,12 @@ import os as _hf_os
 HF_ROOT = _hf_os.environ.get('HIGHFELL_ROOT') or _hf_os.path.dirname(_hf_os.path.dirname(_hf_os.path.abspath(__file__)))
 # Barrow Crypt sprites in the locked TV-cartoon style: chunky in-game sizes, one black line, flat colour.
 # Every sprite is drawn around its ground point (0, 0): x right, y down, so the art sits at negative y.
-# 1 art unit = 1 world unit. Usage: dgart.py  -> build/dungeon/art.json + build/dungeon/art_preview.html
+# 1 art unit = 1 world unit. Usage: python3 tools/art_sprites.py -> art/sprites.json + art/_sprites_preview.html
 import json, math, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from tvworld import mirror
 
-OUT = HF_ROOT + '/build/dungeon/'
+OUT = HF_ROOT + '/art/'
 K = '#1E1A1A'
 LW = 4  # character line weight
 
@@ -677,7 +677,7 @@ def build():
 if __name__ == '__main__':
     os.makedirs(OUT, exist_ok=True)
     sp = build()
-    json.dump({k: {'svg': v['svg'], 'vb': v['vb']} for k, v in sp.items()}, open(OUT + 'art.json', 'w'))
+    json.dump({k: {'svg': v['svg'], 'vb': v['vb']} for k, v in sp.items()}, open(OUT + 'sprites.json', 'w'))
     cells = []
     for k, v in sp.items():
         x, y, w, h = v['vb']
@@ -685,5 +685,5 @@ if __name__ == '__main__':
         cells.append(f'<figure style="margin:0;display:flex;flex-direction:column;align-items:center;gap:4px">'
                      f'<div style="background:#5C5070;padding:8px;border-radius:8px"><img src="data:image/svg+xml;charset=utf-8,{__import__("urllib.parse").parse.quote(v["svg"])}" style="width:{w * sc:.0f}px;height:{h * sc:.0f}px;display:block"></div>'
                      f'<figcaption style="font:12px monospace;color:#ddd">{k}</figcaption></figure>')
-    open(OUT + 'art_preview.html', 'w').write('<body style="margin:0;padding:16px;background:#2A2234"><div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;width:1500px">' + ''.join(cells) + '</div></body>')
+    open(OUT + '_sprites_preview.html', 'w').write('<body style="margin:0;padding:16px;background:#2A2234"><div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;width:1500px">' + ''.join(cells) + '</div></body>')
     print('sprites', len(sp), 'bytes', sum(len(v['svg']) for v in sp.values()))

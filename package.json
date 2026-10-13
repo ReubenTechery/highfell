@@ -1,0 +1,20 @@
+{
+  "name": "highfell",
+  "version": "1.0.0",
+  "description": "Start here: [Highfell Start Here](https://claude.ai/artifact/CKgMqHaxJsEvyuQxFWZvP7) links every design canvas, playable page and doc, and lists what's locked. Those all live on claude.ai; this folder holds the code behind the playable pages.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "acorn": "^8.14.0",
+    "esbuild": "^0.24.2",
+    "typescript": "^5.7.3"
+  }
+}

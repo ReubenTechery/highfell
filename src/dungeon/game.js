@@ -1,0 +1,363 @@
+import { botTick, inHaz } from './bots.js';
+import { CHECKPOINTS, GATES, MAP, ORDER, PACKS, PROPS, dist, distXY, lerp, setSeed } from './core.js';
+import { S, aggro, banner, bits, call, dots, fxText, healHero, hurtHero, hurtMob, killMob, makeHero, makeMob, setS, sfx, shake } from './entities.js';
+import { heroBy, heroTick, isFoe, later, projHit } from './heroes.js';
+import { playerIntent } from './input.js';
+import { breakCage, chainTick, cutChain, mobTick, nearestHeroTo, spawnMob } from './mobs.js';
+import { K } from './render.js';
+import { G, UI } from './ui.js';
+import { canStand, inWalk, moveEnt, roomIndexOf } from './world.js';
+
+/* ---------- the run: state, the loop, packs, bosses, wipes, the chest ---------- */
+export function newGame(opts) {
+  setSeed(opts.seed || ((Date.now() & 0xfffffff) | 1));
+  setS({
+    t: 0, frame: 0, seq: 1, opts, heroes: [], mobs: [], packs: [], projs: [], hazards: [], zones: [], fx: [], texts: [], parts: [], timers: [], rings: [], chains: [],
+    gates: JSON.parse(JSON.stringify(GATES)), props: PROPS.map((p) => Object.assign({}, p, { room: roomIndexOf(p.x, p.y), sp0: p.sp })),
+    inCombat: false, lastCombat: -99, combatStart: 0, boss: null, ring: null, dark: 0, darkTarget: 0, shake: 0, hitstop: 0, hurtFlash: 0,
+    banner: null, call: null, stats: { deaths: 0, perfect: 0, kicks: 0, cuts: 0, cages: 0, wipes: 0, start: 0 }, hints: {}, over: false, chest: null,
+    cp: 0, quiet: !!opts.quiet, auto: !!opts.auto, cleared: 0, total: PACKS.length, startedAt: 0,
+  });
+  const roles = opts.solo ? ['dps'] : ORDER;
+  for (const r of roles) S.heroes.push(makeHero(r, r === opts.role, opts.sets[r]));
+  S.player = S.heroes.find((h) => h.isPlayer) || S.heroes[0];
+  S.player.isPlayer = true;
+  for (const def of PACKS) {
+    const p = { def, mobs: [], pulled: false, cleared: false, triggered: !def.ambush };
+    if (!def.ambush) for (const [type, x, y] of def.mobs) { const m = makeMob(type, x, y, p); p.mobs.push(m); S.mobs.push(m); }
+    S.packs.push(p);
+  }
+  const start = opts.start || 'entrance';
+  if (start !== 'entrance') {
+    const upto = start === 'knight' ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'K', 'D', 'E'];
+    for (const p of S.packs) if (upto.includes(p.def.id)) { p.cleared = true; p.pulled = true; p.triggered = true; p.mobs.forEach((m) => { m.alive = false; m.state = 'dead'; m.deadT = 99; }); S.cleared++; }
+    if (start === 'keeper') { S.gates.g3b.closed = false; S.gates.g3t.closed = false; S.props.forEach((p) => { if (p.room === 4 && p.sp === 'coffin') p.sp = 'coffin_open'; }); }
+    S.cp = start === 'knight' ? 3 : 5;
+  }
+  placeParty(CHECKPOINTS[S.cp]);
+  S.mobs = S.mobs.filter((m) => m.alive);
+  return S;
+}
+export function placeParty(cp) {
+  const off = { tank: [0, -20], healer: [-46, 34], dps: [46, 34] };
+  for (const h of S.heroes) {
+    const o = off[h.role];
+    h.x = cp.x + o[0]; h.y = cp.y + o[1];
+    if (!canStand(h.x, h.y, h.r)) { h.x = cp.x; h.y = cp.y; }
+    h.face = -Math.PI / 2; h.back = true;
+  }
+}
+
+/* ---------- bosses ---------- */
+export function startBoss(pack) {
+  const m = pack.mobs[0];
+  S.boss = m; m.fightT = 0;
+  if (pack.def.boss === 'knight') { S.gates.g3b.closed = true; pullIn(3, 3120); }
+  else { S.gates.g5.closed = true; pullIn(5, 1120); }
+  banner(m.name, 'boss', 2.2);
+  sfx('gate'); sfx('roar');
+  shake(4);
+}
+export function pullIn(room, y) {
+  for (const h of S.heroes) {
+    if (roomIndexOf(h.x, h.y) === room && h.y < y - 10) continue;
+    h.x = 500 + (h.role === 'healer' ? -50 : h.role === 'dps' ? 50 : 0); h.y = y - 20;
+    h.dodgeT = 0; h.dash = null; h.st.kx = h.st.ky = 0;
+  }
+}
+export function onBossDead(m) {
+  S.boss = null;
+  if (m.type === 'knight') {
+    S.gates.g3b.closed = false; S.gates.g3t.closed = false;
+    S.mobs.forEach((o) => { if (o.alive && o.rally) { o.hp = 1; killMob(o, null); } });
+    banner('Sir Rattlebones falls. The way on is open.', 'good', 2.8);
+    sfx('victory');
+  } else {
+    S.gates.g5.closed = false; S.darkTarget = 0; S.ring = null; S.rings = []; S.hazards = [];
+    S.chains.slice().forEach((c) => cutChain(c, null));
+    S.mobs.forEach((o) => { if (o.alive && (o.M.wisp || o.cage)) { if (o.cage) breakCage(o, false); else { o.alive = false; o.state = 'dead'; } } });
+    S.chest = { x: 500, y: 660, open: false, t: 0 };
+    banner('The Gravekeeper is buried for good!', 'good', 3.2);
+    sfx('victory');
+    S.clearTime = S.t - S.startedAt;
+  }
+}
+export function checkPack(p) {
+  if (p.cleared || p.mobs.some((m) => m.alive)) return;
+  p.cleared = true; S.cleared++;
+  if (!p.def.boss) { fxText(S.player.x, S.player.y - 140, 'Pack down', '#9BE15D', 20, { dur: 1.2 }); }
+}
+export function triggerAmbush(p) {
+  p.triggered = true; p.pulled = true;
+  for (const [type, x, y] of p.def.mobs) {
+    const m = spawnMob(type, x, y, null, true);
+    m.pack = p; p.mobs.push(m); m.rise = 0.9; m.riseDur = 0.9;
+    const near = nearestHeroTo(x, y);
+    if (near) aggro(m, near, 3);
+  }
+  S.props.forEach((pr) => { if (pr.room === 4 && pr.sp === 'coffin') pr.sp = 'coffin_open'; });
+  banner('Ambush! The coffins are opening!', 'warn', 2.4);
+  shake(7); sfx('rise'); sfx('roar');
+}
+
+/* ---------- wipes and coming back ---------- */
+export function respawn() {
+  const room = S.wipeRoom !== undefined ? S.wipeRoom : S.cp;
+  const cp = CHECKPOINTS[Math.min(room, CHECKPOINTS.length - 1)];
+  S.hazards = []; S.zones = []; S.projs = []; S.rings = []; S.chains = []; S.timers = []; S.ring = null; S.dark = 0; S.darkTarget = 0;
+  for (const h of S.heroes) {
+    Object.assign(h, { alive: true, hp: h.maxHp, mana: h.maxMana, absorb: 0, absorbT: 0, dodgeT: 0, dash: null, cast: null, blocking: false, target: null, picked: null, holdFire: false });
+    h.st = { stun: 0, root: 0, haunt: 0, air: 0, kx: 0, ky: 0, chained: null, caged: null };
+    for (const k in h.cd) h.cd[k] = 0;
+    h.bot.ignore = new Set(); h.bot.seen = new Set();
+  }
+  placeParty(cp);
+  S.mobs = S.mobs.filter((m) => m.alive && !m.cage && !m.M.wisp && !m.extra && !m.rally);
+  for (const p of S.packs) {
+    if (p.cleared) continue;
+    if (p.def.ambush && p.triggered) {
+      p.triggered = false; p.pulled = false;
+      p.mobs.forEach((m) => { m.alive = false; });
+      S.mobs = S.mobs.filter((m) => m.pack !== p);
+      p.mobs = [];
+      S.props.forEach((pr) => { if (pr.room === 4 && pr.sp === 'coffin_open') pr.sp = 'coffin'; });
+      continue;
+    }
+    p.pulled = false;
+    p.mobs = p.mobs.filter((m) => m.alive && !m.extra);
+    for (const m of p.mobs) {
+      Object.assign(m, { x: m.home0 ? m.home0.x : m.home.x, y: m.home0 ? m.home0.y : m.home.y, hp: m.maxHp, state: 'idle', target: null, forced: null, forcedT: 0, wind: 0, cast: null, busy: 0, act: null, pose: null, ab: {}, phase: 1, armorUp: 0, dmgMul: 1, hidden: false, untargetable: false, jumpZ: 0, calmUntil: S.t + 4 });
+      m.threat = new Map(); m.st = { stun: 0, freeze: 0, slow: 0, slowT: 0, kx: 0, ky: 0 };
+      m.speed = m.M.speed;
+      if (m.home0) m.home = { x: m.home0.x, y: m.home0.y };
+    }
+  }
+  S.props.forEach((pr) => { if (pr.room === 3 && pr.sp === 'coffin_open' && pr.sc === 1 && !S.packs.find((p) => p.def.id === 'K').cleared) pr.sp = 'coffin'; });
+  const K = S.packs.find((p) => p.def.id === 'K'), G = S.packs.find((p) => p.def.id === 'G');
+  if (!K.cleared) S.gates.g3b.closed = false;
+  if (!G.cleared) S.gates.g5.closed = false;
+  S.boss = null; S.inCombat = false; S.lastCombat = S.t - 10; S.over = false; S.wipeRoom = undefined;
+  S.stats.wipes++;
+  banner('Back on your feet. Go again.', 'good', 2.2);
+}
+
+/* ---------- the loop ---------- */
+export function update(dt) {
+  if (S.over === 'victory' || S.over === 'lost' || S.paused) return;
+  if (S.hitstop > 0) { S.hitstop -= dt; return; }
+  S.t += dt; S.frame++;
+  for (let i = S.timers.length - 1; i >= 0; i--) { const tm = S.timers[i]; tm.t -= dt; if (tm.t <= 0) { S.timers.splice(i, 1); tm.fn(); } }
+  if (S.over) { tickFx(dt); return; }
+  S.healerUp = S.heroes.some((x) => x.role === 'healer' && x.alive);
+  if (!S.auto) playerIntent(S.player);
+  for (const h of S.heroes) { h.botDriven = !h.isPlayer || S.auto; if (h.botDriven) botTick(h, dt); }
+  for (const h of S.heroes) heroTick(h, dt);
+  for (const m of S.mobs) mobTick(m, dt);
+  tickProjs(dt); tickHazards(dt); tickZones(dt); tickRings(dt);
+  for (const ch of S.chains.slice()) chainTick(ch, dt);
+  if (S.ring) tickFireRing(dt);
+  separate();
+  // fight state
+  const fighting = S.mobs.some((m) => m.alive && m.state === 'fight' && !m.cage);
+  if (fighting) { if (!S.inCombat) { S.inCombat = true; S.combatStart = S.t; } S.lastCombat = S.t; }
+  else if (S.inCombat) { S.inCombat = false; onCombatEnd(); }
+  triggers();
+  S.mobs = S.mobs.filter((m) => m.alive || m.deadT < 1.2);
+  // wipe?
+  const up = S.heroes.filter((h) => h.alive);
+  if (!up.length && !S.over) {
+    S.over = 'wipe';
+    S.wipeRoom = S.boss ? (S.boss.type === 'knight' ? 3 : 5) : Math.max(0, roomIndexOf(S.player.x, S.player.y));
+    if (S.wipeRoom < 0) S.wipeRoom = S.cp;
+    sfx('wipe');
+    later(1.6, () => { if (S.opts.solo) { S.over = 'lost'; UI.showLost(); } else UI.showWipe(); });
+  }
+  if (S.chest && !S.chest.open) {
+    S.chest.t += dt;
+    const p = S.player;
+    const near = S.heroes.some((h) => h.alive && dist(h, S.chest) < 95);
+    if (near && S.t - S.lastCombat > 1.0) {
+      S.chest.open = true; sfx('chest');
+      bits(S.chest.x, S.chest.y - 40, 'shard_ice', 1, 10);
+      dots(S.chest.x, S.chest.y - 50, '#F2C230', 26, 260);
+      later(1.1, () => { S.over = 'victory'; UI.showLoot(); });
+    }
+  }
+  S.dark = lerp(S.dark, S.darkTarget, Math.min(1, dt * 2.2));
+  tickFx(dt);
+}
+export function onCombatEnd() {
+  const dead = S.heroes.filter((h) => !h.alive);
+  if (!dead.length || S.over) return;
+  later(2.4, () => {
+    if (S.inCombat || S.over) return;
+    const healer = heroBy('healer');
+    for (const h of S.heroes) {
+      if (h.alive) continue;
+      h.alive = true; h.hp = Math.round(h.maxHp * 0.5); h.st = { stun: 0, root: 0, haunt: 0, air: 0, kx: 0, ky: 0, chained: null, caged: null };
+      fxText(h.x, h.y - 100, healer && healer.alive && healer !== h ? 'Maren brings ' + (h.isPlayer ? 'you' : h.name) + ' back' : 'Back up', '#9BE15D', 20, { dur: 1.6 });
+      dots(h.x, h.y - 40, '#FFE08A', 14, 160);
+    }
+    sfx('revive');
+  });
+}
+export function triggers() {
+  const E = S.packs.find((p) => p.def.id === 'E'), D = S.packs.find((p) => p.def.id === 'D');
+  if (E && !E.triggered && D.cleared) {
+    for (const h of S.heroes) if (h.alive && roomIndexOf(h.x, h.y) === 4 && h.y < 1800) { triggerAmbush(E); break; }
+  }
+  const G = S.packs.find((p) => p.def.id === 'G');
+  if (G && !G.cleared && !G.pulled) {
+    const k = G.mobs[0];
+    if (k && k.alive) for (const h of S.heroes) if (h.alive && roomIndexOf(h.x, h.y) === 5 && dist(h, MAP.arena) < MAP.arena.r - 30) { aggro(k, h, 1); break; }
+  }
+  if (!S.inCombat) {
+    const r = roomIndexOf(S.player.x, S.player.y);
+    if (r > S.cp) S.cp = r;
+  }
+}
+
+export function separate() {
+  const L = [];
+  for (const h of S.heroes) if (h.alive && h.dodgeT <= 0 && !h.dash) L.push(h);
+  for (const m of S.mobs) if (m.alive && !m.cage && !m.M.wisp && !m.hidden && m.rise <= 0) L.push(m);
+  for (let i = 0; i < L.length; i++) {
+    for (let j = i + 1; j < L.length; j++) {
+      const a = L[i], b = L[j];
+      const dx = b.x - a.x, dy = b.y - a.y, rr = a.r + b.r - 2;
+      const d2 = dx * dx + dy * dy;
+      if (d2 >= rr * rr || d2 < 0.0001) continue;
+      const d = Math.sqrt(d2), push = (rr - d) * 0.5, ux = dx / d, uy = dy / d;
+      const wa = a.isBoss ? 0 : a.M && a.M.big ? 0.25 : 1, wb = b.isBoss ? 0 : b.M && b.M.big ? 0.25 : 1;
+      const tot = wa + wb || 1;
+      if (wa) moveEnt(a, -ux * push * 2 * (wa / tot), -uy * push * 2 * (wa / tot));
+      if (wb) moveEnt(b, ux * push * 2 * (wb / tot), uy * push * 2 * (wb / tot));
+    }
+  }
+}
+
+export function tickProjs(dt) {
+  for (let i = S.projs.length - 1; i >= 0; i--) {
+    const p = S.projs[i];
+    p.life -= dt;
+    if (p.team === 'hero') {
+      const t = p.tgt;
+      if (!isFoe(t)) { S.projs.splice(i, 1); continue; }
+      const dx = t.x - p.x, dy = t.y - p.y, d = Math.hypot(dx, dy);
+      if (d <= t.r + 8 || p.life <= 0) { S.projs.splice(i, 1); projHit(p); continue; }
+      const step = Math.min(p.speed * dt, d);
+      p.vx = (dx / d) * p.speed; p.vy = (dy / d) * p.speed;
+      p.x += (dx / d) * step; p.y += (dy / d) * step;
+      p.z = lerp(p.z, t.isBoss ? 120 : t.M.big ? 70 : 40, Math.min(1, dt * 6));
+    } else {
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      let hit = false;
+      for (const h of S.heroes) {
+        if (!h.alive) continue;
+        if (distXY(h.x, h.y, p.x, p.y) < h.r + p.r) { hurtHero(h, p.dmg, p.src, { block: true }); sfx('arrowhit', 0.6); hit = true; break; }
+      }
+      if (hit || p.life <= 0 || !inWalk(p.x, p.y, 0)) S.projs.splice(i, 1);
+    }
+  }
+}
+export function tickHazards(dt) {
+  for (let i = S.hazards.length - 1; i >= 0; i--) {
+    const z = S.hazards[i];
+    z.t += dt;
+    if (z.src && z.src.kind === 'mob' && !z.src.alive && !z.fired) { S.hazards.splice(i, 1); continue; }
+    if (z.follow && z.follow.alive && !z.fired) { z.x = z.follow.x; z.y = z.follow.y; }
+    if (z.followT && z.t < (z.followFor || 0)) {
+      const t = z.followT;
+      if (t.alive) {
+        if (z.followSpeed) { const dx = t.x - z.x, dy = t.y - z.y, d = Math.hypot(dx, dy), s = Math.min(d, z.followSpeed * dt); if (d > 0.1) { z.x += (dx / d) * s; z.y += (dy / d) * s; } }
+        else { z.x = t.x; z.y = t.y; }
+      }
+    }
+    if (!z.fired && z.t >= z.warn) { z.fired = true; fireHazard(z); }
+    if (z.live && z.fired) {
+      z.tickT = (z.tickT === undefined ? 0 : z.tickT) - dt;
+      if (z.tickT <= 0) {
+        z.tickT = z.tick;
+        for (const h of S.heroes) if (h.alive && inHaz(z, h.x, h.y, h.r * 0.6)) hurtHero(h, z.dmg, z.src, { magic: z.magic, block: false, dodge: false, quiet: false });
+      }
+    }
+    const end = z.live ? z.warn + z.live : z.warn + 0.12;
+    if (z.t >= end) S.hazards.splice(i, 1);
+  }
+}
+export function fireHazard(z) {
+  if (z.onFire) z.onFire(z);
+  if (z.noDmg || z.smash || z.burrow || z.live) return;
+  const mul = (z.src && z.src.dmgMul) || 1;
+  for (const h of S.heroes) {
+    if (!h.alive || !inHaz(z, h.x, h.y, h.r)) continue;
+    const got = hurtHero(h, z.dmg * mul, z.src, { heavy: z.heavy, block: z.block === true, magic: z.magic });
+    if (got > 0 && z.knock) { const a = Math.atan2(h.y - z.y, h.x - z.x); h.st.kx += Math.cos(a) * z.knock; h.st.ky += Math.sin(a) * z.knock; }
+    if (got > 0 && z.root) { h.st.root = z.root; fxText(h.x, h.y - 112, 'Grabbed', '#C9B79A', 17); }
+  }
+}
+export function tickZones(dt) {
+  for (let i = S.zones.length - 1; i >= 0; i--) {
+    const z = S.zones[i];
+    z.t += dt; z.tickT -= dt;
+    if (z.tickT <= 0) {
+      z.tickT = z.tick;
+      if (z.kind === 'heal') { for (const h of S.heroes) if (h.alive && distXY(h.x, h.y, z.x, z.y) <= z.r + h.r * 0.5) healHero(z.src, h, 36, { size: 16 }); }
+      else if (z.kind === 'blizzard') {
+        for (const m of S.mobs) {
+          if (!isFoe(m) || m.cage || distXY(m.x, m.y, z.x, z.y) > z.r + m.r * 0.5) continue;
+          hurtMob(m, 20, z.src, { crit: 0.06, size: 17, col: '#DDF3FF' });
+          if (m.alive && !m.isBoss) { m.st.slow = Math.max(m.st.slow, 0.4); m.st.slowT = 0.8; }
+        }
+      } else if (z.kind === 'ice') {
+        for (const m of S.mobs) if (isFoe(m) && !m.cage && !m.isBoss && !m.M.wisp && !z.hit.has(m.id) && distXY(m.x, m.y, z.x, z.y) <= z.r + m.r) { z.hit.add(m.id); m.st.freeze = Math.max(m.st.freeze, 1.5); m.wind = 0; }
+      }
+    }
+    if (z.t >= z.dur) S.zones.splice(i, 1);
+  }
+}
+export function tickRings(dt) {
+  for (let i = S.rings.length - 1; i >= 0; i--) {
+    const g = S.rings[i];
+    g.r += g.speed * dt;
+    for (const h of S.heroes) {
+      if (!h.alive || g.hit.has(h.id)) continue;
+      const d = dist(h, g);
+      if (Math.abs(d - g.r) <= g.w / 2 + h.r) {
+        g.hit.add(h.id);
+        if (h.st.air > 0) continue;
+        if (h.iframe > 0) { fxText(h.x, h.y - 80, 'Dodged', '#DDF3FF', 18); h.stats.dodges++; continue; }
+        hurtHero(h, g.dmg * ((g.src && g.src.dmgMul) || 1), g.src, { block: false, dodge: false });
+        h.st.kx += ((h.x - g.x) / (d || 1)) * 140; h.st.ky += ((h.y - g.y) / (d || 1)) * 140;
+      }
+    }
+    if (g.r > g.max) S.rings.splice(i, 1);
+  }
+}
+export function tickFireRing(dt) {
+  const R = S.ring;
+  R.r = Math.max(R.target, R.r - 22 * dt);
+  R.tick -= dt;
+  if (R.tick <= 0) {
+    R.tick = 0.5;
+    for (const h of S.heroes) if (h.alive && dist(h, MAP.arena) > R.r - h.r * 0.5) { hurtHero(h, 26, null, { magic: true, pierce: true, block: false, dodge: false, quiet: true }); fxText(h.x, h.y - 70, '-26', '#9BE15D', 16, { dur: 0.6 }); if (h.isPlayer && !S.hints.fire) { S.hints.fire = 1; call('Get inside the ring!', 'alarm', 1.4); } }
+  }
+}
+
+export function tickFx(dt) {
+  for (let i = S.fx.length - 1; i >= 0; i--) { const f = S.fx[i]; f.t += dt; if (f.t >= f.dur) S.fx.splice(i, 1); }
+  for (let i = S.parts.length - 1; i >= 0; i--) {
+    const p = S.parts[i];
+    p.t += dt;
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    if (p.up) { p.z += 60 * dt; } else { p.vz -= 900 * dt; p.z += p.vz * dt; if (p.z < 0) { p.z = 0; p.vz *= -0.35; p.vx *= 0.6; p.vy *= 0.6; } }
+    if (p.rot !== undefined) p.rot += (p.vr || 0) * dt * (p.z > 0 ? 1 : 0.2);
+    if (p.t >= p.dur) S.parts.splice(i, 1);
+  }
+  for (let i = S.texts.length - 1; i >= 0; i--) { const t = S.texts[i]; t.t += dt; t.y += t.vy * dt * (1 - t.t / t.dur); if (t.t >= t.dur) S.texts.splice(i, 1); }
+  if (S.banner) { S.banner.t += dt; if (S.banner.t > S.banner.dur) S.banner = null; }
+  if (S.call) { S.call.t += dt; if (S.call.t > S.call.dur) S.call = null; }
+  S.shake = Math.max(0, S.shake - dt * 30);
+  S.hurtFlash = Math.max(0, S.hurtFlash - dt * 1.6);
+  for (const h of S.heroes) { if (h.say && h.sayT <= 0) h.say = null; if (!h.alive && S.over) h.deadT += dt; }
+}
