@@ -91,11 +91,16 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
   has a ready class and art in `HERO_ART`; the rest show as "Soon".
 - **Gear:** nothing goes on by itself. A ladder piece (and the shared floor) waits in the hero's bag; a new
   unique waits in their `fresh` list. Your hero's tag at the top of the house (and the armour stand) counts what's waiting; you put it
-  on in the doll.
+  on in the doll. A drop's sheet holds it up against what its role wears (`compareOn`): better is more item level
+  or a new effect with nothing lost, worse is less or an effect lost for nothing, both at once is a trade. A
+  bonus that isn't ready yet is listed but doesn't make a piece better.
 - **The house:** its plan is data in `src/content/house.ts`: rooms, the things you tap and the display spots.
   Zoomed out, a tap goes into a room; zoomed in, a tap uses a thing. The hearth's first eight spot ids never
   change; a spot a save has never had takes what isn't on show when the save loads (`settleSpots`); a spot
   you emptied stays empty; something new goes to the first free spot of its kind (the hall first).
+- **Groups:** a run has three seats, one per role (`src/meta/party.ts`). You take your hero's seat; bots (Brannoc,
+  Maren, Ivy) take the others at your gear level. In the Dungeons sheet a seat can be played by any of your heroes
+  of that role, or a new one made for it. Friends take seats once there is online play.
 - **Threat:** every hit adds threat (the tank's 1.3 times, Slam's double), heals add a little on everything in the fight,
   and a mob switches once someone beats its target by a tenth. Slam taunts and drags mobs in; Charge makes its
   target turn. Mobs off the tank for 3 seconds go wild. A caged tank can't be targeted and loses half his threat.
@@ -128,11 +133,11 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
   rendering to a canvas, and `walkout.js` (the lantern tells). It reaches the screen only through `HOOKS`
   and `emit`.
 - `src/meta`: TypeScript rules for everything that lasts: the profile and its migrations (heroes live here),
-  loot, gear, achievements, the hearth, and `vale.ts` (regrowth, harvests, errands, ranks, brewing).
+  loot, gear, achievements, the hearth, the party's seats (`party.ts`), and `vale.ts` (regrowth, harvests, errands, ranks, brewing).
 - `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, its drawing
   `houseart.ts`), the hero maker, the Vale (`vale.ts`, `valeart.ts`, `toys.ts` for the close-ups), the cauldron
-  (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: dungeon, a hero (`herosheet.ts`), the
-  gear doll, logs, satchel, settings, spot picker, item. Toasts,
+  (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons (`dungeonsheet.ts`), a hero
+  (`herosheet.ts`), the gear doll, logs, satchel, settings, spot picker, item. Toasts,
   sound. `styles.css` is inlined by the build.
 - `src/sim` and `scripts/sim.mjs`: headless bot runs of the real engine (the balance numbers).
 - `tools/`: the art pipeline (Python writes SVG into `art/*.json`), `art_sheet.py` (look at your art),

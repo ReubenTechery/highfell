@@ -12,6 +12,7 @@ import { setHooks } from '../dungeon/state.js';
 import { VIEW, resizeView } from '../dungeon/render.js';
 import type { RunLoot } from '../meta/loot';
 import { activeHero } from '../meta/profile';
+import type { RoleId } from '../content/types';
 import { $, GLYPH } from './dom';
 import { SFX } from './sound';
 import { Toasts } from './toasts';
@@ -137,11 +138,11 @@ export class App {
     this.show('brew');
     this.brew.open();
   }
-  /** the hero maker */
-  showCreate(): void {
+  /** the hero maker; with a role, it starts on a class for that seat and comes back to the dungeons */
+  showCreate(role?: RoleId): void {
     this.sheets.close();
     this.show('create');
-    this.creator.open(this.p.roster.length === 0);
+    this.creator.open(this.p.roster.length === 0, role);
   }
 
   /** Write the save and redraw what is showing. */

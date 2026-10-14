@@ -5,6 +5,7 @@
  */
 import { CLASSES, CLASS_ORDER, MAX_HEROES, RACES, RACE_ORDER, canMake, heroArt, type ClassId, type RaceId } from '../content/folk';
 import { ROLES } from '../content/roles';
+import type { RoleId } from '../content/types';
 import { newHero } from '../meta/gear';
 import { nameProblem, setActive } from '../meta/profile';
 import type { App } from './app';
@@ -24,6 +25,8 @@ export class Creator {
   private typed = false;
   private err = '';
   private first = false;
+  /** made from a seat in the dungeon picker: go back to it after */
+  private forSeat = false;
 
   constructor(private app: App, private root: HTMLElement) {
     actions(root, {
@@ -41,10 +44,14 @@ export class Creator {
     root.addEventListener('submit', (e) => { e.preventDefault(); this.create(); });
   }
 
-  /** open the maker; `first` means there are no heroes yet, so there is no going back */
-  open(first: boolean): void {
+  /** open the maker; `first` means there are no heroes yet, so there is no going back. A role (from a
+   *  seat in the dungeon picker) starts on a class for that seat. */
+  open(first: boolean, role?: RoleId): void {
     this.first = first;
     this.err = '';
+    this.forSeat = !!role;
+    const c = role ? CLASS_ORDER.find((x) => CLASSES[x].role === role && racesFor(x).length) : undefined;
+    if (c) { this.cls = c; this.race = racesFor(c)[0]; this.typed = false; this.name = ''; }
     if (!this.typed || !this.name) this.name = this.roll();
     this.render();
   }
@@ -97,11 +104,14 @@ export class Creator {
     const h = newHero(p, { name: this.name, race: this.race, cls: this.cls });
     if (!h) { this.err = 'That hero could not be made'; SFX.play('nope'); this.syncGo(); return; }
     setActive(p, h.id);
-    this.typed = false; this.name = '';
+    // saving redraws the maker, so note now where to go after
+    const toDungeons = this.forSeat;
+    this.typed = false; this.name = ''; this.forSeat = false;
     SFX.play('place');
     this.app.save();
     this.app.toasts.text(`${h.name} is ready`, `${RACES[this.race].name} ${CLASSES[this.cls].name} · ${CLASSES[this.cls].roleName}. Race and class are for keeps.`);
     this.app.showHearth();
+    if (toDungeons) this.app.sheets.open({ kind: 'dungeon' });
   }
 
   render(): void {

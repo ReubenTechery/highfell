@@ -199,3 +199,10 @@ export function resolveRun(p: Profile, dg: DungeonInfo, end: RunEnd, rng: Rng, n
   const clear = end.cleared ? resolveClear(p, dg, end.hero, end.time, rng) : null;
   return runLoot(p, dg, end.hero, kills, clear);
 }
+
+/** What a dungeon can drop for one role: that role's own pieces (its set and its weapon), then what
+ *  anyone can get, the likeliest first. Each line keeps its drop rate, so the showcase never lies. */
+export function lootFor(dg: DungeonInfo, role: RoleId): { mine: DropDef[]; shared: DropDef[] } {
+  const all = dg.loot.flatMap((t) => t.drops);
+  return { mine: all.filter((d) => d.role === role), shared: all.filter((d) => !d.role).sort((a, b) => b.rate - a.rate) };
+}

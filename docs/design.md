@@ -19,7 +19,8 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 14 
 | Threat and difficulty | The tank earns threat (Slam taunts and drags mobs in, Charge grabs one), loose mobs go wild on the squishies, a caged tank loses the boss; Barrow hits 1.5 times as hard and its packs have more health; you see only your own numbers | Ults, Openings |
 | Loot | Every line rolls on its own, kill counts, duplicates to Marks, the walkout and the chest reveal |  |
 | Achievements | All 12, the meta and the 3 hidden ones, with titles, trophies, looks and the Lantern Ghost |  |
-| Home | The Hearth, a tall house cut open: zoom out to see every room, tap things to use them (the Barrow door, the signpost to ride out, the armour stand, the big book of the collection log, the cauldron, the larder); about 30 spots for pets, mounts, trophies and banners; Decorate; one big Dungeons button | The dungeon picker as a group finder (bots fill seats), looks for a room or the house, rooms that come with new dungeons and places, inviting people over |
+| Home | The Hearth, a tall house cut open: zoom out to see every room, tap things to use them (the Barrow door, the signpost to ride out, the armour stand, the big book of the collection log, the cauldron, the larder); about 30 spots for pets, mounts, trophies and banners; Decorate; one big Dungeons button | Looks for a room or the house, rooms that come with new dungeons and places, inviting people over |
+| Dungeon picker | Dungeons: pick a dungeon, see your group's three seats (you in your hero's, bots at your gear level in the others), tap a seat to play it with one of your heroes or make one for it, loot or practice, a brew | Friends in the seats (needs online play), more dungeons |
 | Logs | Collection log by boss and gathering spot, grouped by dungeon and place, OSRS style: drops, kill count, fastest kill, wipes; achievements; the Vale's story; stats |  |
 | Riding out | The Vale map (Bramblewick is the one place open); walking out, or riding once you have a mount; Bramblewick Hollow with three gathering close-ups that pay XP every cut, Dottle's errands (goats, crows, sparks, the kettle, deliveries) and 8 story pages; Gathering and Brewing ranks; the Hill Goat from the goats errand; 3 pets, 4 trophies, bunting and a hare | Moonmere and Emberdeep, friends seen out riding, more close-ups |
 | Brews | The cauldron by your fire, 4 brews, one bottle a run, picked on the dungeon sheet | More recipes as places open |
@@ -160,7 +161,8 @@ Home is a tall house on the hill, cut open like a doll's house. Built 14 Oct aft
 - **One big button: Dungeons.** Everything else is a thing in the house: the Barrow door in the cellar, the signpost in the yard (ride out), the armour stand (gear), the big book in the trophy loft (the collection log), the cauldron and the larder (the satchel). Your hero's tag at the top opens gear too.
 - **Rooms:** the trophy loft, the bunk room (your other heroes), the armory, the hall (your hero, the fire, the mantel), the stable, the brewing room, the cellar with the Barrow door and two bricked arches for dungeons to come, and the yard.
 - **Trophies everywhere:** about 30 spots: the mantel, the loft's shelves, banners on the walls and the roof's flagpoles, pets by the fire, on the rug, on the table and in the loft, the stall and the yard. Decorate shows the empty ones; the rest of the time they're hidden.
-- **Next:** the dungeon picker becomes a group finder (pick a dungeon, see your party's seats, bots fill the empty ones; real players once there is online play). Then looks for a room or the whole house, and rooms that come with new dungeons and Vale places.
+- **Dungeons** (the big button or the Barrow door): the dungeon's picture, with one small collection log line under it that opens to show what each role can get. Then you: pick a role and you play your hero of that role you played last (Change picks another or makes one), your brew, and loot or practice. Brannoc, Maren or Ivy take the other seats as bots at your gear level. Friends take seats once there is online play.
+- **Next:** looks for a room or the whole house, and rooms that come with new dungeons and Vale places.
 
 ## Riding out (the Vale)
 
@@ -213,6 +215,7 @@ The weapon is the upgrade you feel; Helm, Shoulders and Chest are the set. Power
 - The weapon carries about 40% of your power, so a new one means bigger hits, bigger crits and its own glow.
 - Every clear drops a regular item better than the best you have in your weakest slot. No dead drops. It waits until you put it on. It also drops a shared piece for another role, up to Rare, so a new alt never starts cold.
 - Everything shows on your hero. Every set you earn goes in your wardrobe, to wear over any gear.
+- Tap any drop (in the collection log or the Dungeons sheet) to hold it up against what that role wears now: Upgrade, Downgrade, Same power or A trade, then what changes (item level, power, health, set count) and any effect it adds or takes away.
 - **Barrow Marks**: 1 per clear, 3 per duplicate. Spend 5 to swap your Epic weapon's trait; never on uniques.
 
 **Epic weapon traits** (each Epic weapon rolls 1 of 3)
