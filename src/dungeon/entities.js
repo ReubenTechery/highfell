@@ -43,8 +43,8 @@ export function makeHero(role, isPlayer, loadout) {
 
 export function makeMob(type, x, y, pack) {
   const M = S.dg.mobs[type];
-  // the dungeon's tuning: ordinary mobs get its health multiplier, bosses keep theirs as written
-  const hp = M.boss ? M.hp : Math.max(1, Math.round(M.hp * S.tune.trashHp));
+  // the dungeon's tuning: ordinary mobs get its health multiplier, bosses theirs (as written outside heroic)
+  const hp = Math.max(1, Math.round(M.hp * (M.boss ? S.tune.bossHp : S.tune.trashHp)));
   return {
     id: 'm' + (S.seq++), kind: 'mob', type, M, name: M.name, x, y, r: M.r, home: { x, y }, home0: { x, y }, pack,
     hp, maxHp: hp, speed: M.speed, alive: true, state: 'idle',

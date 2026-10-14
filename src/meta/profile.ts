@@ -18,6 +18,7 @@ import { ORDER } from '../content/roles';
 import { SLOT_IDS } from '../content/gear';
 import { CLASSES, FOUNDERS, MAX_HEROES, canMake, cleanName, type ClassId, type RaceId } from '../content/folk';
 import { settleSpots } from './hearth';
+import { opened } from './logs';
 
 export const PROFILE_VERSION = 6;
 /** Shared gear climbs to Rare. Epic is earned on the hero. */
@@ -260,9 +261,10 @@ export function nameProblem(p: Profile, raw: string, except?: string): string | 
   return null;
 }
 
-/** Make a new hero. It starts wearing your shared gear for its role. Race and class can't change later. */
-export function createHero(p: Profile, o: { name: string; race: RaceId; cls: ClassId }, now = Date.now(), id?: string): Hero | null {
-  if (p.roster.length >= MAX_HEROES || !canMake(o.race, o.cls) || nameProblem(p, o.name)) return null;
+/** Make a new hero. It starts wearing your shared gear for its role. Race and class can't change later.
+ *  A race you earn (the Risen) can be made once you've earned it (`free` is the testing switch). */
+export function createHero(p: Profile, o: { name: string; race: RaceId; cls: ClassId; free?: boolean }, now = Date.now(), id?: string): Hero | null {
+  if (p.roster.length >= MAX_HEROES || !canMake(o.race, o.cls) || !(o.free || opened(p, 'race', o.race)) || nameProblem(p, o.name)) return null;
   o = { ...o, name: cleanName(o.name)! };
   const role = CLASSES[o.cls].role;
   const h: Hero = {

@@ -55,7 +55,7 @@ export function itemSheet(p: Profile, id: string, hasBack: boolean): { head: str
     side = `<p class="lede">${esc(t.def.desc)}</p>`;
   }
   let source = '';
-  for (const dg of Object.values(DUNGEONS)) for (const tb of dg.loot) for (const d of tb.drops) if (d.id === id) source = `${dg.bosses.find((b) => b.id === tb.boss)?.name}, ${fmtRate(d.rate)}${d.role ? ` (${ROLES[d.role].title})` : ''}`;
+  for (const dg of Object.values(DUNGEONS)) for (const tb of dg.loot) for (const d of tb.drops) if (d.id === id) source = `${dg.heroicOf ? 'Heroic: ' : ''}${dg.bosses.find((b) => b.id === tb.boss)?.name}, ${fmtRate(d.rate)}${d.role ? ` (${ROLES[d.role].title})` : ''}`;
   if (!source && t?.kind === 'collectible') source = t.def.source;
   const kc = (() => { for (const dg of Object.values(DUNGEONS)) for (const tb of dg.loot) if (tb.drops.some((d) => d.id === id)) return p.bosses[`${dg.id}.${tb.boss}`]?.kc || 0; return null; })();
   const vsrc = valeSource(id);

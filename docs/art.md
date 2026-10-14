@@ -56,12 +56,15 @@ New colours are fine when a thing needs one; keep them flat and in this family (
 - **Heroes:** `<name>_f` (front) and `<name>_b` (back). `HERO_ART` in `src/content/folk.ts` maps a race and
   class to a sprite name; a combo is playable once it has art. Mounts face right and carry a `saddle`
   offset in their collectible so a hero sits on them.
+- **Heroic drops are gilded:** `gild()` in `art_sprites.py` turns a picture's bone and steel to gold; on a 64x64
+  tile it also gives a dark gold ground and a sparkle in the corner. Every heroic drop uses it, so a gilded piece
+  reads as the heroic one at a glance.
 - **Helpers:** every tool has the same small helpers (`s()` a filled shape with the ink line, `ln()` a line,
   `c()` a circle, `mirror()` for symmetric parts). Reuse them; don't invent a new drawing style.
 
 | Tool | Draws | Writes |
 | --- | --- | --- |
-| `tools/art_sprites.py` | heroes, mobs, bosses, dungeon props, effects | `art/sprites.json` |
+| `tools/art_sprites.py` | heroes (the Risen too, gilded as well), mobs, bosses, dungeon props, effects, and `gild()` | `art/sprites.json` |
 | `tools/art_icons.py` | ability icons | `art/icons.json` |
 | `tools/art_hearth.py` | the house's props (the lectern, armour stand, weapon rack, larder, bunks, signpost, the Barrow door, bricked arches), the fireplace and furniture, pets, mounts, trophies, banners, lanterns, collectible icons | `art/hearth.json`, `art/collect_icons.json` |
 | `tools/art_vale.py` | the Vale: places, villagers, plants, Vale pets and mounts, ingredient and brew icons | `art/vale.json`, `art/vale_icons.json` |

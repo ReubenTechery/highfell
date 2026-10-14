@@ -5,6 +5,7 @@ HF_ROOT = _hf_os.environ.get('HIGHFELL_ROOT') or _hf_os.path.dirname(_hf_os.path
 import json, math, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fighttiles import TV_TILES
+from art_sprites import gild
 
 OUT = HF_ROOT + '/art/'
 K = '#1E1A1A'
@@ -210,6 +211,13 @@ T['c_crit_ice'] = tile('#1F4F7A', '<text x="32" y="47" text-anchor="middle" styl
 T['marks'] = tile('#3A3150', C(32, 32, 20, '#C9A040', 3.5) + C(32, 32, 14, '#E7C25A', 2.4) +
                   F('M24 32 C24 24 40 24 40 32 C40 35 38 37 36 38 V41 H28 V38 C26 37 24 35 24 32 Z', '#3A3150', 2) +
                   C(29, 31, 2, '#E7C25A', 0) + C(35, 31, 2, '#E7C25A', 0))
+
+
+# ---- heroic Barrow drops: the same pieces, gilded
+for _n in ['s_barrowguard_helm', 's_barrowguard_shoulders', 's_barrowguard_chest', 's_candlewake_helm', 's_candlewake_shoulders', 's_candlewake_chest',
+           's_rimebone_helm', 's_rimebone_shoulders', 's_rimebone_chest', 'u_gravedigger', 'u_longnight', 'u_gravefrost']:
+    T[_n + '_gilded'] = gild(T[_n], {'#4A4458': '#8A6418'} if _n == 'u_longnight' else None, tile=True)
+T['c_dye_gilded'] = gild(T['c_dye'], {'#9FD9C6': '#F2C230', '#DCFFF0': '#FFE9A8'}, tile=True)
 
 
 if __name__ == '__main__':

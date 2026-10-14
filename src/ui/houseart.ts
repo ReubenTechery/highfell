@@ -3,8 +3,9 @@
  * the dusk outside, the frame (beams, chimney, stairs, roof), and every room in its look. A look
  * reskins a room's walls, floor, furniture and light; what you put in the house and what you can tap
  * stay where they are. The tavern is wood, plaster and lamplight. Barrow Hall is the Barrow's own brick,
- * flagstones, bone niches and the Gravekeeper's green fire, and with every room in it the frame turns to
- * stone and slate too. What you can tap, and what it does, lives in the scene (hearth.ts) and the
+ * flagstones, bone niches and the Gravekeeper's green fire (gilded, from the heroic log: gold bones, gold
+ * trim and lanterns, the green burning higher), and with every room in it the frame turns to stone and
+ * slate too. What you can tap, and what it does, lives in the scene (hearth.ts) and the
  * house's plan (content/house.ts). House units: x across, y down, the ground floor's floor at y = 0.
  */
 import { FLOORS, HOUSE_W, LOOK_ROOMS } from '../content/house';
@@ -49,7 +50,9 @@ const B = {
 };
 /** the frame's colours: beams, outer walls, chimney, stairs and roof */
 type Frame = Pick<typeof T, 'trim' | 'timber' | 'beam' | 'stone' | 'stoneLine' | 'roof' | 'roofLine' | 'stairs'>;
-const FRAMES: Record<string, Frame> = { tavern: T, barrow: B };
+const FRAMES: Record<string, Frame> = { tavern: T, barrow: B, 'barrow-gilded': { ...B, trim: '#D9A520' } };
+/** the trim round a room's windows in each look */
+const TRIM: Record<string, string> = { tavern: T.trim, barrow: B.trim, 'barrow-gilded': '#D9A520' };
 /** the frame follows the rooms when every one of them has the same look, and is the tavern's otherwise */
 function frameOf(look: LookAt): Frame {
   const first = look(LOOK_ROOMS[0]);
@@ -119,7 +122,7 @@ export function houseBack(look: LookAt): string {
   for (const id of LOOK_ROOMS) o.push(roomArt(look(id), id).wall());
   o.push(frame(fr));
   for (const w of WINDOWS) {
-    const trim = look(w.room) === 'barrow' ? B.trim : T.trim;
+    const trim = TRIM[look(w.room)] || T.trim;
     o.push(P(w.frame, trim, 4.5) + `<g clip-path="url(#${w.id})"><use href="#h-out"/></g><path d="${w.d}" style="fill: none; stroke: ${K}; stroke-width: 4"/>` + w.bars(trim));
   }
   o.push(roof(fr));
@@ -330,18 +333,18 @@ function flags(x: number, w: number, floor: number): string {
   return o.join('') + L(`M${x} ${y} H${x + w}`, K, 3.5);
 }
 /** a small skull resting at (x, y) */
-function skull(x: number, y: number): string {
+function skull(x: number, y: number, bone: string): string {
   const cy = y - 18;
-  return P(`M${x - 7} ${y - 10} H${x + 7} V${y} H${x - 7} Z`, B.bone, 3) + C(x, cy, 12, B.bone, 3) + C(x - 4.5, cy + 1, 3.4, K, 0) + C(x + 4.5, cy + 1, 3.4, K, 0);
+  return P(`M${x - 7} ${y - 10} H${x + 7} V${y} H${x - 7} Z`, bone, 3) + C(x, cy, 12, bone, 3) + C(x - 4.5, cy + 1, 3.4, K, 0) + C(x + 4.5, cy + 1, 3.4, K, 0);
 }
 /** the crypt's wainscot: a band of burial niches along the bottom of a wall, most with a skull in */
-function niches(x0: number, x1: number, bottom: number, h: number, seed: number): string {
+function niches(x0: number, x1: number, bottom: number, h: number, seed: number, bone: string): string {
   const o = [R(x0, bottom - h, x1 - x0, h, B.band, 0), L(`M${x0} ${bottom - h} H${x1}`, K, 3.5)];
   const n = Math.max(1, Math.round((x1 - x0) / 96)), step = (x1 - x0) / n, r = rnd(seed);
   for (let i = 0; i < n; i++) {
     const cx = x0 + step * (i + 0.5);
     o.push(P(arch(cx, bottom - h + 16, bottom - 10, 54), B.niche, 3.5));
-    if (r() < 0.65) o.push(skull(cx, bottom - 10));
+    if (r() < 0.65) o.push(skull(cx, bottom - 10, bone));
   }
   return o.join('');
 }
@@ -356,58 +359,68 @@ function gableBrick(): string {
   }
   return o.join('');
 }
-/** a green lantern hanging from a beam at `top` on a chain down to `y`: Barrow Hall's lamp */
-const lantern = (x: number, top: number, y: number): string => L(`M${x} ${top} V${y}`, K, 3) + glow(x, y + 34, 110, 'h-green') + placeSprite('lantern', x, y + 64);
 /** candles on the floor, with their own small warm light */
 const candles = (x: number, floor: number): string => glow(x, floor - 40, 90, 'h-warm', 0.8) + placeSprite('candles', x, floor - 22);
 
-const BARROW: Record<string, RoomArt> = {
-  loft: {
-    wall: () => gableBrick() + flags(0, W, FLOORS.loft),
-    // bone shelves, a cushion in the Gravekeeper's purple, candles by the big book
-    furnish: () => shelves(B.trim, B.stone) + cushion(B.cushion, B.cushionTop) + candles(452, FLOORS.loft) + candles(748, FLOORS.loft),
-    light: () => glow(600, -1960, 640, 'h-green', 0.42),
-  },
-  bunks: {
-    wall: () => brick(0, UP, 520, UW) + niches(0, 520, UW, 96, 3) + flags(0, 520, FLOORS.upper),
-    furnish: () => bunks() + lantern(260, UP, -1612),
-    light: () => glow(260, -1450, 360, 'h-green', 0.5),
-  },
-  armory: {
-    wall: () => brick(680, UP, W - 680, UW) + flags(680, 520, FLOORS.upper),
-    // a coffin stood up between the armour and the rack
-    furnish: () => placeSprite('weapon_rack', 1062, UW) + placeSprite('coffin', 921, UW),
-    light: () => glow(920, -1430, 380, 'h-green', 0.4),
-  },
-  hall: {
-    // brick, two dark panels in bone frames where the tavern has its plaster ones, and a band of niches
-    wall: () => brick(0, HC, W, HW)
-      + [[24, 396], [804, 1176]].map(([a, b]) => `<rect x="${a}" y="${HC + 28}" width="${b - a}" height="${HW - HC - 170}" rx="10" style="fill: ${B.trim}; stroke: ${K}; stroke-width: 3.5"/><rect x="${a + 12}" y="${HC + 40}" width="${b - a - 24}" height="${HW - HC - 194}" rx="6" style="fill: ${B.panel}; stroke: ${K}; stroke-width: 3"/>`).join('')
-      + niches(0, W, HW, 112, 7) + flags(0, W, FLOORS.hall),
-    // the fire burns green, and the woodpile is a pile of skulls
-    furnish: () => hearthFire('gfire') + placeSprite('skullpile', 140, FLOORS.hall - 26, { k: 1.25 }) + hallThings(),
-    light: () => glow(600, -760, 760, 'h-gfire'),
-  },
-  stable: {
-    wall: () => brick(0, GC, 640, GW) + flags(0, 640, FLOORS.ground),
-    // an old gravestone and some bones by the stall
-    furnish: () => placeSprite('stall', 420, GW) + placeSprite('tomb1', 96, FLOORS.ground - 30, { k: 1.2 }) + placeSprite('bones', 186, FLOORS.ground - 24) + barnDoor(),
-    light: () => glow(470, -250, 360, 'h-green', 0.4),
-  },
-  brewery: {
-    wall: () => brick(664, GC, W - 664, GW) + niches(664, W, GW, 110, 11) + flags(664, 1060 - 664, FLOORS.ground),
-    furnish: () => lantern(930, GC, -420),
-    light: () => glow(930, -240, 380, 'h-green', 0.5) + glow(960, -60, 160, 'h-green', 0.6),
-  },
-  cellar: {
-    wall: () => brick(0, CC, W, CW) + flags(0, W, FLOORS.cellar),
-    // wisps drift under the ceiling
-    furnish: () => arches() + candles(82, FLOORS.cellar) + placeSprite('skullpile', 924, FLOORS.cellar - 22)
-      + placeSprite('wisp', 560, 190, { cls: 'bob' }) + placeSprite('wisp', 1000, 240, { k: 0.8, cls: 'bob' }),
-    light: () => glow(300, 280, 460, 'h-green', 0.95),
-  },
-};
+/** what changes between Barrow Hall and its gilded version (the heroic log's): the bone, the trim, the
+ *  lanterns, and how bright the green burns */
+interface Crypt { bone: string; trim: string; lantern: string; lamp: string; burn: number }
+const PLAIN: Crypt = { bone: B.bone, trim: B.trim, lantern: 'lantern', lamp: 'h-green', burn: 1 };
+const GILT: Crypt = { bone: '#F2C230', trim: '#D9A520', lantern: 'lantern_gold', lamp: 'h-warm', burn: 1.25 };
 
-const ROOM_ART: Record<string, Record<string, RoomArt>> = { tavern: TAVERN, barrow: BARROW };
+/** Barrow Hall's rooms, plain or gilded */
+function crypt(c: Crypt): Record<string, RoomArt> {
+  /** a lantern hanging from a beam at `top` on a chain down to `y`: Barrow Hall's lamp */
+  const lantern = (x: number, top: number, y: number): string => L(`M${x} ${top} V${y}`, K, 3) + glow(x, y + 34, 110, c.lamp) + placeSprite(c.lantern, x, y + 64);
+  const green = (x: number, y: number, r: number, op: number): string => glow(x, y, r, 'h-green', Math.min(1, op * c.burn));
+  return {
+    loft: {
+      wall: () => gableBrick() + flags(0, W, FLOORS.loft),
+      // bone shelves, a cushion in the Gravekeeper's purple, candles by the big book
+      furnish: () => shelves(c.trim, B.stone) + cushion(B.cushion, B.cushionTop) + candles(452, FLOORS.loft) + candles(748, FLOORS.loft),
+      light: () => green(600, -1960, 640, 0.42),
+    },
+    bunks: {
+      wall: () => brick(0, UP, 520, UW) + niches(0, 520, UW, 96, 3, c.bone) + flags(0, 520, FLOORS.upper),
+      furnish: () => bunks() + lantern(260, UP, -1612),
+      light: () => green(260, -1450, 360, 0.5),
+    },
+    armory: {
+      wall: () => brick(680, UP, W - 680, UW) + flags(680, 520, FLOORS.upper),
+      // a coffin stood up between the armour and the rack
+      furnish: () => placeSprite('weapon_rack', 1062, UW) + placeSprite('coffin', 921, UW),
+      light: () => green(920, -1430, 380, 0.4),
+    },
+    hall: {
+      // brick, two dark panels in bone frames where the tavern has its plaster ones, and a band of niches
+      wall: () => brick(0, HC, W, HW)
+        + [[24, 396], [804, 1176]].map(([a, b]) => `<rect x="${a}" y="${HC + 28}" width="${b - a}" height="${HW - HC - 170}" rx="10" style="fill: ${c.trim}; stroke: ${K}; stroke-width: 3.5"/><rect x="${a + 12}" y="${HC + 40}" width="${b - a - 24}" height="${HW - HC - 194}" rx="6" style="fill: ${B.panel}; stroke: ${K}; stroke-width: 3"/>`).join('')
+        + niches(0, W, HW, 112, 7, c.bone) + flags(0, W, FLOORS.hall),
+      // the fire burns green, and the woodpile is a pile of skulls
+      furnish: () => hearthFire('gfire') + placeSprite('skullpile', 140, FLOORS.hall - 26, { k: 1.25 }) + hallThings(),
+      light: () => glow(600, -760, 760 * c.burn, 'h-gfire'),
+    },
+    stable: {
+      wall: () => brick(0, GC, 640, GW) + flags(0, 640, FLOORS.ground),
+      // an old gravestone and some bones by the stall
+      furnish: () => placeSprite('stall', 420, GW) + placeSprite('tomb1', 96, FLOORS.ground - 30, { k: 1.2 }) + placeSprite('bones', 186, FLOORS.ground - 24) + barnDoor(),
+      light: () => green(470, -250, 360, 0.4),
+    },
+    brewery: {
+      wall: () => brick(664, GC, W - 664, GW) + niches(664, W, GW, 110, 11, c.bone) + flags(664, 1060 - 664, FLOORS.ground),
+      furnish: () => lantern(930, GC, -420),
+      light: () => green(930, -240, 380, 0.5) + green(960, -60, 160, 0.6),
+    },
+    cellar: {
+      wall: () => brick(0, CC, W, CW) + flags(0, W, FLOORS.cellar),
+      // wisps drift under the ceiling
+      furnish: () => arches() + candles(82, FLOORS.cellar) + placeSprite('skullpile', 924, FLOORS.cellar - 22)
+        + placeSprite('wisp', 560, 190, { cls: 'bob' }) + placeSprite('wisp', 1000, 240, { k: 0.8, cls: 'bob' }),
+      light: () => green(300, 280, 460, 0.95),
+    },
+  };
+}
+
+const ROOM_ART: Record<string, Record<string, RoomArt>> = { tavern: TAVERN, barrow: crypt(PLAIN), 'barrow-gilded': crypt(GILT) };
 /** a room in a look, or in the tavern when that look has no art for it */
 const roomArt = (look: string, room: string): RoomArt => ROOM_ART[look]?.[room] || TAVERN[room];

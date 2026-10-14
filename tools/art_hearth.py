@@ -491,13 +491,42 @@ def signpost():
     sprite('signpost', (-76, -210, 156, 214), o)
 
 
+# ================================================================ the heroic Barrow, and the log rewards
+KEEPER_GILD = {GK_COAT: '#C9962A', GK_COAT_D: '#8A6418', '#C9CFC2': '#FFE08A', '#4A4458': '#8A6418'}
+PLUME_GILD = {'#C8403F': GOLD, '#9E2F2E': GOLD_D, '#E97A6E': '#FFE08A', '#D9A520': '#B8862A'}
+
+
+def risen_head(o, cy=11):
+    """a Risen warrior's head: the horned helm over a skull with green eyes (the hero at the end of the Barrow log's bar)"""
+    o.append(halo(0, cy - 2, 30, GRN, 0.3))
+    o.append(A.skull(0, cy, 1.12))
+    o.append(s(f'M-17 {cy - 10} C-17 {cy - 32} 17 {cy - 32} 17 {cy - 10} Z', STEEL) + s(f'M-18.5 {cy - 13} H18.5 V{cy - 7} H-18.5 Z', STEEL_D, 3.5))
+    o.append(both(f'M-15 {cy - 18} C-26 {cy - 20} -33 {cy - 30} -31 {cy - 41} C-26 {cy - 33} -20 {cy - 29} -12 {cy - 27} Z', BONE, 3.5))
+    o.append(c(-9, cy - 10, 1.4, K, 0) + c(9, cy - 10, 1.4, K, 0) + c(0, cy - 10, 1.4, K, 0))
+
+
+def heroic_drops():
+    for n, extra in (('pet_keeper', KEEPER_GILD), ('mount_hound', {}), ('tr_plume', PLUME_GILD)):
+        SP[n + '_gilded'] = {'svg': A.gild(SP[n]['svg'], extra), 'vb': SP[n]['vb']}
+    for n, extra in (('c_pet_keeper', KEEPER_GILD), ('c_mount_hound', {}), ('c_plume', PLUME_GILD)):
+        ICONS[n + '_gilded'] = A.gild(ICONS[n], extra, tile=True)
+    o = []; risen_head(o)
+    icon('c_risen', '#2E3A2A', o, k=0.8, ground=36)
+    o = [halo(0, 0, 28, GOLD, 0.3), A.bone_limb('M-22 -18 L22 18', 6) + A.bone_limb('M22 -18 L-22 18', 6)]
+    for (x, y) in ((-22, -18), (22, -18), (-22, 18), (22, 18)):
+        o.append(c(x - 3, y - 2, 4, BONE, 2.6) + c(x + 3, y + 2, 4, BONE, 2.6))
+    o.append(A.skull(0, -4, 1.25))
+    icon('c_gilded_bones', '#3A2C10', o, k=0.95, ground=34)
+    ICONS['c_gilded_bones'] = A.gild(ICONS['c_gilded_bones'], tile=True)
+
+
 def house_props():
     lectern(); armor_stand(); weapon_rack(); larder(); barrow_door(); bricked_arch(); signpost()
     bunk('bunk_a', BLUE, RED); bunk('bunk_b', '#4E9A4A', GOLD_D); bunk('bunk_c', PURP, '#2F8F8F')
 
 
 def build():
-    lanterns(); pets(); hound(); trophies(); fireplace(); fire(); rug(); stall(); window(); door(); furniture(); house_props()
+    lanterns(); pets(); hound(); trophies(); fireplace(); fire(); rug(); stall(); window(); door(); furniture(); house_props(); heroic_drops()
     return SP
 
 

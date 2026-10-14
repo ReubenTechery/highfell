@@ -11,6 +11,7 @@ import { RARITY, ROLE_SLOTS } from '../content/gear';
 import { heroArt } from '../content/folk';
 import { ROLES } from '../content/roles';
 import type { RoleId } from '../content/types';
+import type { Profile } from '../meta/profile';
 
 type Sprite = { svg: string; vb: number[] };
 export const TILES: Record<string, string> = { ...(ICONS as Record<string, string>), ...(COLLECT_ICONS as Record<string, string>), ...(VALE_ICONS as Record<string, string>) };
@@ -82,9 +83,13 @@ export function riderSvg(heroSprite: string, mountId: string, x: number, y: numb
   return `<g class="${o.cls || ''}">${placeSprite(heroSprite + '_f', hx, hy, { k: sd.k * k, cls: 'rider-h' })}${placeSprite(c?.sprite || 'mount_goat', x, y, { k, flip: o.flip, cls: 'rider-m' })}</g>`;
 }
 
-/** The sprite set a hero is drawn with: its race and class art, or its seat's art if this build has none. */
-export function heroSprite(h: { race: string; cls: string }, role: RoleId): string {
-  return heroArt(h.race, h.cls) || ROLES[role].sprite;
+/** Gilded Bones (the heroic Barrow log's reward) is yours and switched on: the Risen are drawn in gold. */
+export const gildedBones = (p: Profile): boolean => !!p.collection['cosmetic.gilded_bones'] && !p.settings.looksOff.includes('cosmetic.gilded_bones');
+/** The sprite set a hero is drawn with: its race and class art (gilded for a Risen hero when Gilded
+ *  Bones is on, given the save), or its seat's art if this build has none. */
+export function heroSprite(h: { race: string; cls: string }, role: RoleId, p?: Profile): string {
+  const art = heroArt(h.race, h.cls) || ROLES[role].sprite;
+  return p && h.race === 'risen' && gildedBones(p) ? `${art}_gilded` : art;
 }
 /** A hero's front sprite as an <img>, sized by its own height so a dwarf stands shorter than an elf. */
 export function heroImg(sprite: string, o: { cls?: string; alt?: string } = {}): string {

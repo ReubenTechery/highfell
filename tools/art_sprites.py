@@ -3,7 +3,7 @@ HF_ROOT = _hf_os.environ.get('HIGHFELL_ROOT') or _hf_os.path.dirname(_hf_os.path
 # Barrow Crypt sprites in the locked TV-cartoon style: chunky in-game sizes, one black line, flat colour.
 # Every sprite is drawn around its ground point (0, 0): x right, y down, so the art sits at negative y.
 # 1 art unit = 1 world unit. Usage: python3 tools/art_sprites.py -> art/sprites.json + art/_sprites_preview.html
-import json, math, os, sys
+import json, math, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from tvworld import mirror
 
@@ -75,6 +75,22 @@ def eyes(x, y, rx=3.8, ry=4.6, gap=5.6, look=(0.4, 0.4), w=2.4):
 
 
 SPRITES = {}
+
+# Gilded: a heroic drop is the same picture with its bone and steel in gold. On a 64x64 tile it also gets a
+# dark gold ground and a sparkle in the corner, so the heroic one reads at a glance.
+GILD = {BONE: GOLD, BONE_D: GOLD_D, STEEL: '#E7B53C', STEEL_D: '#B8862A', STEEL_L: '#FFE08A', '#8E96A3': '#E7B53C',
+        '#D7DEE6': '#FFE9A8', '#F6F1E4': '#FFE9A8', '#DDF3FF': '#FFE08A'}
+GILD_BG = '#3A2C10'
+SPARKLE = '<path d="M52 3 L54.4 9.6 L61 12 L54.4 14.4 L52 21 L49.6 14.4 L43 12 L49.6 9.6 Z" style="fill: #FFF3C4; stroke: #1E1A1A; stroke-width: 1.8; stroke-linejoin: round"/>'
+
+
+def gild(svg, extra=None, tile=False):
+    cmap = {**GILD, **(extra or {})}
+    svg = re.sub(r'#[0-9A-Fa-f]{6}', lambda mm: cmap.get(mm.group(0).upper(), mm.group(0)), svg)
+    if tile:
+        svg = re.sub(r'(<rect width="64" height="64" style="fill: )#[0-9A-Fa-f]{6}', r'\g<1>' + GILD_BG, svg, count=1)
+        svg = svg[:svg.rindex('</svg>')] + SPARKLE + '</svg>'
+    return svg
 
 
 def sprite(name, vb, body, note=''):
@@ -262,6 +278,172 @@ def dps_back():
     o.append(ln('M-6 -66 C-7 -54 -6 -44 -4 -36 M6 -66 C7 -54 6 -44 4 -36', '#C9D4E0', 2.2))
     o.append(wizard_hat(True))
     sprite('dps_b', (-42, -122, 82, 128), o, 'Ivy back')
+
+
+# ====================================================================== the Risen
+# Heroes who came back from the Barrow: the reward for filling its whole collection log. Each wears its
+# class's own outfit (the horned helm and axe, the healer's robe and staff, the mage's hat and frost
+# staff) over bones, with a skull for a face and green light in the eyes. Gilded Bones (the reward for
+# the heroic log) is the same art with the bones in gold.
+RTUNIC, RTUNIC_D, RCLOTH, RCLOTH_D, RROBE, RROBE_D = '#5A6478', '#454E60', '#3A3348', '#2A2434', '#35587F', '#2A4566'
+
+
+def bone_hand(x, y, r=5.5):
+    return c(x, y, r, BONE, 3.5) + ln(f'M{f(x - r * 0.45)} {f(y + r * 0.2)} V{f(y + r * 0.85)} M{f(x + r * 0.45)} {f(y + r * 0.2)} V{f(y + r * 0.85)}', K, 1.6)
+
+
+def eye_glow(cx, cy, k=1.0):
+    return halo(cx, cy, 13 * k, GRN, 0.28)
+
+
+def ragged(x0, x1, y, n, d=5):
+    """a torn hem from x0 to x1 along y: points dipping by d"""
+    w = (x1 - x0) / n
+    return ' '.join(f'L{f(x0 + w * (i + 0.5))} {f(y + (d if i % 2 == 0 else 0))} L{f(x0 + w * (i + 1))} {f(y)}' for i in range(n))
+
+
+def risen_tank_front():
+    o = []
+    o.append(tank_axe(-34, -82))
+    o.append(s('M-17 -10 H-5 V0 H-20 C-21 -4 -20 -8 -17 -10 Z', '#4A3A30') + s(m('M-17 -10 H-5 V0 H-20 C-21 -4 -20 -8 -17 -10 Z'), '#4A3A30'))
+    o.append(bone_limb('M-10 -26 L-11 -9', 5) + bone_limb('M10 -26 L11 -9', 5))
+    o.append(s('M-24 -60 C-29 -46 -28 -32 -23 -23 ' + ragged(-23, 23, -23, 6) + ' C28 -32 29 -46 24 -60 Z', RTUNIC))
+    o.append(ribcage(0, -60, 20, 22))
+    o.append(s('M-26 -37 H26 V-29 H-25 Z', WOOD_D, 3.5) + s('M-6 -39 H6 V-27 H-6 Z', GOLD, 3))
+    o.append(s('M-24 -58 C-34 -52 -37 -40 -35 -31 L-27 -31 C-27 -39 -25 -47 -20 -52 Z', RTUNIC))
+    o.append(bone_hand(-31, -31))
+    # the shield: an iron rim, a dark face, a bone skull on it
+    o.append(c(23, -40, 19, STEEL_D) + c(23, -40, 13.5, '#4A4060', 3) + c(23, -42, 6.5, BONE, 2.6) + e(20.6, -42.5, 1.8, 2.2, K, 0) + e(25.4, -42.5, 1.8, 2.2, K, 0) + s('M20 -36.5 H26 V-34 H20 Z', BONE, 2))
+    o.append(both('M-31 -57 C-33 -68 -16 -73 -11 -62 C-15 -55 -24 -53 -31 -57 Z', STEEL))
+    o.append(eye_glow(0, -79))
+    o.append(skull(0, -78, 1.12))
+    o.append(s('M-17 -88 C-17 -110 17 -110 17 -88 Z', STEEL) + s('M-18.5 -91 H18.5 V-85 H-18.5 Z', STEEL_D, 3.5))
+    o.append(both('M-15 -96 C-26 -98 -33 -108 -31 -119 C-26 -111 -20 -107 -12 -105 Z', BONE, 3.5))
+    o.append(c(-9, -88, 1.4, K, 0) + c(9, -88, 1.4, K, 0) + c(0, -88, 1.4, K, 0))
+    sprite('risen_tank_f', (-62, -124, 104, 130), o, 'Risen warrior front')
+
+
+def risen_tank_back():
+    o = []
+    o.append(s('M-17 -10 H-5 V0 H-20 C-21 -4 -20 -8 -17 -10 Z', '#4A3A30') + s(m('M-17 -10 H-5 V0 H-20 C-21 -4 -20 -8 -17 -10 Z'), '#4A3A30'))
+    o.append(bone_limb('M-10 -26 L-11 -9', 5) + bone_limb('M10 -26 L11 -9', 5))
+    o.append(s('M-24 -60 C-29 -46 -28 -32 -23 -23 ' + ragged(-23, 23, -23, 6) + ' C28 -32 29 -46 24 -60 Z', RTUNIC))
+    o.append(s('M-26 -37 H26 V-29 H-25 Z', WOOD_D, 3.5))
+    # a torn cloak over the back
+    o.append(s('M-20 -63 C-25 -48 -25 -34 -22 -21 ' + ragged(-22, 22, -21, 5, 6) + ' C25 -34 25 -48 20 -63 Z', '#4F3780'))
+    o.append(tank_axe(34, -82, -1))
+    o.append(s(m('M-24 -58 C-34 -52 -37 -40 -35 -31 L-27 -31 C-27 -39 -25 -47 -20 -52 Z'), RTUNIC))
+    o.append(bone_hand(31, -31))
+    o.append(c(-23, -40, 19, '#5A4A3A') + ln('M-23 -58 V-22 M-41 -40 H-5', '#3E3228', 3) + s('M-30 -44 H-16 V-36 H-30 Z', '#3A3030', 3))
+    o.append(both('M-31 -57 C-33 -68 -16 -73 -11 -62 C-15 -55 -24 -53 -31 -57 Z', STEEL))
+    # the back of the skull under the helm, and the neck bones
+    o.append(c(0, -62, 3.6, BONE, 2.6) + c(0, -68, 4, BONE, 2.6))
+    o.append(s('M-14 -84 C-14 -66 14 -66 14 -84 Z', BONE, 3.5))
+    o.append(s('M-17 -86 C-17 -110 17 -110 17 -86 Z', STEEL) + s('M-18.5 -91 H18.5 V-85 H-18.5 Z', STEEL_D, 3.5))
+    o.append(both('M-15 -96 C-26 -98 -33 -108 -31 -119 C-26 -111 -20 -107 -12 -105 Z', BONE, 3.5))
+    o.append(ln('M0 -107 V-91', STEEL_D, 3))
+    sprite('risen_tank_b', (-44, -124, 104, 130), o, 'Risen warrior back')
+
+
+def lantern_staff(x):
+    """the Risen cleric's staff: a green lantern where the sun would be"""
+    o = beam(f'M{x} 2 L{x} -92', WOOD_D, 4.5)
+    o += halo(x, -102, 20, GRN, 0.3)
+    o += ln(f'M{x - 5} -114 C{x - 5} -121 {x + 5} -121 {x + 5} -114', K, 3)
+    o += s(f'M{x - 8} -113 H{x + 8} L{x + 7} -93 H{x - 7} Z', '#4A4458', 3.5)
+    o += s(f'M{x - 4.5} -109 H{x + 4.5} V-97 H{x - 4.5} Z', '#E9FFD9', 2.4)
+    o += s(f'M{x} -107 C{x + 4} -103 {x + 3} -99 {x} -98 C{x - 3} -99 {x - 4} -103 {x} -107 Z', GRN, 1.8)
+    o += s(f'M{x - 10} -94 H{x + 10} L{x + 8} -90 H{x - 8} Z', '#4A4458', 3)
+    return o
+
+
+def risen_healer_front():
+    o = []
+    o.append(lantern_staff(-31))
+    o.append(s('M-15 -56 C-20 -36 -24 -16 -28 -2 ' + ragged(-28, 28, -2, 7, 4) + ' C24 -16 20 -36 15 -56 Z', RCLOTH))
+    o.append(s('M-7 -54 L-10 -4 H-4 L-3 -54 Z', '#6E8A5A', 3) + s(m('M-7 -54 L-10 -4 H-4 L-3 -54 Z'), '#6E8A5A', 3))
+    o.append(s('M-18 -38 C-6 -34 6 -34 18 -38 L18 -31 C6 -27 -6 -27 -18 -31 Z', GOLD, 3.5))
+    o.append(s('M-15 -54 C-27 -48 -33 -38 -35 -29 C-30 -25 -24 -25 -20 -30 C-20 -38 -16 -44 -12 -48 Z', RCLOTH))
+    o.append(bone_hand(-31, -30, 5))
+    o.append(s('M15 -54 C25 -48 29 -38 29 -27 C25 -23 19 -23 16 -27 C16 -36 14 -44 12 -48 Z', RCLOTH))
+    o.append(halo(22, -25, 12, GRN, 0.4) + bone_hand(22, -25, 5))
+    # the hood, a dark face inside it, and the skull looking out
+    o.append(s('M-16 -58 C-21 -78 -12 -96 0 -101 C12 -96 21 -78 16 -58 C10 -62 -10 -62 -16 -58 Z', RCLOTH_D, 3.5))
+    o.append(e(0, -74, 12.5, 14.5, '#141018', 0))
+    o.append(eye_glow(0, -76, 0.9))
+    o.append(skull(0, -76, 0.86))
+    o.append(ln('M-13 -64 C-6 -60 6 -60 13 -64', GOLD, 2.6))
+    sprite('risen_healer_f', (-56, -126, 94, 132), o, 'Risen cleric front')
+
+
+def risen_healer_back():
+    o = []
+    o.append(lantern_staff(31))
+    o.append(s('M-15 -56 C-20 -36 -24 -16 -28 -2 ' + ragged(-28, 28, -2, 7, 4) + ' C24 -16 20 -36 15 -56 Z', RCLOTH))
+    o.append(halo(0, -34, 13, GRN, 0.22))
+    for k in range(8):
+        a = math.radians(k * 45)
+        o.append(beam(f'M{f(9 * math.cos(a))} {f(-34 + 9 * math.sin(a))} L{f(14 * math.cos(a))} {f(-34 + 14 * math.sin(a))}', GOLD, 2.6, 2.4))
+    o.append(c(0, -34, 6.5, GOLD, 3))
+    o.append(s(m('M-15 -54 C-27 -48 -33 -38 -35 -29 C-30 -25 -24 -25 -20 -30 C-20 -38 -16 -44 -12 -48 Z'), RCLOTH))
+    o.append(bone_hand(31, -30, 5))
+    o.append(s(m('M15 -54 C25 -48 29 -38 29 -27 C25 -23 19 -23 16 -27 C16 -36 14 -44 12 -48 Z'), RCLOTH))
+    o.append(bone_hand(-22, -25, 5))
+    o.append(s('M-16 -58 C-21 -78 -12 -96 0 -101 C12 -96 21 -78 16 -58 C10 -55 -10 -55 -16 -58 Z', RCLOTH_D, 3.5))
+    o.append(ln('M0 -98 C-3 -86 -2 -72 0 -60', '#3A3348', 2.4))
+    sprite('risen_healer_b', (-38, -126, 94, 132), o, 'Risen cleric back')
+
+
+def risen_hat(back=False):
+    o = e(0, -77, 21, 5.5, RROBE, 3.5)
+    o += s('M-12 -79 C-10 -93 -3 -106 8 -114 C5 -103 7 -91 12 -79 Z', RROBE)
+    o += s('M-12.5 -80 C-4 -77 4 -77 12.5 -80 L11.5 -86 C4 -83 -4 -83 -11.5 -86 Z', GOLD, 3)
+    if not back:
+        o += ln('M2 -98 V-90 M-1.5 -96 L5.5 -92 M-1.5 -92 L5.5 -96', '#FFFFFF', 1.8)
+    return o
+
+
+def risen_dps_front():
+    o = []
+    o.append(ice_staff(29))
+    o.append(s('M-14 -74 C-19 -60 -19 -48 -15 -40 L-11 -44 L-7 -39 L-3 -43 L3 -43 L7 -39 L11 -44 L15 -40 C19 -48 19 -60 14 -74 Z', '#C9D2DC', 3.5))
+    o.append(s('M-14 -50 C-18 -32 -22 -14 -24 -2 ' + ragged(-24, 24, -2, 6, 4) + ' C22 -14 18 -32 14 -50 Z', RROBE))
+    o.append(s('M-6 -48 L-9 -3 H9 L6 -48 Z', GOLD, 3))
+    o.append(s('M-15 -32 C-5 -29 5 -29 15 -32 V-27 C5 -24 -5 -24 -15 -27 Z', RROBE_D, 3))
+    o.append(s('M-14 -48 C-24 -42 -28 -32 -28 -24 C-24 -21 -19 -22 -16 -26 C-16 -34 -13 -40 -10 -44 Z', RROBE))
+    o.append(bone_hand(-24, -24, 4.5))
+    o.append(halo(-25, -33, 11, FROST, 0.4) + c(-25, -33, 5.5, FROST_L, 3))
+    o.append(s('M14 -48 C22 -46 27 -42 28 -36 C26 -32 22 -32 19 -35 C17 -40 14 -42 10 -44 Z', RROBE))
+    o.append(bone_hand(27, -38, 4.5))
+    o.append(s('M-15 -52 C-8 -44 8 -44 15 -52 C10 -57 -10 -57 -15 -52 Z', '#FFFFFF', 3.5))
+    o.append(eye_glow(0, -67, 0.8))
+    o.append(skull(0, -67, 0.8))
+    o.append(risen_hat())
+    sprite('risen_dps_f', (-40, -122, 82, 128), o, 'Risen mage front')
+
+
+def risen_dps_back():
+    o = []
+    o.append(ice_staff(-29))
+    o.append(s('M-14 -50 C-18 -32 -22 -14 -24 -2 ' + ragged(-24, 24, -2, 6, 4) + ' C22 -14 18 -32 14 -50 Z', RROBE))
+    o.append(s('M-15 -32 C-5 -29 5 -29 15 -32 V-27 C5 -24 -5 -24 -15 -27 Z', RROBE_D, 3))
+    o.append(s(m('M-14 -48 C-24 -42 -28 -32 -28 -24 C-24 -21 -19 -22 -16 -26 C-16 -34 -13 -40 -10 -44 Z'), RROBE))
+    o.append(bone_hand(24, -24, 4.5))
+    o.append(halo(25, -33, 11, FROST, 0.4) + c(25, -33, 5.5, FROST_L, 3))
+    o.append(s(m('M14 -48 C22 -46 27 -42 28 -36 C26 -32 22 -32 19 -35 C17 -40 14 -42 10 -44 Z'), RROBE))
+    o.append(bone_hand(-27, -38, 4.5))
+    o.append(s('M-14 -76 C-19 -60 -18 -42 -12 -32 L-8 -36 L-4 -31 L0 -35 L4 -31 L8 -36 L12 -32 C18 -42 19 -60 14 -76 Z', '#C9D2DC', 3.5))
+    o.append(ln('M-6 -66 C-7 -54 -6 -46 -5 -38 M6 -66 C7 -54 6 -46 5 -38', '#9DA8B6', 2.2))
+    o.append(risen_hat(True))
+    sprite('risen_dps_b', (-42, -122, 82, 128), o, 'Risen mage back')
+
+
+def gilded_heroes():
+    """Gilded Bones: every Risen sprite again with its bones in gold"""
+    for n in ['risen_tank_f', 'risen_tank_b', 'risen_healer_f', 'risen_healer_b', 'risen_dps_f', 'risen_dps_b']:
+        sp = SPRITES[n]
+        SPRITES[n.replace('risen_', 'risen_').rsplit('_', 1)[0] + '_gilded_' + n.rsplit('_', 1)[1]] = {
+            'svg': sp['svg'].replace(BONE, GOLD).replace(BONE_D, GOLD_D), 'vb': sp['vb'], 'note': sp['note'] + ', gilded'}
 
 
 # ====================================================================== mobs
@@ -667,6 +849,7 @@ def projectiles():
 
 def build():
     tank_front(); tank_back(); healer_front(); healer_back(); dps_front(); dps_back()
+    risen_tank_front(); risen_tank_back(); risen_healer_front(); risen_healer_back(); risen_dps_front(); risen_dps_back(); gilded_heroes()
     rattler(); rattler(True); archer(); brute(); caller(); wisp(); knight(); keeper(); keeper_smash()
     pillar(); coffin(); coffin(True); torch(); candles(); bones(); skullpile(); urn(); banner()
     tombstone(0); tombstone(1); tombstone(2); grave(); tree(); chest(); chest(True); gate(); hand(); cage(); arch()

@@ -11,7 +11,7 @@ import { canStand, inWalk, moveEnt, roomIndexOf } from './world.js';
 import { tickWalkout } from './walkout.js';
 
 /* dg: a dungeon definition (map, mobs, packs, script). opts:
-   { role, loadouts: {tank, healer, dps}, start, solo, seed, auto, quiet, testGear } */
+   { role, loadouts: {tank, healer, dps}, start, solo, seed, auto, quiet, testGear, heroic } */
 export function newGame(dg, opts) {
   setSeed(opts.seed || ((Date.now() & 0xfffffff) | 1));
   setS({
@@ -20,8 +20,9 @@ export function newGame(dg, opts) {
     inCombat: false, lastCombat: -99, combatStart: 0, boss: null, bossFight: null, ring: null, dark: 0, darkTarget: 0, shake: 0, hitstop: 0, hurtFlash: 0,
     banner: null, call: null, walkout: null, hush: false, looks: new Set(opts.looks || []), stats: { deaths: 0, perfect: 0, kicks: 0, cuts: 0, cages: 0, wipes: 0, start: 0 }, hints: {}, over: false, chest: null,
     cp: 0, quiet: !!opts.quiet, auto: !!opts.auto, noEvents: !!opts.noEvents, cleared: 0, total: dg.packs.length, startedAt: 0,
-    // how hard this dungeon is: hit (everything that hurts a hero), trashHp (health of everything but the bosses)
-    tune: Object.assign({ hit: 1, trashHp: 1 }, dg.tune || {}),
+    // how hard this dungeon is: hit (everything that hurts a hero), trashHp (health of everything but the
+    // bosses), bossHp (the bosses' health). opts.heroic plays it at the dungeon's heroic tune instead.
+    tune: Object.assign({ hit: 1, trashHp: 1, bossHp: 1 }, (opts.heroic && dg.heroic) || dg.tune || {}),
   });
   S.props = dg.props.map((p) => Object.assign({}, p, { room: roomIndexOf(p.x, p.y), sp0: p.sp }));
   const roles = opts.solo ? ['dps'] : ORDER;

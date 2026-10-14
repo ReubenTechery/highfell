@@ -332,8 +332,9 @@ export function drawHero(ctx, h) {
     if (S.frame % 9 === 0) S.parts.push({ x: h.x + fx_ + vrand(-12, 12), y: h.y, z: -w[1] + vrand(-10, 10), vx: 0, vy: 0, vz: 0, up: true, col: '#FFF6D0', size: vrand(2.5, 4), t: 0, dur: 0.8 });
   }
   const yy = h.dodgeT > 0 ? y + 26 : y;
-  const ghost = h.isPlayer && S.opts.ghostly;
-  drawSpr(ctx, name, x, yy, { flip: h.flip, sx, sy, rot: rot, alpha: ghost ? 0.78 : 1, tint: h.flash > 0 ? 'flash' : ghost ? 'ghost' : null, tintA: h.flash > 0 ? Math.max(0, h.flash) / 0.12 : 0.45 });
+  // the Barrow dyes on your set: the Gravegold Dye (heroic) wins over the Ghostly one
+  const gold = h.isPlayer && S.opts.gilded, ghost = !gold && h.isPlayer && S.opts.ghostly;
+  drawSpr(ctx, name, x, yy, { flip: h.flip, sx, sy, rot: rot, alpha: ghost ? 0.78 : 1, tint: h.flash > 0 ? 'flash' : gold ? 'gold' : ghost ? 'ghost' : null, tintA: h.flash > 0 ? Math.max(0, h.flash) / 0.12 : gold ? 0.4 : 0.45 });
   if (h.blocking) {
     const a = h.face, cx = h.x + Math.cos(a) * 24, cy = h.y - 34 + Math.sin(a) * 12;
     ctx.lineWidth = 11; ctx.strokeStyle = K; ctx.beginPath(); ctx.arc(cx - Math.cos(a) * 14, cy - Math.sin(a) * 8, 34, a - 1.05, a + 1.05); ctx.stroke();

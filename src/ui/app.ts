@@ -13,6 +13,7 @@ import { VIEW, resizeView } from '../dungeon/render.js';
 import type { RunLoot } from '../meta/loot';
 import { activeHero } from '../meta/profile';
 import type { RoleId } from '../content/types';
+import type { RaceId } from '../content/folk';
 import { $, GLYPH } from './dom';
 import { SFX } from './sound';
 import { Toasts } from './toasts';
@@ -30,7 +31,8 @@ const SCENES: SceneId[] = ['hearth', 'create', 'vale', 'brew', 'run', 'reveal'];
 export interface Carry { sheet?: unknown; scene?: SceneId }
 
 /** Testing switches that live on this device only, never in the save. */
-export interface Dev { walkout: 'off' | 'normal' | 'unique' | 'pet'; valeFree: boolean; valeLuck: boolean; looksFree: boolean }
+/** testing switches, kept on this device: allOpen opens the log rewards (looks, the Risen) and Heroic before they're earned */
+export interface Dev { walkout: 'off' | 'normal' | 'unique' | 'pet'; valeFree: boolean; valeLuck: boolean; allOpen: boolean }
 const DEV_KEY = 'highfell.dev';
 
 export class App {
@@ -45,7 +47,7 @@ export class App {
   readonly brew: Brewing;
   scene: SceneId = 'hearth';
   touch = false;
-  dev: Dev = { walkout: 'off', valeFree: false, valeLuck: false, looksFree: false };
+  dev: Dev = { walkout: 'off', valeFree: false, valeLuck: false, allOpen: false };
   private last = 0;
 
   constructor(readonly root: HTMLElement) {
@@ -138,11 +140,12 @@ export class App {
     this.show('brew');
     this.brew.open();
   }
-  /** the hero maker; with a role, it starts on a class for that seat and comes back to the dungeons */
-  showCreate(role?: RoleId): void {
+  /** the hero maker; with a role, it starts on a class for that seat and comes back to the dungeons; with
+   *  a race (the Risen, just earned), it starts on it */
+  showCreate(role?: RoleId, race?: RaceId): void {
     this.sheets.close();
     this.show('create');
-    this.creator.open(this.p.roster.length === 0, role);
+    this.creator.open(this.p.roster.length === 0, role, race);
   }
 
   /** Write the save and redraw what is showing. */
@@ -200,7 +203,7 @@ const SHELL = `
         <div class="bb-sub" id="bb-sub"></div>
       </div>
     </div>
-    <div class="run-tags"><span class="chip dark practice-tag" id="practice-tag" hidden>Practice: no loot</span><span class="chip dark brew-tag" id="brew-tag" hidden></span></div>
+    <div class="run-tags"><span class="chip dark heroic-tag" id="heroic-tag" hidden>Heroic</span><span class="chip dark practice-tag" id="practice-tag" hidden>Practice: no loot</span><span class="chip dark brew-tag" id="brew-tag" hidden></span></div>
     <div class="banner" id="banner"></div>
     <div class="call" id="call"></div>
     <div class="hint glass" id="hint" hidden></div>

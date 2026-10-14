@@ -5,6 +5,7 @@
  *   npm run sim -- --seeds 30        more seeds
  *   npm run sim -- --gear 3          everyone in full Epic (0 Common .. 3 Epic)
  *   npm run sim -- --solo            the solo DPS check (should die at the first pack)
+ *   npm run sim -- --heroic --gear 3 heroic, in full Epic (what it's made for)
  *   npm run sim -- --json out.json   also write every run to a file
  */
 import * as esbuild from 'esbuild';
@@ -28,7 +29,7 @@ if (!isMainThread) {
 
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf('--' + k); return i < 0 ? d : args[i + 1] === undefined || args[i + 1].startsWith('--') ? true : args[i + 1]; };
-const seeds = +opt('seeds', 12), gear = +opt('gear', 0), solo = !!opt('solo', false), json = opt('json', null);
+const seeds = +opt('seeds', 12), gear = +opt('gear', 0), solo = !!opt('solo', false), heroic = !!opt('heroic', false), json = opt('json', null);
 const roles = solo ? ['dps'] : (opt('roles', 'tank,healer,dps') + '').split(',');
 
 fs.mkdirSync(ROOT + '.cache', { recursive: true });
@@ -37,7 +38,7 @@ fs.writeFileSync(ROOT + '.cache/sim-gear.ts', `import { plainLoadout } from '../
 await esbuild.build({ entryPoints: [ROOT + '.cache/sim-gear.ts'], bundle: true, format: 'esm', platform: 'node', outfile: ROOT + '.cache/sim-gear.mjs', logLevel: 'warning' });
 
 const jobs = [];
-for (const role of roles) for (let s = 1; s <= seeds; s++) jobs.push({ role, seed: s * 7919 + (role === 'tank' ? 1 : role === 'healer' ? 2 : 3), solo, gear });
+for (const role of roles) for (let s = 1; s <= seeds; s++) jobs.push({ role, seed: s * 7919 + (role === 'tank' ? 1 : role === 'healer' ? 2 : 3), solo, heroic, gear });
 const n = Math.max(1, Math.min(os.cpus().length, jobs.length));
 const t0 = Date.now();
 const results = await new Promise((done, fail) => {
@@ -54,7 +55,7 @@ const mmss = (t) => { if (t == null) return '  -  '; const r = Math.round(t); re
 const avg = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
 const pct = (a, q) => { const b = [...a].sort((x, y) => x - y); return b[Math.min(b.length - 1, Math.floor(q * b.length))]; };
 
-console.log(`\n${results.length} runs, gear ${['Common', 'Uncommon', 'Rare', 'Epic'][gear]}${solo ? ', solo DPS' : ''}, ${((Date.now() - t0) / 1000).toFixed(1)}s\n`);
+console.log(`\n${results.length} runs${heroic ? ', heroic' : ''}, gear ${['Common', 'Uncommon', 'Rare', 'Epic'][gear]}${solo ? ', solo DPS' : ''}, ${((Date.now() - t0) / 1000).toFixed(1)}s\n`);
 if (solo) {
   for (const r of results) console.log(`  seed ${r.seed}: ${r.over} at ${r.t}s, packs cleared ${r.packs.filter((p) => p.cleared).length}`);
 } else {

@@ -8,6 +8,8 @@ import { makeRng } from '../core/rng';
 import { dist, clamp } from '../core/math';
 import { COLLECTIBLES, SETS } from '../content';
 import { BARROW } from '../content/barrow';
+import { BARROW_HEROIC } from '../content/barrow/heroic';
+import type { DungeonInfo } from '../content/types';
 import { BARROW_ENGINE } from '../content/barrow/engine';
 import { AB, MEND } from '../content/roles';
 import type { Rar, RoleId } from '../content/types';
@@ -33,8 +35,9 @@ import { IN, aimPoint, bindInput, mashCage, playerIntent, resetInput, type Input
 import { SFX } from './sound';
 
 /** A run plays the hero you are playing. `role` is for testing: it picks one of your heroes in that seat,
- *  and if you have none the run is practice in plain gear. */
-export interface RunOpts { start: string; testRar: Rar | null; role?: RoleId }
+ *  and if you have none the run is practice in plain gear. `heroic` plays the heroic Barrow: harder, its
+ *  own kill counts and its gilded drops. */
+export interface RunOpts { start: string; testRar: Rar | null; role?: RoleId; heroic?: boolean }
 const STEP = 1 / 60;
 const KEY: Record<string, string> = { a1: '1', a2: '2', a3: '3', a4: '4', dodge: 'Space' };
 const ROLE_ICON: Record<string, string> = { tank: 'shield', healer: 'mend', dps: 'blizzard' };
@@ -64,6 +67,8 @@ export class RunScene implements InputUI {
   private heroId: string | null = null;
   private role: RoleId = 'tank';
   private practice = false;
+  /** the dungeon this run counts for: the Barrow, or its heroic version */
+  private dg: DungeonInfo = BARROW;
   /** the brew drunk at the door, if any */
   brew: string | null = null;
   private ach: Achiever | null = null;
@@ -129,7 +134,9 @@ export class RunScene implements InputUI {
     const looks = Object.keys(p.collection).filter((id) => COLLECTIBLES[id] && (COLLECTIBLES[id].kind === 'cosmetic') && !p.settings.looksOff.includes(id));
     const wornSet = !!h && Object.values(worn(p, h)).some((w) => w.def.setId && SETS[w.def.setId]);
     const ghostly = looks.includes('dye.ghostly') && wornSet && !test;
-    if (!this.practice) { countRunStart(p, BARROW); app.store.save(); }
+    const dg = this.dg = o.heroic ? BARROW_HEROIC : BARROW;
+    const gilded = looks.includes('dye.ghostly.gilded') && wornSet && !test;
+    if (!this.practice) { countRunStart(p, dg); app.store.save(); }
     if (!this.bound) { bindInput($('touch'), this); this.bound = true; }
     setHooks({
       nope: (slot: string) => { flash(this.root.querySelector(`.ab[data-slot="${slot}"]`), 'nope', 260); SFX.play('nope'); },
@@ -141,15 +148,17 @@ export class RunScene implements InputUI {
       onChest: () => this.finish(),
       playerIntent,
     });
-    newGame(BARROW_ENGINE, { role, loadouts, start: o.start, seed: (Math.random() * 0x7fffffff) | 1, looks, ghostly, testGear: test });
+    newGame(BARROW_ENGINE, { role, loadouts, start: o.start, seed: (Math.random() * 0x7fffffff) | 1, looks, ghostly, gilded, testGear: test, heroic: !!o.heroic });
     S.startedAt = S.t;
-    this.ach = this.practice ? null : new Achiever(p, { dungeon: BARROW.id, role, practice: false, testGear: false });
+    // a heroic run counts for the Barrow's own achievements
+    this.ach = this.practice ? null : new Achiever(p, { dungeon: dg.heroicOf || dg.id, role, practice: false, testGear: false });
     this.kills = []; this.clear = null; this.unlocked = [];
     this.off = bus.on((e) => this.onEvent(e));
     resetInput();
     this.hintsDone = new Set(); this.hintKey = null; $('hint').hidden = true;
     $('ov-msg').hidden = true;
     $('practice-tag').hidden = !this.practice;
+    $('heroic-tag').hidden = !o.heroic;
     const bt = $('brew-tag');
     bt.hidden = !brew;
     if (brew) bt.innerHTML = `<span class="ic">${tile(RECIPES[brew].icon)}</span>${esc(RECIPES[brew].name)}`;
@@ -179,13 +188,13 @@ export class RunScene implements InputUI {
     if (this.ach) for (const id of this.ach.event(e)) this.unlockedNow(id);
     if (e.type === 'boss.killed') {
       const x = e.x ?? S.player.x, y = e.y ?? S.player.y;
-      const last = e.boss === BARROW.finalBoss;
+      const last = e.boss === this.dg.finalBoss;
       if (!this.practice && hero) {
-        const kl = resolveKill(p, BARROW, e.boss, hero, e.time, this.lootRng);
+        const kl = resolveKill(p, this.dg, e.boss, hero, e.time, this.lootRng);
         this.kills.push(kl);
         for (const d of kl.drops) if (d.isNew && this.ach) for (const id of this.ach.collected(d.id)) this.unlockedNow(id);
         if (last) {
-          this.clear = resolveClear(p, BARROW, hero, S.t - S.startedAt, this.lootRng);
+          this.clear = resolveClear(p, this.dg, hero, S.t - S.startedAt, this.lootRng);
           startWalkout(tellOf(kl.drops), x, y);
         } else if (kl.drops.length) {
           lootGlint(x, y, nameOf(kl.drops[0].id));
@@ -194,7 +203,7 @@ export class RunScene implements InputUI {
         this.app.store.save();
       } else if (last && this.app.dev.walkout !== 'off') startWalkout(this.app.dev.walkout, x, y);
     } else if (e.type === 'run.wipe') {
-      if (!this.practice && S.boss) { countBossWipe(p, BARROW, S.boss.type); this.app.store.save(); }
+      if (!this.practice && S.boss) { countBossWipe(p, this.dg, S.boss.type); this.app.store.save(); }
     } else if (e.type === 'run.cleared') {
       if (this.ach) for (const id of this.ach.cleared(e.summary)) this.unlockedNow(id);
       this.app.store.save();
@@ -214,7 +223,7 @@ export class RunScene implements InputUI {
     this.live = false;
     const hero = this.hero();
     if (this.practice || !hero) { this.showPracticeDone(summary.time); return; }
-    const loot = runLoot(this.app.p, BARROW, hero, this.kills, this.clear);
+    const loot = runLoot(this.app.p, this.dg, hero, this.kills, this.clear);
     this.stop();
     this.app.showReveal(loot, { unlocked: this.unlocked.slice(), hero: hero.id, role: this.role, deaths: summary.deaths, again: this.opts });
   }
@@ -234,7 +243,7 @@ export class RunScene implements InputUI {
     if (S.paused) { S.paused = false; $('ov-msg').hidden = true; return; }
     S.paused = true;
     const leave = this.practice ? 'Leave practice' : 'Leave the run';
-    this.msg({ eyebrow: this.practice ? 'Practice' : 'Barrow Crypt', title: 'Paused', text: `${fmtT(S.t - S.startedAt)} in.${this.practice ? '' : ' Kill counts and drops you already have are kept if you leave.'}`, buttons: [
+    this.msg({ eyebrow: this.practice ? 'Practice' : this.dg.name, title: 'Paused', text: `${fmtT(S.t - S.startedAt)} in.${this.practice ? '' : ' Kill counts and drops you already have are kept if you leave.'}`, buttons: [
       ['Keep going', () => this.pause()],
       [SFX.on ? 'Sound off' : 'Sound on', () => { const p = this.app.p; p.settings.sound = !p.settings.sound; SFX.on = p.settings.sound; this.app.store.save(); S.paused = false; this.pause(); }],
       ['Restart', () => { if (this.opts) this.start(this.opts); }],

@@ -1,22 +1,22 @@
 /**
  * Making a hero: pick a race and a class, name them, and they are yours for good. A combo can be
- * made once it has a kit and art; the rest are shown so you can see what is coming. The first time
- * you play, this is the first thing you see.
+ * made once it has a kit and art; the rest are shown so you can see what is coming. Dwarves, elves and
+ * humans are there from the start; the other races are earned, each in its own dungeon (the Risen from
+ * the Barrow's collection log), and show how close you are. The first time you play, this is the first
+ * thing you see.
  */
+import { DUNGEONS } from '../content';
 import { CLASSES, CLASS_ORDER, MAX_HEROES, RACES, RACE_ORDER, canMake, heroArt, type ClassId, type RaceId } from '../content/folk';
 import { ROLES } from '../content/roles';
 import type { RoleId } from '../content/types';
 import { newHero } from '../meta/gear';
+import { openProgress, opened, unlockOf } from '../meta/logs';
 import { nameProblem, setActive } from '../meta/profile';
 import type { App } from './app';
 import { actions, esc, GLYPH } from './dom';
 import { heroImg } from './art';
 import { SFX } from './sound';
 
-/** the races that have art for a class */
-const racesFor = (cls: ClassId): RaceId[] => RACE_ORDER.filter((r) => canMake(r, cls));
-/** the classes a race can be today */
-const classesFor = (race: RaceId): ClassId[] => CLASS_ORDER.filter((c) => canMake(race, c));
 
 export class Creator {
   private race: RaceId = 'dwarf';
@@ -44,14 +44,22 @@ export class Creator {
     root.addEventListener('submit', (e) => { e.preventDefault(); this.create(); });
   }
 
+  /** a race you can make now: drawn, and earned if it has to be (or the testing switch is on) */
+  private open_(r: RaceId): boolean { return this.app.dev.allOpen || opened(this.app.p, 'race', r); }
+  /** the races you can make a class as */
+  private racesFor(cls: ClassId): RaceId[] { return RACE_ORDER.filter((r) => canMake(r, cls) && this.open_(r)); }
+  /** the classes a race can be today */
+  private classesFor(race: RaceId): ClassId[] { return CLASS_ORDER.filter((c) => canMake(race, c)); }
+
   /** open the maker; `first` means there are no heroes yet, so there is no going back. A role (from a
-   *  seat in the dungeon picker) starts on a class for that seat. */
-  open(first: boolean, role?: RoleId): void {
+   *  seat in the dungeon picker) starts on a class for that seat; a race (the Risen, just earned) on it. */
+  open(first: boolean, role?: RoleId, race?: RaceId): void {
     this.first = first;
     this.err = '';
     this.forSeat = !!role;
-    const c = role ? CLASS_ORDER.find((x) => CLASSES[x].role === role && racesFor(x).length) : undefined;
-    if (c) { this.cls = c; this.race = racesFor(c)[0]; this.typed = false; this.name = ''; }
+    const c = role ? CLASS_ORDER.find((x) => CLASSES[x].role === role && this.racesFor(x).length) : undefined;
+    if (c) { this.cls = c; this.race = this.racesFor(c)[0]; this.typed = false; this.name = ''; }
+    if (race && RACES[race]) { this.race = race; if (!canMake(race, this.cls)) this.cls = this.classesFor(race)[0] || this.cls; this.typed = false; this.name = ''; }
     if (!this.typed || !this.name) this.name = this.roll();
     this.render();
   }
@@ -60,7 +68,7 @@ export class Creator {
     if (!RACES[r]) return;
     this.race = r;
     // keep the class if this race can be it, otherwise the first class it can be
-    if (!canMake(r, this.cls)) { const c = classesFor(r)[0]; if (c) this.cls = c; }
+    if (!canMake(r, this.cls)) { const c = this.classesFor(r)[0]; if (c) this.cls = c; }
     if (!this.typed) this.name = this.roll();
     SFX.play('ui');
     this.render();
@@ -69,7 +77,7 @@ export class Creator {
     if (!CLASSES[c]) return;
     this.cls = c;
     // a class only some races are drawn as: switch to one of them
-    if (!canMake(this.race, c)) { const r = racesFor(c)[0]; if (r) { this.race = r; if (!this.typed) this.name = this.roll(); } }
+    if (!canMake(this.race, c)) { const r = this.racesFor(c)[0]; if (r) { this.race = r; if (!this.typed) this.name = this.roll(); } }
     SFX.play('ui');
     this.render();
   }
@@ -83,10 +91,19 @@ export class Creator {
     return R.first[0];
   }
 
+  /** where a race is earned: the dungeon whose log gives it, if there is one yet */
+  private earnedIn(r: RaceId): string | null {
+    const log = unlockOf('race', r)?.log;
+    return log && DUNGEONS[log] ? DUNGEONS[log].name : null;
+  }
+
   private why(): string | null {
     if (this.app.p.roster.length >= MAX_HEROES) return `You have ${MAX_HEROES} heroes. Let one go in the bunk room to make another.`;
+    const R = RACES[this.race];
+    if (R.earned && !this.earnedIn(this.race)) return `${R.plural} will be earned in a dungeon of their own.`;
     if (!CLASSES[this.cls].ready) return `${CLASSES[this.cls].name}s are coming in the classes pass.`;
-    if (!canMake(this.race, this.cls)) return classesFor(this.race).length ? `${RACES[this.race].name} ${CLASSES[this.cls].name.toLowerCase()}s aren’t drawn yet.` : `${RACES[this.race].plural} arrive in the races pass.`;
+    if (!canMake(this.race, this.cls)) return this.classesFor(this.race).length ? `${RACES[this.race].name} ${CLASSES[this.cls].name.toLowerCase()}s aren’t drawn yet.` : `${RACES[this.race].plural} arrive in the races pass.`;
+    if (!this.open_(this.race)) { const pr = openProgress(this.app.p, 'race', this.race); return `The ${R.plural} come from filling ${this.earnedIn(this.race)}’s collection log (${pr.have}/${pr.need}).`; }
     return nameProblem(this.app.p, this.name);
   }
   private syncGo(): void {
@@ -101,7 +118,7 @@ export class Creator {
     const p = this.app.p;
     const why = this.why();
     if (why) { this.err = why; SFX.play('nope'); this.syncGo(); return; }
-    const h = newHero(p, { name: this.name, race: this.race, cls: this.cls });
+    const h = newHero(p, { name: this.name, race: this.race, cls: this.cls, free: this.app.dev.allOpen });
     if (!h) { this.err = 'That hero could not be made'; SFX.play('nope'); this.syncGo(); return; }
     setActive(p, h.id);
     // saving redraws the maker, so note now where to go after
@@ -116,16 +133,21 @@ export class Creator {
 
   render(): void {
     const R = RACES[this.race], C = CLASSES[this.cls];
-    const ok = canMake(this.race, this.cls);
-    const art = heroArt(this.race, this.cls) || (racesFor(this.cls).length ? heroArt(racesFor(this.cls)[0], this.cls) : null) || ROLES[C.role].sprite;
-    const raceChips = RACE_ORDER.map((r) => {
-      const x = RACES[r], can = classesFor(r).length > 0;
-      return `<button type="button" class="cr-chip" data-act="race" data-v="${r}" aria-pressed="${r === this.race}" style="--c: ${x.light}">
-        <i class="sw" aria-hidden="true"></i><b>${esc(x.name)}</b><span>${esc(x.hometown)}</span>${can ? '' : '<em>Soon</em>'}</button>`;
-    }).join('');
+    const earned = this.open_(this.race);
+    const ok = canMake(this.race, this.cls) && earned;
+    const art = heroArt(this.race, this.cls) || (this.racesFor(this.cls).length ? heroArt(this.racesFor(this.cls)[0], this.cls) : null) || ROLES[C.role].sprite;
+    const chip = (r: RaceId): string => {
+      const x = RACES[r], can = this.classesFor(r).length > 0, pr = openProgress(this.app.p, 'race', r), mine = this.open_(r);
+      // a race you earn shows how close you are, then that it's yours
+      const tag = !can || (x.earned && !this.earnedIn(r)) ? 'Soon' : pr.need ? (mine ? 'Earned' : `Log ${pr.have}/${pr.need}`) : '';
+      return `<button type="button" class="cr-chip${x.earned ? ' earned' : ''}${x.earned && !mine ? ' locked' : ''}" data-act="race" data-v="${r}" aria-pressed="${r === this.race}" style="--c: ${x.light}">
+        <i class="sw" aria-hidden="true"></i><b>${esc(x.name)}</b><span>${esc(x.hometown)}</span>${tag ? `<em>${esc(tag)}</em>` : ''}</button>`;
+    };
+    const raceChips = `<div class="cr-chips">${RACE_ORDER.filter((r) => !RACES[r].earned).map(chip).join('')}</div>
+      <h4 class="cr-sub">Earned in dungeons</h4><div class="cr-chips earned">${RACE_ORDER.filter((r) => RACES[r].earned).map(chip).join('')}</div>`;
     const classChips = CLASS_ORDER.map((c) => {
       const x = CLASSES[c];
-      const who = racesFor(c);
+      const who = this.racesFor(c);
       const tag = !x.ready ? 'Soon' : canMake(this.race, c) ? '' : who.length === 1 ? `${RACES[who[0]].name} only` : '';
       return `<button type="button" class="cr-chip" data-act="cls" data-v="${c}" aria-pressed="${c === this.cls}">
         <i class="rdot ${x.role}" aria-hidden="true"></i><b>${esc(x.name)}</b><span>${esc(x.roleName)}</span>${tag ? `<em>${esc(tag)}</em>` : ''}</button>`;
@@ -140,11 +162,11 @@ export class Creator {
         <span></span>
       </div>
       <div class="cr-main">
-        <section class="cr-col cr-races" aria-label="Race"><h3>Race</h3><div class="cr-chips">${raceChips}</div></section>
+        <section class="cr-col cr-races" aria-label="Race"><h3>Race</h3>${raceChips}</section>
         <div class="cr-model ${ok ? '' : 'shadow'}">
           <span class="cr-light" aria-hidden="true"></span>
           <div class="cr-fig">${heroImg(art, { cls: 'cr-img', alt: ok ? `${R.name} ${C.name}` : '' })}<span class="cr-floor" aria-hidden="true"></span></div>
-          ${ok ? '' : `<p class="cr-soon">Not drawn yet</p>`}
+          ${ok ? '' : `<p class="cr-soon">${R.earned && !earned ? (this.earnedIn(this.race) ? `Earned in ${esc(this.earnedIn(this.race))}` : 'Earned in a dungeon to come') : 'Not drawn yet'}</p>`}
           <p class="cr-home">${esc(R.hometown)}</p>
         </div>
         <section class="cr-col cr-classes" aria-label="Class"><h3>Class</h3><div class="cr-chips">${classChips}</div></section>

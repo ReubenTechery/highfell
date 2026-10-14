@@ -69,7 +69,11 @@ slice). Nothing else gets added to that shape without the owner saying so.
 | Home is a tall house cut open: zoom out to see it all, tap things in the rooms to use them | A play test: side things belong in the house, not in buttons |
 | The house has one big button, always: Dungeons. Ride out is the signpost in the yard | Nobody should mistake a side trip for the main thing |
 | Your other heroes wait by their beds in the house; there is no camp | One place, one less screen |
-| Looks for a room or the whole house: the tavern, and one per dungeon that opens at 100 clears of it (Barrow Hall first). Looks only; a heroic version comes later | The house shows what you've done, and a look can't be faked |
+| Looks for a room or the whole house: the tavern, and each dungeon's look (and its heroic, gilded one) from finishing that dungeon's collection log. Looks only | The house shows what you've done, and a look can't be faked |
+| Finishing a dungeon's whole collection log (every drop, every role) gives a house look, a title and one big prize, for keeps and never power. The Barrow's big prize is the Risen, a race | The long chase that makes the log mean something |
+| Races: dwarf, elf and human from the start; gnome, goblin, the Risen (undead) and orc are earned, each in its own dungeon. Classes: warrior, cleric, mage, rogue | Races are the flex you earn; four classes keep it to four buttons |
+| Not every dungeon opens a race: a log's big prize can be a race, a race and class combo, or something else | There will be a lot of dungeons |
+| Every dungeon gets a Heroic version, open after 10 clears of it and made for full Epic: harder, the same drops gilded at the same power, its own kill counts and log, the dungeon's own Marks | Something to do after the gear cap, never more power |
 | One self-contained HTML file, no frameworks, no runtime dependencies | It has to run anywhere, including inside claude.ai |
 | A save never loses data: change its shape only with a version bump and a migration | People's progress is sacred |
 
@@ -89,7 +93,9 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
   in the bunk room (tap one to play them, an empty bed makes a new hero). Each hero has its own
   ladder gear, title and clears. Shared by all heroes: the collection (a unique fits any hero of its role),
   kill counts, Marks, achievements, titles, the hearth, the Vale. A race and class combo is playable once it
-  has a ready class and art in `HERO_ART`; the rest show as "Soon".
+  has a ready class and art in `HERO_ART` and its race is open; the rest show as "Soon". A race marked
+  `earned` (gnome, goblin, the Risen, orc) opens with the achievement that gives it (`reward.race`), and
+  stays locked until a dungeon does.
 - **Gear:** nothing goes on by itself. A ladder piece (and the shared floor) waits in the hero's bag; a new
   unique waits in their `fresh` list. Your hero's tag at the top of the house (and the armour stand) counts what's waiting; you put it
   on in the doll. A drop's sheet holds it up against what its role wears (`compareOn`): better is more item level
@@ -100,10 +106,19 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
   change; a spot a save has never had takes what isn't on show when the save loads (`settleSpots`); a spot
   you emptied stays empty; something new goes to the first free spot of its kind (the hall first).
 - **Looks:** every room inside the house has a look (`p.hearth.looks`, room id to look id; a room not in it is
-  the tavern). A dungeon's look opens at 100 clears of it (`lookProgress`); a look you haven't earned is drawn
-  as the tavern (the testing switch shows it). Decorate, then Looks, puts one on a room or the whole house. With
+  the tavern). A look opens with the achievement that gives it (`reward.look`: finishing that dungeon's
+  collection log); a look you haven't earned is drawn as the tavern (the testing switch shows it). Decorate, then Looks, puts one on a room or the whole house. With
   every room in the same look, the frame (beams, outer walls, roof) follows it. What a look is lives in
   `src/content/house.ts` (`LOOKS`); how it's drawn, room by room, in `src/ui/houseart.ts`.
+- **Collection log rewards** (`src/meta/logs.ts`): filling a dungeon's whole log (`logDone`) earns its log
+  achievement (tier `log`, checked whenever something new arrives). Its reward gives a title and can open a
+  house look (`reward.look`), a race (`reward.race`) or a collectible (Gilded Bones). Earned stays earned,
+  even if a slot is added to the log later. The Barrow's: Barrow Hall, the Gravewarden, the Risen. Heroic
+  Barrow's: Gilded Barrow Hall, the Undying, Gilded Bones (the Risen drawn in gold).
+- **Heroic:** a dungeon's heroic version is its own `DungeonInfo` (`heroicOf` the normal one): the same
+  bosses, the same tables with gilded ids at the same rates (gilded pieces wear exactly like the plain ones),
+  its own kill counts, clears and log. It pays the normal dungeon's Marks and counts for its achievements. It
+  opens after `HEROIC_AFTER` (10) clears of the normal one; the testing switch opens it.
 - **Groups:** a run has three seats, one per role (`src/meta/party.ts`). You take your hero's seat; bots (Brannoc,
   Maren, Ivy) take the others at your gear level. In the Dungeons sheet a seat can be played by any of your heroes
   of that role, or a new one made for it. Friends take seats once there is online play.
@@ -111,10 +126,11 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
   and a mob switches once someone beats its target by a tenth. Slam taunts and drags mobs in; Charge makes its
   target turn. Mobs off the tank for 3 seconds go wild. A caged tank can't be targeted and loses half his threat.
 - **Difficulty:** each dungeon's `tune` in its engine file: `hit` scales everything that hurts a hero,
-  `trashHp` the health of everything but the bosses. Barrow Crypt: 1.5 and 1.3.
+  `trashHp` the health of everything but the bosses, `bossHp` the bosses'. Barrow Crypt: 1.5 and 1.3. Its
+  `heroic` tune: 3, 1.6 and bosses 1.4.
 - **Balance targets** (guarded by `tests/balance.test.ts`): a Common bot clear in about 4:00 (4:10 at the new
   difficulty) with no wipes, the Gravekeeper about two minutes, full Epic at least 15% faster, the DPS alone
-  dies before Sir Rattlebones.
+  dies before Sir Rattlebones. Heroic: full Epic clears in about four minutes with no wipes, Common gets buried.
 - **Save versions:** v2 to v3 turned one hero per role into the roster; v3 to v4 added the Vale (`p.vale`);
   v4 to v5 gave every hero an empty bag and fresh list (gear stopped going on by itself); v5 to v6 added house
   looks (`p.hearth.looks`, every room the tavern).
@@ -131,21 +147,24 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
 ## Map of the code
 
 - `src/core`: math, RNG (a seeded combat stream and separate loot streams), the event bus, the save store.
-- `src/content`: data only. Roles and abilities, gear and traits, `folk.ts` (the four races, the six classes,
-  which race and class combos have art in `HERO_ART`, name lists), one folder per dungeon (`barrow/`: map,
-  mobs, bosses, script, items, loot tables, collectibles, achievements), and `vale/` (ingredients, recipes,
+- `src/content`: data only. Roles and abilities, gear and traits, `folk.ts` (the races, which are earned, the
+  four classes, which race and class combos have art in `HERO_ART`, name lists), one folder per dungeon
+  (`barrow/`: map, mobs, bosses, script, items, loot tables, collectibles, achievements, and `heroic.ts`, its
+  heroic version and gilded drops), and `vale/` (ingredients, recipes,
   the map, ranks, one file per place). `house.ts` is the house's plan. Register new content in `src/content/index.ts`; `checkContent()`
   and the tests catch broken ids.
 - `src/dungeon`: the engine, plain JS with no DOM: state `S`, entities, heroes, mobs, bots, the loop,
   rendering to a canvas, and `walkout.js` (the lantern tells). It reaches the screen only through `HOOKS`
   and `emit`.
 - `src/meta`: TypeScript rules for everything that lasts: the profile and its migrations (heroes live here),
-  loot, gear, achievements, the hearth, the party's seats (`party.ts`), and `vale.ts` (regrowth, harvests, errands, ranks, brewing).
+  loot (and when heroic opens), gear, achievements, what the collection log gives (`logs.ts`), the hearth,
+  the party's seats (`party.ts`), and `vale.ts` (regrowth, harvests, errands, ranks, brewing).
 - `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, its drawing
   `houseart.ts`, every room in each look), the hero maker, the Vale (`vale.ts`, `valeart.ts`, `toys.ts` for the
   close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons
   (`dungeonsheet.ts`), a hero (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
-  (`lookssheet.ts`), settings (`settingssheet.ts`), the gear doll, logs, satchel and spot picker. Toasts,
+  (`lookssheet.ts`), the logs (`logsheet.ts`), settings (`settingssheet.ts`), the gear doll, satchel and spot
+  picker. Toasts,
   sound. `styles.css` is inlined by the build.
 - `src/sim` and `scripts/sim.mjs`: headless bot runs of the real engine (the balance numbers).
 - `tools/`: the art pipeline (Python writes SVG into `art/*.json`), `art_sheet.py` (look at your art),
@@ -176,11 +195,12 @@ python3 tools/art_sheet.py shots/art.png art/vale.json        # a contact sheet 
 4. GitHub: the owner signs in once with the GitHub CLI (`gh auth login`; Windows: `winget install -e --id
    GitHub.cli`). Then push your branch and open the pull request with `gh pr create`.
 
-In the page, `window.highfell` is the running app: `highfell.startRun({ start, testRar, role? })`,
-`highfell.run.autoplay(seconds)`, `highfell.reveal.preview('normal' | 'unique' | 'pet')`, `highfell.showVale()`,
+In the page, `window.highfell` is the running app: `highfell.startRun({ start, testRar, role?, heroic? })`,
+`highfell.run.autoplay(seconds)`, `highfell.reveal.preview('normal' | 'unique' | 'pet' | 'log')`, `highfell.showVale()`,
 `highfell.showBrew()`, `highfell.showHearth('bunks')` (any room's id), and `highfell.p` is the live save (change it, then
 `highfell.save()`). A fresh browser opens on the hero maker: click `#cr-go` to make the rolled hero.
-Settings has testing switches (walkout previews, free Vale harvests, lucky ×50).
+Settings has testing switches (walkout and log-complete previews, free Vale harvests, lucky ×50, and
+"Everything open": the log rewards and Heroic before they're earned).
 
 ## How we keep the code good (no vibe coding)
 

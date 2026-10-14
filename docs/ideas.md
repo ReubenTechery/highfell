@@ -57,10 +57,16 @@ using the page's room feature could come first.
 
 ## Looks for the house: what's still open
 
-Built on 14 Oct: a look for a room or the whole house, the tavern and Barrow Hall (100 Barrow clears). See the
-house in `docs/design.md`. Still open:
-- A heroic version of each look once heroic exists (the owner's first idea was 100 heroic clears).
+Built on 14 Oct: a look for a room or the whole house, the tavern, Barrow Hall and Gilded Barrow Hall (from the
+Barrow's two collection logs). See the house in `docs/design.md`. Still open:
 - Looks for Vale places, and a look changing the view outside the windows (only with the whole house in it).
+
+## Collection log prizes still to come
+
+- Gnomes, goblins and orcs, each earned in a dungeon of its own (the owner's call, 14 Oct). Their dungeons
+  and their art are to come; the hero maker shows them as Soon.
+- A race and class combo as a log's prize (a Dwarf Mage, say), so not every dungeon has to open a race.
+- Racial tricks: each race has one written down, none is built.
 
 ## Open calls from the design
 

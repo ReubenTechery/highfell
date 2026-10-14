@@ -149,7 +149,7 @@ export class Vale {
   private me(x: number, y: number, k: number, o: { flip?: boolean; cls?: string } = {}): string {
     const p = this.app.p, h = activeHero(p);
     if (!h) return '';
-    const spr = heroSprite(h, roleOf(h));
+    const spr = heroSprite(h, roleOf(h), p);
     const m = rideMount(p);
     return m ? riderSvg(spr, m, x, y, { k, flip: o.flip, cls: o.cls }) : placeSprite(spr + '_f', x, y, { k: k * 0.95, cls: o.cls });
   }
