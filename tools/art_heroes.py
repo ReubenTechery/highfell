@@ -134,9 +134,6 @@ def round_shield(o, x, y, back=False):
 
 def dwarf_front():
     o = []
-    # the axe behind the arm that holds it
-    o.append(beam('M-44 -2 L-47 -108', BLUE_D, 5.5))
-    o.append(s(D_AXE, STEEL_L) + ln(D_AXE_SHINE, '#FFFFFF', 2.2))
     dwarf_legs(o)
     # the breastplate, the belt and its buckle
     o.append(s('M-27 -82 C-31 -66 -30 -50 -25 -38 H25 C30 -50 31 -66 27 -82 Z', STEEL))
@@ -148,10 +145,13 @@ def dwarf_front():
     # arms: mail upper arms, a plate forearm, big gauntlets
     o.append(s(D_ARM_AXE, BLUE_DD))
     o.append(s('M-47 -54 L-36 -51 L-37 -44 L-48 -46 Z', STEEL, 3.5))
-    o.append(c(-44, -42, 8.5, STEEL) + ln('M-48 -45 H-40 M-48 -40 H-40', STEEL_D, 2))
     o.append(s(D_ARM_SHIELD, BLUE_DD))
     round_shield(o, 40, -54)
     dwarf_shoulders(o)
+    # the axe in front of the pauldron, in its gauntlet
+    o.append(beam('M-44 -2 L-47 -108', BLUE_D, 5.5))
+    o.append(s(D_AXE, STEEL_L) + ln(D_AXE_SHINE, '#FFFFFF', 2.2))
+    o.append(c(-44, -42, 8.5, STEEL) + ln('M-48 -45 H-40 M-48 -40 H-40', STEEL_D, 2))
     o.append(head(0, -91.5, H.dwarf_face(Z)))
     dwarf_helm(o)
     sprite('tank_f', D_VB, o, 'Dwarf warrior front')
@@ -168,13 +168,14 @@ def dwarf_back():
     # the shield's back on the viewer's left, then the arm through its straps
     round_shield(o, -40, -54, back=True)
     o.append(s(m(D_ARM_SHIELD), BLUE_DD))
-    # the axe arm on the viewer's right, the axe in its gauntlet
+    # the axe arm on the viewer's right
     o.append(s(m(D_ARM_AXE), BLUE_DD))
     o.append(s(m('M-47 -54 L-36 -51 L-37 -44 L-48 -46 Z'), STEEL, 3.5))
+    dwarf_shoulders(o)
+    # the axe in front of the pauldron, in its gauntlet
     o.append(beam('M44 -2 L47 -108', BLUE_D, 5.5))
     o.append(s(m(D_AXE), STEEL_L) + ln(m(D_AXE_SHINE), '#FFFFFF', 2.2))
     o.append(c(44, -42, 8.5, STEEL) + ln('M40 -45 H48 M40 -40 H48', STEEL_D, 2))
-    dwarf_shoulders(o)
     o.append(head(0, -91.5, H.dwarf_back(Z)))
     dwarf_helm(o, back=True)
     sprite('tank_b', back_vb(D_VB), o, 'Dwarf warrior back')
@@ -209,7 +210,6 @@ def cleric_mantles(o, front=True):
 
 def cleric_front():
     o = []
-    o.append(beam('M-37 2 L-37 -150', WOOD, 5.5) + sun(-37, -160))
     o.append(both('M-15 -7 H-3 V0 H-18 C-19 -3 -18 -6 -15 -7 Z', WOOD_D, 3.5))
     # the robe, its blue panel and gold hem
     o.append(s(C_SKIRT, ROBE))
@@ -219,11 +219,13 @@ def cleric_front():
     o.append(s(C_BODICE, ROBE))
     o.append(s('M-18 -72 H18 V-62 H-18 Z', GOLD, 3.5) + c(0, -67, 3.4, HBLUE, 2.4))
     # bell sleeves and hands: the staff hand, the healing hand
-    o.append(s(C_SLEEVE_STAFF, ROBE) + s(C_CUFF_STAFF, GOLD, 3) + c(-37, -48, 5.5, HSKIN, 3.5))
+    o.append(s(C_SLEEVE_STAFF, ROBE) + s(C_CUFF_STAFF, GOLD, 3))
     o.append(s(C_SLEEVE_HEAL, ROBE) + s(C_CUFF_HEAL, GOLD, 3))
     o.append(halo(33, -54, 13, '#F4B942', 0.38) + c(33, -54, 5.5, HSKIN, 3.5))
     o.append(s('M33 -70 Q33 -63 40 -63 Q33 -63 33 -56 Q33 -63 26 -63 Q33 -63 33 -70 Z', '#FFE08A', 1.8))
     cleric_mantles(o)
+    # the staff in front of the mantle, and the hand round it
+    o.append(beam('M-37 2 L-37 -150', WOOD, 5.5) + sun(-37, -160) + c(-37, -48, 5.5, HSKIN, 3.5))
     o.append(s('M-5 -103 H5 V-96 H-5 Z', HSKIN, 3))
     o.append(head(0, -116, H.human_head(Z)))
     sprite('healer_f', C_VB, o, 'Human cleric front')
@@ -231,7 +233,6 @@ def cleric_front():
 
 def cleric_back():
     o = []
-    o.append(beam('M37 2 L37 -150', WOOD, 5.5) + sun(37, -160))
     o.append(both('M-15 -7 H-3 V0 H-18 C-19 -3 -18 -6 -15 -7 Z', WOOD_D, 3.5))
     o.append(s(C_SKIRT, ROBE) + s(C_HEM, GOLD, 3.5))
     # a sun on the back of the robe
@@ -240,8 +241,9 @@ def cleric_back():
     # the healing hand on the viewer's left now, the staff hand on the right
     o.append(s(m(C_SLEEVE_HEAL), ROBE) + s(m(C_CUFF_HEAL), GOLD, 3))
     o.append(halo(-33, -54, 13, '#F4B942', 0.38) + c(-33, -54, 5.5, HSKIN, 3.5))
-    o.append(s(m(C_SLEEVE_STAFF), ROBE) + s(m(C_CUFF_STAFF), GOLD, 3) + c(37, -48, 5.5, HSKIN, 3.5))
+    o.append(s(m(C_SLEEVE_STAFF), ROBE) + s(m(C_CUFF_STAFF), GOLD, 3))
     cleric_mantles(o, front=False)
+    o.append(beam('M37 2 L37 -150', WOOD, 5.5) + sun(37, -160) + c(37, -48, 5.5, HSKIN, 3.5))
     o.append(s('M-5 -103 H5 V-96 H-5 Z', HSKIN, 3))
     o.append(head(0, -116, H.human_back(Z)))
     sprite('healer_b', back_vb(C_VB), o, 'Human cleric back')
@@ -278,7 +280,6 @@ def elf_front():
     o = []
     hair, face = H.elf_head(Z, back_len=46)
     o.append(head(0, -123, hair))
-    frost_staff(o)
     o.append(both('M-11 -6 H-3 V0 H-14 C-15 -3 -14 -5 -11 -6 Z', IROBE_D, 3))
     # the robe, its gold panel, the belt
     o.append(s(E_SKIRT, IROBE) + s('M-5 -68 L-8 -4 H8 L5 -68 Z', GOLD, 3) + s(E_HEM, IROBE_D, 3))
@@ -287,10 +288,13 @@ def elf_front():
     # slim sleeves and hands: the frost orb, the staff hand
     o.append(s(E_SLEEVE_ORB, IROBE) + c(-26, -64, 4.6, ESKIN, 3))
     o.append(halo(-27, -76, 12, FROST, 0.42) + c(-27, -76, 6, FROST_L, 3))
-    o.append(s(E_SLEEVE_STAFF, IROBE) + c(32, -72, 4.6, ESKIN, 3))
+    o.append(s(E_SLEEVE_STAFF, IROBE))
     # the high white collar, and the crystal shoulders
     o.append(s('M-15 -100 C-15 -110 -10 -115 -6.5 -108 L0 -104 L6.5 -108 C10 -115 15 -110 15 -100 C8 -97 -8 -97 -15 -100 Z', '#FFFFFF', 3.5))
     o.append(both(SHARDS, FROST, 3.5) + ln(SHARD_LINES + ' ' + m(SHARD_LINES), FROST_L, 2.2))
+    # the staff in front of the shoulder, and the hand round it
+    frost_staff(o)
+    o.append(c(32, -72, 4.6, ESKIN, 3))
     o.append(head(0, -123, face))
     hat(o)
     sprite('dps_f', E_VB, o, 'Elf mage front')
@@ -298,16 +302,17 @@ def elf_front():
 
 def elf_back():
     o = []
-    frost_staff(o, -35)
     o.append(both('M-11 -6 H-3 V0 H-14 C-15 -3 -14 -5 -11 -6 Z', IROBE_D, 3))
     o.append(s(E_SKIRT, IROBE) + s(E_HEM, IROBE_D, 3))
     o.append(s(E_BODICE, IROBE) + s('M-14 -74 H14 V-67 H-14 Z', IROBE_D, 3))
     # the staff hand on the viewer's left now, the frost orb on the right
-    o.append(s(m(E_SLEEVE_STAFF), IROBE) + c(-32, -72, 4.6, ESKIN, 3))
+    o.append(s(m(E_SLEEVE_STAFF), IROBE))
     o.append(s(m(E_SLEEVE_ORB), IROBE) + c(26, -64, 4.6, ESKIN, 3))
     o.append(halo(27, -76, 12, FROST, 0.42) + c(27, -76, 6, FROST_L, 3))
     o.append(s('M-15 -100 C-15 -111 15 -111 15 -100 C8 -97 -8 -97 -15 -100 Z', '#FFFFFF', 3.5))
     o.append(both(SHARDS, FROST, 3.5) + ln(SHARD_LINES + ' ' + m(SHARD_LINES), FROST_L, 2.2))
+    frost_staff(o, -35)
+    o.append(c(-32, -72, 4.6, ESKIN, 3))
     # the ears, and the long hair down the back
     o.append(head(0, -123, H.elf_back(Z, back_len=46)))
     hat(o, back=True)
@@ -353,7 +358,6 @@ def iron_crown(o):
 def risen_warrior_front():
     o = []
     o.append(s(R_CAPE, PURP_D))
-    sword(o)
     risen_legs(o)
     # the hips, the tabard on its belt, the spine, the ribs
     o.append(s('M-12 -66 C-14 -57 -8 -54 0 -55 C8 -54 14 -57 12 -66 Z', BONE, 3.2))
@@ -361,15 +365,17 @@ def risen_warrior_front():
     o.append(s('M-16 -72 H16 V-65 H-16 Z', RIRON_D, 3) + c(0, -68.5, 3.6, BONE, 2.2))
     o.append(beam('M0 -76 V-72', BONE, 4.5, 3))
     o.append(ribcage(0, -106, 27, 32))
-    # thin arms out of the shoulders, an iron gauntlet on the sword
+    # thin arms out of the shoulders
     o.append(bone_limb(R_ARM_SWORD, 4.6))
-    o.append(c(-41, -62, 6.6, RIRON) + ln('M-44 -64 H-38 M-44 -60 H-38', RIRON_D, 1.8))
     o.append(bone_limb(R_ARM_SHIELD, 4.6))
     # the kite shield with its skull
     o.append(s(R_KITE, RSHIELD) + ln('M26 -99 H52 C53 -82 48 -65 39 -53 C30 -65 25 -82 26 -99', RIRON_L, 2.4))
     o.append(s('M32 -84 C32 -96 46 -96 46 -84 C46 -80 43 -78 42 -77 H36 C35 -78 32 -80 32 -84 Z', BONE, 2.8))
     o.append(e(36.5, -85, 2.2, 2.6, K, 0) + e(41.5, -85, 2.2, 2.6, K, 0) + c(36.5, -84.7, 0.9, GRN, 0) + c(41.5, -84.7, 0.9, GRN, 0))
     risen_pauldrons(o)
+    # the sword held up in front of the pauldron, in an iron gauntlet
+    sword(o)
+    o.append(c(-41, -62, 6.6, RIRON) + ln('M-44 -64 H-38 M-44 -60 H-38', RIRON_D, 1.8))
     o.append(head(0, -126, H.risen_head(Z)))
     iron_crown(o)
     sprite('risen_tank_f', R_VB, o, 'Risen warrior front')
@@ -382,11 +388,11 @@ def risen_warrior_back():
     o.append(s(m(R_KITE), '#5A4A3A') + ln('M-28 -92 H-50 M-30 -72 H-48', '#3E3228', 3))
     o.append(s(R_CAPE, PURP_D) + ln('M-9 -104 C-11 -82 -11 -62 -10 -42 M9 -104 C11 -82 11 -62 10 -42', '#3A2862', 2.4))
     o.append(bone_limb(m(R_ARM_SHIELD), 4.6))
-    # the sword arm on the viewer's right, the sword in its gauntlet
+    # the sword arm on the viewer's right, the sword in front of the pauldron, in its gauntlet
     o.append(bone_limb(m(R_ARM_SWORD), 4.6))
+    risen_pauldrons(o)
     sword(o, -1)
     o.append(c(41, -62, 6.6, RIRON) + ln('M38 -64 H44 M38 -60 H44', RIRON_D, 1.8))
-    risen_pauldrons(o)
     o.append(head(0, -126, H.risen_back(Z)))
     iron_crown(o)
     sprite('risen_tank_b', back_vb(R_VB), o, 'Risen warrior back')
@@ -420,7 +426,6 @@ def risen_cleric_mantles(o, front=True):
 
 def risen_cleric_front():
     o = []
-    lantern_staff(o, -37)
     o.append(both('M-13 -6 H-3 V0 H-16 C-17 -3 -16 -5 -13 -6 Z', BONE, 3))
     # the robe from the waist, torn at the hem; the ribs above it; a green stole over both
     o.append(s(RC_SKIRT, RCLOTH))
@@ -429,7 +434,7 @@ def risen_cleric_front():
     o.append(both(RC_STOLE, MOSS, 3))
     o.append(s('M-16 -76 H16 V-68 H-16 Z', GOLD, 3.5))
     # sleeves torn at the elbow, bone forearms: the staff hand, the healing hand
-    o.append(bone_limb('M-30 -74 L-36 -56', 4.4) + s(RC_SLEEVE_STAFF, RCLOTH) + bone_hand(-37, -50))
+    o.append(bone_limb('M-30 -74 L-36 -56', 4.4) + s(RC_SLEEVE_STAFF, RCLOTH))
     o.append(bone_limb('M28 -80 L33 -66', 4.4) + s(RC_SLEEVE_HEAL, RCLOTH))
     o.append(halo(33, -60, 14, GRN, 0.4) + bone_hand(33, -60))
     o.append(s('M33 -76 Q33 -69 40 -69 Q33 -69 33 -62 Q33 -69 26 -69 Q33 -69 33 -76 Z', GRN_L, 1.8))
@@ -437,13 +442,15 @@ def risen_cleric_front():
     o.append(s(RC_HOOD + ' C10 -108 -10 -108 -18 -112 Z', RCLOTH_D, 3.5))
     o.append(e(0, -128, 14.5, 18.5, '#141018', 0))
     risen_cleric_mantles(o)
+    # the lantern staff in front of the mantle, and the hand round it
+    lantern_staff(o, -37)
+    o.append(bone_hand(-37, -50))
     o.append(head(0, -126, H.risen_head(Z)))
     sprite('risen_healer_f', RC_VB, o, 'Risen cleric front')
 
 
 def risen_cleric_back():
     o = []
-    lantern_staff(o, 37)
     o.append(both('M-13 -6 H-3 V0 H-16 C-17 -3 -16 -5 -13 -6 Z', BONE, 3))
     o.append(s(RC_SKIRT, RCLOTH))
     o.append(halo(0, -40, 15, GRN, 0.22) + sun(0, -40, 7, spin=0))
@@ -453,8 +460,10 @@ def risen_cleric_back():
     # the healing hand on the viewer's left now, the staff hand on the right
     o.append(bone_limb(m('M28 -80 L33 -66'), 4.4) + s(m(RC_SLEEVE_HEAL), RCLOTH))
     o.append(halo(-33, -60, 14, GRN, 0.4) + bone_hand(-33, -60))
-    o.append(bone_limb(m('M-30 -74 L-36 -56'), 4.4) + s(m(RC_SLEEVE_STAFF), RCLOTH) + bone_hand(37, -50))
+    o.append(bone_limb(m('M-30 -74 L-36 -56'), 4.4) + s(m(RC_SLEEVE_STAFF), RCLOTH))
     risen_cleric_mantles(o, front=False)
+    lantern_staff(o, 37)
+    o.append(bone_hand(37, -50))
     # the hood from behind, falling to a point between the shoulders
     o.append(s(RC_HOOD + ' L10 -98 L0 -90 L-10 -98 Z', RCLOTH_D, 3.5) + ln('M0 -153 C-2 -132 -1 -110 0 -94', RCLOTH, 2.4))
     sprite('risen_healer_b', back_vb(RC_VB), o, 'Risen cleric back')
@@ -471,7 +480,6 @@ def risen_mage_front():
     o = []
     hair, _ = H.elf_head(Z, back_len=50, hair=RHAIR, hairD=RHAIR_D)
     o.append(head(0, -126, hair))
-    frost_staff(o)
     o.append(both('M-11 -6 H-3 V0 H-14 C-15 -3 -14 -5 -11 -6 Z', BONE, 3))
     # the robe, torn at the hem, its gold panel torn too, the belt
     o.append(s(RM_SKIRT, RROBE) + s('M-5 -68 L-8 -8 L-3 -11 L0 -7 L3 -11 L8 -8 L5 -68 Z', GOLD, 3))
@@ -480,10 +488,12 @@ def risen_mage_front():
     # slim sleeves torn at the elbow, bone forearms: the frost orb, the staff hand
     o.append(bone_limb('M-24 -80 L-27 -66', 4.2) + s(RM_SLEEVE_ORB, RROBE) + bone_hand(-27, -63, 4.8))
     o.append(halo(-27, -76, 12, FROST, 0.42) + c(-27, -76, 6, FROST_L, 3))
-    o.append(bone_limb('M24 -84 L31 -74', 4.2) + s(RM_SLEEVE_STAFF, RROBE) + bone_hand(32, -72, 4.8))
-    # a high collar, bone shards on the shoulders, the skull and the hat
+    o.append(bone_limb('M24 -84 L31 -74', 4.2) + s(RM_SLEEVE_STAFF, RROBE))
+    # a high collar, bone shards on the shoulders, the staff in front of them, the skull and the hat
     o.append(s('M-15 -100 C-15 -110 -10 -115 -6.5 -108 L0 -104 L6.5 -108 C10 -115 15 -110 15 -100 C8 -97 -8 -97 -15 -100 Z', RHAIR, 3.5))
     o.append(both(SHARDS, BONE, 3.5) + ln(SHARD_LINES + ' ' + m(SHARD_LINES), BONE_D, 2.2))
+    frost_staff(o)
+    o.append(bone_hand(32, -72, 4.8))
     o.append(head(0, -126, H.risen_head(Z)))
     hat(o, -4, RROBE)
     sprite('risen_dps_f', RM_VB, o, 'Risen mage front')
@@ -491,15 +501,16 @@ def risen_mage_front():
 
 def risen_mage_back():
     o = []
-    frost_staff(o, -35)
     o.append(both('M-11 -6 H-3 V0 H-14 C-15 -3 -14 -5 -11 -6 Z', BONE, 3))
     o.append(s(RM_SKIRT, RROBE) + s(E_BODICE, RROBE) + s('M-14 -74 H14 V-67 H-14 Z', RROBE_D, 3))
     # the staff hand on the viewer's left now, the frost orb on the right
-    o.append(bone_limb(m('M24 -84 L31 -74'), 4.2) + s(m(RM_SLEEVE_STAFF), RROBE) + bone_hand(-32, -72, 4.8))
+    o.append(bone_limb(m('M24 -84 L31 -74'), 4.2) + s(m(RM_SLEEVE_STAFF), RROBE))
     o.append(bone_limb(m('M-24 -80 L-27 -66'), 4.2) + s(m(RM_SLEEVE_ORB), RROBE) + bone_hand(27, -63, 4.8))
     o.append(halo(27, -76, 12, FROST, 0.42) + c(27, -76, 6, FROST_L, 3))
     o.append(s('M-15 -100 C-15 -111 15 -111 15 -100 C8 -97 -8 -97 -15 -100 Z', RHAIR, 3.5))
     o.append(both(SHARDS, BONE, 3.5) + ln(SHARD_LINES + ' ' + m(SHARD_LINES), BONE_D, 2.2))
+    frost_staff(o, -35)
+    o.append(bone_hand(-32, -72, 4.8))
     # the ghost-white hair down the back, and the hat
     o.append(head(0, -126, H.elf_back(Z, back_len=50, hair=RHAIR, hairD=RHAIR_D, ears=False)))
     hat(o, -4, RROBE, back=True)
