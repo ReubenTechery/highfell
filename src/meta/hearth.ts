@@ -1,23 +1,16 @@
 /**
- * The hearth's display spots. A layout is just spot id to collectible id, saved in the profile,
- * so a friend's hearth can later be drawn from their profile the same way.
+ * The house's display spots. A layout is just spot id to collectible id, saved in the profile,
+ * so a friend's house can later be drawn from their profile the same way. Where each spot is in the
+ * house lives in the house's plan (content/house.ts); this is the rules.
  */
 import type { CollectibleKind } from '../content/types';
 import { COLLECTIBLES } from '../content';
+import { HOUSE_SPOTS } from '../content/house';
 import type { Profile } from './profile';
 
 export interface Spot { id: string; kind: CollectibleKind; label: string }
 
-export const HEARTH_SPOTS: Spot[] = [
-  { id: 'pet.fire', kind: 'pet', label: 'By the fire' },
-  { id: 'pet.rug', kind: 'pet', label: 'On the rug' },
-  { id: 'mount.stall', kind: 'mount', label: 'The stall' },
-  { id: 'mantel.1', kind: 'trophy', label: 'Mantel, far left' },
-  { id: 'mantel.2', kind: 'trophy', label: 'Mantel, left' },
-  { id: 'mantel.3', kind: 'trophy', label: 'Mantel, right' },
-  { id: 'mantel.4', kind: 'trophy', label: 'Mantel, far right' },
-  { id: 'banner.wall', kind: 'banner', label: 'Over the fire' },
-];
+export const HEARTH_SPOTS: Spot[] = HOUSE_SPOTS.map(({ id, kind, label }) => ({ id, kind, label }));
 export const spotById = (id: string): Spot | undefined => HEARTH_SPOTS.find((s) => s.id === id);
 
 export function ownedOfKind(p: Profile, kind: CollectibleKind): string[] {
@@ -39,7 +32,19 @@ export function place(p: Profile, spotId: string, id: string | null): boolean {
   return true;
 }
 
-/** New pets, mounts and trophies go straight into an empty spot so you see them the moment you get home. */
+/** Spots a save has never had (a room that is new since it was last loaded) take the things you own
+ *  that aren't on show yet, so a new loft fills with the trophies you already have. A spot you emptied
+ *  yourself stays empty: it is in the save, set to null. Running it twice changes nothing. */
+export function settleSpots(p: Profile): void {
+  for (const s of HEARTH_SPOTS) {
+    if (s.id in p.hearth.spots) continue;
+    const shown = new Set(Object.values(p.hearth.spots));
+    p.hearth.spots[s.id] = ownedOfKind(p, s.kind).find((id) => !shown.has(id)) ?? null;
+  }
+}
+
+/** New pets, mounts, trophies and banners go straight into the first empty spot of their kind, so you
+ *  see them the moment you get home: the hall first, then the loft, the roof and the yard. */
 export function autoPlace(p: Profile, id: string): string | null {
   const c = COLLECTIBLES[id];
   if (!c || spotOf(p, id)) return null;

@@ -1,7 +1,7 @@
 /**
- * The app: one save, seven scenes (the hearth, the camp where your heroes wait, the hero maker, the
- * Vale you ride out to, the cauldron, a run and the reveal) and sheets that slide over them (the
- * dungeon picker, gear, logs, the satchel, settings). Every change to the profile goes through
+ * The app: one save, six scenes (the hearth, which is your house, where your heroes live; the hero
+ * maker; the Vale you ride out to; the cauldron; a run; the reveal) and sheets that slide over them
+ * (the dungeon picker, a hero, gear, logs, the satchel, settings). Every change to the profile goes through
  * `save()`, which writes it and redraws whatever is on screen. With no heroes yet, the game opens on
  * the hero maker.
  */
@@ -19,13 +19,12 @@ import { Hearth } from './hearth';
 import { Sheets, normSpec } from './sheets';
 import { RunScene, type RunOpts } from './run';
 import { Reveal, type RevealExtra } from './reveal';
-import { Camp } from './camp';
 import { Creator } from './creator';
 import { Vale } from './vale';
 import { Brewing } from './brew';
 
-export type SceneId = 'hearth' | 'camp' | 'create' | 'vale' | 'brew' | 'run' | 'reveal';
-const SCENES: SceneId[] = ['hearth', 'camp', 'create', 'vale', 'brew', 'run', 'reveal'];
+export type SceneId = 'hearth' | 'create' | 'vale' | 'brew' | 'run' | 'reveal';
+const SCENES: SceneId[] = ['hearth', 'create', 'vale', 'brew', 'run', 'reveal'];
 /** what an update of the page carries over */
 export interface Carry { sheet?: unknown; scene?: SceneId }
 
@@ -40,7 +39,6 @@ export class App {
   readonly sheets: Sheets;
   readonly run: RunScene;
   readonly reveal: Reveal;
-  readonly camp: Camp;
   readonly creator: Creator;
   readonly vale: Vale;
   readonly brew: Brewing;
@@ -56,7 +54,6 @@ export class App {
     this.sheets = new Sheets(this, $('sheets'));
     this.run = new RunScene(this, $('sc-run'));
     this.reveal = new Reveal(this, $('sc-reveal'));
-    this.camp = new Camp(this, $('sc-camp'));
     this.creator = new Creator(this, $('sc-create'));
     this.vale = new Vale(this, $('sc-vale'));
     this.brew = new Brewing(this, $('sc-brew'));
@@ -65,10 +62,10 @@ export class App {
 
   get p() { return this.store.profile; }
 
-  /** what an update of the page should carry over: the open panel and the camp. A run in progress cannot be carried. */
+  /** what an update of the page should carry over: the open panel and the scene. A run in progress cannot be carried. */
   snapshot(): Carry {
-    const keep: SceneId[] = ['camp', 'vale', 'brew'];
-    return { sheet: this.scene === 'hearth' || this.scene === 'camp' ? this.sheets.spec : null, scene: keep.includes(this.scene) ? this.scene : 'hearth' };
+    const keep: SceneId[] = ['vale', 'brew'];
+    return { sheet: this.scene === 'hearth' ? this.sheets.spec : null, scene: keep.includes(this.scene) ? this.scene : 'hearth' };
   }
 
   async boot(carry: Carry = {}): Promise<void> {
@@ -88,8 +85,7 @@ export class App {
       if (why === 'remote') { SFX.on = this.p.settings.sound; this.refresh(); }
       else this.hearth.syncState();
     });
-    if (carry.scene === 'camp') this.showCamp();
-    else if (carry.scene === 'vale' && activeHero(this.p)) void this.showVale();
+    if (carry.scene === 'vale' && activeHero(this.p)) void this.showVale();
     else if (carry.scene === 'brew' && activeHero(this.p)) this.showBrew();
     else this.showHearth();
     const sheet = normSpec(carry.sheet);
@@ -102,7 +98,6 @@ export class App {
   private onResize(): void {
     if (this.scene === 'run') resizeView();
     if (this.scene === 'hearth') this.hearth.layout();
-    if (this.scene === 'camp') this.camp.render();
     if (this.scene === 'vale') this.vale.layout();
   }
 
@@ -121,18 +116,12 @@ export class App {
     if (id === 'hearth') { this.hearth.render(); }
     if (id === 'run') resizeView();
   }
-  /** home: your hero by the fire. With no heroes yet, the hero maker instead. */
-  showHearth(): void {
+  /** home: the house, opening on the hall (or a room you name, like the bunk room). With no heroes yet, the hero maker instead. */
+  showHearth(room?: string): void {
     if (!activeHero(this.p)) { this.showCreate(); return; }
     this.sheets.close();
+    if (room) this.hearth.aim(room);
     this.show('hearth');
-  }
-  /** the camp, with every hero you have made */
-  showCamp(sel?: string): void {
-    if (!activeHero(this.p)) { this.showCreate(); return; }
-    this.sheets.close();
-    this.show('camp');
-    this.camp.show(sel);
   }
   /** ride out: the map of the Vale */
   async showVale(): Promise<void> {
@@ -164,7 +153,6 @@ export class App {
     // the last hero went (a reset here or on another device): back to the maker
     if (!activeHero(this.p) && this.scene !== 'run' && this.scene !== 'create') { this.showCreate(); return; }
     if (this.scene === 'hearth') this.hearth.render();
-    if (this.scene === 'camp') this.camp.render();
     if (this.scene === 'vale') this.vale.update();
     if (this.scene === 'brew') this.brew.update();
     // a hero made on another device while the maker was open on its first screen: offer the way back
@@ -195,7 +183,6 @@ export class App {
 
 const SHELL = `
 <div class="scene hearth" id="sc-hearth"></div>
-<div class="scene camp" id="sc-camp" hidden></div>
 <div class="scene create" id="sc-create" hidden></div>
 <div class="scene vale" id="sc-vale" hidden></div>
 <div class="scene brew" id="sc-brew" hidden></div>

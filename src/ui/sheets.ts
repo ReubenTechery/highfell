@@ -1,7 +1,7 @@
 /**
- * Sheets: panels that slide up over the hearth. The dungeon picker, a hero's gear (the doll), the
- * logs (the collection log by boss and gathering spot, achievements, the Vale's story, stats), the
- * satchel, settings, the hearth spot picker and an item's details. Each one is drawn from the profile
+ * Sheets: panels that slide up over the house. The dungeon picker, a hero (from their bed), a hero's
+ * gear (the doll), the logs (the collection log by boss and gathering spot, achievements, the Vale's
+ * story, stats), the satchel, settings, the spot picker and an item's details. Each one is drawn from the profile
  * every time, so whatever changed is always shown.
  */
 import { ACHIEVEMENT_LIST, COLLECTIBLES, DUNGEONS, ITEMS, SETS, TITLES, thing } from '../content';
@@ -11,7 +11,7 @@ import { CLASSES, RACES, type ClassId, type RaceId } from '../content/folk';
 import type { BossInfo, CollectibleKind, DropDef, DungeonInfo, ItemDef, NodeDef, PlaceDef, Rar, RoleId, SlotId, Tier } from '../content/types';
 import { INGREDIENTS, INGREDIENT_ORDER, PLACES, RECIPES, RECIPE_ORDER, SKILLS } from '../content/vale';
 import { rankProgress, recipeUnlocked, skillRank } from '../meta/vale';
-import { activeHero, freshProfile, heroById, roleOf, setActive, type Hero } from '../meta/profile';
+import { activeHero, freshProfile, heroById, nameProblem, removeHero, renameHero, roleOf, setActive, type Hero } from '../meta/profile';
 import { REROLL_COST, bestRegular, buyTrait, equip, healthPct, itemShare, loadoutFor, ownedFor, powerPct, putOn, seenSlot, waitingFor, worn, type Waiting, type Worn } from '../meta/gear';
 import { HEARTH_SPOTS, place, spotById, spotOf } from '../meta/hearth';
 import { maxPoints, points, progress } from '../meta/achievements';
@@ -20,6 +20,7 @@ import { actions, esc, fmtDate, fmtN, fmtRate, fmtT, GLYPH } from './dom';
 import { colourOf, heroImg, heroSprite, iconOf, nameOf, rarLook, spriteURL, tile } from './art';
 import { SFX } from './sound';
 import { ilvl } from './hearth';
+import { heroSheet, type HeroSheetState } from './herosheet';
 import { STARTS } from '../content/barrow/script.js';
 
 export type LogTab = 'collection' | 'achievements' | 'lore' | 'stats';
@@ -27,6 +28,7 @@ const LOG_TABS: LogTab[] = ['collection', 'achievements', 'lore', 'stats'];
 export type SheetSpec =
   | { kind: 'dungeon' }
   | { kind: 'satchel' }
+  | { kind: 'hero'; hero: string }
   | { kind: 'gear'; hero: string; slot?: SlotId }
   | { kind: 'logs'; tab: LogTab; entry?: string }
   | { kind: 'settings' }
@@ -39,6 +41,7 @@ export function normSpec(x: unknown): SheetSpec | null {
   if (!s || typeof s !== 'object') return null;
   switch (s.kind) {
     case 'dungeon': case 'settings': case 'satchel': return { kind: s.kind };
+    case 'hero': return typeof s.hero === 'string' ? { kind: 'hero', hero: s.hero } : null;
     case 'gear': return typeof s.hero === 'string' ? { kind: 'gear', hero: s.hero, ...(SLOT_IDS.includes(s.slot) ? { slot: s.slot } : {}) } : null;
     case 'logs': return { kind: 'logs', tab: LOG_TABS.includes(s.tab) ? s.tab : 'collection', ...(typeof s.entry === 'string' ? { entry: s.entry } : {}) };
     case 'picker': return typeof s.spot === 'string' && spotById(s.spot) ? { kind: 'picker', spot: s.spot } : null;
@@ -78,6 +81,9 @@ export class Sheets {
   /** the dungeon picker remembers its choices while the page is open */
   private pick = { mode: 'loot' as 'loot' | 'practice', start: 'keeper', gear: 'mine' as GearChoice };
   private resetArmed = false;
+  /** a hero's sheet: letting them go takes two taps, and renaming has its own little form */
+  private heroSt: HeroSheetState = { delArmed: false, renaming: false, err: '' };
+  private heroTimer = 0;
   /** the piece just put on, for the moment it takes: which slot and the item level before and after */
   private justOn: { hero: string; slot: SlotId; from: number; to: number; at: number } | null = null;
 
@@ -89,7 +95,28 @@ export class Sheets {
       start: (el) => { this.pick.start = el.dataset.v!; SFX.play('ui'); this.refresh(); },
       tgear: (el) => { const v = el.dataset.v!; this.pick.gear = v === 'mine' ? 'mine' : (+v as 2 | 3); SFX.play('ui'); this.refresh(); },
       go: () => this.go(),
-      camp: () => { SFX.play('ui'); this.close(); this.app.showCamp(); },
+      camp: () => { SFX.play('ui'); this.close(); this.app.showHearth('bunks'); },
+      heroplay: () => {
+        const h = this.sheetHero(); if (!h) return;
+        SFX.play('ui'); setActive(this.app.p, h.id); this.close(); this.app.save();
+        this.app.toasts.text(h.name, 'By the fire in the hall.');
+        this.app.showHearth('hall');
+      },
+      herogear: () => { const h = this.sheetHero(); if (h) { SFX.play('ui'); this.open({ kind: 'gear', hero: h.id }); } },
+      herorename: () => { this.heroSt = { ...this.heroSt, renaming: true, err: '' }; SFX.play('ui'); this.refresh(); this.root.querySelector<HTMLInputElement>('#cp-name')?.select(); },
+      herocancel: () => { this.heroSt = { ...this.heroSt, renaming: false }; this.refresh(); },
+      herodel: () => {
+        const h = this.sheetHero(), p = this.app.p;
+        if (!h || p.roster.length <= 1) { SFX.play('nope'); return; }
+        if (!this.heroSt.delArmed) {
+          this.heroSt = { ...this.heroSt, delArmed: true }; SFX.play('ui'); this.refresh();
+          this.heroTimer = window.setTimeout(() => { this.heroSt = { ...this.heroSt, delArmed: false }; this.refresh(); }, 4000);
+          return;
+        }
+        clearTimeout(this.heroTimer);
+        const name = h.name;
+        if (removeHero(p, h.id)) { SFX.play('ui'); this.close(); this.app.save(); this.app.toasts.text(`${name} has gone`, 'Their uniques stay in your collection.'); }
+      },
       slot: (el) => { const s = this.spec; if (!s || s.kind !== 'gear') return; SFX.play('ui'); this.open({ ...s, slot: el.dataset.slot as SlotId }); },
       equip: (el) => {
         const h = this.gearHero(); if (!h) return;
@@ -125,11 +152,22 @@ export class Sheets {
       vluck: () => { this.app.setDev({ valeLuck: !this.app.dev.valeLuck }); SFX.play('ui'); this.app.refresh(); },
     });
     root.addEventListener('click', (e) => { if (e.target === root.firstElementChild) this.close(); });
+    root.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const h = this.sheetHero(), input = root.querySelector<HTMLInputElement>('#cp-name');
+      if (!h || !input) return;
+      const why = nameProblem(this.app.p, input.value, h.id);
+      if (why || !renameHero(this.app.p, h.id, input.value)) { this.heroSt = { ...this.heroSt, err: why || 'That name can’t be used' }; SFX.play('nope'); this.refresh(); return; }
+      this.heroSt = { ...this.heroSt, renaming: false, err: '' };
+      SFX.play('place');
+      this.app.save();
+    });
     window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.spec) this.close(); });
   }
 
   open(spec: SheetSpec): void {
     const was = !!this.spec;
+    if (spec.kind === 'hero' && !(this.spec && this.spec.kind === 'hero' && this.spec.hero === spec.hero)) { clearTimeout(this.heroTimer); this.heroSt = { delArmed: false, renaming: false, err: '' }; }
     this.spec = spec;
     this.render(!was);
   }
@@ -140,6 +178,10 @@ export class Sheets {
   }
   refresh(): void { if (this.spec) this.render(false); }
 
+  private sheetHero(): Hero | null {
+    const s = this.spec;
+    return s && s.kind === 'hero' ? heroById(this.app.p, s.hero) : null;
+  }
   private gearHero(): Hero | null {
     const s = this.spec;
     return s && s.kind === 'gear' ? heroById(this.app.p, s.hero) : null;
@@ -163,6 +205,12 @@ export class Sheets {
     let head = '', tabs = '', body = '', foot = '', wide = false;
     switch (s.kind) {
       case 'dungeon': ({ head, body, foot } = this.dungeon()); break;
+      case 'hero': {
+        const h = heroById(this.app.p, s.hero);
+        if (!h) { this.close(); return; }
+        ({ head, body } = heroSheet(this.app.p, h, this.heroSt));
+        break;
+      }
       case 'gear': {
         const h = heroById(this.app.p, s.hero) || activeHero(this.app.p);
         if (!h) { this.close(); return; }
@@ -528,7 +576,7 @@ export class Sheets {
       <div><h3>${esc(nameOf(id))}</h3><p class="fine">${esc(kind)}</p></div></div>
       ${desc ? `<p class="lede">${esc(desc)}</p>` : ''}${more}
       <div class="stats"><span class="chip">From <b>${esc(source || 'Unknown')}</b></span></div>
-      <p class="fine">${esc(got)}${spot ? ` It is in your hearth: ${esc(spotById(spot)?.label.toLowerCase() || '')}.` : ''}</p>
+      <p class="fine">${esc(got)}${spot ? ` It is in your house: ${esc(spotById(spot)?.label.toLowerCase() || '')}.` : ''}</p>
       ${hasBack ? `<div class="actions"><button type="button" class="btn small" data-act="back">${GLYPH.left}Back</button></div>` : ''}`;
     return { head: `<h2>${esc(nameOf(id))}</h2><p>${esc(kind)}</p>`, body };
   }
@@ -548,7 +596,7 @@ export class Sheets {
     const body = `<div class="picks">${picks}</div>
       ${cur ? `<div class="actions"><button type="button" class="btn small" data-act="place" data-id="">Leave it empty</button></div>` : ''}
       <p class="fine">${spot.kind === 'pet' ? 'Pets are rare drops. Once you have one it follows you home.' : spot.kind === 'mount' ? 'Mounts are very rare drops.' : spot.kind === 'trophy' ? 'Trophies come from achievements and bosses.' : 'Banners come from achievements.'} Later you will be able to invite people over to see it.</p>`;
-    return { head: `<h2>${esc(spot.label)}</h2><p>${esc(KIND_WORD[spot.kind])} · ${n} spot${n > 1 ? 's' : ''} in the hearth</p>`, body };
+    return { head: `<h2>${esc(spot.label)}</h2><p>${esc(KIND_WORD[spot.kind])} · ${n} spot${n > 1 ? 's' : ''} in the house</p>`, body };
   }
 
   /* ---------------------------------------------------------------- brews, the satchel, the story */
@@ -625,7 +673,7 @@ export class Sheets {
         ${seg('walkout', dev.walkout, [['off', 'Off'], ['normal', 'Normal'], ['unique', 'Unique'], ['pet', 'Pet']])}
         <p class="fine">The Vale: free harvests don’t use up a spot, and lucky makes its rares 50 times likelier. What you get still goes in your save.</p>
         <div class="seg"><button type="button" class="sg" role="switch" data-act="vfree" aria-checked="${dev.valeFree}">Free harvests</button><button type="button" class="sg" role="switch" data-act="vluck" aria-checked="${dev.valeLuck}">Lucky ×50</button></div></div>
-      <div class="box"><h3 class="section-title">Start over</h3><p class="fine">Wipes every hero, their gear, kill counts, the collection log, achievements and the hearth.</p>
+      <div class="box"><h3 class="section-title">Start over</h3><p class="fine">Wipes every hero, their gear, kill counts, the collection log, achievements and the house.</p>
         <div class="actions"><button type="button" class="btn small" data-act="reset" style="${this.resetArmed ? 'background: var(--red); color: #FFFFFF' : ''}">${this.resetArmed ? 'Tap again to wipe everything' : 'Start over'}</button></div></div>
       <p class="fine">Build ${esc(BUILD)}</p>`;
     return { head: `<h2>Settings</h2>`, body };
@@ -652,12 +700,6 @@ function logEntries(): LogEntry[] {
   out.push({ id: 'other.rewards', group: 'Other', name: 'Rewards', items: Object.values(COLLECTIBLES).filter((c) => !drops.has(c.id)).map((c) => c.id) });
   return out;
 }
-/** how much of the whole collection log you have, for the hearth's Logs button */
-export function logTotal(p: { collection: Record<string, unknown> }): { got: number; total: number } {
-  const all = new Set(logEntries().flatMap((e) => e.items));
-  return { got: [...all].filter((id) => p.collection[id]).length, total: all.size };
-}
-
 const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
 declare const __BUILD__: string;

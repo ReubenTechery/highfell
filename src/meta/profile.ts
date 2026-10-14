@@ -17,6 +17,7 @@ import type { Rar, RoleId, SlotId } from '../content/types';
 import { ORDER } from '../content/roles';
 import { SLOT_IDS } from '../content/gear';
 import { CLASSES, FOUNDERS, MAX_HEROES, canMake, cleanName, type ClassId, type RaceId } from '../content/folk';
+import { settleSpots } from './hearth';
 
 export const PROFILE_VERSION = 5;
 /** Shared gear climbs to Rare. Epic is earned on the hero. */
@@ -203,6 +204,7 @@ export function normalize(d: any, now = Date.now()): Profile {
   p.titles = Array.isArray(d.titles) ? d.titles.filter((t: unknown) => typeof t === 'string') : [];
   for (const h of p.roster) if (h.title && !p.titles.includes(h.title)) h.title = null;
   for (const [k, v] of Object.entries(obj(obj(d.hearth).spots))) p.hearth.spots[k] = typeof v === 'string' ? v : null;
+  settleSpots(p);
   p.settings.sound = obj(d.settings).sound !== false;
   const off = obj(d.settings).looksOff;
   p.settings.looksOff = Array.isArray(off) ? off.filter((x: unknown) => typeof x === 'string') : [];

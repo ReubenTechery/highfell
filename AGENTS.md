@@ -66,6 +66,9 @@ slice). Nothing else gets added to that shape without the owner saying so.
 | A DPS alone dies before the mini boss (a test checks it) | All three roles are needed |
 | The Vale stays small: one place per race's hometown, about 5 minutes a trip | A cosy break, not a second game |
 | Brews are one-run twists, never power a raid needs | Fun, not a tax |
+| Home is a tall house cut open: zoom out to see it all, tap things in the rooms to use them | A play test: side things belong in the house, not in buttons |
+| The house has one big button, always: Dungeons. Ride out is the signpost in the yard | Nobody should mistake a side trip for the main thing |
+| Your other heroes wait by their beds in the house; there is no camp | One place, one less screen |
 | One self-contained HTML file, no frameworks, no runtime dependencies | It has to run anywhere, including inside claude.ai |
 | A save never loses data: change its shape only with a version bump and a migration | People's progress is sacred |
 
@@ -81,12 +84,18 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
   flares gold and the chest knocks twice. Pet: every light dies, the sound cuts, the lantern lifts and the
   pet walks out. The first second is identical for all three on purpose.
 - **Heroes:** up to six; the last one can't be deleted; a hero the game named (from the move to heroes) can be
-  renamed once. The active hero is the one on the hearth and the one a run plays. Each hero has its own
+  renamed once. The active hero is the one by the fire in the house and the one a run plays; the others wait by their beds
+  in the bunk room (tap one to play them, an empty bed makes a new hero). Each hero has its own
   ladder gear, title and clears. Shared by all heroes: the collection (a unique fits any hero of its role),
   kill counts, Marks, achievements, titles, the hearth, the Vale. A race and class combo is playable once it
   has a ready class and art in `HERO_ART`; the rest show as "Soon".
 - **Gear:** nothing goes on by itself. A ladder piece (and the shared floor) waits in the hero's bag; a new
-  unique waits in their `fresh` list. The Gear button counts what's waiting; you put it on in the doll.
+  unique waits in their `fresh` list. Your hero's tag at the top of the house (and the armour stand) counts what's waiting; you put it
+  on in the doll.
+- **The house:** its plan is data in `src/content/house.ts`: rooms, the things you tap and the display spots.
+  Zoomed out, a tap goes into a room; zoomed in, a tap uses a thing. The hearth's first eight spot ids never
+  change; a spot a save has never had takes what isn't on show when the save loads (`settleSpots`); a spot
+  you emptied stays empty; something new goes to the first free spot of its kind (the hall first).
 - **Threat:** every hit adds threat (the tank's 1.3 times, Slam's double), heals add a little on everything in the fight,
   and a mob switches once someone beats its target by a tenth. Slam taunts and drags mobs in; Charge makes its
   target turn. Mobs off the tank for 3 seconds go wild. A caged tank can't be targeted and loses half his threat.
@@ -113,16 +122,17 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
 - `src/content`: data only. Roles and abilities, gear and traits, `folk.ts` (the four races, the six classes,
   which race and class combos have art in `HERO_ART`, name lists), one folder per dungeon (`barrow/`: map,
   mobs, bosses, script, items, loot tables, collectibles, achievements), and `vale/` (ingredients, recipes,
-  the map, ranks, one file per place). Register new content in `src/content/index.ts`; `checkContent()`
+  the map, ranks, one file per place). `house.ts` is the house's plan. Register new content in `src/content/index.ts`; `checkContent()`
   and the tests catch broken ids.
 - `src/dungeon`: the engine, plain JS with no DOM: state `S`, entities, heroes, mobs, bots, the loop,
   rendering to a canvas, and `walkout.js` (the lantern tells). It reaches the screen only through `HOOKS`
   and `emit`.
 - `src/meta`: TypeScript rules for everything that lasts: the profile and its migrations (heroes live here),
   loot, gear, achievements, the hearth, and `vale.ts` (regrowth, harvests, errands, ranks, brewing).
-- `src/ui`: the screens. Scenes: the hearth, the camp (your heroes), the hero maker, the Vale (`vale.ts`,
-  `valeart.ts`, `toys.ts` for the close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the
-  reveal. Sheets over them: dungeon, the gear doll, logs, satchel, settings, spot picker, item. Toasts,
+- `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, its drawing
+  `houseart.ts`), the hero maker, the Vale (`vale.ts`, `valeart.ts`, `toys.ts` for the close-ups), the cauldron
+  (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: dungeon, a hero (`herosheet.ts`), the
+  gear doll, logs, satchel, settings, spot picker, item. Toasts,
   sound. `styles.css` is inlined by the build.
 - `src/sim` and `scripts/sim.mjs`: headless bot runs of the real engine (the balance numbers).
 - `tools/`: the art pipeline (Python writes SVG into `art/*.json`), `art_sheet.py` (look at your art),
@@ -155,7 +165,7 @@ python3 tools/art_sheet.py shots/art.png art/vale.json        # a contact sheet 
 
 In the page, `window.highfell` is the running app: `highfell.startRun({ start, testRar, role? })`,
 `highfell.run.autoplay(seconds)`, `highfell.reveal.preview('normal' | 'unique' | 'pet')`, `highfell.showVale()`,
-`highfell.showBrew()`, `highfell.showCamp()`, and `highfell.p` is the live save (change it, then
+`highfell.showBrew()`, `highfell.showHearth('bunks')` (any room's id), and `highfell.p` is the live save (change it, then
 `highfell.save()`). A fresh browser opens on the hero maker: click `#cr-go` to make the rolled hero.
 Settings has testing switches (walkout previews, free Vale harvests, lucky ×50).
 
