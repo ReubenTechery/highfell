@@ -297,9 +297,24 @@ export function drawObjects(ctx, v) {
     }
   }
 }
-export const WEAPON_AT = { tank_f: [-36, -66], tank_b: [36, -66], healer_f: [-31, -104], healer_b: [31, -104], dps_f: [28, -96], dps_b: [-28, -96] };
+/** Each hero sprite set: where its weapon is, seen from the front (the glow goes behind it), and the top of its
+ *  head or hat (what floats over a hero goes above it). heroFit() reads it for a gilded set too, and from
+ *  behind puts the weapon in the other hand. */
+export const HERO_FIT = {
+  tank: { weapon: [-48, -75], top: -107 },
+  healer: { weapon: [-30, -128], top: -117 },
+  dps: { weapon: [28, -122], top: -145 },
+  risen_tank: { weapon: [-33, -90], top: -130 },
+  risen_healer: { weapon: [-30, -118], top: -125 },
+  risen_dps: { weapon: [28, -122], top: -148 },
+};
+export function heroFit(set, back) {
+  const fit = HERO_FIT[set.replace('_gilded', '')] || { weapon: [0, -80], top: -112 };
+  return { wx: back ? -fit.weapon[0] : fit.weapon[0], wy: fit.weapon[1], top: fit.top };
+}
 export function drawHero(ctx, h) {
-  const name = (h.sprite || ROLES[h.role].sprite) + (h.back ? '_b' : '_f');
+  const set = h.sprite || ROLES[h.role].sprite, name = set + (h.back ? '_b' : '_f');
+  const { wx, wy, top } = heroFit(set, h.back);
   if (!h.alive) {
     drawSpr(ctx, name, h.x, h.y - 6, { rot: -Math.PI / 2 * (h.flip ? -1 : 1) * Math.min(1, h.deadT * 5), alpha: 0.5, sx: 0.9, sy: 0.9 });
     return;
@@ -317,19 +332,19 @@ export function drawHero(ctx, h) {
   if (h.st.stun > 0) rot += Math.sin(S.t * 12) * 0.06;
   // gear glow behind the weapon
   if (h.weaponRar >= 2) {
-    const w = WEAPON_AT[name] || [0, -80]; const fx_ = (h.flip ? -w[0] : w[0]);
+    const fx_ = h.flip ? -wx : wx;
     const col = RARITY[h.weaponRar].color;
     ctx.globalAlpha = 0.3 + Math.sin(S.t * 3) * 0.08; ctx.fillStyle = col;
-    ctx.beginPath(); ctx.arc(x + fx_, y + w[1], h.weaponRar === 3 ? 24 : 17, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
-    if (h.weaponRar === 3 && S.frame % 7 === 0) S.parts.push({ x: h.x + fx_ + vrand(-14, 14), y: h.y, z: -w[1] + vrand(-14, 14), vx: 0, vy: 0, vz: 0, up: true, col: '#C9B2FF', size: vrand(2.5, 4.5), t: 0, dur: 0.7 });
+    ctx.beginPath(); ctx.arc(x + fx_, y + wy, h.weaponRar === 3 ? 24 : 17, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+    if (h.weaponRar === 3 && S.frame % 7 === 0) S.parts.push({ x: h.x + fx_ + vrand(-14, 14), y: h.y, z: -wy + vrand(-14, 14), vx: 0, vy: 0, vz: 0, up: true, col: '#C9B2FF', size: vrand(2.5, 4.5), t: 0, dur: 0.7 });
   }
   // a brew from the Vale: little motes of its colour rising round your feet
   if (h.brewCol && !(h.brew === 'elixir' && h.brewUsed) && S.frame % 9 === 0) S.parts.push({ x: h.x + vrand(-20, 20), y: h.y, z: vrand(0, 26), vx: 0, vy: 0, vz: 0, up: true, col: h.brewCol, size: vrand(2.5, 4.2), t: 0, dur: 0.9 });
   if (h.isPlayer && h.role === 'healer' && S.looks.has('cosmetic.glow_staff')) {
-    const w = WEAPON_AT[name] || [0, -80]; const fx_ = (h.flip ? -w[0] : w[0]);
+    const fx_ = h.flip ? -wx : wx;
     ctx.globalAlpha = 0.28 + Math.sin(S.t * 4) * 0.08; ctx.fillStyle = '#FFE08A';
-    ctx.beginPath(); ctx.arc(x + fx_, y + w[1], 30, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
-    if (S.frame % 9 === 0) S.parts.push({ x: h.x + fx_ + vrand(-12, 12), y: h.y, z: -w[1] + vrand(-10, 10), vx: 0, vy: 0, vz: 0, up: true, col: '#FFF6D0', size: vrand(2.5, 4), t: 0, dur: 0.8 });
+    ctx.beginPath(); ctx.arc(x + fx_, y + wy, 30, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+    if (S.frame % 9 === 0) S.parts.push({ x: h.x + fx_ + vrand(-12, 12), y: h.y, z: -wy + vrand(-10, 10), vx: 0, vy: 0, vz: 0, up: true, col: '#FFF6D0', size: vrand(2.5, 4), t: 0, dur: 0.8 });
   }
   const yy = h.dodgeT > 0 ? y + 26 : y;
   // the Barrow dyes on your set: the Gravegold Dye (heroic) wins over the Ghostly one
@@ -343,13 +358,13 @@ export function drawHero(ctx, h) {
     ctx.lineWidth = 6; ctx.strokeStyle = h.blockT < PERFECT_WINDOW || rim ? '#F2C230' : '#C9D2DC'; ctx.stroke();
   }
   if (h.absorb > 0) {
-    ctx.globalAlpha = 0.22; ctx.fillStyle = '#DDF3FF'; ctx.beginPath(); ctx.ellipse(h.x, h.y - 44, 40, 58, 0, 0, TAU); ctx.fill();
+    ctx.globalAlpha = 0.22; ctx.fillStyle = '#DDF3FF'; ctx.beginPath(); ctx.ellipse(h.x, h.y + (top + 2) / 2, 46, (22 - top) / 2, 0, 0, TAU); ctx.fill();
     ctx.globalAlpha = 0.9; ctx.lineWidth = 3; ctx.strokeStyle = '#DDF3FF'; ctx.stroke(); ctx.globalAlpha = 1;
   }
-  if (h.st.stun > 0 || h.st.root > 0) stars(ctx, h.x, h.y - 112, h.st.root > 0 ? '#C9B79A' : '#F2C230');
+  if (h.st.stun > 0 || h.st.root > 0) stars(ctx, h.x, h.y + top - 8, h.st.root > 0 ? '#C9B79A' : '#F2C230');
   if (h.st.haunt > 0) { ctx.globalAlpha = 0.35; ctx.fillStyle = '#C8F5E8'; ctx.beginPath(); ctx.arc(h.x, h.y - 40, 34 + Math.sin(S.t * 8) * 4, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
-  if (h.cast) { const k = h.cast.t / h.cast.dur; castBar(ctx, h.x, h.y - 128, 70, k, '#8FD6FF'); }
-  if (h.say && h.sayT > 0) bubble(ctx, h.x, h.y - 128, h.say);
+  if (h.cast) { const k = h.cast.t / h.cast.dur; castBar(ctx, h.x, h.y + top - 14, 70, k, '#8FD6FF'); }
+  if (h.say && h.sayT > 0) bubble(ctx, h.x, h.y + top - 14, h.say);
 }
 export function stars(ctx, x, y, col) {
   for (let i = 0; i < 3; i++) {

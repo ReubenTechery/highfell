@@ -67,7 +67,7 @@ export const RACES: Record<RaceId, RaceDef> = {
     earned: true,
   },
   elf: {
-    id: 'elf', name: 'Elf', plural: 'Elves', hometown: 'Moonmere', light: '#8FD6FF', height: 'About 5½ heads tall',
+    id: 'elf', name: 'Elf', plural: 'Elves', hometown: 'Moonmere', light: '#8FD6FF', height: 'About 4 heads tall',
     lore: 'They remember the last time the Frost King woke. They won’t say how it ended, which is never a good sign.',
     look: 'Tall and narrow, long ears, long hair, very calm about everything.',
     trick: { name: 'Old magic', desc: 'Once a raid, add three seconds to one live window for the whole party.' },
@@ -75,7 +75,7 @@ export const RACES: Record<RaceId, RaceDef> = {
     family: ['Stillwater', 'Moonmere', 'Hollowbrook', 'Nightfern', 'Mistvale', 'Larkreed'],
   },
   human: {
-    id: 'human', name: 'Human', plural: 'Humans', hometown: 'Highfell', light: '#F4B942', height: 'About 5 heads tall',
+    id: 'human', name: 'Human', plural: 'Humans', hometown: 'Highfell', light: '#F4B942', height: 'About 4 heads tall',
     lore: 'Everyone ends up in Highfell eventually. It’s the market town at the foot of the hills, and the Last Lantern never closes.',
     look: 'Middle height, any shape, any face. The everyday hero.',
     trick: { name: 'Seen it all', desc: 'Once a raid, for one round, see what another class sees.' },

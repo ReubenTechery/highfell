@@ -1,6 +1,7 @@
 /// <reference types="node" />
 /**
- * The engine's rules for a fight: threat, the tank's tools, cages, what floats over heads, the dungeon's tuning.
+ * The engine's rules for a fight: threat, the tank's tools, cages, what floats over heads, the dungeon's tuning,
+ * and where each hero's weapon and head are.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,7 +10,10 @@ import { S } from '../src/dungeon/state.js';
 import { hurtHero, hurtMob, pickTarget } from '../src/dungeon/entities.js';
 import { useAbility } from '../src/dungeon/heroes.js';
 import { makeCage, mashCage } from '../src/dungeon/mobs.js';
+import { HERO_FIT, heroFit } from '../src/dungeon/render.js';
 import { BARROW_ENGINE } from '../src/content/barrow/engine';
+import { HERO_ART } from '../src/content/folk';
+import SPRITES from '../art/sprites.json';
 
 const game = (role: string, start = 'entrance') => {
   newGame(BARROW_ENGINE, { role, seed: 99, start, auto: false, quiet: true, noEvents: true, loadouts: {} });
@@ -105,4 +109,20 @@ test('cages: a bot tank in a cage mashes its own way out', () => {
   step(4);
   assert.ok(!tank.st.caged, 'out inside four seconds');
   assert.ok(tank.alive);
+});
+
+test('heroes: every one the game can draw knows where its weapon is and how tall it stands, front and back', () => {
+  const sprites = SPRITES as Record<string, { vb: number[] }>;
+  for (const set of new Set(Object.values(HERO_ART))) {
+    assert.ok((HERO_FIT as Record<string, unknown>)[set], `no fit for ${set}`);
+    for (const g of set.startsWith('risen') ? ['', '_gilded'] : ['']) for (const back of [false, true]) {
+      const name = set + g + (back ? '_b' : '_f');
+      const [vx, vy, w] = sprites[name].vb;
+      const { wx, wy, top } = heroFit(set + g, back);
+      assert.ok(wx > vx && wx < vx + w && wy > vy && wy < 0, `${name}: the weapon is on the sprite`);
+      assert.ok(top >= vy && top < -90, `${name}: the head's top is on the sprite`);
+    }
+  }
+  // from behind, the weapon is in the other hand
+  assert.equal(heroFit('tank', true).wx, -heroFit('tank', false).wx);
 });

@@ -14,8 +14,9 @@ bitmaps, no traced art. That is the main reason it doesn't look AI-made.
    for light itself: a glow, a sky, a vignette.
 3. **Big simple shapes first.** Block the silhouette, then add a few details. Test: fill the sprite solid
    black. If you can't tell what it is at 40 pixels tall, simplify.
-4. **Chunky and exaggerated.** Big heads, hands, shoulders and weapons. Short legs on dwarves and gnomes.
-   Heights by race: a dwarf about 3 heads tall, a gnome 2½, a human 5, an elf 5½.
+4. **Chunky and exaggerated.** Big heads, hands, shoulders and weapons. Short legs on dwarves and gnomes;
+   elves and the Risen slim and long in the limb. A dwarf stands about 3 heads tall, a human and an elf about
+   4, the elf slimmer and in a tall hat.
 5. **Few details, all on purpose.** A rivet, a stitch, a strap, a chip in a blade. No texture noise, no
    random scribbles, no detail that doesn't read at game size.
 6. **Faces stay simple.** Eyes are white circles with a black dot (or a single arc), brows carry the mood,
@@ -51,11 +52,16 @@ New colours are fine when a thing needs one; keep them flat and in this family (
 
 - **Ground point at (0, 0).** x goes right, y goes down, so the art sits at negative y with its feet on 0.
   The game places sprites by that point. Each sprite is stored as `{ "svg": "...", "vb": [x, y, w, h] }`.
-- **Sizes at k = 1:** heroes about 120 to 136 tall, ordinary mobs about 110, the Gravekeeper 312, pets 60 to
+- **Sizes at k = 1:** heroes about 110 to 150 tall to the tip of a hat or staff (the top of the head: a dwarf
+  about 100, the others about 115), ordinary mobs about 110, the Gravekeeper 312, pets 60 to
   110, mounts about 160. Icons are 64×64 tiles: a flat coloured square, one black line, one idea each.
-- **Heroes:** `<name>_f` (front) and `<name>_b` (back). `HERO_ART` in `src/content/folk.ts` maps a race and
-  class to a sprite name; a combo is playable once it has art. Mounts face right and carry a `saddle`
-  offset in their collectible so a hero sits on them.
+- **Heroes:** `<name>_f` (front) and `<name>_b` (back, the weapon in the other hand). They are drawn "Big
+  Shoulders": the armour is the silhouette (huge pauldrons or mantles, big hands and weapons) over one of the
+  faces in `art_heads.py`, each drawn once around the middle of its eyes. `art_heroes.py` writes its shapes at
+  1.25 times game size and shrinks them by `Z` as it draws, keeping the ink at full weight. `HERO_ART` in
+  `src/content/folk.ts` maps a race and class to a sprite name; a combo is playable once it has art and an
+  entry in `HERO_FIT` (`src/dungeon/render.js`: where its weapon glows, where the top of its head is; a test
+  checks). Mounts face right and carry a `saddle` offset in their collectible so a hero sits on them.
 - **Heroic drops are gilded:** `gild()` in `art_sprites.py` turns a picture's bone and steel to gold; on a 64x64
   tile it also gives a dark gold ground and a sparkle in the corner. Every heroic drop uses it, so a gilded piece
   reads as the heroic one at a glance.
@@ -64,7 +70,8 @@ New colours are fine when a thing needs one; keep them flat and in this family (
 
 | Tool | Draws | Writes |
 | --- | --- | --- |
-| `tools/art_sprites.py` | heroes (the Risen too, gilded as well), mobs, bosses, dungeon props, effects, and `gild()` | `art/sprites.json` |
+| `tools/art_heroes.py`, `tools/art_heads.py` | the heroes, front and back (the Risen too, gilded as well); their faces and the backs of their heads | `art/sprites.json` (through `art_sprites.py`) |
+| `tools/art_sprites.py` | mobs, bosses, dungeon props, effects, and `gild()`; builds the heroes in with them | `art/sprites.json` |
 | `tools/art_icons.py` | ability icons | `art/icons.json` |
 | `tools/art_hearth.py` | the house's props (the lectern, armour stand, weapon rack, larder, bunks, signpost, the Barrow door, bricked arches), the fireplace and furniture, pets, mounts, trophies, banners, lanterns, collectible icons | `art/hearth.json`, `art/collect_icons.json` |
 | `tools/art_vale.py` | the Vale: places, villagers, plants, Vale pets and mounts, ingredient and brew icons | `art/vale.json`, `art/vale_icons.json` |
