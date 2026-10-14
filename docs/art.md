@@ -65,7 +65,7 @@ New colours are fine when a thing needs one; keep them flat and in this family (
 | `tools/art_icons.py` | ability icons | `art/icons.json` |
 | `tools/art_hearth.py` | the house's props (the lectern, armour stand, weapon rack, larder, bunks, signpost, the Barrow door, bricked arches), the fireplace and furniture, pets, mounts, trophies, banners, lanterns, collectible icons | `art/hearth.json`, `art/collect_icons.json` |
 | `tools/art_vale.py` | the Vale: places, villagers, plants, Vale pets and mounts, ingredient and brew icons | `art/vale.json`, `art/vale_icons.json` |
-| `src/ui/valeart.ts`, `src/ui/houseart.ts`, `src/ui/toys.ts` | scenery, the house's rooms and roof, and close-ups, drawn live in the page, same rules | (in the page) |
+| `src/ui/valeart.ts`, `src/ui/houseart.ts`, `src/ui/toys.ts` | scenery, the house's rooms in each look (the tavern, Barrow Hall) and its roof, and close-ups, drawn live in the page, same rules | (in the page) |
 
 ## The loop for any new art
 

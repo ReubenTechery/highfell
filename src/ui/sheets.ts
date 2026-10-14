@@ -14,7 +14,7 @@ import { rankProgress, recipeUnlocked, skillRank } from '../meta/vale';
 import { activeHero, freshProfile, heroById, nameProblem, removeHero, renameHero, roleOf, setActive, type Hero } from '../meta/profile';
 import { pickRole } from '../meta/party';
 import { REROLL_COST, bestRegular, buyTrait, equip, healthPct, itemShare, loadoutFor, ownedFor, powerPct, putOn, seenSlot, waitingFor, worn, type Waiting, type Worn } from '../meta/gear';
-import { HEARTH_SPOTS, place, spotById, spotOf } from '../meta/hearth';
+import { HEARTH_SPOTS, place, setLook, spotById, spotOf } from '../meta/hearth';
 import { maxPoints, points, progress } from '../meta/achievements';
 import type { App } from './app';
 import { actions, cap, esc, fmtDate, fmtN, fmtRate, fmtT, GLYPH } from './dom';
@@ -24,6 +24,8 @@ import { ilvl } from './hearth';
 import { heroSheet, type HeroSheetState } from './herosheet';
 import { dungeonSheet, type DungeonPick } from './dungeonsheet';
 import { itemSheet, KIND_WORD, ROLE_STAT } from './itemsheet';
+import { looksSheet, pickedLook } from './lookssheet';
+import { settingsSheet } from './settingssheet';
 
 export type LogTab = 'collection' | 'achievements' | 'lore' | 'stats';
 const LOG_TABS: LogTab[] = ['collection', 'achievements', 'lore', 'stats'];
@@ -35,14 +37,15 @@ export type SheetSpec =
   | { kind: 'logs'; tab: LogTab; entry?: string }
   | { kind: 'settings' }
   | { kind: 'picker'; spot: string }
-  | { kind: 'item'; id: string; back?: SheetSpec };
+  | { kind: 'item'; id: string; back?: SheetSpec }
+  | { kind: 'looks' };
 
 /** A panel carried over from an older version of the page might not make sense any more. */
 export function normSpec(x: unknown): SheetSpec | null {
   const s = x as Record<string, any> | null;
   if (!s || typeof s !== 'object') return null;
   switch (s.kind) {
-    case 'dungeon': case 'settings': case 'satchel': return { kind: s.kind };
+    case 'dungeon': case 'settings': case 'satchel': case 'looks': return { kind: s.kind };
     case 'hero': return typeof s.hero === 'string' ? { kind: 'hero', hero: s.hero } : null;
     case 'gear': return typeof s.hero === 'string' ? { kind: 'gear', hero: s.hero, ...(SLOT_IDS.includes(s.slot) ? { slot: s.slot } : {}) } : null;
     case 'logs': return { kind: 'logs', tab: LOG_TABS.includes(s.tab) ? s.tab : 'collection', ...(typeof s.entry === 'string' ? { entry: s.entry } : {}) };
@@ -66,6 +69,8 @@ export class Sheets {
   /** the dungeon picker remembers its choices while the page is open */
   private pick: DungeonPick = { mode: 'loot', start: 'keeper', gear: 'mine', role: null, alts: false, log: false };
   private resetArmed = false;
+  /** the look picked in the looks sheet, while the page is open */
+  private lookPick: string | null = null;
   /** a hero's sheet: letting them go takes two taps, and renaming has its own little form */
   private heroSt: HeroSheetState = { delArmed: false, renaming: false, err: '' };
   private heroTimer = 0;
@@ -148,6 +153,15 @@ export class Sheets {
       lore: () => { SFX.play('page'); this.open({ kind: 'logs', tab: 'lore' }); },
       vfree: () => { this.app.setDev({ valeFree: !this.app.dev.valeFree }); SFX.play('ui'); this.app.refresh(); },
       vluck: () => { this.app.setDev({ valeLuck: !this.app.dev.valeLuck }); SFX.play('ui'); this.app.refresh(); },
+      lfree: () => { this.app.setDev({ looksFree: !this.app.dev.looksFree }); SFX.play('ui'); this.app.refresh(); },
+      lookpick: (el) => { this.lookPick = el.dataset.id || null; SFX.play('ui'); this.refresh(); },
+      lookput: (el) => {
+        const room = el.dataset.room!;
+        if (!setLook(this.app.p, room, pickedLook(this.lookPick), this.app.dev.looksFree)) { SFX.play('nope'); return; }
+        // the house goes to that room, so it's there when the sheet closes
+        if (room !== 'house') this.app.hearth.aim(room);
+        SFX.play('place'); this.app.save();
+      },
     });
     root.addEventListener('click', (e) => { if (e.target === root.firstElementChild) this.close(); });
     root.addEventListener('submit', (e) => {
@@ -219,10 +233,11 @@ export class Sheets {
         break;
       }
       case 'logs': ({ head, tabs, body } = this.logs(s.tab, s.entry)); wide = s.tab === 'collection'; break;
-      case 'settings': ({ head, body } = this.settings()); break;
+      case 'settings': ({ head, body } = settingsSheet(this.app.p, this.app.store.state, this.app.dev, this.resetArmed)); break;
       case 'satchel': ({ head, body } = this.satchel()); break;
       case 'picker': ({ head, body } = this.picker(s.spot)); break;
       case 'item': ({ head, body } = itemSheet(this.app.p, s.id, !!s.back)); break;
+      case 'looks': ({ head, body } = looksSheet(this.app.p, this.lookPick, this.app.dev.looksFree)); break;
     }
     this.root.innerHTML = `<div class="sheet-wrap"><section class="sheet ${wide ? 'wide' : ''} k-${s.kind}" role="dialog" aria-modal="true" aria-label="${esc(head.replace(/<[^>]+>/g, ' ').trim().split('  ')[0] || 'Panel')}">
       <header class="sheet-head"><div>${head}</div><button type="button" class="icon-btn" data-act="close" aria-label="Close">${GLYPH.close}</button></header>
@@ -564,27 +579,6 @@ export class Sheets {
     }
     return out + '<p class="fine">Each place you can ride to has its own story. More places are coming.</p>';
   }
-
-  /* ---------------------------------------------------------------- settings */
-  private settings() {
-    const p = this.app.p, st = this.app.store.state, dev = this.app.dev;
-    const where = st === 'account' ? 'Saved to your account. It follows you between your phone and your computer.' : st === 'connecting' ? 'Connecting to your account…' : st === 'offline' ? 'Your account save could not be reached, so this device is keeping your progress until it can.' : 'Saved on this device. Open the game on claude.ai to keep it in your account too.';
-    const seg = (act: string, cur: string, opts: [string, string][]) => `<div class="seg" role="radiogroup">${opts.map(([v, t]) => `<button type="button" class="sg" role="radio" data-act="${act}" data-v="${v}" aria-checked="${cur === v}">${esc(t)}</button>`).join('')}</div>`;
-    const body = `
-      <div class="box"><h3 class="section-title">Sound</h3><div class="actions"><button type="button" class="btn small" data-act="sound">${p.settings.sound ? GLYPH.sound + 'Sound on' : GLYPH.mute + 'Sound off'}</button></div></div>
-      <div class="box"><h3 class="section-title">Your save</h3><p class="fine">${esc(where)}</p><p class="fine">Save ${fmtN(p.rev)} · started ${fmtDate(p.createdAt)} · ${p.roster.length} hero${p.roster.length === 1 ? '' : 'es'}</p></div>
-      <div class="box"><h3 class="section-title">For testing</h3>
-        <p class="fine">See the end-of-run reveal without earning it. Nothing is added to your save.</p>
-        <div class="actions"><button type="button" class="btn small" data-act="preview" data-v="normal">Normal</button><button type="button" class="btn small" data-act="preview" data-v="unique">Unique</button><button type="button" class="btn small" data-act="preview" data-v="pet">Pet</button></div>
-        <p class="fine">Play the lantern's walkout at the end of practice runs, so you can learn the tells.</p>
-        ${seg('walkout', dev.walkout, [['off', 'Off'], ['normal', 'Normal'], ['unique', 'Unique'], ['pet', 'Pet']])}
-        <p class="fine">The Vale: free harvests don’t use up a spot, and lucky makes its rares 50 times likelier. What you get still goes in your save.</p>
-        <div class="seg"><button type="button" class="sg" role="switch" data-act="vfree" aria-checked="${dev.valeFree}">Free harvests</button><button type="button" class="sg" role="switch" data-act="vluck" aria-checked="${dev.valeLuck}">Lucky ×50</button></div></div>
-      <div class="box"><h3 class="section-title">Start over</h3><p class="fine">Wipes every hero, their gear, kill counts, the collection log, achievements and the house.</p>
-        <div class="actions"><button type="button" class="btn small" data-act="reset" style="${this.resetArmed ? 'background: var(--red); color: #FFFFFF' : ''}">${this.resetArmed ? 'Tap again to wipe everything' : 'Start over'}</button></div></div>
-      <p class="fine">Build ${esc(BUILD)}</p>`;
-    return { head: `<h2>Settings</h2>`, body };
-  }
 }
 
 /** every page of the collection log, in order: bosses by dungeon, then the Vale's places, then other rewards */
@@ -607,6 +601,3 @@ function logEntries(): LogEntry[] {
   out.push({ id: 'other.rewards', group: 'Other', name: 'Rewards', items: Object.values(COLLECTIBLES).filter((c) => !drops.has(c.id)).map((c) => c.id) });
   return out;
 }
-
-declare const __BUILD__: string;
-const BUILD = typeof __BUILD__ === 'string' ? __BUILD__ : 'dev';

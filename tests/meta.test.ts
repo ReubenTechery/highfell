@@ -4,15 +4,15 @@ import assert from 'node:assert/strict';
 import { makeRng } from '../src/core/rng';
 import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, SETS, checkContent } from '../src/content';
 import { BARROW } from '../src/content/barrow';
-import { activeHero, freshProfile, migrate, nameProblem, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
+import { activeHero, dungeonRecord, freshProfile, migrate, nameProblem, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
 import { DUPE_MARKS, resolveRun, rollTable } from '../src/meta/loot';
 import { bestRegular, buyTrait, compareFor, compareOn, equip, floorWorn, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, wearerOf, worn } from '../src/meta/gear';
 import { FOUNDERS, MAX_HEROES, canMake, cleanName } from '../src/content/folk';
 import { SLOT_IDS, gearId } from '../src/content/gear';
 import { INGREDIENTS, RECIPES } from '../src/content/vale';
 import { Achiever } from '../src/meta/achievements';
-import { HEARTH_SPOTS, place } from '../src/meta/hearth';
-import { HOUSE_SPOTS, ROOMS, THINGS } from '../src/content/house';
+import { HEARTH_SPOTS, lookOf, lookProgress, place, setLook } from '../src/meta/hearth';
+import { HOUSE_SPOTS, LOOK_ROOMS, ROOMS, THINGS } from '../src/content/house';
 import { heroesFor, pickRole, seats } from '../src/meta/party';
 import { lootFor } from '../src/meta/loot';
 import type { GameEvent, RunSummary } from '../src/content/types';
@@ -358,6 +358,43 @@ test('house: spots a save has never had fill with what is not on show, once; emp
   assert.deepEqual(migrate(JSON.parse(JSON.stringify(q))).hearth.spots, q.hearth.spots, 'loading again changes nothing');
   const fresh = migrate(JSON.parse(JSON.stringify(freshProfile())));
   assert.ok(Object.values(fresh.hearth.spots).every((v) => v === null), 'a new save has an empty house');
+});
+
+test('house looks: a room shows the look you put on it once you have earned it, and the tavern is always yours', () => {
+  const { p } = withHero('tank');
+  assert.equal(lookOf(p, 'hall'), 'tavern');
+  assert.deepEqual(lookProgress(p, 'barrow'), { have: 0, need: 100 });
+  assert.equal(setLook(p, 'hall', 'barrow'), false, 'not earned yet');
+  assert.equal(setLook(p, 'hall', 'nope'), false);
+  dungeonRecord(p, 'barrow').clears = 100;
+  assert.ok(setLook(p, 'hall', 'barrow'));
+  assert.equal(lookOf(p, 'hall'), 'barrow');
+  assert.equal(lookOf(p, 'loft'), 'tavern', 'one room at a time');
+  assert.equal(setLook(p, 'yard', 'barrow'), false, 'the yard is outside');
+  assert.ok(setLook(p, 'house', 'barrow'));
+  assert.ok(LOOK_ROOMS.every((r) => lookOf(p, r) === 'barrow'), 'or the whole house');
+  assert.ok(setLook(p, 'loft', 'tavern'));
+  assert.equal(lookOf(p, 'loft'), 'tavern');
+  // the testing switch opens every look, but a look you haven't earned shows as the tavern without it
+  const q = withHero('healer').p;
+  assert.ok(setLook(q, 'hall', 'barrow', true));
+  assert.equal(lookOf(q, 'hall'), 'tavern');
+  assert.equal(lookOf(q, 'hall', true), 'barrow');
+  // a look from a newer build stays in the save and is drawn as the tavern
+  q.hearth.looks.cellar = 'frosthold';
+  assert.equal(lookOf(q, 'cellar', true), 'tavern');
+  assert.equal(migrate(JSON.parse(JSON.stringify(q))).hearth.looks.cellar, 'frosthold');
+});
+
+test('profile: a v5 save gets the tavern in every room, and what is in the house stays', () => {
+  const v5: any = JSON.parse(JSON.stringify(freshProfile(1000)));
+  v5.v = 5; v5.hearth = { spots: { 'mantel.1': 'trophy.barrow_key', 'pet.rug': null } };
+  const p = migrate(v5);
+  assert.equal(p.v, PROFILE_VERSION);
+  assert.deepEqual(p.hearth.looks, {});
+  assert.equal(p.hearth.spots['mantel.1'], 'trophy.barrow_key');
+  assert.equal(p.hearth.spots['pet.rug'], null);
+  assert.ok(LOOK_ROOMS.every((r) => lookOf(p, r) === 'tavern'));
 });
 
 test('party: you take your hero’s seat, bots take the others, and any of your heroes can take a seat they fit', () => {

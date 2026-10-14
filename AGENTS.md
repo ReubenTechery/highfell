@@ -69,6 +69,7 @@ slice). Nothing else gets added to that shape without the owner saying so.
 | Home is a tall house cut open: zoom out to see it all, tap things in the rooms to use them | A play test: side things belong in the house, not in buttons |
 | The house has one big button, always: Dungeons. Ride out is the signpost in the yard | Nobody should mistake a side trip for the main thing |
 | Your other heroes wait by their beds in the house; there is no camp | One place, one less screen |
+| Looks for a room or the whole house: the tavern, and one per dungeon that opens at 100 clears of it (Barrow Hall first). Looks only; a heroic version comes later | The house shows what you've done, and a look can't be faked |
 | One self-contained HTML file, no frameworks, no runtime dependencies | It has to run anywhere, including inside claude.ai |
 | A save never loses data: change its shape only with a version bump and a migration | People's progress is sacred |
 
@@ -98,6 +99,11 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
   Zoomed out, a tap goes into a room; zoomed in, a tap uses a thing. The hearth's first eight spot ids never
   change; a spot a save has never had takes what isn't on show when the save loads (`settleSpots`); a spot
   you emptied stays empty; something new goes to the first free spot of its kind (the hall first).
+- **Looks:** every room inside the house has a look (`p.hearth.looks`, room id to look id; a room not in it is
+  the tavern). A dungeon's look opens at 100 clears of it (`lookProgress`); a look you haven't earned is drawn
+  as the tavern (the testing switch shows it). Decorate, then Looks, puts one on a room or the whole house. With
+  every room in the same look, the frame (beams, outer walls, roof) follows it. What a look is lives in
+  `src/content/house.ts` (`LOOKS`); how it's drawn, room by room, in `src/ui/houseart.ts`.
 - **Groups:** a run has three seats, one per role (`src/meta/party.ts`). You take your hero's seat; bots (Brannoc,
   Maren, Ivy) take the others at your gear level. In the Dungeons sheet a seat can be played by any of your heroes
   of that role, or a new one made for it. Friends take seats once there is online play.
@@ -110,7 +116,8 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
   difficulty) with no wipes, the Gravekeeper about two minutes, full Epic at least 15% faster, the DPS alone
   dies before Sir Rattlebones.
 - **Save versions:** v2 to v3 turned one hero per role into the roster; v3 to v4 added the Vale (`p.vale`);
-  v4 to v5 gave every hero an empty bag and fresh list (gear stopped going on by itself).
+  v4 to v5 gave every hero an empty bag and fresh list (gear stopped going on by itself); v5 to v6 added house
+  looks (`p.hearth.looks`, every room the tavern).
 - **The Vale:** a place regrows 2 harvests a day and banks 6; errands come 1 a day and bank 3. A harvest is
   rolled when its close-up starts (like a kill) and Perfects add on at the end. Every cut pays Gathering XP as
   it lands and every lap of the stir pays Brewing XP. A duplicate rare becomes 2 Starlight Dew. Every errand
@@ -135,9 +142,10 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
 - `src/meta`: TypeScript rules for everything that lasts: the profile and its migrations (heroes live here),
   loot, gear, achievements, the hearth, the party's seats (`party.ts`), and `vale.ts` (regrowth, harvests, errands, ranks, brewing).
 - `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, its drawing
-  `houseart.ts`), the hero maker, the Vale (`vale.ts`, `valeart.ts`, `toys.ts` for the close-ups), the cauldron
-  (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons (`dungeonsheet.ts`), a hero
-  (`herosheet.ts`), the gear doll, logs, satchel, settings, spot picker, item. Toasts,
+  `houseart.ts`, every room in each look), the hero maker, the Vale (`vale.ts`, `valeart.ts`, `toys.ts` for the
+  close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons
+  (`dungeonsheet.ts`), a hero (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
+  (`lookssheet.ts`), settings (`settingssheet.ts`), the gear doll, logs, satchel and spot picker. Toasts,
   sound. `styles.css` is inlined by the build.
 - `src/sim` and `scripts/sim.mjs`: headless bot runs of the real engine (the balance numbers).
 - `tools/`: the art pipeline (Python writes SVG into `art/*.json`), `art_sheet.py` (look at your art),

@@ -19,7 +19,7 @@ import { SLOT_IDS } from '../content/gear';
 import { CLASSES, FOUNDERS, MAX_HEROES, canMake, cleanName, type ClassId, type RaceId } from '../content/folk';
 import { settleSpots } from './hearth';
 
-export const PROFILE_VERSION = 5;
+export const PROFILE_VERSION = 6;
 /** Shared gear climbs to Rare. Epic is earned on the hero. */
 export const WARBAND_CAP: Rar = 2;
 
@@ -87,7 +87,8 @@ export interface Profile {
   counters: Record<string, number>;
   /** titles earned by the whole roster; each hero picks one to wear */
   titles: string[];
-  hearth: { spots: Record<string, string | null> };
+  /** spots: what is on show where; looks: the look on each room, by room id (a room not here is the tavern) */
+  hearth: { spots: Record<string, string | null>; looks: Record<string, string> };
   /** looksOff: cosmetics you own but have switched off */
   settings: { sound: boolean; looksOff: string[] };
   /** collection ids you have looked at in the log since they arrived */
@@ -106,7 +107,7 @@ export function freshProfile(now = Date.now()): Profile {
     warband: { tank: blankSlots(), healer: blankSlots(), dps: blankSlots() },
     dungeons: {}, bosses: {}, collection: {}, achievements: {}, counters: {},
     titles: [],
-    hearth: { spots: {} },
+    hearth: { spots: {}, looks: {} },
     settings: { sound: true, looksOff: [] },
     seen: {},
     vale: freshVale(),
@@ -148,6 +149,9 @@ const MIGRATIONS: Record<number, (raw: any) => any> = {
   /* v4 put new gear straight on. From v5 it waits in a bag until you put it on, so every hero starts
      with an empty bag and nothing fresh; what they were wearing stays on. */
   4: (d) => ({ ...d, roster: (Array.isArray(d.roster) ? d.roster : []).map((h: any) => ({ ...obj(h), bag: {}, fresh: [] })) }),
+  /* v5 had one look for the house, the tavern. From v6 each room can have its own, and every room starts
+     as it was. */
+  5: (d) => ({ ...d, hearth: { ...obj(d.hearth), looks: {} } }),
 };
 
 /** Reads any stored value into a valid current profile. Unknown or broken data starts fresh. */
@@ -205,6 +209,7 @@ export function normalize(d: any, now = Date.now()): Profile {
   for (const h of p.roster) if (h.title && !p.titles.includes(h.title)) h.title = null;
   for (const [k, v] of Object.entries(obj(obj(d.hearth).spots))) p.hearth.spots[k] = typeof v === 'string' ? v : null;
   settleSpots(p);
+  for (const [k, v] of Object.entries(obj(obj(d.hearth).looks))) if (typeof v === 'string') p.hearth.looks[k] = v;
   p.settings.sound = obj(d.settings).sound !== false;
   const off = obj(d.settings).looksOff;
   p.settings.looksOff = Array.isArray(off) ? off.filter((x: unknown) => typeof x === 'string') : [];

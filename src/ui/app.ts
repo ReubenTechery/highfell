@@ -30,7 +30,7 @@ const SCENES: SceneId[] = ['hearth', 'create', 'vale', 'brew', 'run', 'reveal'];
 export interface Carry { sheet?: unknown; scene?: SceneId }
 
 /** Testing switches that live on this device only, never in the save. */
-export interface Dev { walkout: 'off' | 'normal' | 'unique' | 'pet'; valeFree: boolean; valeLuck: boolean }
+export interface Dev { walkout: 'off' | 'normal' | 'unique' | 'pet'; valeFree: boolean; valeLuck: boolean; looksFree: boolean }
 const DEV_KEY = 'highfell.dev';
 
 export class App {
@@ -45,7 +45,7 @@ export class App {
   readonly brew: Brewing;
   scene: SceneId = 'hearth';
   touch = false;
-  dev: Dev = { walkout: 'off', valeFree: false, valeLuck: false };
+  dev: Dev = { walkout: 'off', valeFree: false, valeLuck: false, looksFree: false };
   private last = 0;
 
   constructor(readonly root: HTMLElement) {
