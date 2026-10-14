@@ -21,7 +21,7 @@ import { colourOf, heroImg, heroSprite, iconOf, nameOf, rarLook, spriteURL, tile
 import { SFX } from './sound';
 import { ilvl } from './hearth';
 import { heroSheet, type HeroSheetState } from './herosheet';
-import { STARTS } from '../content/barrow/script.js';
+import { dungeonSheet, type DungeonPick } from './dungeonsheet';
 
 export type LogTab = 'collection' | 'achievements' | 'lore' | 'stats';
 const LOG_TABS: LogTab[] = ['collection', 'achievements', 'lore', 'stats'];
@@ -50,7 +50,6 @@ export function normSpec(x: unknown): SheetSpec | null {
   return null;
 }
 
-type GearChoice = 'mine' | 2 | 3;
 const KIND_WORD: Record<CollectibleKind, string> = { pet: 'Pets', mount: 'Mounts', trophy: 'Trophies', banner: 'Banners', cosmetic: 'Looks' };
 const TIER_ORDER: Tier[] = ['bronze', 'silver', 'gold', 'meta', 'hidden'];
 const TIER_WORD: Record<Tier, string> = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', meta: 'Mastery', hidden: 'Hidden' };
@@ -79,7 +78,7 @@ function valeSource(id: string): { rate: number; key: string; word: string } | n
 export class Sheets {
   spec: SheetSpec | null = null;
   /** the dungeon picker remembers its choices while the page is open */
-  private pick = { mode: 'loot' as 'loot' | 'practice', start: 'keeper', gear: 'mine' as GearChoice };
+  private pick: DungeonPick = { mode: 'loot', start: 'keeper', gear: 'mine', seat: null };
   private resetArmed = false;
   /** a hero's sheet: letting them go takes two taps, and renaming has its own little form */
   private heroSt: HeroSheetState = { delArmed: false, renaming: false, err: '' };
@@ -94,8 +93,14 @@ export class Sheets {
       mode: (el) => { this.pick.mode = el.dataset.v as 'loot' | 'practice'; SFX.play('ui'); this.refresh(); },
       start: (el) => { this.pick.start = el.dataset.v!; SFX.play('ui'); this.refresh(); },
       tgear: (el) => { const v = el.dataset.v!; this.pick.gear = v === 'mine' ? 'mine' : (+v as 2 | 3); SFX.play('ui'); this.refresh(); },
+      seat: (el) => { const r = el.dataset.role as RoleId; this.pick.seat = this.pick.seat === r ? null : r; SFX.play('ui'); this.refresh(); },
+      playseat: (el) => {
+        const h = heroById(this.app.p, el.dataset.id || null); if (!h) return;
+        setActive(this.app.p, h.id); this.pick.seat = null; SFX.play('place'); this.app.save();
+        this.app.toasts.text(h.name, `Takes the ${ROLES[roleOf(h)].title === 'DPS' ? 'DPS' : ROLES[roleOf(h)].title.toLowerCase()} seat.`);
+      },
+      newseat: (el) => { const r = el.dataset.role as RoleId; this.pick.seat = null; SFX.play('ui'); this.close(); this.app.showCreate(r); },
       go: () => this.go(),
-      camp: () => { SFX.play('ui'); this.close(); this.app.showHearth('bunks'); },
       heroplay: () => {
         const h = this.sheetHero(); if (!h) return;
         SFX.play('ui'); setActive(this.app.p, h.id); this.close(); this.app.save();
@@ -167,6 +172,7 @@ export class Sheets {
 
   open(spec: SheetSpec): void {
     const was = !!this.spec;
+    if (spec.kind === 'dungeon' && !(this.spec && this.spec.kind === 'dungeon')) this.pick.seat = null;
     if (spec.kind === 'hero' && !(this.spec && this.spec.kind === 'hero' && this.spec.hero === spec.hero)) { clearTimeout(this.heroTimer); this.heroSt = { delArmed: false, renaming: false, err: '' }; }
     this.spec = spec;
     this.render(!was);
@@ -204,7 +210,7 @@ export class Sheets {
     const scroll = this.root.querySelector('.sheet-body')?.scrollTop || 0;
     let head = '', tabs = '', body = '', foot = '', wide = false;
     switch (s.kind) {
-      case 'dungeon': ({ head, body, foot } = this.dungeon()); break;
+      case 'dungeon': ({ head, body, foot } = dungeonSheet(this.app.p, this.pick)); break;
       case 'hero': {
         const h = heroById(this.app.p, s.hero);
         if (!h) { this.close(); return; }
@@ -248,48 +254,7 @@ export class Sheets {
     requestAnimationFrame(tick);
   }
 
-  /* ---------------------------------------------------------------- the dungeon picker */
-  private dungeon() {
-    const p = this.app.p, dg = DUNGEONS.barrow;
-    const rec = p.dungeons.barrow, keeper = p.bosses['barrow.keeper'];
-    const h = activeHero(p);
-    const pr = this.pick;
-    const practice = pr.mode === 'practice';
-    const seg = (act: string, cur: string, opts: [string, string][]) => `<div class="seg" role="radiogroup">${opts.map(([v, t]) => `<button type="button" class="sg" role="radio" data-act="${act}" data-v="${v}" aria-checked="${cur === v}">${esc(t)}</button>`).join('')}</div>`;
-    const starts = STARTS.map((s: { id: string; name: string }) => [s.id, s.name] as [string, string]);
-    let heroCard = '';
-    if (h) {
-      const role = roleOf(h), race = RACES[h.race as RaceId], cls = CLASSES[h.cls as ClassId];
-      const L = loadoutFor(p, h);
-      const bots = (['tank', 'healer', 'dps'] as RoleId[]).filter((r) => r !== role).map((r) => `${ROLES[r].name} (${ROLES[r].title})`).join(' and ');
-      heroCard = `<div class="hero-card" style="--light: ${race?.light || '#F4B942'}">
-        <span class="hc-fig" aria-hidden="true">${heroImg(heroSprite(h, role), { cls: 'hc-img' })}</span>
-        <div class="hc-tx"><b>${esc(h.name)}</b><span>${esc(race?.name || h.race)} ${esc(cls?.name || h.cls)} · <i class="rdot ${role}"></i>${esc(cls?.roleName || ROLES[role].title)}</span><span>Item level ${ilvl(L.score)} · ${ROLE_STAT[role].short} +${powerPct(L)}%</span>
-          <span class="kit">${SLOTS_AB.map((a) => `<span class="tile" title="${esc(AB[role][a].name)}">${tile(AB[role][a].key)}</span>`).join('')}</span></div>
-        <button type="button" class="btn small" data-act="camp">${GLYPH.people}Change</button>
-      </div><p class="fine">Bots take the other seats: ${esc(bots)}.</p>`;
-    }
-    const body = `
-      <div class="dg-card">
-        <span class="art" aria-hidden="true"><img src="${spriteURL('keeper')}" alt="" style="width: 92%; margin-bottom: -6px"></span>
-        <div><h3>${esc(dg.name)}</h3><p>${esc(dg.blurb)}</p>
-          <div class="chips"><span class="chip">Clears <b>${rec ? rec.clears : 0}</b></span><span class="chip">Best <b>${fmtT(rec?.pb)}</b></span><span class="chip">Gravekeeper KC <b>${keeper ? keeper.kc : 0}</b></span></div></div>
-      </div>
-      <h3 class="section-title">Your hero</h3>
-      ${heroCard}
-      <h3 class="section-title">Run</h3>
-      ${seg('mode', pr.mode, [['loot', 'For loot'], ['practice', 'Practice']])}
-      ${practice ? `
-        <div class="box">
-          <div class="seg-row"><b style="font-family: var(--f-display); font-weight: 400">Start at</b> ${seg('start', pr.start, starts)}</div>
-          <div class="seg-row"><b style="font-family: var(--f-display); font-weight: 400">Gear</b> ${seg('tgear', String(pr.gear), [['mine', 'Mine'], ['2', 'Try Rare'], ['3', 'Try Epic']])}</div>
-          <p class="fine">Practice gives no loot, no kill count and no achievements. Good for learning a boss.</p>
-        </div>` : `<p class="fine">From the entrance. Kill counts, drops, the walkout and achievements all count. Every clear upgrades a piece of ${h ? esc(h.name.split(' ')[0]) + '’s' : 'your'} gear.</p>`}
-      ${this.brewPicker(practice)}
-      <div class="dg-card locked"><div><h3>More dungeons</h3><p style="color: inherit">Being mapped. Each one brings its own sets, pets, trophies and achievements.</p></div></div>`;
-    const foot = `<button type="button" class="btn gold big" data-act="go" ${h ? '' : 'disabled'}>${practice ? 'Start practice' : 'Enter the crypt'}</button>`;
-    return { head: `<h2>Into the Barrow</h2><p>Dungeon 1 of many</p>`, body, foot };
-  }
+  /* ---------------------------------------------------------------- the dungeon picker (drawn in dungeonsheet.ts) */
   private go(): void {
     const pr = this.pick;
     SFX.play('ui');
@@ -600,23 +565,6 @@ export class Sheets {
   }
 
   /* ---------------------------------------------------------------- brews, the satchel, the story */
-  /** which brew you take into the dungeon: one bottle a run */
-  private brewPicker(practice: boolean): string {
-    const p = this.app.p;
-    const have = RECIPE_ORDER.filter((id) => (p.vale.shelf[id] || 0) > 0);
-    const drink = p.vale.drink && (p.vale.shelf[p.vale.drink] || 0) > 0 ? p.vale.drink : null;
-    if (!have.length) return `<h3 class="section-title">Brew<small>one bottle a run</small></h3><p class="fine">No brews yet. Ride out to Bramblewick, gather, then brew at the cauldron by your fire.</p>`;
-    const opt = (id: string | null) => {
-      const r = id ? RECIPES[id] : null;
-      return `<button type="button" class="brw" role="radio" data-act="drink" data-id="${id || ''}" aria-checked="${drink === id}" ${r ? `style="--c: ${r.color}"` : ''}>
-        <span class="tile" aria-hidden="true" ${r ? '' : 'style="filter: grayscale(1) opacity(0.6)"'}>${tile(r ? r.icon : 's_brew')}</span>
-        <span><b>${r ? esc(r.name) : 'No brew'}${r ? ` <small>×${p.vale.shelf[r.id]}</small>` : ''}</b><span>${r ? esc(r.desc) : 'Go in as you are.'}</span></span></button>`;
-    };
-    return `<h3 class="section-title">Brew<small>one bottle a run</small></h3>
-      <div class="brews" role="radiogroup" aria-label="Brew">${opt(null)}${have.map(opt).join('')}</div>
-      <p class="fine">${practice ? 'Practice uses the brew but keeps the bottle.' : 'You drink it at the door. Win or wipe, the bottle is gone.'}</p>`;
-  }
-
   private satchel() {
     const p = this.app.p, scene = this.app.scene;
     const ing = INGREDIENT_ORDER.map((id) => {

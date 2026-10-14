@@ -13,6 +13,7 @@ import { INGREDIENTS, RECIPES } from '../src/content/vale';
 import { Achiever } from '../src/meta/achievements';
 import { HEARTH_SPOTS, place } from '../src/meta/hearth';
 import { HOUSE_SPOTS, ROOMS, THINGS } from '../src/content/house';
+import { heroesFor, seats } from '../src/meta/party';
 import type { GameEvent, RunSummary } from '../src/content/types';
 
 test('content: every id a table, log, set or reward points at exists', () => {
@@ -356,6 +357,26 @@ test('house: spots a save has never had fill with what is not on show, once; emp
   assert.deepEqual(migrate(JSON.parse(JSON.stringify(q))).hearth.spots, q.hearth.spots, 'loading again changes nothing');
   const fresh = migrate(JSON.parse(JSON.stringify(freshProfile())));
   assert.ok(Object.values(fresh.hearth.spots).every((v) => v === null), 'a new save has an empty house');
+});
+
+test('party: you take your hero’s seat, bots take the others, and any of your heroes can take a seat they fit', () => {
+  const p = freshProfile();
+  assert.deepEqual(seats(p).map((s) => s.bot), ['Brannoc', 'Maren', 'Ivy'], 'no hero yet: three bots');
+  const tank = newHero(p, { name: 'Hollis Emberhand', race: 'dwarf', cls: 'warrior' })!;
+  setActive(p, tank.id, 1);
+  const s = seats(p);
+  assert.deepEqual(s.map((x) => x.role), ['tank', 'healer', 'dps']);
+  assert.equal(s[0].hero?.id, tank.id);
+  assert.deepEqual(s.slice(1).map((x) => x.bot), ['Maren', 'Ivy']);
+  const healer = newHero(p, { name: 'Wren Ashby', race: 'human', cls: 'cleric' })!;
+  assert.deepEqual(heroesFor(p, 'healer').map((h) => h.id), [healer.id]);
+  assert.deepEqual(heroesFor(p, 'dps'), []);
+  setActive(p, healer.id, 2);
+  assert.equal(seats(p)[1].hero?.id, healer.id, 'playing your healer puts you in the healer seat');
+  assert.equal(seats(p)[0].bot, 'Brannoc', 'and a bot takes the tank seat');
+  const tank2 = newHero(p, { name: 'Brakka Stoutmantle', race: 'dwarf', cls: 'warrior' })!;
+  setActive(p, tank2.id, 3);
+  assert.deepEqual(heroesFor(p, 'tank').map((h) => h.id), [tank2.id, tank.id], 'the tank you played last comes first');
 });
 
 test('art: every icon and sprite the content names exists', async () => {
