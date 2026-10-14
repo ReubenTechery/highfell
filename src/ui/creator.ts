@@ -164,14 +164,14 @@ export class Creator {
 
     const classCrest = (c: ClassId): string => {
       const x = CLASSES[c];
-      const who = this.racesFor(c);
-      const locked = !x.ready;
-      const only = x.ready && !canMake(this.race, c) && who.length === 1 ? `${RACES[who[0]].name}` : '';
-      return `<button type="button" class="cr-crest ${x.role}${locked ? ' locked' : ''}" data-act="cls" data-v="${c}" aria-pressed="${c === this.cls}">
-        <span class="cr-crest-tile"><span class="cr-crest-art">${tile(x.icon)}</span>${locked ? `<i class="cr-lock" aria-hidden="true">${GLYPH.lock}</i>` : `<i class="rdot ${x.role}" aria-hidden="true"></i>`}</span>
+      const can = x.ready && canMake(this.race, c);
+      const starter = RACE_ORDER.find((r) => !RACES[r].earned && canMake(r, c)) || this.racesFor(c)[0];
+      const only = !x.ready ? 'Soon' : !can && starter ? `${RACES[starter].name} only` : '';
+      const clsState = !x.ready ? ' locked' : !can ? ' unavail' : '';
+      return `<button type="button" class="cr-crest ${x.role}${clsState}" data-act="cls" data-v="${c}" aria-pressed="${c === this.cls}">
+        <span class="cr-crest-tile"><span class="cr-crest-art">${tile(x.icon)}</span>${!can ? `<i class="cr-lock" aria-hidden="true">${GLYPH.lock}</i>` : `<i class="rdot ${x.role}" aria-hidden="true"></i>`}</span>
         <b>${esc(x.name)}</b>
-        <span>${locked ? 'Soon' : esc(x.roleName)}</span>
-        ${only ? `<em>${esc(only)}</em>` : ''}</button>`;
+        ${only ? `<em class="cr-only">${esc(only)}</em>` : `<span>${esc(x.roleName)}</span>`}</button>`;
     };
 
     const dng = this.earnedIn(this.race);
@@ -224,7 +224,7 @@ export class Creator {
         </div>
         <div class="cr-controls">
           <section class="cr-sec cr-races" aria-label="Race">
-            <div class="cr-sec-head"><h3>Folk</h3><span>Starter &amp; dungeon-earned</span></div>
+            <div class="cr-sec-head"><h3>Race</h3><span>Starter &amp; dungeon-earned</span></div>
             <div class="cr-meds">${RACE_ORDER.map(raceMedallion).join('')}</div>
           </section>
           <section class="cr-sec cr-classes" aria-label="Class">

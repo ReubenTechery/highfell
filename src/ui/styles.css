@@ -643,18 +643,19 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 
 /* class crests */
 .cr-crests { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-.cr-crest { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 6px 7px; border: 3px solid var(--ink); border-radius: 15px; background: var(--panel); color: var(--ink); box-shadow: 0 3px 0 var(--ink); cursor: pointer; text-align: center; }
+.cr-crest { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 5px 7px; border: 3px solid var(--ink); border-radius: 15px; background: var(--panel); color: var(--ink); box-shadow: 0 3px 0 var(--ink); cursor: pointer; text-align: center; }
 .cr-crest[aria-pressed="true"] { background: #FFE9A8; box-shadow: 0 0 0 3px var(--gold), 0 3px 0 var(--ink); }
 .cr-crest:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
-.cr-crest.locked { background: #DDD6E6; color: var(--dim); }
-.cr-crest.locked .cr-crest-art { filter: grayscale(0.8) opacity(0.75); }
+.cr-crest.locked, .cr-crest.unavail { background: #2D253B; color: #A69AB8; }
+.cr-crest.locked[aria-pressed="true"], .cr-crest.unavail[aria-pressed="true"] { background: #3D3350; color: #E9DDCB; }
+.cr-crest.locked .cr-crest-art, .cr-crest.unavail .cr-crest-art { filter: grayscale(0.9) brightness(0.72); opacity: 0.82; }
 .cr-crest-tile { position: relative; width: 46px; height: 46px; }
 .cr-crest-art { width: 100%; height: 100%; border-radius: 11px; border: 2.5px solid var(--ink); overflow: hidden; display: block; box-sizing: border-box; }
 .cr-crest-art svg { width: 100%; height: 100%; display: block; }
 .cr-crest-tile .rdot { position: absolute; right: -4px; bottom: -3px; width: 14px; height: 14px; margin: 0; border-width: 2.5px; box-shadow: 0 1px 0 var(--ink); }
 .cr-crest b { font-family: var(--f-display); font-weight: 400; font-size: 16px; line-height: 1.05; margin-top: 2px; }
-.cr-crest > span { font-family: var(--f-mono); font-size: 10px; color: var(--dim); line-height: 1; }
-.cr-crest > em { position: absolute; top: -7px; right: -4px; font-style: normal; font-family: var(--f-mono); font-size: 9px; background: var(--ink); color: #FFE9A8; padding: 1px 5px; border-radius: 6px; }
+.cr-crest > span { font-family: var(--f-mono); font-size: 10px; color: var(--dim); line-height: 1.1; }
+.cr-crest > .cr-only { font-style: normal; font-family: var(--f-mono); font-size: 9.5px; font-weight: 700; background: var(--ink); color: #FFE9A8; padding: 2px 6px; border-radius: 999px; line-height: 1.1; white-space: nowrap; }
 
 /* role purpose + 2 signature abilities */
 .cr-kit { background: var(--panel); color: var(--ink); border: 2.5px solid var(--ink); border-radius: 14px; padding: 8px 10px; display: grid; gap: 7px; box-shadow: 0 2px 0 var(--ink); }
