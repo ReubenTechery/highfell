@@ -16,11 +16,11 @@
 import type { Rar, RoleId, SlotId } from '../content/types';
 import { ORDER } from '../content/roles';
 import { SLOT_IDS } from '../content/gear';
-import { CLASSES, FOUNDERS, MAX_HEROES, canMake, cleanName, type ClassId, type RaceId } from '../content/folk';
+import { CLASSES, FOUNDERS, MAX_HEROES, canMake, cleanName, defaultSex, type ClassId, type RaceId, type SexId } from '../content/folk';
 import { settleSpots } from './hearth';
 import { opened } from './logs';
 
-export const PROFILE_VERSION = 6;
+export const PROFILE_VERSION = 7;
 /** Shared gear climbs to Rare. Epic is earned on the hero. */
 export const WARBAND_CAP: Rar = 2;
 
@@ -31,6 +31,7 @@ export interface Hero {
   /** a RaceId; kept as a string so a hero from a newer build survives an older one */
   race: RaceId | string;
   cls: ClassId | string;
+  sex: SexId;
   createdAt: number;
   playedAt: number;
   /** the regular piece worn in each slot: the Common to Epic ladder */
@@ -153,6 +154,15 @@ const MIGRATIONS: Record<number, (raw: any) => any> = {
   /* v5 had one look for the house, the tavern. From v6 each room can have its own, and every room starts
      as it was. */
   5: (d) => ({ ...d, hearth: { ...obj(d.hearth), looks: {} } }),
+  /* v6 heroes had one look per combo. From v7 each hero has a male or female look (`sex`), starting on
+     the one they were already drawn with. */
+  6: (d) => ({
+    ...d,
+    roster: (Array.isArray(d.roster) ? d.roster : []).map((h: any) => {
+      const x = obj(h);
+      return { ...x, sex: x.sex === 'm' || x.sex === 'f' ? x.sex : defaultSex(String(x.race || ''), String(x.cls || '')) };
+    }),
+  }),
 };
 
 /** Reads any stored value into a valid current profile. Unknown or broken data starts fresh. */
@@ -177,7 +187,8 @@ function normHero(x: unknown, now: number): Hero | null {
   const h = obj(x);
   const id = str(h.id), name = str(h.name), race = str(h.race), cls = str(h.cls);
   if (!id || !name || !race || !cls) return null;
-  const out: Hero = { id, name, race, cls, createdAt: num(h.createdAt, now), playedAt: num(h.playedAt, now), regular: blankSlots(), bag: blankBag(), equip: blankEquip(), fresh: [], title: str(h.title), named: h.named !== false, clears: num(h.clears, 0) };
+  const sex: SexId = h.sex === 'm' || h.sex === 'f' ? h.sex : defaultSex(race, cls);
+  const out: Hero = { id, name, race, cls, sex, createdAt: num(h.createdAt, now), playedAt: num(h.playedAt, now), regular: blankSlots(), bag: blankBag(), equip: blankEquip(), fresh: [], title: str(h.title), named: h.named !== false, clears: num(h.clears, 0) };
   for (const s of SLOT_IDS) {
     out.regular[s] = normRegular(obj(h.regular)[s]);
     const b = obj(h.bag)[s];
@@ -263,13 +274,14 @@ export function nameProblem(p: Profile, raw: string, except?: string): string | 
 
 /** Make a new hero. It starts wearing your shared gear for its role. Race and class can't change later.
  *  A race you earn (the Risen) can be made once you've earned it (`free` is the testing switch). */
-export function createHero(p: Profile, o: { name: string; race: RaceId; cls: ClassId; free?: boolean }, now = Date.now(), id?: string): Hero | null {
+export function createHero(p: Profile, o: { name: string; race: RaceId; cls: ClassId; sex?: SexId; free?: boolean }, now = Date.now(), id?: string): Hero | null {
   if (p.roster.length >= MAX_HEROES || !canMake(o.race, o.cls) || !(o.free || opened(p, 'race', o.race)) || nameProblem(p, o.name)) return null;
   o = { ...o, name: cleanName(o.name)! };
   const role = CLASSES[o.cls].role;
+  const sex: SexId = o.sex === 'm' || o.sex === 'f' ? o.sex : defaultSex(o.race, o.cls);
   const h: Hero = {
     id: id || 'h_' + now.toString(36) + Math.floor(Math.random() * 1e6).toString(36),
-    name: o.name, race: o.race, cls: o.cls, createdAt: now, playedAt: now,
+    name: o.name, race: o.race, cls: o.cls, sex, createdAt: now, playedAt: now,
     regular: blankSlots(), bag: blankBag(), equip: blankEquip(), fresh: [], title: null, named: true, clears: 0,
   };
   for (const s of SLOT_IDS) h.regular[s] = { ...p.warband[role][s] };

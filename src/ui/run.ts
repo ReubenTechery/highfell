@@ -129,7 +129,7 @@ export class RunScene implements InputUI {
     // a brew from the Vale, drunk at the door: practice uses it but keeps the bottle
     const brew = h ? drinkForRun(p, !this.practice) : null;
     this.brew = brew;
-    if (h) loadouts[role] = { ...(loadouts[role] as object), name: h.name, sprite: heroArt(h.race, h.cls) || undefined, ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) };
+    if (h) loadouts[role] = { ...(loadouts[role] as object), name: h.name, sprite: heroArt(h.race, h.cls, h.sex) || undefined, ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) };
     if (brew && this.practice) app.store.save();
     const looks = Object.keys(p.collection).filter((id) => COLLECTIBLES[id] && (COLLECTIBLES[id].kind === 'cosmetic') && !p.settings.looksOff.includes(id));
     const wornSet = !!h && Object.values(worn(p, h)).some((w) => w.def.setId && SETS[w.def.setId]);

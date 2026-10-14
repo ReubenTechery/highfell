@@ -302,11 +302,17 @@ export function drawObjects(ctx, v) {
  *  behind puts the weapon in the other hand. */
 export const HERO_FIT = {
   tank: { weapon: [-48, -75], top: -107 },
+  tank_w: { weapon: [-48, -75], top: -107 },
   healer: { weapon: [-30, -128], top: -117 },
+  healer_m: { weapon: [-30, -128], top: -117 },
   dps: { weapon: [28, -122], top: -145 },
+  dps_m: { weapon: [28, -122], top: -145 },
   risen_tank: { weapon: [-33, -90], top: -130 },
+  risen_tank_w: { weapon: [-33, -90], top: -130 },
   risen_healer: { weapon: [-30, -118], top: -125 },
+  risen_healer_m: { weapon: [-30, -118], top: -125 },
   risen_dps: { weapon: [28, -122], top: -148 },
+  risen_dps_m: { weapon: [28, -122], top: -148 },
 };
 export function heroFit(set, back) {
   const fit = HERO_FIT[set.replace('_gilded', '')] || { weapon: [0, -80], top: -112 };

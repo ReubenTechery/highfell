@@ -87,8 +87,8 @@ export function riderSvg(heroSprite: string, mountId: string, x: number, y: numb
 export const gildedBones = (p: Profile): boolean => !!p.collection['cosmetic.gilded_bones'] && !p.settings.looksOff.includes('cosmetic.gilded_bones');
 /** The sprite set a hero is drawn with: its race and class art (gilded for a Risen hero when Gilded
  *  Bones is on, given the save), or its seat's art if this build has none. */
-export function heroSprite(h: { race: string; cls: string }, role: RoleId, p?: Profile): string {
-  const art = heroArt(h.race, h.cls) || ROLES[role].sprite;
+export function heroSprite(h: { race: string; cls: string; sex?: string }, role: RoleId, p?: Profile): string {
+  const art = heroArt(h.race, h.cls, h.sex) || ROLES[role].sprite;
   return p && h.race === 'risen' && gildedBones(p) ? `${art}_gilded` : art;
 }
 /** A hero's front sprite as an <img>, sized by its own height (against HERO_H) so a dwarf stands shorter

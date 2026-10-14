@@ -132,16 +132,24 @@ def round_shield(o, x, y, back=False):
         o.append(c(x + 19.5 * math.cos(math.radians(a)), y + 19.5 * math.sin(math.radians(a)), 1.6, K, 0))
 
 
-def dwarf_front():
+def dwarf_front(fem=False, key='tank'):
     o = []
     dwarf_legs(o)
     # the breastplate, the belt and its buckle
     o.append(s('M-27 -82 C-31 -66 -30 -50 -25 -38 H25 C30 -50 31 -66 27 -82 Z', STEEL))
     o.append(ln('M-19 -76 C-22 -64 -21 -54 -18 -46', STEEL_L, 3.2))
     o.append(s('M-28 -42 H28 V-32 H-28 Z', BLUE, 3.5) + s('M-8 -44 H8 V-30 H-8 Z', GOLD, 3) + c(0, -37, 3, FROST, 2))
-    # the beard over the plate
-    o.append(s('M-16 -80 C-22 -64 -15 -50 0 -44 C15 -50 22 -64 16 -80 Z', BEARD) + ln('M-7 -70 C-7 -60 -5 -54 -3 -50 M7 -70 C7 -60 5 -54 3 -50', BEARD_D, 2.5))
-    o.append(c(-3.5, -47, 2.8, GOLD, 2) + c(3.5, -47, 2.8, GOLD, 2))
+    if fem:
+        # a rune medallion on the plate, and two thick copper braids with gold clasps
+        o.append(c(0, -63, 6.2, GOLD, 2.8) + c(0, -63, 2.6, FROST, 0))
+        o.append(both('M-12 -82 C-18 -72 -19 -58 -15 -47 C-10 -47 -8 -58 -9 -72 Z', BEARD, 3.5))
+        o.append(ln('M-15.5 -73 L-10 -69 M-16 -64 L-10 -60 M15.5 -73 L10 -69 M16 -64 L10 -60', BEARD_D, 2.2))
+        o.append(both('M-16.5 -53 H-10 V-48.5 H-16.5 Z', GOLD, 2.5))
+        o.append(c(-13.2, -45, 3.2, BEARD, 2.5) + c(13.2, -45, 3.2, BEARD, 2.5))
+    else:
+        # the beard over the plate
+        o.append(s('M-16 -80 C-22 -64 -15 -50 0 -44 C15 -50 22 -64 16 -80 Z', BEARD) + ln('M-7 -70 C-7 -60 -5 -54 -3 -50 M7 -70 C7 -60 5 -54 3 -50', BEARD_D, 2.5))
+        o.append(c(-3.5, -47, 2.8, GOLD, 2) + c(3.5, -47, 2.8, GOLD, 2))
     # arms: mail upper arms, a plate forearm, big gauntlets
     o.append(s(D_ARM_AXE, BLUE_DD))
     o.append(s('M-47 -54 L-36 -51 L-37 -44 L-48 -46 Z', STEEL, 3.5))
@@ -152,19 +160,24 @@ def dwarf_front():
     o.append(beam('M-44 -2 L-47 -108', BLUE_D, 5.5))
     o.append(s(D_AXE, STEEL_L) + ln(D_AXE_SHINE, '#FFFFFF', 2.2))
     o.append(c(-44, -42, 8.5, STEEL) + ln('M-48 -45 H-40 M-48 -40 H-40', STEEL_D, 2))
-    o.append(head(0, -91.5, H.dwarf_face(Z)))
+    o.append(head(0, -91.5, H.dwarf_face(Z, fem=fem)))
     dwarf_helm(o)
-    sprite('tank_f', D_VB, o, 'Dwarf warrior front')
+    sprite(key + '_f', D_VB, o, 'Dwarf warrior front')
 
 
-def dwarf_back():
+def dwarf_back(fem=False, key='tank'):
     o = []
     dwarf_legs(o)
-    # the back plate, the belt, a short cape, and the braid down the back
+    # the back plate, the belt, a short cape, and the braid(s) down the back
     o.append(s('M-27 -82 C-31 -66 -30 -50 -25 -38 H25 C30 -50 31 -66 27 -82 Z', STEEL))
     o.append(s('M-28 -42 H28 V-32 H-28 Z', BLUE, 3.5))
     o.append(s('M-21 -82 C-25 -66 -25 -48 -22 -28 L-11 -32 L0 -27 L11 -32 L22 -28 C25 -48 25 -66 21 -82 Z', BLUE))
-    o.append(s('M-5 -84 C-7 -72 -5 -60 0 -52 C5 -60 7 -72 5 -84 Z', BEARD, 3.5) + ln('M-3 -76 L3 -72 M-3 -66 L3 -62', BEARD_D, 2.2) + c(0, -52, 3, GOLD, 2.2))
+    if fem:
+        o.append(both('M-6 -84 C-12 -72 -12 -58 -9 -48 C-5 -48 -4 -60 -4 -74 Z', BEARD, 3.5))
+        o.append(ln('M-10 -74 L-5 -70 M-10 -64 L-5 -60 M10 -74 L5 -70 M10 -64 L5 -60', BEARD_D, 2.2))
+        o.append(c(-8.5, -48, 3, GOLD, 2.2) + c(8.5, -48, 3, GOLD, 2.2))
+    else:
+        o.append(s('M-5 -84 C-7 -72 -5 -60 0 -52 C5 -60 7 -72 5 -84 Z', BEARD, 3.5) + ln('M-3 -76 L3 -72 M-3 -66 L3 -62', BEARD_D, 2.2) + c(0, -52, 3, GOLD, 2.2))
     # the shield's back on the viewer's left, then the arm through its straps
     round_shield(o, -40, -54, back=True)
     o.append(s(m(D_ARM_SHIELD), BLUE_DD))
@@ -178,7 +191,7 @@ def dwarf_back():
     o.append(c(44, -42, 8.5, STEEL) + ln('M40 -45 H48 M40 -40 H48', STEEL_D, 2))
     o.append(head(0, -91.5, H.dwarf_back(Z)))
     dwarf_helm(o, back=True)
-    sprite('tank_b', back_vb(D_VB), o, 'Dwarf warrior back')
+    sprite(key + '_b', back_vb(D_VB), o, 'Dwarf warrior back')
 
 
 # ---------------------------------------------------------------- the human cleric
@@ -208,7 +221,7 @@ def cleric_mantles(o, front=True):
             o.append(c(x, -103, 5.5, GOLD, 3) + c(x, -103, 2.2, HBLUE, 0))
 
 
-def cleric_front():
+def cleric_front(fem=True, key='healer'):
     o = []
     o.append(both('M-15 -7 H-3 V0 H-18 C-19 -3 -18 -6 -15 -7 Z', WOOD_D, 3.5))
     # the robe, its blue panel and gold hem
@@ -227,11 +240,11 @@ def cleric_front():
     # the staff in front of the mantle, and the hand round it
     o.append(beam('M-37 2 L-37 -150', WOOD, 5.5) + sun(-37, -160) + c(-37, -48, 5.5, HSKIN, 3.5))
     o.append(s('M-5 -103 H5 V-96 H-5 Z', HSKIN, 3))
-    o.append(head(0, -116, H.human_head(Z)))
-    sprite('healer_f', C_VB, o, 'Human cleric front')
+    o.append(head(0, -116, H.human_head(Z, bun=fem, circlet=True, fem=fem)))
+    sprite(key + '_f', C_VB, o, 'Human cleric front')
 
 
-def cleric_back():
+def cleric_back(fem=True, key='healer'):
     o = []
     o.append(both('M-15 -7 H-3 V0 H-18 C-19 -3 -18 -6 -15 -7 Z', WOOD_D, 3.5))
     o.append(s(C_SKIRT, ROBE) + s(C_HEM, GOLD, 3.5))
@@ -245,8 +258,8 @@ def cleric_back():
     cleric_mantles(o, front=False)
     o.append(beam('M37 2 L37 -150', WOOD, 5.5) + sun(37, -160) + c(37, -48, 5.5, HSKIN, 3.5))
     o.append(s('M-5 -103 H5 V-96 H-5 Z', HSKIN, 3))
-    o.append(head(0, -116, H.human_back(Z)))
-    sprite('healer_b', back_vb(C_VB), o, 'Human cleric back')
+    o.append(head(0, -116, H.human_back(Z, bun=fem, circlet=True)))
+    sprite(key + '_b', back_vb(C_VB), o, 'Human cleric back')
 
 
 # ---------------------------------------------------------------- the elf mage
@@ -276,9 +289,9 @@ def hat(o, dy=0, col=IROBE, star=True, back=False):
         o.append(ln(tp('M3 -163 V-155 M-0.5 -161 L6.5 -157 M-0.5 -157 L6.5 -161', 0, dy), '#FFFFFF', 1.8))
 
 
-def elf_front():
+def elf_front(fem=True, key='dps'):
     o = []
-    hair, face = H.elf_head(Z, back_len=46)
+    hair, face = H.elf_head(Z, back_len=46, fem=fem)
     o.append(head(0, -123, hair))
     o.append(both('M-11 -6 H-3 V0 H-14 C-15 -3 -14 -5 -11 -6 Z', IROBE_D, 3))
     # the robe, its gold panel, the belt
@@ -297,10 +310,10 @@ def elf_front():
     o.append(c(32, -72, 4.6, ESKIN, 3))
     o.append(head(0, -123, face))
     hat(o)
-    sprite('dps_f', E_VB, o, 'Elf mage front')
+    sprite(key + '_f', E_VB, o, 'Elf mage front')
 
 
-def elf_back():
+def elf_back(fem=True, key='dps'):
     o = []
     o.append(both('M-11 -6 H-3 V0 H-14 C-15 -3 -14 -5 -11 -6 Z', IROBE_D, 3))
     o.append(s(E_SKIRT, IROBE) + s(E_HEM, IROBE_D, 3))
@@ -314,9 +327,9 @@ def elf_back():
     frost_staff(o, -35)
     o.append(c(-32, -72, 4.6, ESKIN, 3))
     # the ears, and the long hair down the back
-    o.append(head(0, -123, H.elf_back(Z, back_len=46)))
+    o.append(head(0, -123, H.elf_back(Z, back_len=46, fem=fem)))
     hat(o, back=True)
-    sprite('dps_b', back_vb(E_VB), o, 'Elf mage back')
+    sprite(key + '_b', back_vb(E_VB), o, 'Elf mage back')
 
 
 # ---------------------------------------------------------------- the Risen warrior
@@ -355,7 +368,7 @@ def iron_crown(o):
         o.append(s(f'M{x - 3} -149 L{x} -162 L{x + 3} -149 Z', RIRON_L, 2.6))
 
 
-def risen_warrior_front():
+def risen_warrior_front(fem=False, key='risen_tank'):
     o = []
     o.append(s(R_CAPE, PURP_D))
     risen_legs(o)
@@ -376,17 +389,25 @@ def risen_warrior_front():
     # the sword held up in front of the pauldron, in an iron gauntlet
     sword(o)
     o.append(c(-41, -62, 6.6, RIRON) + ln('M-44 -64 H-38 M-44 -60 H-38', RIRON_D, 1.8))
-    o.append(head(0, -126, H.risen_head(Z)))
+    if fem:
+        o.append(both('M-11 -116 C-18 -102 -19 -84 -14 -72 C-9 -72 -7 -84 -8 -102 Z', RHAIR, 3.2))
+        o.append(ln('M-15 -102 L-9.5 -98 M-15.5 -92 L-9.5 -88 M15 -102 L9.5 -98 M15.5 -92 L9.5 -88', RHAIR_D, 2))
+        o.append(both('M-15.5 -80 H-9 V-75.5 H-15.5 Z', GOLD, 2.4))
+    o.append(head(0, -126, H.risen_head(Z, fem=fem)))
     iron_crown(o)
-    sprite('risen_tank_f', R_VB, o, 'Risen warrior front')
+    if fem:
+        o.append(c(0, -142, 3, GRN, 2))
+    sprite(key + '_f', R_VB, o, 'Risen warrior front')
 
 
-def risen_warrior_back():
+def risen_warrior_back(fem=False, key='risen_tank'):
     o = []
     risen_legs(o)
     # the kite shield's back on the viewer's left, behind the arm that holds it
     o.append(s(m(R_KITE), '#5A4A3A') + ln('M-28 -92 H-50 M-30 -72 H-48', '#3E3228', 3))
     o.append(s(R_CAPE, PURP_D) + ln('M-9 -104 C-11 -82 -11 -62 -10 -42 M9 -104 C11 -82 11 -62 10 -42', '#3A2862', 2.4))
+    if fem:
+        o.append(both('M-6 -116 C-11 -102 -11 -88 -8 -78 C-4.5 -78 -3.5 -90 -4 -104 Z', RHAIR, 3.2))
     o.append(bone_limb(m(R_ARM_SHIELD), 4.6))
     # the sword arm on the viewer's right, the sword in front of the pauldron, in its gauntlet
     o.append(bone_limb(m(R_ARM_SWORD), 4.6))
@@ -395,7 +416,7 @@ def risen_warrior_back():
     o.append(c(41, -62, 6.6, RIRON) + ln('M38 -64 H44 M38 -60 H44', RIRON_D, 1.8))
     o.append(head(0, -126, H.risen_back(Z)))
     iron_crown(o)
-    sprite('risen_tank_b', back_vb(R_VB), o, 'Risen warrior back')
+    sprite(key + '_b', back_vb(R_VB), o, 'Risen warrior back')
 
 
 # ---------------------------------------------------------------- the Risen cleric
@@ -424,7 +445,7 @@ def risen_cleric_mantles(o, front=True):
             o.append(c(x, -106, 5.5, GOLD, 3) + c(x, -106, 2.2, GRN, 0))
 
 
-def risen_cleric_front():
+def risen_cleric_front(fem=True, key='risen_healer'):
     o = []
     o.append(both('M-13 -6 H-3 V0 H-16 C-17 -3 -16 -5 -13 -6 Z', BONE, 3))
     # the robe from the waist, torn at the hem; the ribs above it; a green stole over both
@@ -445,11 +466,13 @@ def risen_cleric_front():
     # the lantern staff in front of the mantle, and the hand round it
     lantern_staff(o, -37)
     o.append(bone_hand(-37, -50))
-    o.append(head(0, -126, H.risen_head(Z)))
-    sprite('risen_healer_f', RC_VB, o, 'Risen cleric front')
+    o.append(head(0, -126, H.risen_head(Z, fem=fem)))
+    if not fem:
+        o.append(ln('M-11 -134 C-5 -137 5 -137 11 -134', GOLD, 3) + c(0, -136.5, 2.4, GRN, 1.8))
+    sprite(key + '_f', RC_VB, o, 'Risen cleric front')
 
 
-def risen_cleric_back():
+def risen_cleric_back(fem=True, key='risen_healer'):
     o = []
     o.append(both('M-13 -6 H-3 V0 H-16 C-17 -3 -16 -5 -13 -6 Z', BONE, 3))
     o.append(s(RC_SKIRT, RCLOTH))
@@ -466,7 +489,7 @@ def risen_cleric_back():
     o.append(bone_hand(37, -50))
     # the hood from behind, falling to a point between the shoulders
     o.append(s(RC_HOOD + ' L10 -98 L0 -90 L-10 -98 Z', RCLOTH_D, 3.5) + ln('M0 -153 C-2 -132 -1 -110 0 -94', RCLOTH, 2.4))
-    sprite('risen_healer_b', back_vb(RC_VB), o, 'Risen cleric back')
+    sprite(key + '_b', back_vb(RC_VB), o, 'Risen cleric back')
 
 
 # ---------------------------------------------------------------- the Risen mage
@@ -476,9 +499,9 @@ RM_SLEEVE_STAFF = 'M18 -98 C25 -93 28 -88 29 -83 L23 -81 L21 -85 L17 -82 C17 -88
 RM_VB = (-42, -190, 94, 196)
 
 
-def risen_mage_front():
+def risen_mage_front(fem=True, key='risen_dps'):
     o = []
-    hair, _ = H.elf_head(Z, back_len=50, hair=RHAIR, hairD=RHAIR_D)
+    hair, _ = H.elf_head(Z, back_len=50, hair=RHAIR, hairD=RHAIR_D, fem=fem)
     o.append(head(0, -126, hair))
     o.append(both('M-11 -6 H-3 V0 H-14 C-15 -3 -14 -5 -11 -6 Z', BONE, 3))
     # the robe, torn at the hem, its gold panel torn too, the belt
@@ -494,12 +517,15 @@ def risen_mage_front():
     o.append(both(SHARDS, BONE, 3.5) + ln(SHARD_LINES + ' ' + m(SHARD_LINES), BONE_D, 2.2))
     frost_staff(o)
     o.append(bone_hand(32, -72, 4.8))
-    o.append(head(0, -126, H.risen_head(Z)))
+    o.append(head(0, -126, H.risen_head(Z, fem=fem)))
+    if not fem:
+        o.append(s('M-4.5 -111 L0 -101 L4.5 -111 Z', RHAIR, 2.6))
+        o.append(ln('M-11 -134 C-5 -137 5 -137 11 -134', GOLD, 3) + c(0, -136.5, 2.4, FROST_L, 1.8))
     hat(o, -4, RROBE)
-    sprite('risen_dps_f', RM_VB, o, 'Risen mage front')
+    sprite(key + '_f', RM_VB, o, 'Risen mage front')
 
 
-def risen_mage_back():
+def risen_mage_back(fem=True, key='risen_dps'):
     o = []
     o.append(both('M-11 -6 H-3 V0 H-14 C-15 -3 -14 -5 -11 -6 Z', BONE, 3))
     o.append(s(RM_SKIRT, RROBE) + s(E_BODICE, RROBE) + s('M-14 -74 H14 V-67 H-14 Z', RROBE_D, 3))
@@ -512,14 +538,18 @@ def risen_mage_back():
     frost_staff(o, -35)
     o.append(bone_hand(-32, -72, 4.8))
     # the ghost-white hair down the back, and the hat
-    o.append(head(0, -126, H.elf_back(Z, back_len=50, hair=RHAIR, hairD=RHAIR_D, ears=False)))
+    o.append(head(0, -126, H.elf_back(Z, back_len=50, hair=RHAIR, hairD=RHAIR_D, ears=False, fem=fem)))
     hat(o, -4, RROBE, back=True)
-    sprite('risen_dps_b', back_vb(RM_VB), o, 'Risen mage back')
+    sprite(key + '_b', back_vb(RM_VB), o, 'Risen mage back')
 
 
 def build():
-    dwarf_front(); dwarf_back(); cleric_front(); cleric_back(); elf_front(); elf_back()
-    risen_warrior_front(); risen_warrior_back(); risen_cleric_front(); risen_cleric_back(); risen_mage_front(); risen_mage_back()
+    dwarf_front(); dwarf_back(); dwarf_front(True, 'tank_w'); dwarf_back(True, 'tank_w')
+    cleric_front(); cleric_back(); cleric_front(False, 'healer_m'); cleric_back(False, 'healer_m')
+    elf_front(); elf_back(); elf_front(False, 'dps_m'); elf_back(False, 'dps_m')
+    risen_warrior_front(); risen_warrior_back(); risen_warrior_front(True, 'risen_tank_w'); risen_warrior_back(True, 'risen_tank_w')
+    risen_cleric_front(); risen_cleric_back(); risen_cleric_front(False, 'risen_healer_m'); risen_cleric_back(False, 'risen_healer_m')
+    risen_mage_front(); risen_mage_back(); risen_mage_front(False, 'risen_dps_m'); risen_mage_back(False, 'risen_dps_m')
     # Gilded Bones: every Risen sprite again with its bones in gold
     for n in [k for k in HEROES if k.startswith('risen_')]:
         sp = HEROES[n]

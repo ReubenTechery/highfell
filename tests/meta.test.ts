@@ -7,7 +7,7 @@ import { BARROW } from '../src/content/barrow';
 import { activeHero, createHero, dungeonRecord, freshProfile, migrate, nameProblem, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
 import { DUPE_MARKS, heroicOpen, heroicProgress, resolveRun, rollTable } from '../src/meta/loot';
 import { bestRegular, buyTrait, compareFor, compareOn, equip, floorWorn, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, wearerOf, worn } from '../src/meta/gear';
-import { FOUNDERS, HERO_ART, MAX_HEROES, canMake, cleanName } from '../src/content/folk';
+import { CLASSES, FOUNDERS, HERO_ART, MAX_HEROES, RACES, allHeroArt, canMake, cleanName, defaultSex, heroArt } from '../src/content/folk';
 import { SLOT_IDS, gearId } from '../src/content/gear';
 import { INGREDIENTS, RECIPES } from '../src/content/vale';
 import { Achiever, progress } from '../src/meta/achievements';
@@ -65,7 +65,7 @@ test('profile: a v2 save becomes one hero, named for the founder of the role you
   const h = p.roster[0];
   assert.equal(p.active, h.id);
   assert.equal(h.name, FOUNDERS.healer.name);
-  assert.equal(h.race, 'human'); assert.equal(h.cls, 'cleric');
+  assert.equal(h.race, 'human'); assert.equal(h.cls, 'cleric'); assert.equal(h.sex, 'f');
   assert.equal(h.named, false, 'the game named it, so it can be renamed once');
   assert.equal(h.clears, 12);
   assert.equal(h.title, 'title.quick');
@@ -82,21 +82,32 @@ test('profile: a v2 save becomes one hero, named for the founder of the role you
   assert.equal(migrate({ v: 2, rev: 1, role: 'tank', heroes: {} }).roster.length, 0);
 });
 
-test('heroes: race and class are fixed, names are yours, up to six, the last one stays', () => {
+test('heroes: race and class are fixed, male or female look is saved, names are yours, up to six, the last one stays', () => {
   assert.ok(canMake('dwarf', 'warrior') && canMake('human', 'cleric') && canMake('elf', 'mage'));
   assert.ok(!canMake('gnome', 'warrior'), 'not drawn yet');
   assert.ok(!canMake('elf', 'rogue'), 'no kit yet');
+  assert.equal(defaultSex('dwarf', 'warrior'), 'm');
+  assert.equal(defaultSex('human', 'cleric'), 'f');
+  assert.equal(defaultSex('elf', 'mage'), 'f');
+  assert.equal(heroArt('dwarf', 'warrior', 'm'), 'tank');
+  assert.equal(heroArt('dwarf', 'warrior', 'f'), 'tank_w');
+  assert.equal(heroArt('human', 'cleric', 'f'), 'healer');
+  assert.equal(heroArt('human', 'cleric', 'm'), 'healer_m');
+  assert.equal(heroArt('elf', 'mage', 'f'), 'dps');
+  assert.equal(heroArt('elf', 'mage', 'm'), 'dps_m');
   assert.equal(cleanName('  Wren   Copperkettle '), 'Wren Copperkettle');
   assert.equal(cleanName('x'), null);
   assert.equal(cleanName('<b>Bob</b>'), null);
   const p = freshProfile();
-  const a = newHero(p, { name: 'Hollis Coalbeard', race: 'dwarf', cls: 'warrior' }, 10)!;
+  const a = newHero(p, { name: 'Gruna Coalbeard', race: 'dwarf', cls: 'warrior', sex: 'f' }, 10)!;
   assert.ok(a);
+  assert.equal(a.sex, 'f');
   assert.equal(p.active, a.id, 'your first hero is the one you play');
-  assert.equal(newHero(p, { name: 'hollis coalbeard', race: 'elf', cls: 'mage' }), null, 'names are unique');
-  assert.ok(nameProblem(p, 'Hollis Coalbeard'));
+  assert.equal(newHero(p, { name: 'gruna coalbeard', race: 'elf', cls: 'mage' }), null, 'names are unique');
+  assert.ok(nameProblem(p, 'Gruna Coalbeard'));
   assert.equal(newHero(p, { name: 'Pip', race: 'gnome', cls: 'warrior' }), null, 'only combos that are drawn');
-  const b = newHero(p, { name: 'Ivy Stillwater', race: 'elf', cls: 'mage' }, 20)!;
+  const b = newHero(p, { name: 'Sorrel Stillwater', race: 'elf', cls: 'mage', sex: 'm' }, 20)!;
+  assert.equal(b.sex, 'm');
   assert.equal(p.active, a.id, 'making an alt does not switch to it');
   assert.ok(setActive(p, b.id, 30));
   assert.equal(activeHero(p)!.id, b.id);
@@ -106,6 +117,12 @@ test('heroes: race and class are fixed, names are yours, up to six, the last one
   for (const h of p.roster.slice(1)) assert.ok(removeHero(p, h.id));
   assert.equal(p.active, a.id, 'removing the active hero hands over to the oldest');
   assert.equal(removeHero(p, a.id), false, 'the last hero stays');
+  // a v6 save with existing heroes migrates to v7 and gives each hero its default sex
+  const v6 = { v: 6, rev: 12, roster: [{ id: 'h1', name: 'Brannoc', race: 'dwarf', cls: 'warrior' }, { id: 'h2', name: 'Maren', race: 'human', cls: 'cleric' }], active: 'h1' };
+  const m7 = migrate(v6);
+  assert.equal(m7.v, PROFILE_VERSION);
+  assert.equal(m7.roster[0].sex, 'm');
+  assert.equal(m7.roster[1].sex, 'f');
 });
 
 test('heroes: a new hero starts in shared gear, and the uniques the roster owns wait to be put on', () => {
@@ -557,9 +574,10 @@ test('art: every icon and sprite the content names exists', async () => {
   for (const n of ['lantern', 'lantern_gold', 'lantern_out', 'pet_keeper', 'pet_keeper_reach', 'fireplace', 'fire_a', 'fire_b', 'rug', 'stall']) if (!sprites[n]) missing.push('sprite ' + n);
   for (const t of THINGS) if (!sprites[t.sprite]) missing.push('sprite ' + t.sprite + ' for ' + t.id);
   for (const n of ['bunk_a', 'bunk_b', 'bunk_c', 'bricked_arch', 'weapon_rack', 'table', 'stool', 'woodpile', 'torch', 'candles', 'skullpile', 'gfire_a', 'gfire_b', 'coffin', 'tomb1', 'bones', 'wisp']) if (!sprites[n]) missing.push('sprite ' + n);
-  // every hero a race and class can be drawn as, front and back, and gilded for the Risen
-  for (const art of Object.values(HERO_ART)) for (const v of ['_f', '_b', ...(art.startsWith('risen') ? ['_gilded_f', '_gilded_b'] : [])]) if (!sprites[art + v]) missing.push('sprite ' + art + v);
-  for (const n of ['c_risen']) if (!tiles[n]) missing.push('icon ' + n);
+  // every hero a race and class can be drawn as (male and female), front and back, and gilded for the Risen
+  for (const art of allHeroArt()) for (const v of ['_f', '_b', ...(art.startsWith('risen') ? ['_gilded_f', '_gilded_b'] : [])]) if (!sprites[art + v]) missing.push('sprite ' + art + v);
+  for (const r of Object.values(RACES)) if (!tiles[r.icon]) missing.push('icon ' + r.icon + ' for race ' + r.id);
+  for (const c of Object.values(CLASSES)) if (!tiles[c.icon]) missing.push('icon ' + c.icon + ' for class ' + c.id);
   for (const n of ['npc_gnome', 'cauldron', 'burrow', 'burrow_red', 'windmill', 'windmill_sails', 'fence', 'cabbages', 'node_moonpetal', 'node_moonpetal_shim', 'node_glowcap', 'node_bramble', 'goggles', 'crow', 'spark', 'kettle_walk', 'pet_rootling_calm', 'goat']) if (!sprites[n]) missing.push('sprite ' + n);
   for (const x of [...Object.values(INGREDIENTS), ...Object.values(RECIPES)]) if (!tiles[x.icon]) missing.push('icon ' + x.icon + ' for ' + x.id);
   for (const n of ['s_gather', 's_brew']) if (!tiles[n]) missing.push('icon ' + n);

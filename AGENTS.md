@@ -91,9 +91,9 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
 - **Heroes:** up to six; the last one can't be deleted; a hero the game named (from the move to heroes) can be
   renamed once. The active hero is the one by the fire in the house and the one a run plays; the others wait by their beds
   in the bunk room (tap one to play them, an empty bed makes a new hero). Each hero has its own
-  ladder gear, title and clears. Shared by all heroes: the collection (a unique fits any hero of its role),
+  male or female look (`sex`), ladder gear, title and clears. Shared by all heroes: the collection (a unique fits any hero of its role),
   kill counts, Marks, achievements, titles, the hearth, the Vale. A race and class combo is playable once it
-  has a ready class and art in `HERO_ART` and its race is open; the rest show as "Soon". A race marked
+  has a ready class and art in `HERO_ART` (`HERO_ART_SEX` for male/female variants, keeping the same body and armour silhouette) and its race is open; the rest show as "Soon". A race marked
   `earned` (gnome, goblin, the Risen, orc) opens with the achievement that gives it (`reward.race`), and
   stays locked until a dungeon does.
 - **Gear:** nothing goes on by itself. A ladder piece (and the shared floor) waits in the hero's bag; a new
@@ -133,7 +133,7 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
   dies before Sir Rattlebones. Heroic: full Epic clears in about four minutes with no wipes, Common gets buried.
 - **Save versions:** v2 to v3 turned one hero per role into the roster; v3 to v4 added the Vale (`p.vale`);
   v4 to v5 gave every hero an empty bag and fresh list (gear stopped going on by itself); v5 to v6 added house
-  looks (`p.hearth.looks`, every room the tavern).
+  looks (`p.hearth.looks`, every room the tavern); v6 to v7 gave every hero a male or female look (`sex`).
 - **The Vale:** a place regrows 2 harvests a day and banks 6; errands come 1 a day and bank 3. A harvest is
   rolled when its close-up starts (like a kill) and Perfects add on at the end. Every cut pays Gathering XP as
   it lands and every lap of the stir pays Brewing XP. A duplicate rare becomes 2 Starlight Dew. Every errand

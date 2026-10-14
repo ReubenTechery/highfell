@@ -12,7 +12,7 @@ import { useAbility } from '../src/dungeon/heroes.js';
 import { makeCage, mashCage } from '../src/dungeon/mobs.js';
 import { HERO_FIT, heroFit } from '../src/dungeon/render.js';
 import { BARROW_ENGINE } from '../src/content/barrow/engine';
-import { HERO_ART } from '../src/content/folk';
+import { allHeroArt } from '../src/content/folk';
 import SPRITES from '../art/sprites.json';
 
 const game = (role: string, start = 'entrance') => {
@@ -113,7 +113,7 @@ test('cages: a bot tank in a cage mashes its own way out', () => {
 
 test('heroes: every one the game can draw knows where its weapon is and how tall it stands, front and back', () => {
   const sprites = SPRITES as Record<string, { vb: number[] }>;
-  for (const set of new Set(Object.values(HERO_ART))) {
+  for (const set of allHeroArt()) {
     assert.ok((HERO_FIT as Record<string, unknown>)[set], `no fit for ${set}`);
     for (const g of set.startsWith('risen') ? ['', '_gilded'] : ['']) for (const back of [false, true]) {
       const name = set + g + (back ? '_b' : '_f');
