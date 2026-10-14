@@ -247,6 +247,26 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .cmp-fx .gain i { background: #3E9B3A; } .cmp-fx .loss i { background: var(--red); }
 .cmp-fx .later { opacity: 0.65; }
 .cmp-fx em { font-style: normal; color: var(--dim); }
+/* looks: a card for each look (a piece of a room in it, and how many rooms have it or how close you are),
+   then the rooms to put the picked one on, each with a dot in the look it has now */
+.lk-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.lk { display: grid; gap: 4px; justify-items: start; padding: 8px 8px 10px; border: 3px solid var(--ink); border-radius: 16px; background: var(--panel); box-shadow: 0 3px 0 var(--ink); cursor: pointer; text-align: left; font: inherit; color: var(--ink); }
+.lk[aria-checked="true"] { background: var(--panel-2); box-shadow: 0 0 0 4px var(--gold), 0 3px 0 var(--ink); }
+.lk:active { transform: translateY(2px); }
+.lk-sw { display: block; width: 100%; aspect-ratio: 3 / 2; border: 3px solid var(--ink); border-radius: 10px; overflow: hidden; }
+.lk-sw svg { display: block; width: 100%; height: 100%; }
+.lk.locked .lk-sw { filter: grayscale(0.7) brightness(0.75); }
+.lk b { font-family: var(--f-display); font-weight: 400; font-size: 18px; line-height: 1.1; }
+.lk small { font-family: var(--f-mono); font-size: 11px; color: var(--dim); }
+.lk-bar { position: relative; width: 100%; height: 10px; border-radius: 999px; background: var(--track); border: 2px solid var(--ink); overflow: hidden; }
+.lk-bar > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--gold); }
+.lk-rooms { display: flex; flex-wrap: wrap; gap: 8px; }
+.lk-room { display: inline-flex; align-items: center; gap: 7px; min-height: 42px; padding: 0 14px 0 8px; border: 3px solid var(--ink); border-radius: 999px; background: var(--panel); box-shadow: 0 3px 0 var(--ink); font-family: var(--f-display); font-size: 15px; color: var(--ink); cursor: pointer; }
+.lk-room i { width: 22px; height: 22px; flex: none; border-radius: 50%; border: 2px solid var(--ink); }
+.lk-room svg { width: 20px; height: 20px; }
+.lk-room.all { background: var(--gold); padding-left: 10px; }
+.lk-room:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.lk-room:disabled { opacity: 0.45; cursor: default; transform: none; box-shadow: 0 3px 0 var(--ink); }
 .ach { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px; border: 3px solid var(--ink); border-radius: 14px; background: var(--panel); }
 .ach.locked { background: var(--panel-2); }
 .ach.locked .medal { filter: grayscale(1) opacity(0.5); }

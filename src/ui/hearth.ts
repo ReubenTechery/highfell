@@ -9,7 +9,7 @@
 import { COLLECTIBLES, DUNGEONS } from '../content';
 import { CLASSES, MAX_HEROES, RACES, type ClassId, type RaceId } from '../content/folk';
 import { BUNK_SLOTS, FLOORS, HOUSE_SPOTS, ROOMS, THINGS, roomAt, type HouseAction, type HouseSpot, type ThingDef } from '../content/house';
-import { ownedOfKind } from '../meta/hearth';
+import { lookOf, ownedOfKind } from '../meta/hearth';
 import { loadoutFor, waiting } from '../meta/gear';
 import { activeHero, roleOf, type Hero } from '../meta/profile';
 import type { App } from './app';
@@ -60,6 +60,7 @@ export class Hearth {
       gear: () => { SFX.play('ui'); this.act('gear'); },
       settings: () => { SFX.play('ui'); app.sheets.open({ kind: 'settings' }); },
       deco: () => { this.decorating = !this.decorating; SFX.play('ui'); this.render(); },
+      looks: () => { SFX.play('ui'); app.sheets.open({ kind: 'looks' }); },
       zoom: () => { SFX.play('ui'); if (this.far()) this.goRoom(HOME_ROOM); else this.overview(); },
       room: (el) => { SFX.play('ui'); this.goRoom(el.dataset.room!); },
     });
@@ -209,8 +210,9 @@ export class Hearth {
     layer.push(...this.heroes(h));
     layer.sort((a, b) => a.y - b.y);
     const unseen = Object.keys(p.collection).some((id) => !p.seen[id]);
+    const look = (room: string): string => lookOf(p, room, this.app.dev.looksFree);
     return `<defs>${houseDefs()}<radialGradient id="h-hero"><stop offset="0" stop-color="${light}" stop-opacity="0.38"/><stop offset="0.6" stop-color="${light}" stop-opacity="0.12"/><stop offset="1" stop-color="${light}" stop-opacity="0"/></radialGradient></defs>
-      ${houseBack()}${layer.map((l) => l.svg).join('')}${houseFront()}${unseen ? pip(600, -1940, '!') : ''}`;
+      ${houseBack(look)}${layer.map((l) => l.svg).join('')}${houseFront(look)}${unseen ? pip(600, -1940, '!') : ''}`;
   }
 
   private thing(t: ThingDef, h: Hero): string {
@@ -299,7 +301,7 @@ export class Hearth {
         <button type="button" class="icon-btn" data-act="settings" aria-label="Settings" title="Settings">${GLYPH.gear}</button>
       </div>`;
     this.bottom.innerHTML = this.decorating
-      ? `<div class="h-deco"><span><b>Decorating</b><small>Tap a <i aria-hidden="true">+</i> to put something there</small></span><button type="button" class="btn gold" data-act="deco">Done</button></div>`
+      ? `<div class="h-deco"><span><b>Decorating</b><small>Tap a <i aria-hidden="true">+</i> to put something there</small></span><button type="button" class="btn small" data-act="looks">${GLYPH.roller}Looks</button><button type="button" class="btn gold" data-act="deco">Done</button></div>`
       : `<div class="h-bar">
           <button type="button" class="icon-btn h-zoom" data-act="zoom" aria-label="See the whole house" title="See the whole house">${HOUSE_GLYPH}</button>
           <button type="button" class="btn gold big h-go" data-act="dungeon">${GLYPH.door}Dungeons</button>

@@ -10,6 +10,7 @@ import { BARROW_COLLECTIBLES, BARROW_TITLES } from './barrow/collectibles';
 import { BARROW_ACHIEVEMENTS } from './barrow/achievements';
 import { BRAMBLEWICK_ACHIEVEMENTS, BRAMBLEWICK_COLLECTIBLES, BRAMBLEWICK_TITLES } from './vale/bramblewick';
 import { INGREDIENTS, PLACES, RECIPES } from './vale';
+import { LOOKS } from './house';
 
 /** The game's name, in one place so a rename is one line. */
 export const GAME_NAME = 'Highfell';
@@ -61,5 +62,6 @@ export function checkContent(): string[] {
     for (const n of a.needs || []) if (!ACHIEVEMENTS[n]) bad.push(`${a.id} needs ${n}`);
     if (a.collect && !thing(a.collect)) bad.push(`${a.id} collect ${a.collect}`);
   }
+  for (const l of LOOKS) if (l.unlock && !DUNGEONS[l.unlock.dungeon]) bad.push(`look ${l.id} dungeon ${l.unlock.dungeon}`);
   return bad;
 }

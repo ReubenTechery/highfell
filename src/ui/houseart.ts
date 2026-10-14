@@ -1,10 +1,13 @@
 /**
- * The house's looks, drawn in code in the house style (one black line, flat colour, gradients only for
- * light): the dusk outside, the shell of every room, the roof and its flags, and the furniture that
- * never changes. What you can tap, and what it does, lives in the scene (hearth.ts) and the house's
- * plan (content/house.ts). House units: x across, y down, the ground floor's floor at y = 0.
+ * The house, drawn in code in the house style (one black line, flat colour, gradients only for light):
+ * the dusk outside, the frame (beams, chimney, stairs, roof), and every room in its look. A look
+ * reskins a room's walls, floor, furniture and light; what you put in the house and what you can tap
+ * stay where they are. The tavern is wood, plaster and lamplight. Barrow Hall is the Barrow's own brick,
+ * flagstones, bone niches and the Gravekeeper's green fire, and with every room in it the frame turns to
+ * stone and slate too. What you can tap, and what it does, lives in the scene (hearth.ts) and the
+ * house's plan (content/house.ts). House units: x across, y down, the ground floor's floor at y = 0.
  */
-import { FLOORS, HOUSE_W } from '../content/house';
+import { FLOORS, HOUSE_W, LOOK_ROOMS } from '../content/house';
 import { placeSprite } from './art';
 import { L, P, SKY_STOPS, cloud, house as cottage, tree } from './valeart';
 
@@ -25,20 +28,40 @@ function rnd(seed: number): () => number {
 export const HOUSE_BOUNDS: [number, number, number, number] = [-1100, -2900, 2300, 1060];
 /** the whole house, for the zoomed-out view */
 export const HOUSE_FIT: [number, number, number, number] = [-440, -2640, 1400, 560];
+/** which look each room is drawn in, by room id */
+export type LookAt = (room: string) => string;
 
 const WALL = 28, BEAM = 36, STRIP = 56;
 const W = HOUSE_W;
-/** the tavern look: the colours of each room's walls and floors */
+/** the tavern look: the colours of each room's walls and floors, and of the house's frame */
 const T = {
   trim: '#8A5A34', timber: '#6B4528', beam: '#5E3B22', floor: '#A0703F', board: '#86592F',
   plaster: '#D9C29A', panel: '#E3CEA6', wains: '#8A5A34', wainsLine: '#6B4528',
   loft: '#C9A27A', loftLine: '#B38A62', bunks: '#D3BC93', armory: '#B3ADB8', armoryLine: '#9D97A6',
   stable: '#A57A50', stableLine: '#8E6640', brewery: '#CFC49A', cellar: '#7E7390', cellarLine: '#6A5F7E', cellarFloor: '#5E5470',
-  stone: '#7A6E86', stoneLine: '#665A72', roof: '#B3553F', roofLine: '#8E3F2E',
+  stone: '#7A6E86', stoneLine: '#665A72', roof: '#B3553F', roofLine: '#8E3F2E', stairs: '#8A5A34',
 };
+/** Barrow Hall: the Barrow's brick and flagstones (its dungeon's colours), bone, and slate for the roof */
+const B = {
+  wall: '#5C5070', line: '#463C5A', panel: '#4F4468', band: '#4A4060', niche: '#2A2234',
+  floor: '#4A4060', joint: '#3A3150', trim: '#D8CDB0', bone: '#F0E8D2', cushion: '#4F3780', cushionTop: '#6A4BA3',
+  timber: '#4A4060', beam: '#3A3150', stone: '#6E6382', stoneLine: '#5C5070', roof: '#4F4A63', roofLine: '#3E3A50', stairs: '#6E6382',
+};
+/** the frame's colours: beams, outer walls, chimney, stairs and roof */
+type Frame = Pick<typeof T, 'trim' | 'timber' | 'beam' | 'stone' | 'stoneLine' | 'roof' | 'roofLine' | 'stairs'>;
+const FRAMES: Record<string, Frame> = { tavern: T, barrow: B };
+/** the frame follows the rooms when every one of them has the same look, and is the tavern's otherwise */
+function frameOf(look: LookAt): Frame {
+  const first = look(LOOK_ROOMS[0]);
+  return LOOK_ROOMS.every((r) => look(r) === first) && FRAMES[first] ? FRAMES[first] : T;
+}
 /** the gable inside the loft, and the roof outside it */
 const GABLE = { eave: -2090, peak: -2400 };
 const ROOF = { x0: -120, y0: -2040, peak: -2480 };
+/** each storey's back walls run from just under the beam above to the strip of floor at the bottom */
+const at = (floor: number): number => floor - STRIP;
+const LW = at(FLOORS.loft), UP = FLOORS.loft + BEAM, UW = at(FLOORS.upper), HC = FLOORS.upper + BEAM, HW = at(FLOORS.hall);
+const GC = FLOORS.hall + BEAM, GW = at(FLOORS.ground), CC = FLOORS.ground + BEAM, CW = at(FLOORS.cellar);
 
 const arch = (x: number, top: number, bot: number, w: number): string => `M${f(x - w / 2)} ${f(bot)} V${f(top + w / 2)} A${f(w / 2)} ${f(w / 2)} 0 0 1 ${f(x + w / 2)} ${f(top + w / 2)} V${f(bot)} Z`;
 const disc = (x: number, y: number, r: number): string => `M${f(x - r)} ${f(y)} A${f(r)} ${f(r)} 0 1 1 ${f(x + r)} ${f(y)} A${f(r)} ${f(r)} 0 1 1 ${f(x - r)} ${f(y)} Z`;
@@ -49,6 +72,7 @@ export function houseDefs(): string {
     <radialGradient id="h-warm"><stop offset="0" stop-color="#FFC870" stop-opacity="0.42"/><stop offset="1" stop-color="#FFC870" stop-opacity="0"/></radialGradient>
     <radialGradient id="h-fire"><stop offset="0" stop-color="#FF9A4C" stop-opacity="0.4"/><stop offset="0.55" stop-color="#FF8A4C" stop-opacity="0.12"/><stop offset="1" stop-color="#FF8A4C" stop-opacity="0"/></radialGradient>
     <radialGradient id="h-green"><stop offset="0" stop-color="#9BE15D" stop-opacity="0.5"/><stop offset="1" stop-color="#9BE15D" stop-opacity="0"/></radialGradient>
+    <radialGradient id="h-gfire"><stop offset="0" stop-color="#9BE15D" stop-opacity="0.44"/><stop offset="0.55" stop-color="#9BE15D" stop-opacity="0.14"/><stop offset="1" stop-color="#9BE15D" stop-opacity="0"/></radialGradient>
     <g id="h-out">${outside()}</g>
     ${WINDOWS.map((w) => `<clipPath id="${w.id}"><path d="${w.d}"/></clipPath>`).join('')}`;
 }
@@ -70,31 +94,46 @@ function outside(): string {
   return o.join('');
 }
 
-interface Win { id: string; d: string; frame: string; bars: string }
-function archWin(id: string, x: number, top: number, bot: number, w: number): Win {
+/** a window: its opening, its frame, and the bars across it in the trim of its room's look */
+interface Win { id: string; room: string; d: string; frame: string; bars: (trim: string) => string }
+function archWin(id: string, room: string, x: number, top: number, bot: number, w: number): Win {
   return {
-    id, d: arch(x, top, bot, w), frame: arch(x, top - 12, bot + 6, w + 26),
-    bars: beam(`M${x} ${f(top + 4)} V${bot} M${f(x - w / 2)} ${f((top + bot) / 2 + 14)} H${f(x + w / 2)}`, T.trim) + R(x - w / 2 - 18, bot, w + 36, 14, T.trim, 3.5),
+    id, room, d: arch(x, top, bot, w), frame: arch(x, top - 12, bot + 6, w + 26),
+    bars: (trim) => beam(`M${x} ${f(top + 4)} V${bot} M${f(x - w / 2)} ${f((top + bot) / 2 + 14)} H${f(x + w / 2)}`, trim) + R(x - w / 2 - 18, bot, w + 36, 14, trim, 3.5),
   };
 }
-function roundWin(id: string, x: number, y: number, r: number): Win {
-  return { id, d: disc(x, y, r), frame: disc(x, y, r + 13), bars: beam(`M${f(x - r)} ${y} H${f(x + r)} M${x} ${f(y - r)} V${f(y + r)}`, T.trim, 4) };
+function roundWin(id: string, room: string, x: number, y: number, r: number): Win {
+  return { id, room, d: disc(x, y, r), frame: disc(x, y, r + 13), bars: (trim) => beam(`M${f(x - r)} ${y} H${f(x + r)} M${x} ${f(y - r)} V${f(y + r)}`, trim, 4) };
 }
 const WINDOWS: Win[] = [
-  roundWin('hw-l1', 330, -2190, 34), roundWin('hw-l2', 870, -2190, 34),
-  archWin('hw-a1', 1062, -1630, -1478, 104),
-  archWin('hw-h1', 130, -1062, -804, 150), archWin('hw-h2', 1062, -1062, -804, 150),
-  archWin('hw-b1', 1124, -424, -278, 96),
+  roundWin('hw-l1', 'loft', 330, -2190, 34), roundWin('hw-l2', 'loft', 870, -2190, 34),
+  archWin('hw-a1', 'armory', 1062, -1630, -1478, 104),
+  archWin('hw-h1', 'hall', 130, -1062, -804, 150), archWin('hw-h2', 'hall', 1062, -1062, -804, 150),
+  archWin('hw-b1', 'brewery', 1124, -424, -278, 96),
 ];
 
-/** everything behind what you can tap: the outside, the ground, the rooms, the roof, the furniture */
-export function houseBack(): string {
-  const o: string[] = ['<use href="#h-out"/>'];
-  o.push(ground());
-  o.push(rooms());
-  for (const w of WINDOWS) o.push(P(w.frame, T.trim, 4.5) + `<g clip-path="url(#${w.id})"><use href="#h-out"/></g><path d="${w.d}" style="fill: none; stroke: ${K}; stroke-width: 4"/>` + w.bars);
-  o.push(roof());
-  o.push(furniture());
+/** everything behind what you can tap: the outside, the ground, the rooms, the frame, the roof, the furniture */
+export function houseBack(look: LookAt): string {
+  const fr = frameOf(look);
+  const o: string[] = ['<use href="#h-out"/>', ground()];
+  for (const id of LOOK_ROOMS) o.push(roomArt(look(id), id).wall());
+  o.push(frame(fr));
+  for (const w of WINDOWS) {
+    const trim = look(w.room) === 'barrow' ? B.trim : T.trim;
+    o.push(P(w.frame, trim, 4.5) + `<g clip-path="url(#${w.id})"><use href="#h-out"/></g><path d="${w.d}" style="fill: none; stroke: ${K}; stroke-width: 4"/>` + w.bars(trim));
+  }
+  o.push(roof(fr));
+  for (const id of LOOK_ROOMS) o.push(roomArt(look(id), id).furnish());
+  return o.join('');
+}
+
+/** in front of everything: the cut edges of the outer walls, and the light in each room */
+export function houseFront(look: LookAt): string {
+  const fr = frameOf(look);
+  // outer walls: timber down to the ground (the stable's doorway in the left one), stone below
+  const o = [R(-WALL, GABLE.eave, WALL, -336 - GABLE.eave, fr.timber, 4) + R(W, GABLE.eave, WALL, -GABLE.eave + BEAM, fr.timber, 4)];
+  o.push(R(-WALL, FLOORS.ground + BEAM, WALL, FLOORS.cellar - FLOORS.ground - BEAM, fr.stone, 4) + R(W, FLOORS.ground + BEAM, WALL, FLOORS.cellar - FLOORS.ground - BEAM, fr.stone, 4));
+  for (const id of LOOK_ROOMS) o.push(roomArt(look(id), id).light());
   return o.join('');
 }
 
@@ -120,99 +159,97 @@ function ground(): string {
   return o.join('');
 }
 
-/** every room's back wall and floor, the beams between the floors, the chimney and the stairs */
-function rooms(): string {
-  const o: string[] = [];
-  const wallY = (floor: number): number => floor - STRIP;
-  // the loft: wooden boards up to the gable
-  const lw = wallY(FLOORS.loft);
-  o.push(P(`M0 ${lw} V${GABLE.eave} L${W / 2} ${GABLE.peak} L${W} ${GABLE.eave} V${lw} Z`, T.loft, 4));
-  for (let x = 60; x < W; x += 80) {
-    const top = x <= W / 2 ? GABLE.eave + (GABLE.peak - GABLE.eave) * (x / (W / 2)) : GABLE.eave + (GABLE.peak - GABLE.eave) * ((W - x) / (W / 2));
-    o.push(L(`M${x} ${lw} V${f(top + 6)}`, T.loftLine, 3));
-  }
-  // upstairs: the bunk room's plaster and the armory's stone
-  const uw = wallY(FLOORS.upper), up = FLOORS.loft + BEAM;
-  o.push(R(0, up, 520, uw - up, T.bunks, 0) + R(0, uw - 96, 520, 96, T.wains, 0));
-  for (let x = 24; x < 520; x += 46) o.push(L(`M${x} ${uw - 88} V${uw}`, T.wainsLine, 3));
-  o.push(L(`M0 ${uw - 96} H520`, K, 3.5));
-  o.push(R(680, up, 520, uw - up, T.armory, 0));
-  for (let y = up + 60, i = 0; y < uw; y += 60, i++) {
-    o.push(L(`M680 ${y} H${W}`, T.armoryLine, 3));
-    for (let x = 680 + (i % 2 ? 50 : 0); x < W; x += 100) o.push(L(`M${x} ${y} V${Math.min(uw, y + 60)}`, T.armoryLine, 3));
-  }
-  // the hall: plaster, three panels, wainscot
-  const hw = wallY(FLOORS.hall), hc = FLOORS.upper + BEAM;
-  o.push(R(0, hc, W, hw - hc, T.plaster, 0));
-  for (const [a, b] of [[24, 396], [804, 1176]]) o.push(`<rect x="${a}" y="${hc + 28}" width="${b - a}" height="${hw - hc - 170}" rx="8" style="fill: ${T.panel}"/>`);
-  o.push(R(0, hw - 112, W, 112, T.wains, 0));
-  for (let x = 22; x < W; x += 46) o.push(L(`M${x} ${hw - 104} V${hw}`, T.wainsLine, 3));
-  o.push(L(`M0 ${hw - 112} H${W}`, K, 3.5));
-  // downstairs: the stable's boards and the brewing room's plaster
-  const gw = wallY(FLOORS.ground), gc = FLOORS.hall + BEAM;
-  o.push(R(0, gc, 640, gw - gc, T.stable, 0));
-  for (let x = 40; x < 640; x += 46) o.push(L(`M${x} ${gc} V${gw}`, T.stableLine, 3));
-  o.push(R(664, gc, W - 664, gw - gc, T.brewery, 0) + R(664, gw - 110, W - 664, 110, T.wains, 0));
-  for (let x = 686; x < W; x += 46) o.push(L(`M${x} ${gw - 102} V${gw}`, T.wainsLine, 3));
-  o.push(L(`M664 ${gw - 110} H${W}`, K, 3.5));
-  // the cellar: stone blocks
-  const cw = wallY(FLOORS.cellar), cc = FLOORS.ground + BEAM;
-  o.push(R(0, cc, W, cw - cc, T.cellar, 0));
-  for (let y = cc + 58, i = 0; y < cw; y += 58, i++) {
-    o.push(L(`M0 ${y} H${W}`, T.cellarLine, 3));
-    for (let x = i % 2 ? 60 : 0; x < W; x += 120) o.push(L(`M${x} ${y} V${Math.min(cw, y + 58)}`, T.cellarLine, 3));
-  }
-  // floors: a strip of boards in front of each back wall
-  const strip = (x: number, w: number, floor: number, fill = T.floor, line = T.board) => R(x, floor - STRIP, w, STRIP, fill, 0) + L(`M${x} ${floor - STRIP + 20} H${x + w} M${x} ${floor - STRIP + 40} H${x + w}`, line, 3) + L(`M${x} ${floor - STRIP} H${x + w}`, K, 3.5);
-  o.push(strip(0, W, FLOORS.loft) + strip(0, 520, FLOORS.upper) + strip(680, 520, FLOORS.upper) + strip(0, W, FLOORS.hall));
-  o.push(strip(0, 640, FLOORS.ground) + strip(664, 1060 - 664, FLOORS.ground) + strip(0, W, FLOORS.cellar, T.cellarFloor, '#4E4660'));
-  // the stairwell down to the cellar, and the stairs
-  o.push(R(1060, -STRIP, W - 1060, STRIP + BEAM, '#3A2A2C', 0));
+/** the frame: the stairwell and stairs down to the cellar, the beams between the floors, the
+ *  foundation, the wall between the stable and the brewing room, and the chimney */
+function frame(fr: Frame): string {
+  const o: string[] = [R(1060, -STRIP, W - 1060, STRIP + BEAM, '#3A2A2C', 0)];
   const steps: string[] = [`M${W} ${FLOORS.cellar} V${FLOORS.ground + BEAM}`];
   for (let i = 0; i < 10; i++) { const x = W - 25 * (i + 1), y = BEAM + 46.4 * (i + 1); steps.push(`H${x} V${f(y)}`); }
-  o.push(P(steps.join(' ') + ' Z', T.trim, 4));
-  o.push(beam(`M${W - 14} ${-110} L${W - 14} ${FLOORS.ground} M1066 -110 V-${STRIP - 4} M1066 -104 H${W}`, T.timber, 7));
-  o.push(beam(`M${W - 30} ${BEAM - 70} L${W - 260} ${FLOORS.cellar - 96}`, T.timber, 6));
+  o.push(P(steps.join(' ') + ' Z', fr.stairs, 4));
+  o.push(beam(`M${W - 14} ${-110} L${W - 14} ${FLOORS.ground} M1066 -110 V-${STRIP - 4} M1066 -104 H${W}`, fr.timber, 7));
+  o.push(beam(`M${W - 30} ${BEAM - 70} L${W - 260} ${FLOORS.cellar - 96}`, fr.timber, 6));
   // beams between the floors (the ground floor's has the stairwell in it), and the foundation
-  for (const y of [FLOORS.loft, FLOORS.upper, FLOORS.hall]) o.push(R(-WALL, y, W + WALL * 2, BEAM, T.beam, 4) + L(`M${-WALL} ${y + 12} H${W + WALL}`, T.timber, 4));
-  o.push(R(-WALL, FLOORS.ground, 1060 + WALL, BEAM, T.beam, 4) + L(`M${-WALL} ${FLOORS.ground + 12} H1060`, T.timber, 4));
+  for (const y of [FLOORS.loft, FLOORS.upper, FLOORS.hall]) o.push(R(-WALL, y, W + WALL * 2, BEAM, fr.beam, 4) + L(`M${-WALL} ${y + 12} H${W + WALL}`, fr.timber, 4));
+  o.push(R(-WALL, FLOORS.ground, 1060 + WALL, BEAM, fr.beam, 4) + L(`M${-WALL} ${FLOORS.ground + 12} H1060`, fr.timber, 4));
   o.push(R(-WALL - 12, FLOORS.cellar, W + WALL * 2 + 24, 40, '#5E5470', 4));
   // walls between rooms: the chimney upstairs, a timber wall downstairs
-  o.push(R(640, gc, 24, -gc, T.timber, 4));
-  o.push(chimney(FLOORS.hall - 620, GABLE.peak - 10));
+  o.push(R(640, GC, 24, -GC, fr.timber, 4));
+  o.push(chimney(fr, FLOORS.hall - 620, GABLE.peak - 10));
   return o.join('');
 }
 
 /** the chimney: from the top of the hall's fireplace, up through every floor and out of the roof */
-function chimney(bottom: number, top: number): string {
-  const o = [R(520, top, 160, bottom - top, T.stone, 4)];
+function chimney(fr: Frame, bottom: number, top: number): string {
+  const o = [R(520, top, 160, bottom - top, fr.stone, 4)];
   for (let y = top + 40, i = 0; y < bottom; y += 40, i++) {
-    o.push(L(`M520 ${y} H680`, T.stoneLine, 3));
-    o.push(L(`M${i % 2 ? 560 : 600} ${y} V${y + 40} M${i % 2 ? 640 : 600} ${y} V${y + 40}`, T.stoneLine, 3));
+    o.push(L(`M520 ${y} H680`, fr.stoneLine, 3));
+    o.push(L(`M${i % 2 ? 560 : 600} ${y} V${y + 40} M${i % 2 ? 640 : 600} ${y} V${y + 40}`, fr.stoneLine, 3));
   }
   return o.join('');
 }
 
 /** the roof over the loft, the chimney's top, smoke, and the flagpoles for your banners */
-function roof(): string {
+function roof(fr: Frame): string {
   const o: string[] = [];
   const ox1 = W - ROOF.x0;
-  o.push(P(`M${ROOF.x0} ${ROOF.y0} L${W / 2} ${ROOF.peak} L${ox1} ${ROOF.y0} L${ox1 - 10} ${ROOF.y0 + 32} L${W} ${GABLE.eave} L${W / 2} ${GABLE.peak} L0 ${GABLE.eave} L${ROOF.x0 + 10} ${ROOF.y0 + 32} Z`, T.roof, 5));
+  o.push(P(`M${ROOF.x0} ${ROOF.y0} L${W / 2} ${ROOF.peak} L${ox1} ${ROOF.y0} L${ox1 - 10} ${ROOF.y0 + 32} L${W} ${GABLE.eave} L${W / 2} ${GABLE.peak} L0 ${GABLE.eave} L${ROOF.x0 + 10} ${ROOF.y0 + 32} Z`, fr.roof, 5));
   for (const t of [0.3, 0.6]) {
     const ax = ROOF.x0 + (0 - ROOF.x0) * t, ay = ROOF.y0 + (GABLE.eave - ROOF.y0) * t;
     const py = ROOF.peak + (GABLE.peak - ROOF.peak) * t;
-    o.push(L(`M${f(ax)} ${f(ay)} L${W / 2} ${f(py)} L${f(W - ax)} ${f(ay)}`, T.roofLine, 4));
+    o.push(L(`M${f(ax)} ${f(ay)} L${W / 2} ${f(py)} L${f(W - ax)} ${f(ay)}`, fr.roofLine, 4));
   }
-  o.push(R(536, ROOF.peak - 120, 128, 150, T.stone, 4) + R(520, ROOF.peak - 140, 160, 24, T.stoneLine, 4));
+  o.push(R(536, ROOF.peak - 120, 128, 150, fr.stone, 4) + R(520, ROOF.peak - 140, 160, 24, fr.stoneLine, 4));
   o.push(`<g class="smoke">${[0, 1, 2].map((i) => C(600 + (i % 2 ? 24 : -18), ROOF.peak - 200 - i * 70, 26 + i * 10, '#C9BCD6', 3.5).replace('fill: #C9BCD6', `fill: #C9BCD6; opacity: ${f(0.85 - i * 0.2)}`)).join('')}</g>`);
   for (const x of [-70, W + 70]) {
     // where the roof is under the pole
     const y0 = ROOF.y0 + (ROOF.peak - ROOF.y0) * ((x < W / 2 ? x - ROOF.x0 : W - ROOF.x0 - x) / (W / 2 - ROOF.x0));
-    o.push(beam(`M${x} ${f(y0)} V-2400`, T.timber, 8) + C(x, -2410, 10, '#F2C230', 3.5) + R(x - 58, -2384, 116, 12, T.trim, 3.5));
+    o.push(beam(`M${x} ${f(y0)} V-2400`, fr.timber, 8) + C(x, -2410, 10, '#F2C230', 3.5) + R(x - 58, -2384, 116, 12, fr.trim, 3.5));
   }
   return o.join('');
 }
 
+/* ---------------------------------------------------------------- pieces both looks use */
+/** cut stone in rows with the joints staggered, from (x0, y0) down to (x1, y1) */
+function blocks(x0: number, y0: number, x1: number, y1: number, line: string, rowH: number, bw: number): string {
+  const o: string[] = [];
+  for (let y = y0 + rowH, i = 0; y < y1; y += rowH, i++) {
+    o.push(L(`M${x0} ${y} H${x1}`, line, 3));
+    for (let x = x0 + (i % 2 ? bw / 2 : 0); x < x1; x += bw) o.push(L(`M${x} ${y} V${Math.min(y1, y + rowH)}`, line, 3));
+  }
+  return o.join('');
+}
+/** the loft's back wall up to the gable */
+const gable = (fill: string): string => P(`M0 ${LW} V${GABLE.eave} L${W / 2} ${GABLE.peak} L${W} ${GABLE.eave} V${LW} Z`, fill, 4);
+/** the loft's two long shelves each side of the chimney, on brackets */
+function shelves(board: string, bracket: string): string {
+  const o: string[] = [];
+  for (const [a, b] of [[44, 484], [716, 1156]]) for (const y of [-1880, -2010]) {
+    o.push(R(a, y, b - a, 14, board, 3.5));
+    for (const bx of [a + 24, (a + b) / 2, b - 24]) o.push(P(`M${bx - 6} ${y + 14} H${bx + 6} V${y + 30} C${bx + 6} ${y + 40} ${bx - 6} ${y + 40} ${bx - 6} ${y + 30} Z`, bracket, 3));
+  }
+  return o.join('');
+}
+/** the cushion in the loft, for a pet */
+const cushion = (base: string, top: string): string => `<ellipse cx="250" cy="${FLOORS.loft - 16}" rx="76" ry="16" style="fill: ${base}; stroke: ${K}; stroke-width: 3.5"/><ellipse cx="250" cy="${FLOORS.loft - 26}" rx="62" ry="13" style="fill: ${top}; stroke: ${K}; stroke-width: 3"/>`;
+const bunks = (): string => placeSprite('bunk_a', 100, UW) + placeSprite('bunk_b', 260, UW) + placeSprite('bunk_c', 420, UW);
+/** the hall's fire in its fireplace: orange in the tavern, the Gravekeeper's green in Barrow Hall */
+function hearthFire(fire: 'fire' | 'gfire'): string {
+  const fk = 0.92;
+  return placeSprite('fireplace', 600, HW, { k: fk }) + placeSprite('logs', 600, HW - 6 * fk, { k: fk })
+    + placeSprite(`${fire}_a`, 600, HW - 12 * fk, { k: fk, cls: 'fire-a' }) + placeSprite(`${fire}_b`, 600, HW - 12 * fk, { k: fk, cls: 'fire-b' });
+}
+/** the rest of the hall: the rug, torches each side of the fire, the table and its stools */
+const hallThings = (): string => placeSprite('rug', 600, FLOORS.hall - 26, { k: 0.82 })
+  + [384, 816].map((x) => glow(x, -900, 90, 'h-warm') + placeSprite('torch', x, -860)).join('')
+  + placeSprite('stool', 944, FLOORS.hall - 22) + placeSprite('table', 1052, FLOORS.hall - 26) + placeSprite('stool', 1160, FLOORS.hall - 22);
+/** the stable's doorway out to the yard, with the barn door swung open */
+const barnDoor = (): string => R(-WALL - 4, -336, WALL + 8, 336, '#3A2A2C', 0)
+  + P('M-30 -334 L-176 -360 L-176 -16 L-30 0 Z', T.trim, 4) + L('M-62 -330 L-62 -6 M-98 -336 L-98 -10 M-134 -342 L-134 -12', T.timber, 3) + beam('M-40 -60 L-166 -300', T.timber, 6);
+const arches = (): string => placeSprite('bricked_arch', 600, CW, { k: 0.85 }) + placeSprite('bricked_arch', 806, CW, { k: 0.85 });
+
+/* ---------------------------------------------------------------- the tavern */
+/** a strip of floorboards in front of a back wall */
+const boards = (x: number, w: number, floor: number, fill = T.floor, line = T.board): string => R(x, floor - STRIP, w, STRIP, fill, 0) + L(`M${x} ${floor - STRIP + 20} H${x + w} M${x} ${floor - STRIP + 40} H${x + w}`, line, 3) + L(`M${x} ${floor - STRIP} H${x + w}`, K, 3.5);
 /** a lamp hanging from a beam at `top`, its body starting at `y` */
 function lamp(x: number, top: number, y: number): string {
   return L(`M${x} ${top} V${y}`, K, 3) + glow(x, y + 24, 110, 'h-warm')
@@ -221,52 +258,156 @@ function lamp(x: number, top: number, y: number): string {
     + P(`M${x} ${y + 12} C${x + 6} ${y + 20} ${x + 5} ${y + 28} ${x} ${y + 32} C${x - 5} ${y + 28} ${x - 6} ${y + 20} ${x} ${y + 12} Z`, '#FFE08A', 2)
     + P(`M${x - 14} ${y + 38} H${x + 14} L${x + 11} ${y + 44} H${x - 11} Z`, '#5A3A2A', 3);
 }
+/** a plaster wall with a wainscot of boards along its bottom */
+function wainscot(x0: number, x1: number, bottom: number, h: number, step0: number): string {
+  const o = [R(x0, bottom - h, x1 - x0, h, T.wains, 0)];
+  for (let x = step0; x < x1; x += 46) o.push(L(`M${x} ${bottom - h + 8} V${bottom}`, T.wainsLine, 3));
+  o.push(L(`M${x0} ${bottom - h} H${x1}`, K, 3.5));
+  return o.join('');
+}
 
-/** the furniture that is always there */
-function furniture(): string {
-  const o: string[] = [];
-  const at = (floor: number): number => floor - STRIP;
-  // the loft: two long shelves each side of the chimney, a lamp
-  for (const [a, b] of [[44, 484], [716, 1156]]) for (const y of [-1880, -2010]) {
-    o.push(R(a, y, b - a, 14, T.trim, 3.5));
-    for (const bx of [a + 24, (a + b) / 2, b - 24]) o.push(P(`M${bx - 6} ${y + 14} H${bx + 6} V${y + 30} C${bx + 6} ${y + 40} ${bx - 6} ${y + 40} ${bx - 6} ${y + 30} Z`, T.timber, 3));
+/** one room in one look: its back wall and floor, its furniture, and its light */
+interface RoomArt { wall: () => string; furnish: () => string; light: () => string }
+
+const TAVERN: Record<string, RoomArt> = {
+  loft: {
+    // wooden boards up to the gable
+    wall: () => {
+      const o = [gable(T.loft)];
+      for (let x = 60; x < W; x += 80) {
+        const top = x <= W / 2 ? GABLE.eave + (GABLE.peak - GABLE.eave) * (x / (W / 2)) : GABLE.eave + (GABLE.peak - GABLE.eave) * ((W - x) / (W / 2));
+        o.push(L(`M${x} ${LW} V${f(top + 6)}`, T.loftLine, 3));
+      }
+      return o.join('') + boards(0, W, FLOORS.loft);
+    },
+    furnish: () => shelves(T.trim, T.timber) + cushion('#4F6FA8', '#6F8FC8'),
+    light: () => glow(600, -1960, 640, 'h-warm', 0.5),
+  },
+  bunks: {
+    wall: () => R(0, UP, 520, UW - UP, T.bunks, 0) + wainscot(0, 520, UW, 96, 24) + boards(0, 520, FLOORS.upper),
+    furnish: () => bunks() + lamp(260, UP, -1612),
+    light: () => glow(260, -1450, 360, 'h-warm', 0.6),
+  },
+  armory: {
+    wall: () => R(680, UP, 520, UW - UP, T.armory, 0) + blocks(680, UP, W, UW, T.armoryLine, 60, 100) + boards(680, 520, FLOORS.upper),
+    furnish: () => placeSprite('weapon_rack', 1062, UW),
+    light: () => glow(920, -1430, 380, 'h-warm', 0.45),
+  },
+  hall: {
+    // plaster, three panels, wainscot
+    wall: () => R(0, HC, W, HW - HC, T.plaster, 0)
+      + [[24, 396], [804, 1176]].map(([a, b]) => `<rect x="${a}" y="${HC + 28}" width="${b - a}" height="${HW - HC - 170}" rx="8" style="fill: ${T.panel}"/>`).join('')
+      + wainscot(0, W, HW, 112, 22) + boards(0, W, FLOORS.hall),
+    furnish: () => hearthFire('fire') + placeSprite('woodpile', 140, FLOORS.hall - 30) + hallThings(),
+    light: () => glow(600, -760, 760, 'h-fire'),
+  },
+  stable: {
+    wall: () => R(0, GC, 640, GW - GC, T.stable, 0) + Array.from({ length: 14 }, (_, i) => L(`M${40 + 46 * i} ${GC} V${GW}`, T.stableLine, 3)).join('') + boards(0, 640, FLOORS.ground),
+    furnish: () => placeSprite('stall', 420, GW) + barnDoor(),
+    light: () => glow(470, -250, 360, 'h-warm', 0.5),
+  },
+  brewery: {
+    wall: () => R(664, GC, W - 664, GW - GC, T.brewery, 0) + wainscot(664, W, GW, 110, 686) + boards(664, 1060 - 664, FLOORS.ground),
+    furnish: () => lamp(930, GC, -420),
+    light: () => glow(930, -240, 380, 'h-warm', 0.5) + glow(960, -60, 160, 'h-green', 0.6),
+  },
+  cellar: {
+    wall: () => R(0, CC, W, CW - CC, T.cellar, 0) + blocks(0, CC, W, CW, T.cellarLine, 58, 120) + boards(0, W, FLOORS.cellar, T.cellarFloor, '#4E4660'),
+    // two arches for dungeons still to come, candles and bones
+    furnish: () => arches() + placeSprite('candles', 82, FLOORS.cellar - 22) + placeSprite('skullpile', 924, FLOORS.cellar - 22),
+    light: () => glow(300, 280, 460, 'h-green', 0.85) + glow(82, 430, 120, 'h-warm', 0.8),
+  },
+};
+
+/* ---------------------------------------------------------------- Barrow Hall */
+/** the Barrow's brick on a back wall */
+const brick = (x: number, y0: number, w: number, y1: number): string => R(x, y0, w, y1 - y0, B.wall, 0) + blocks(x, y0, x + w, y1, B.line, 58, 116);
+/** flagstones in front of a back wall */
+function flags(x: number, w: number, floor: number): string {
+  const y = floor - STRIP, o = [R(x, y, w, STRIP, B.floor, 0), L(`M${x} ${y + 28} H${x + w}`, B.joint, 3)];
+  for (let xx = x + 70; xx < x + w; xx += 140) o.push(L(`M${xx} ${y} V${y + 28}`, B.joint, 3));
+  for (let xx = x + 140; xx < x + w; xx += 140) o.push(L(`M${xx} ${y + 28} V${floor}`, B.joint, 3));
+  return o.join('') + L(`M${x} ${y} H${x + w}`, K, 3.5);
+}
+/** a small skull resting at (x, y) */
+function skull(x: number, y: number): string {
+  const cy = y - 18;
+  return P(`M${x - 7} ${y - 10} H${x + 7} V${y} H${x - 7} Z`, B.bone, 3) + C(x, cy, 12, B.bone, 3) + C(x - 4.5, cy + 1, 3.4, K, 0) + C(x + 4.5, cy + 1, 3.4, K, 0);
+}
+/** the crypt's wainscot: a band of burial niches along the bottom of a wall, most with a skull in */
+function niches(x0: number, x1: number, bottom: number, h: number, seed: number): string {
+  const o = [R(x0, bottom - h, x1 - x0, h, B.band, 0), L(`M${x0} ${bottom - h} H${x1}`, K, 3.5)];
+  const n = Math.max(1, Math.round((x1 - x0) / 96)), step = (x1 - x0) / n, r = rnd(seed);
+  for (let i = 0; i < n; i++) {
+    const cx = x0 + step * (i + 0.5);
+    o.push(P(arch(cx, bottom - h + 16, bottom - 10, 54), B.niche, 3.5));
+    if (r() < 0.65) o.push(skull(cx, bottom - 10));
   }
-  o.push(`<ellipse cx="250" cy="${FLOORS.loft - 16}" rx="76" ry="16" style="fill: #4F6FA8; stroke: ${K}; stroke-width: 3.5"/><ellipse cx="250" cy="${FLOORS.loft - 26}" rx="62" ry="13" style="fill: #6F8FC8; stroke: ${K}; stroke-width: 3"/>`);
-  // the bunk room
-  o.push(placeSprite('bunk_a', 100, at(FLOORS.upper)) + placeSprite('bunk_b', 260, at(FLOORS.upper)) + placeSprite('bunk_c', 420, at(FLOORS.upper)));
-  o.push(lamp(260, FLOORS.loft + BEAM, -1612));
-  // the armory
-  o.push(placeSprite('weapon_rack', 1062, at(FLOORS.upper)));
-  // the hall: the fire, its glow on the floor, a rug, the woodpile, torches, the table
-  const fk = 0.92;
-  o.push(placeSprite('fireplace', 600, at(FLOORS.hall), { k: fk }) + placeSprite('logs', 600, at(FLOORS.hall) - 6 * fk, { k: fk }));
-  o.push(placeSprite('fire_a', 600, at(FLOORS.hall) - 12 * fk, { k: fk, cls: 'fire-a' }) + placeSprite('fire_b', 600, at(FLOORS.hall) - 12 * fk, { k: fk, cls: 'fire-b' }));
-  o.push(placeSprite('rug', 600, FLOORS.hall - 26, { k: 0.82 }));
-  o.push(placeSprite('woodpile', 140, FLOORS.hall - 30));
-  for (const x of [384, 816]) o.push(glow(x, -900, 90, 'h-warm') + placeSprite('torch', x, -860));
-  o.push(placeSprite('stool', 944, FLOORS.hall - 22) + placeSprite('table', 1052, FLOORS.hall - 26) + placeSprite('stool', 1160, FLOORS.hall - 22));
-  // the stable: its stall, and the doorway out to the yard with the barn door swung open
-  o.push(placeSprite('stall', 420, at(FLOORS.ground)));
-  o.push(R(-WALL - 4, -336, WALL + 8, 336, '#3A2A2C', 0));
-  o.push(P('M-30 -334 L-176 -360 L-176 -16 L-30 0 Z', T.trim, 4) + L('M-62 -330 L-62 -6 M-98 -336 L-98 -10 M-134 -342 L-134 -12', T.timber, 3) + beam('M-40 -60 L-166 -300', T.timber, 6));
-  // the brewing room: a lamp over the cauldron
-  o.push(lamp(930, FLOORS.hall + BEAM, -420));
-  // the cellar: two arches for dungeons still to come, candles and bones
-  o.push(placeSprite('bricked_arch', 600, at(FLOORS.cellar), { k: 0.85 }) + placeSprite('bricked_arch', 806, at(FLOORS.cellar), { k: 0.85 }));
-  o.push(placeSprite('candles', 82, FLOORS.cellar - 22) + placeSprite('skullpile', 924, FLOORS.cellar - 22));
   return o.join('');
 }
+/** stone blocks up to the loft's gable, cut to its slope */
+function gableBrick(): string {
+  const o = [gable(B.wall)];
+  const half = (y: number): number => (y >= GABLE.eave ? W / 2 : Math.max(0, ((y - GABLE.peak) / (GABLE.eave - GABLE.peak)) * (W / 2)));
+  for (let y = LW - 58, i = 0; y > GABLE.peak + 30; y -= 58, i++) {
+    o.push(L(`M${f(W / 2 - half(y))} ${y} H${f(W / 2 + half(y))}`, B.line, 3));
+    const h = half(y - 58);
+    for (let x = i % 2 ? 58 : 116; x < W; x += 116) if (x > W / 2 - h + 10 && x < W / 2 + h - 10) o.push(L(`M${x} ${y - 58} V${y}`, B.line, 3));
+  }
+  return o.join('');
+}
+/** a green lantern hanging from a beam at `top` on a chain down to `y`: Barrow Hall's lamp */
+const lantern = (x: number, top: number, y: number): string => L(`M${x} ${top} V${y}`, K, 3) + glow(x, y + 34, 110, 'h-green') + placeSprite('lantern', x, y + 64);
+/** candles on the floor, with their own small warm light */
+const candles = (x: number, floor: number): string => glow(x, floor - 40, 90, 'h-warm', 0.8) + placeSprite('candles', x, floor - 22);
 
-/** in front of everything: the cut edges of the outer walls, and the light in each room */
-export function houseFront(): string {
-  const o: string[] = [];
-  // outer walls: timber down to the ground (the stable's doorway in the left one), stone below
-  o.push(R(-WALL, GABLE.eave, WALL, -336 - GABLE.eave, T.timber, 4) + R(W, GABLE.eave, WALL, -GABLE.eave + BEAM, T.timber, 4));
-  o.push(R(-WALL, FLOORS.ground + BEAM, WALL, FLOORS.cellar - FLOORS.ground - BEAM, T.stone, 4) + R(W, FLOORS.ground + BEAM, WALL, FLOORS.cellar - FLOORS.ground - BEAM, T.stone, 4));
-  // the light: the fire, the lamps, the Barrow's green glow
-  o.push(glow(600, -760, 760, 'h-fire'));
-  o.push(glow(600, -1960, 640, 'h-warm', 0.5) + glow(260, -1450, 360, 'h-warm', 0.6) + glow(920, -1430, 380, 'h-warm', 0.45));
-  o.push(glow(470, -250, 360, 'h-warm', 0.5) + glow(930, -240, 380, 'h-warm', 0.5) + glow(960, -60, 160, 'h-green', 0.6));
-  o.push(glow(300, 280, 460, 'h-green', 0.85) + glow(82, 430, 120, 'h-warm', 0.8));
-  return o.join('');
-}
+const BARROW: Record<string, RoomArt> = {
+  loft: {
+    wall: () => gableBrick() + flags(0, W, FLOORS.loft),
+    // bone shelves, a cushion in the Gravekeeper's purple, candles by the big book
+    furnish: () => shelves(B.trim, B.stone) + cushion(B.cushion, B.cushionTop) + candles(452, FLOORS.loft) + candles(748, FLOORS.loft),
+    light: () => glow(600, -1960, 640, 'h-green', 0.42),
+  },
+  bunks: {
+    wall: () => brick(0, UP, 520, UW) + niches(0, 520, UW, 96, 3) + flags(0, 520, FLOORS.upper),
+    furnish: () => bunks() + lantern(260, UP, -1612),
+    light: () => glow(260, -1450, 360, 'h-green', 0.5),
+  },
+  armory: {
+    wall: () => brick(680, UP, W - 680, UW) + flags(680, 520, FLOORS.upper),
+    // a coffin stood up between the armour and the rack
+    furnish: () => placeSprite('weapon_rack', 1062, UW) + placeSprite('coffin', 921, UW),
+    light: () => glow(920, -1430, 380, 'h-green', 0.4),
+  },
+  hall: {
+    // brick, two dark panels in bone frames where the tavern has its plaster ones, and a band of niches
+    wall: () => brick(0, HC, W, HW)
+      + [[24, 396], [804, 1176]].map(([a, b]) => `<rect x="${a}" y="${HC + 28}" width="${b - a}" height="${HW - HC - 170}" rx="10" style="fill: ${B.trim}; stroke: ${K}; stroke-width: 3.5"/><rect x="${a + 12}" y="${HC + 40}" width="${b - a - 24}" height="${HW - HC - 194}" rx="6" style="fill: ${B.panel}; stroke: ${K}; stroke-width: 3"/>`).join('')
+      + niches(0, W, HW, 112, 7) + flags(0, W, FLOORS.hall),
+    // the fire burns green, and the woodpile is a pile of skulls
+    furnish: () => hearthFire('gfire') + placeSprite('skullpile', 140, FLOORS.hall - 26, { k: 1.25 }) + hallThings(),
+    light: () => glow(600, -760, 760, 'h-gfire'),
+  },
+  stable: {
+    wall: () => brick(0, GC, 640, GW) + flags(0, 640, FLOORS.ground),
+    // an old gravestone and some bones by the stall
+    furnish: () => placeSprite('stall', 420, GW) + placeSprite('tomb1', 96, FLOORS.ground - 30, { k: 1.2 }) + placeSprite('bones', 186, FLOORS.ground - 24) + barnDoor(),
+    light: () => glow(470, -250, 360, 'h-green', 0.4),
+  },
+  brewery: {
+    wall: () => brick(664, GC, W - 664, GW) + niches(664, W, GW, 110, 11) + flags(664, 1060 - 664, FLOORS.ground),
+    furnish: () => lantern(930, GC, -420),
+    light: () => glow(930, -240, 380, 'h-green', 0.5) + glow(960, -60, 160, 'h-green', 0.6),
+  },
+  cellar: {
+    wall: () => brick(0, CC, W, CW) + flags(0, W, FLOORS.cellar),
+    // wisps drift under the ceiling
+    furnish: () => arches() + candles(82, FLOORS.cellar) + placeSprite('skullpile', 924, FLOORS.cellar - 22)
+      + placeSprite('wisp', 560, 190, { cls: 'bob' }) + placeSprite('wisp', 1000, 240, { k: 0.8, cls: 'bob' }),
+    light: () => glow(300, 280, 460, 'h-green', 0.95),
+  },
+};
+
+const ROOM_ART: Record<string, Record<string, RoomArt>> = { tavern: TAVERN, barrow: BARROW };
+/** a room in a look, or in the tavern when that look has no art for it */
+const roomArt = (look: string, room: string): RoomArt => ROOM_ART[look]?.[room] || TAVERN[room];

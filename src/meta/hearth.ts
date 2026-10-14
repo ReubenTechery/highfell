@@ -1,11 +1,11 @@
 /**
- * The house's display spots. A layout is just spot id to collectible id, saved in the profile,
- * so a friend's house can later be drawn from their profile the same way. Where each spot is in the
- * house lives in the house's plan (content/house.ts); this is the rules.
+ * The house's display spots and looks. A layout is just spot id to collectible id, and a look is room
+ * id to look id, both saved in the profile, so a friend's house can later be drawn from their profile
+ * the same way. Where each spot and room is lives in the house's plan (content/house.ts); this is the rules.
  */
 import type { CollectibleKind } from '../content/types';
 import { COLLECTIBLES } from '../content';
-import { HOUSE_SPOTS } from '../content/house';
+import { DEFAULT_LOOK, HOUSE_SPOTS, LOOKS, LOOK_ROOMS } from '../content/house';
 import type { Profile } from './profile';
 
 export interface Spot { id: string; kind: CollectibleKind; label: string }
@@ -52,4 +52,29 @@ export function autoPlace(p: Profile, id: string): string | null {
   if (!free) return null;
   p.hearth.spots[free.id] = id;
   return free.id;
+}
+
+/** How far you are toward a look: clears of its dungeon, out of what it needs. The tavern needs none. */
+export function lookProgress(p: Profile, id: string): { have: number; need: number } {
+  const u = LOOKS.find((l) => l.id === id)?.unlock;
+  return u ? { have: Math.min(u.clears, p.dungeons[u.dungeon]?.clears || 0), need: u.clears } : { have: 0, need: 0 };
+}
+export function lookOpen(p: Profile, id: string): boolean {
+  const { have, need } = lookProgress(p, id);
+  return LOOKS.some((l) => l.id === id) && have >= need;
+}
+
+/** The look a room is drawn in: the one you put on it once you've earned it (or with `free`, the testing
+ *  switch), otherwise the tavern. A look this build doesn't know, from a newer one, is drawn as the tavern. */
+export function lookOf(p: Profile, room: string, free = false): string {
+  const id = p.hearth.looks[room];
+  return id && LOOKS.some((l) => l.id === id) && (free || lookOpen(p, id)) ? id : DEFAULT_LOOK;
+}
+
+/** Put a look on one room, or on every room with 'house'. Only a look you've earned, unless `free`. */
+export function setLook(p: Profile, target: string, id: string, free = false): boolean {
+  if (!LOOKS.some((l) => l.id === id) || !(free || lookOpen(p, id))) return false;
+  const rooms = target === 'house' ? LOOK_ROOMS : LOOK_ROOMS.filter((r) => r === target);
+  for (const r of rooms) p.hearth.looks[r] = id;
+  return rooms.length > 0;
 }

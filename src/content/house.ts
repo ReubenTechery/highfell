@@ -5,6 +5,7 @@
  * House units: x runs across (0 to 1200 between the outer walls), y runs down, and the ground floor's
  * floor is at y = 0, so the loft is far up (negative y) and the cellar is below ground. A thing or a
  * spot is placed by its ground point, like every sprite. A new room is a new entry here plus its art.
+ * A look (the tavern, Barrow Hall) is drawn in ui/houseart.ts; what it is and what opens it is here.
  */
 import type { CollectibleKind } from './types';
 
@@ -84,6 +85,17 @@ function shelf(xs: number[], n0: number): HouseSpot[] {
   }));
   return out;
 }
+
+/** A look for a room or the whole house. Looks only: it never changes what anything does, or where
+ *  anything you put in the house sits. One per dungeon, opened by clearing it a hundred times. */
+export interface LookDef { id: string; name: string; blurb: string; unlock: { dungeon: string; clears: number } | null }
+export const LOOKS: LookDef[] = [
+  { id: 'tavern', name: 'Tavern', blurb: 'Warm wood, lamplight and a crackling fire.', unlock: null },
+  { id: 'barrow', name: 'Barrow Hall', blurb: 'Cold stone, old bones and the Gravekeeper’s green fire.', unlock: { dungeon: 'barrow', clears: 100 } },
+];
+export const DEFAULT_LOOK = 'tavern';
+/** the rooms a look can go on: every room inside the house */
+export const LOOK_ROOMS: string[] = ROOMS.filter((r) => r.id !== 'yard').map((r) => r.id);
 
 /** where your other heroes stand in the bunk room, by their beds */
 export const BUNK_SLOTS: [number, number][] = [[64, -1196], [164, -1192], [264, -1196], [364, -1192], [462, -1196]];
