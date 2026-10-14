@@ -81,7 +81,7 @@ export class Camera {
   flyTo(cx: number, cy: number, z: number, ms = 480): void {
     const from = { cx: this.cx, cy: this.cy, z: this.z };
     const to = this.clamped(cx, cy, clamp(z, this.zMin, this.zMax));
-    if (reducedMotion()) { this.set(to.cx, to.cy, to.z); return; }
+    if (reducedMotion() || (Math.hypot(to.cx - from.cx, to.cy - from.cy) < 1 && Math.abs(to.z / from.z - 1) < 0.002)) { this.set(to.cx, to.cy, to.z); return; }
     this.stop();
     const id = this.flight;
     this.flying = true;

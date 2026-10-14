@@ -143,6 +143,7 @@ export class Hearth {
 
   /** fit the camera to the screen: on the first look, start in the hall */
   layout(): void {
+    const w0 = this.cam.w, h0 = this.cam.h;
     this.cam.measure();
     if (this.cam.w < 2) return;
     const wasFar = this.placed && this.far();
@@ -153,6 +154,7 @@ export class Hearth {
     this.cam.zMax = this.roomZ * 2.4;
     if (this.want) { const r = this.want; this.want = null; this.placed = true; this.goRoom(r, !this.root.offsetParent); return; }
     if (!this.placed) { this.placed = true; this.goRoom(HOME_ROOM, true); return; }
+    if (this.cam.w === w0 && this.cam.h === h0) return;
     if (wasFar) this.overview(true);
     else this.cam.set(this.cam.cx, this.cam.cy, this.cam.z);
   }
@@ -183,14 +185,16 @@ export class Hearth {
 
   /** after every move of the camera: room signs follow their rooms, and show only when you're zoomed out */
   private onView(): void {
-    const far = this.far();
-    this.root.classList.toggle('far', far);
-    for (const el of this.signs.querySelectorAll<HTMLElement>('.h-sign')) {
-      const r = ROOMS.find((x) => x.id === el.dataset.room);
-      if (!r) continue;
-      const [ax, ay] = r.sign || r.focus;
-      const [sx, sy] = this.cam.toScreen(ax, ay);
-      el.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px) translate(-50%, -50%)`;
+    const far = this.far(), wasFar = this.root.classList.contains('far');
+    if (far !== wasFar) this.root.classList.toggle('far', far);
+    if (far || wasFar) {
+      for (const el of this.signs.querySelectorAll<HTMLElement>('.h-sign')) {
+        const r = ROOMS.find((x) => x.id === el.dataset.room);
+        if (!r) continue;
+        const [ax, ay] = r.sign || r.focus;
+        const [sx, sy] = this.cam.toScreen(ax, ay);
+        el.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px) translate(-50%, -50%)`;
+      }
     }
     const z = this.root.querySelector<HTMLElement>('[data-act="zoom"]');
     if (z) {

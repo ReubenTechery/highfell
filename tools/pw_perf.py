@@ -70,6 +70,7 @@ def main():
             if a.look:
                 pg.evaluate("""([look, rooms]) => { highfell.setDev({ allOpen: true }); highfell.p.hearth.looks = Object.fromEntries(rooms.map((r) => [r, look]));
                   highfell.save(); highfell.showHearth('hall'); }""", [a.look, LOOK_ROOMS])
+            pg.evaluate("() => { const t = document.querySelector('#toasts'); if (t) t.innerHTML = ''; }")
             pg.wait_for_timeout(1500)
             client = ctx.new_cdp_session(pg)
             client.send('Emulation.setCPUThrottlingRate', {'rate': a.cpu})

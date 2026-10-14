@@ -50,17 +50,18 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .hearth.dragging { cursor: grabbing; }
 /* the camera moves .h-cam as one picture; .h-world holds the house's layers in world units (camera.ts) */
 .h-cam, .h-world, .h-world > * { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
-.h-cam { will-change: transform; }
+.h-cam { will-change: transform; cursor: default; pointer-events: none; }
 .h-world > svg { display: block; }
 .h-back { overflow: visible; }
-.h-fx, .h-bits, .h-front, .h-pips { pointer-events: none; }
 .bit { position: absolute; display: block; }
-.house .thing, .house .spot, .house .hero, .house .newhero { cursor: pointer; }
-.house .spot.empty, .house .spot.none { pointer-events: none; }
-.house.deco .spot.empty, .house.deco .spot.none { pointer-events: auto; }
+.house .thing, .house .spot, .house .hero, .house .newhero { pointer-events: auto; cursor: pointer; }
+.house .spot.empty, .house .spot.none, .hearth.dragging .house * { pointer-events: none; }
+.hearth:not(.dragging) .house.deco .spot.empty, .hearth:not(.dragging) .house.deco .spot.none { pointer-events: auto; }
 .house :focus { outline: none; }
 .house .hl { fill: transparent; stroke: transparent; stroke-width: 0; }
-.house .thing:hover .hl, .house .hero:hover .hl, .house .newhero:hover .hl, .house .spot.has:hover .hl, .house.deco .spot:hover .hl,
+@media (hover: hover) {
+  .house .thing:hover .hl, .house .hero:hover .hl, .house .newhero:hover .hl, .house .spot.has:hover .hl, .house.deco .spot:hover .hl { stroke: var(--gold); stroke-width: 6; fill: rgba(242, 194, 48, 0.1); }
+}
 .house [tabindex]:focus-visible .hl { stroke: var(--gold); stroke-width: 6; fill: rgba(242, 194, 48, 0.1); }
 .house .spot .mark, .house .spot .plus { display: none; }
 .house.deco .spot:not(.has) .mark { display: inline; fill: rgba(255, 248, 236, 0.18); stroke: #FFF8EC; stroke-width: 4; stroke-dasharray: 10 8; }
@@ -96,7 +97,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 
 /* the room signs: you see them when you are zoomed out, and tap one to go in */
 .h-signs { position: absolute; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
-.h-sign { position: absolute; left: 0; top: 0; padding: 4px 12px 5px; border-radius: 12px; border: 3px solid var(--ink); background: var(--panel); color: var(--ink); box-shadow: 0 3px 0 var(--ink); font-family: var(--f-display); font-size: 16px; white-space: nowrap; cursor: pointer; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+.h-sign { position: absolute; left: 0; top: 0; will-change: transform; padding: 4px 12px 5px; border-radius: 12px; border: 3px solid var(--ink); background: var(--panel); color: var(--ink); box-shadow: 0 3px 0 var(--ink); font-family: var(--f-display); font-size: 16px; white-space: nowrap; cursor: pointer; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
 .hearth.far .h-sign { opacity: 1; pointer-events: auto; }
 /* the top bar: your hero, Marks, decorate, settings */
 .h-top { position: absolute; top: calc(var(--pad-t) + 10px); left: 10px; right: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; pointer-events: none; z-index: 3; }
