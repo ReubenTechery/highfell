@@ -27,7 +27,7 @@ export class Creator {
 
   constructor(private app: App, private root: HTMLElement) {
     actions(root, {
-      back: () => { SFX.play('ui'); app.showCamp(); },
+      back: () => { SFX.play('ui'); app.showHearth('bunks'); },
       race: (el) => this.pickRace(el.dataset.v as RaceId),
       cls: (el) => this.pickClass(el.dataset.v as ClassId),
       dice: () => { this.name = this.roll(); this.typed = false; this.err = ''; SFX.play('ui'); this.render(); },
@@ -77,7 +77,7 @@ export class Creator {
   }
 
   private why(): string | null {
-    if (this.app.p.roster.length >= MAX_HEROES) return `You have ${MAX_HEROES} heroes. Let one go at the camp to make another.`;
+    if (this.app.p.roster.length >= MAX_HEROES) return `You have ${MAX_HEROES} heroes. Let one go in the bunk room to make another.`;
     if (!CLASSES[this.cls].ready) return `${CLASSES[this.cls].name}s are coming in the classes pass.`;
     if (!canMake(this.race, this.cls)) return classesFor(this.race).length ? `${RACES[this.race].name} ${CLASSES[this.cls].name.toLowerCase()}s aren’t drawn yet.` : `${RACES[this.race].plural} arrive in the races pass.`;
     return nameProblem(this.app.p, this.name);
@@ -125,7 +125,7 @@ export class Creator {
     this.root.style.setProperty('--light', R.light);
     this.root.innerHTML = `
       <div class="cr-top">
-        ${this.first ? '<span></span>' : `<button type="button" class="btn small" data-act="back">${GLYPH.left}Camp</button>`}
+        ${this.first ? '<span></span>' : `<button type="button" class="btn small" data-act="back">${GLYPH.left}Back</button>`}
         <div class="cr-title"><h2>${this.first ? 'Make your hero' : 'New hero'}</h2><p>Race and class are for keeps. Up to ${MAX_HEROES} heroes.</p></div>
         <span></span>
       </div>

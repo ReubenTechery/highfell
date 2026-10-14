@@ -55,6 +55,15 @@ organisation (its "room" feature shows who has the page open right now), so a pu
 our own small server, sign-in and a block or report button. That is the owner's call. A friends-only test
 using the page's room feature could come first.
 
+## Proposal: looks for the house
+
+**The want (the owner's idea):** after a big milestone, turn your house, or a room of it, into a dungeon's look.
+
+A look reskins walls, fire, light and the view outside; everything you placed stays where it is. One look per
+dungeon (and maybe one per Vale place), looks only. Open: what unlocks it. The owner suggested 100 heroic
+clears, but heroic doesn't exist yet. One option: the look at 100 clears of that dungeon now, a heroic version of
+it later. Choosing a look needs a save field, so a version bump.
+
 ## Open calls from the design
 
 - When all three Ults land within 5 seconds, a screen-wide team finisher? (Leaning yes.)

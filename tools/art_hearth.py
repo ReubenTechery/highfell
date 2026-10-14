@@ -373,8 +373,129 @@ def furniture():
     sprite('banner_rod', (-52, -4, 104, 20), hk)
 
 
+# ================================================================ the house: the things you tap
+def lectern():
+    """The collection log: a big open book on a stand."""
+    o = [s('M-46 0 L-38 -16 H38 L46 0 Z', WOOD_D, 4), s('M-11 -16 V-100 H11 V-16 Z', WOOD, 4)]
+    o.append(s('M-72 -98 H72 L64 -114 H-64 Z', WOOD, 4))
+    o.append(s('M-70 -112 C-42 -124 -12 -122 0 -114 C12 -122 42 -124 70 -112 L66 -124 C40 -134 10 -132 0 -124 C-10 -132 -40 -134 -66 -124 Z', RED, 3.5))
+    page = 'M0 -122 C-12 -130 -40 -132 -62 -124 L-58 -172 C-38 -180 -12 -178 0 -170 Z'
+    o.append(both(page, BONE, 3.5))
+    for i, y in enumerate((-160, -150, -140, -130)):
+        w = 38 if i % 2 else 30
+        o.append(ln(f'M-{8 + w} {y - 2} C-{8 + w // 2} {y - 5} -14 {y - 4} -8 {y - 1} M8 {y - 1} C14 {y - 4} {8 + w // 2} {y - 5} {8 + w} {y - 2}', BONE_D, 2.4))
+    o.append(ln('M0 -122 V-170', BONE_D, 2.6))
+    o.append(s('M5 -124 L8 -92 L12 -98 L16 -92 L13 -124 Z', RED, 2.4))
+    o.append(ln('M-54 -170 C-40 -175 -24 -175 -12 -172', '#FFFFFF', 2.2))
+    sprite('lectern', (-78, -186, 156, 190), o)
+
+
+def armor_stand():
+    """Your gear on a stand: helm, pauldrons, a breastplate."""
+    o = [s('M-46 0 L-38 -14 H38 L46 0 Z', WOOD_D, 4), s('M-7 -14 V-96 H7 V-14 Z', WOOD, 4)]
+    chest = 'M-38 -176 C-44 -146 -40 -112 -26 -94 H26 C40 -112 44 -146 38 -176 C18 -184 -18 -184 -38 -176 Z'
+    o.append(s(chest, STEEL, 4))
+    o.append(ln('M0 -178 V-100', STEEL_D, 3) + ln('M-28 -150 C-20 -146 -10 -146 -4 -150', STEEL_L, 3))
+    o.append(s('M-30 -106 H30 V-92 H-30 Z', WOOD_D, 3.5) + s('M-7 -106 H7 V-92 H-7 Z', GOLD, 2.5))
+    o.append(both('M-36 -178 C-60 -184 -76 -166 -72 -144 C-60 -150 -48 -154 -34 -154 Z', STEEL_D, 4))
+    o.append(ln('M-62 -168 C-56 -172 -48 -172 -42 -170', STEEL_L, 2.6))
+    o.append(s('M-8 -188 V-176 H8 V-188 Z', WOOD, 3))
+    o.append(s('M-26 -192 C-26 -226 26 -226 26 -192 L26 -184 H-26 Z', STEEL, 4) + ln('M-16 -200 H16', K, 4))
+    o.append(s('M-2 -224 C4 -242 22 -240 28 -226 C16 -226 8 -222 2 -218 Z', RED, 3))
+    sprite('armor_stand', (-80, -246, 160, 250), o)
+
+
+def weapon_rack():
+    o = [s('M-92 0 V-176 H-80 V0 Z', WOOD_D, 4), s('M80 0 V-176 H92 V0 Z', WOOD_D, 4), s('M-96 -186 H96 V-172 H-96 Z', WOOD, 4)]
+    o.append(s('M-46 -54 V-196 L-40 -210 L-34 -196 V-54 Z', STEEL_L, 3.5) + ln('M-40 -62 V-190', STEEL, 2))
+    o.append(s('M-58 -58 H-22 V-48 H-58 Z', GOLD, 3) + s('M-44 -48 V-24 H-36 V-48 Z', WOOD_D, 3) + c(-40, -20, 5, GOLD, 3))
+    o.append(beam('M8 -14 V-186', WOOD, 6, 3.5) + c(8, -198, 12, FROST, 3.5) + c(4, -202, 4, '#FFFFFF', 0))
+    o.append(beam('M52 -14 V-176', WOOD, 6, 3.5) + s('M55 -174 C80 -184 92 -156 82 -138 C72 -144 64 -146 55 -144 Z', STEEL_L, 3.5))
+    o.append(s('M-96 -40 H96 V-28 H-96 Z', WOOD, 4))
+    sprite('weapon_rack', (-100, -216, 200, 220), o)
+
+
+def larder():
+    """The satchel at home: shelves of jars, sacks on the floor."""
+    o = [s('M-96 0 V-232 H96 V0 Z', WOOD_D, 4.5), s('M-84 -8 V-220 H84 V-8 Z', '#5A3A22', 0)]
+
+    def jar(x, y, col, h=30):
+        return (s(f'M{x - 14} {y} V{y - h} C{x - 14} {y - h - 6} {x - 9} {y - h - 8} {x - 9} {y - h - 12} H{x + 9} C{x + 9} {y - h - 8} {x + 14} {y - h - 6} {x + 14} {y - h} V{y} Z', col, 3)
+                + s(f'M{x - 11} {y - h - 12} H{x + 11} V{y - h - 19} H{x - 11} Z', WOOD, 2.5) + ln(f'M{x - 7} {y - 8} V{y - h + 4}', '#FFFFFF', 2.4))
+    for y in (-152, -84):
+        o.append(s(f'M-90 {y} H90 V{y + 10} H-90 Z', WOOD, 3.5))
+    o.append(jar(-56, -152, '#C9D2DC') + jar(-14, -152, GRN, 36) + jar(30, -152, '#9E2F2E') + jar(66, -152, '#C9D2DC', 24))
+    o.append(jar(-50, -84, '#E9C46A', 26) + s('M-6 -84 V-120 L4 -130 V-142 H12 V-130 L22 -120 V-84 Z', PURP, 3) + jar(56, -84, GRN, 28))
+    sack = 'M-72 -8 C-80 -40 -62 -62 -52 -66 L-46 -76 L-40 -66 C-28 -60 -14 -40 -22 -8 Z'
+    o.append(s(sack, '#C9A27A', 3.5) + ln('M-52 -66 H-40', K, 3) + s('M10 -8 C4 -32 18 -48 30 -50 C46 -48 58 -32 50 -8 Z', '#B89068', 3.5))
+    o.append(s('M-90 -232 H90 V-220 H-90 Z', WOOD, 3.5))
+    sprite('larder', (-100, -238, 200, 242), o)
+
+
+def barrow_door():
+    """The way down to the Barrow: a stone arch, an old door, green light round its edges."""
+    o = [halo(0, -170, 200, GRN, 0.2)]
+    o.append(s('M-160 0 V-226 C-160 -330 160 -330 160 -226 V0 Z', STONE, 5))
+    for y in (-50, -100, -150, -200):
+        o.append(ln(f'M-160 {y} H-120 M120 {y} H160', STONE_D, 3))
+    for k in range(1, 7):
+        a = math.pi * k / 7
+        o.append(ln(f'M{f(-120 * math.cos(a))} {f(-222 - 78 * math.sin(a))} L{f(-160 * math.cos(a))} {f(-226 - 104 * math.sin(a))}', STONE_D, 3))
+    o.append(s('M-120 0 V-222 C-120 -300 120 -300 120 -222 V0 Z', '#22301F', 4))
+    o.append(s('M-114 0 V-220 C-114 -292 114 -292 114 -220 V0 Z', GRN, 0))
+    o.append(s('M-104 0 V-218 C-104 -282 104 -282 104 -218 V0 Z', '#5E4A3A', 4))
+    for x in (-52, 0, 52):
+        o.append(ln(f'M{x} -6 V{-262 if x == 0 else -252}', '#4A3A2E', 3))
+    o.append(s('M-104 -74 H104 V-58 H-104 Z', '#4A4458', 3.5) + s('M-104 -200 H104 V-184 H-104 Z', '#4A4458', 3.5))
+    for x in (-80, -28, 28, 80):
+        o.append(c(x, -66, 3.4, STEEL, 2) + c(x, -192, 3.4, STEEL, 2))
+    o.append(ln('M44 -124 C44 -142 68 -142 68 -124 C68 -106 44 -106 44 -124', K, 7) + ln('M44 -124 C44 -142 68 -142 68 -124 C68 -106 44 -106 44 -124', STEEL, 3.5))
+    o.append(s('M-40 -334 H40 L32 -284 H-32 Z', STONE_T, 4))
+    o.append(A.skull(0, -314, 1.5, GRN))
+    for (x, y, sx) in ((-160, -180, 1), (160, -96, -1), (-160, -40, 1)):
+        o.append(s(f'M{x} {y} C{x + sx * 12} {y - 10} {x + sx * 20} {y + 6} {x + sx * 30} {y - 2} C{x + sx * 30} {y + 12} {x + sx * 16} {y + 18} {x} {y + 16} Z', '#5E8A4E', 3))
+    sprite('barrow_door', (-172, -346, 344, 350), o)
+
+
+def bricked_arch():
+    """A dungeon still to come: an arch bricked up, with a chalk mark."""
+    o = [s('M-110 0 V-168 C-110 -240 110 -240 110 -168 V0 Z', STONE, 4.5)]
+    o.append(s('M-80 0 V-166 C-80 -218 80 -218 80 -166 V0 Z', '#5E5470', 4))
+    for i, y in enumerate(range(-26, -170, -26)):
+        o.append(ln(f'M-80 {y} H80', '#4A4060', 3))
+        for x in range(-60 if i % 2 else -40, 80, 40):
+            o.append(ln(f'M{x} {y} V{y + 26}', '#4A4060', 3))
+    o.append(ln('M-12 -124 C-12 -142 14 -142 14 -126 C14 -112 0 -112 0 -98 M0 -84 V-82', '#E9E4D8', 5))
+    sprite('bricked_arch', (-116, -238, 232, 242), o)
+
+
+def bunk(name, top, low):
+    """A bunk bed: two beds, one above the other, for two of your heroes."""
+    o = [s('M-84 0 V-278 H-70 V0 Z', WOOD_D, 4), s('M70 0 V-278 H84 V0 Z', WOOD_D, 4)]
+    for (y, col) in ((-34, low), (-176, top)):
+        o.append(s(f'M-70 {y} V{y - 30} C-70 {y - 40} -62 {y - 44} -54 {y - 44} H70 V{y} Z', col, 4))
+        o.append(ln(f'M-14 {y - 42} V{y - 4}', K, 2.6) + ln(f'M-6 {y - 38} H62', '#FFFFFF', 2.4).replace('stroke: #FFFFFF', 'stroke: #FFFFFF; opacity: 0.35'))
+        o.append(s(f'M-66 {y - 40} C-66 {y - 58} -24 {y - 58} -24 {y - 42} C-24 {y - 36} -66 {y - 34} -66 {y - 40} Z', BONE, 3.5))
+        o.append(s(f'M-84 {y} H84 V{y + 14} H-84 Z', WOOD, 4))
+    o.append(s('M-84 -278 H84 V-266 H-84 Z', WOOD, 3.5) + s('M-70 -240 H20 V-230 H-70 Z', WOOD, 3))
+    sprite(name, (-90, -284, 180, 288), o)
+
+
+def signpost():
+    o = [s('M-8 0 V-204 H8 V0 Z', WOOD_D, 4)]
+    o.append(s('M76 -196 H-46 L-70 -172 L-46 -148 H76 Z', '#C9A27A', 4))
+    o.append(s('M-40 -134 H44 L60 -118 L44 -102 H-40 Z', '#B89068', 3.5))
+    o.append(c(0, -172, 3, K, 0) + c(0, -118, 3, K, 0))
+    sprite('signpost', (-76, -210, 156, 214), o)
+
+
+def house_props():
+    lectern(); armor_stand(); weapon_rack(); larder(); barrow_door(); bricked_arch(); signpost()
+    bunk('bunk_a', BLUE, RED); bunk('bunk_b', '#4E9A4A', GOLD_D); bunk('bunk_c', PURP, '#2F8F8F')
+
+
 def build():
-    lanterns(); pets(); hound(); trophies(); fireplace(); fire(); rug(); stall(); window(); door(); furniture()
+    lanterns(); pets(); hound(); trophies(); fireplace(); fire(); rug(); stall(); window(); door(); furniture(); house_props()
     return SP
 
 

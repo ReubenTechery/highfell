@@ -1,7 +1,7 @@
 # Highfell
 
 A three-seat co-op dungeon game for phone and desktop: a tank, a healer and a DPS, with bots in the seats
-nobody is sitting in. Make heroes (a race and a class each, for keeps) and keep alts at the camp. Short
+nobody is sitting in. Make heroes (a race and a class each, for keeps) and keep alts in your house. Short
 dungeons, OSRS-style loot (every drop rolls on its own, kill counts, a collection log by boss), a home to show
 off what you find, and a lantern that tells you what is in the chest before you open it.
 

@@ -12,14 +12,14 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 14 
 
 | Part | Built | Still design |
 | --- | --- | --- |
-| Heroes | Race and class picked once, for keeps; up to 6 heroes; the camp to switch, rename once or let one go; your hero big on the Hearth | Gnomes and the other race and class combos, the Rogue, Ranger and Bard kits, racial tricks |
+| Heroes | Race and class picked once, for keeps; up to 6 heroes; beds in the house to switch, rename once or let one go; your hero by the fire | Gnomes and the other race and class combos, the Rogue, Ranger and Bard kits, racial tricks |
 | Abilities | Four buttons per role plus the dodge; a perfect block stuns and hits back | Ults, Openings, team combos |
 | Talents | Epic weapon traits, swappable for 5 Barrow Marks | The three paths and four rows per role, hero levels |
 | Gear and sets | 4 slots on a gear doll that shows rarity, set count and what each piece adds; Common to Epic in about ten clears, Barrow sets with their 2-piece bonuses, the three Gravekeeper weapons. Nothing goes on by itself: new pieces glow on the doll until you put them on | 3-piece bonuses (they need summons), the wardrobe, gear drawn on your hero |
 | Threat and difficulty | The tank earns threat (Slam taunts and drags mobs in, Charge grabs one), loose mobs go wild on the squishies, a caged tank loses the boss; Barrow hits 1.5 times as hard and its packs have more health; you see only your own numbers | Ults, Openings |
 | Loot | Every line rolls on its own, kill counts, duplicates to Marks, the walkout and the chest reveal |  |
 | Achievements | All 12, the meta and the 3 hidden ones, with titles, trophies, looks and the Lantern Ghost |  |
-| Home | The Hearth: pets by the fire and on the rug, the mount's stall, the mantel and the banner | Inviting people over |
+| Home | The Hearth, a tall house cut open: zoom out to see every room, tap things to use them (the Barrow door, the signpost to ride out, the armour stand, the big book of the collection log, the cauldron, the larder); about 30 spots for pets, mounts, trophies and banners; Decorate; one big Dungeons button | The dungeon picker as a group finder (bots fill seats), looks for a room or the house, rooms that come with new dungeons and places, inviting people over |
 | Logs | Collection log by boss and gathering spot, grouped by dungeon and place, OSRS style: drops, kill count, fastest kill, wipes; achievements; the Vale's story; stats |  |
 | Riding out | The Vale map (Bramblewick is the one place open); walking out, or riding once you have a mount; Bramblewick Hollow with three gathering close-ups that pay XP every cut, Dottle's errands (goats, crows, sparks, the kettle, deliveries) and 8 story pages; Gathering and Brewing ranks; the Hill Goat from the goats errand; 3 pets, 4 trophies, bunting and a hare | Moonmere and Emberdeep, friends seen out riding, more close-ups |
 | Brews | The cauldron by your fire, 4 brews, one bottle a run, picked on the dungeon sheet | More recipes as places open |
@@ -144,19 +144,29 @@ Levels unlock choices and looks, never stats.
 
 A hero is one race and one class, picked when you make them and fixed after. You can have six, and the one you play stands by the fire on the Hearth.
 
-- **The camp:** every hero round a campfire on the hill above Highfell. Pick one to play, check their gear, or let one go (the last one stays).
+- **The bunk room:** every hero you aren't playing waits by their bed in the house. Tap one to play them, check their gear, rename them (once) or let one go (the last one stays); an empty bed makes a new hero.
 - **Each hero keeps:** their regular gear (the Common to Epic ladder), their title and their clears.
 - **Every hero shares:** the collection (a unique fits any hero of its role), kill counts, Marks, achievements, titles and the Hearth.
 - **Shared gear:** a floor per role, up to Rare. Spare pieces and your own ladder raise it, and every hero of that role can put it on, including heroes made later (a new hero starts wearing it). Epic is earned on the hero.
-- **Nothing goes on by itself.** A new piece waits in the hero's bag and glows on the gear doll with "Up" (a better regular piece) or "New" (a unique). The Gear button counts what's waiting; tap the slot, compare, and Put it on: the slot bursts, the item level counts up. The chest reveal says "Put it on in Gear".
+- **Nothing goes on by itself.** A new piece waits in the hero's bag and glows on the gear doll with "Up" (a better regular piece) or "New" (a unique). Your hero's tag at the top of the house counts what's waiting; tap the slot, compare, and Put it on: the slot bursts, the item level counts up. The chest reveal says "Put it on in Gear".
 - **Drawn today:** Dwarf Warrior (tank), Human Cleric (healer), Elf Mage (DPS). The rest show in the hero maker as Soon.
 - **Old saves:** became one hero, named for the role you last played, with a one-time rename.
 
+## Home: the house
+
+Home is a tall house on the hill, cut open like a doll's house. Built 14 Oct after a play test where a new player tapped Ride out first because it looked like the main button.
+
+- **Zoom:** pinch or scroll. Zoomed out you see the whole house, each room with a sign; tap one to go in. Zoomed in, tap things to use them. It opens on the hall.
+- **One big button: Dungeons.** Everything else is a thing in the house: the Barrow door in the cellar, the signpost in the yard (ride out), the armour stand (gear), the big book in the trophy loft (the collection log), the cauldron and the larder (the satchel). Your hero's tag at the top opens gear too.
+- **Rooms:** the trophy loft, the bunk room (your other heroes), the armory, the hall (your hero, the fire, the mantel), the stable, the brewing room, the cellar with the Barrow door and two bricked arches for dungeons to come, and the yard.
+- **Trophies everywhere:** about 30 spots: the mantel, the loft's shelves, banners on the walls and the roof's flagpoles, pets by the fire, on the rug, on the table and in the loft, the stall and the yard. Decorate shows the empty ones; the rest of the time they're hidden.
+- **Next:** the dungeon picker becomes a group finder (pick a dungeon, see your party's seats, bots fill the empty ones; real players once there is online play). Then looks for a room or the whole house, and rooms that come with new dungeons and Vale places.
+
 ## Riding out (the Vale)
 
-Between dungeons you ride out: one button on the hearth, about five minutes a trip, built as a playable test slice on 14 Oct and reworked the same day after a play test. It stays small on purpose: no open world, no crafted gear, no inventory to manage, no streaks.
+Between dungeons you ride out: the signpost in the house's yard, about five minutes a trip, built as a playable test slice on 14 Oct and reworked the same day after a play test. It stays small on purpose: no open world, no crafted gear, no inventory to manage, no streaks.
 
-1. **Ride out** from the hearth to the Vale map. Bramblewick Hollow is the one place open: it glows, its road is lit and the card has the button. The other places are locked ("Later"); the Barrow is through the door at home.
+1. **Ride out** from the signpost in the yard to the Vale map. Bramblewick Hollow is the one place open: it glows, its road is lit and the card has the button. The other places are locked ("Later"); the Barrow is down in the cellar at home.
 2. **Walk or ride there.** You start on foot (5 seconds). There's no skip: a mount is what makes it quicker (the Hill Goat 3 seconds, the hare and the hound 2).
 3. **Dottle's first errand is the goats:** tap them back into the pen, and the last one out decides she likes you. She's your Hill Goat, your first mount.
 4. **Gather** in close-up: snip a stem on the dotted line, pluck a glowcap at its brightest. Three goes a harvest; each Perfect adds one more. **Every cut pays Gathering XP as it lands**, with a bar that fills at the foot of the close-up and a burst on a new rank.

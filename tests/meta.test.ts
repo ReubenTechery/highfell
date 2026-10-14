@@ -12,6 +12,7 @@ import { SLOT_IDS } from '../src/content/gear';
 import { INGREDIENTS, RECIPES } from '../src/content/vale';
 import { Achiever } from '../src/meta/achievements';
 import { HEARTH_SPOTS, place } from '../src/meta/hearth';
+import { HOUSE_SPOTS, ROOMS, THINGS } from '../src/content/house';
 import type { GameEvent, RunSummary } from '../src/content/types';
 
 test('content: every id a table, log, set or reward points at exists', () => {
@@ -321,6 +322,42 @@ test('hearth: spots only take their own kind, and only what you own', () => {
   assert.ok(COLLECTIBLES['mount.gravehound']);
 });
 
+test('house: the hearth’s first eight spots keep their ids, and every id is unique', () => {
+  const ids = HEARTH_SPOTS.map((s) => s.id);
+  for (const id of ['pet.fire', 'pet.rug', 'mount.stall', 'mantel.1', 'mantel.2', 'mantel.3', 'mantel.4', 'banner.wall']) assert.ok(ids.includes(id), id);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.ok(HEARTH_SPOTS.length >= 30, 'room for trophies everywhere');
+  for (const k of ['pet', 'mount', 'trophy', 'banner']) assert.ok(HEARTH_SPOTS.some((s) => s.kind === k), k);
+});
+
+test('house: every thing does something, everything is in a room, and the Barrow door is there', () => {
+  const actions = ['dungeons', 'ride', 'gear', 'logs', 'brew', 'satchel'];
+  for (const t of THINGS) {
+    assert.ok(actions.includes(t.action), t.id);
+    assert.ok(ROOMS.some((r) => r.id === t.room), t.id);
+  }
+  for (const s of HOUSE_SPOTS) assert.ok(ROOMS.some((r) => r.id === s.room), s.id);
+  assert.equal(new Set(THINGS.map((t) => t.id)).size, THINGS.length);
+  for (const a of actions) assert.ok(THINGS.some((t) => t.action === a), `something in the house does ${a}`);
+});
+
+test('house: spots a save has never had fill with what is not on show, once; emptied spots stay empty', () => {
+  const p = freshProfile();
+  const trophies = Object.values(COLLECTIBLES).filter((c) => c.kind === 'trophy').map((c) => c.id);
+  for (const id of trophies) p.collection[id] = { n: 1, kc: 0, at: 1 };
+  // an older save: only the mantel was ever used, and its far right was emptied on purpose
+  p.hearth.spots = { 'mantel.1': trophies[0], 'mantel.2': trophies[1], 'mantel.3': trophies[2], 'mantel.4': null };
+  const q = migrate(JSON.parse(JSON.stringify(p)));
+  assert.equal(q.hearth.spots['mantel.4'], null, 'a spot you emptied stays empty');
+  assert.equal(q.hearth.spots['mantel.1'], trophies[0], 'nothing you placed moves');
+  const shown = Object.values(q.hearth.spots).filter(Boolean);
+  assert.equal(shown.length, trophies.length, 'every trophy you own is on show');
+  assert.equal(new Set(shown).size, shown.length, 'nothing is in two places');
+  assert.deepEqual(migrate(JSON.parse(JSON.stringify(q))).hearth.spots, q.hearth.spots, 'loading again changes nothing');
+  const fresh = migrate(JSON.parse(JSON.stringify(freshProfile())));
+  assert.ok(Object.values(fresh.hearth.spots).every((v) => v === null), 'a new save has an empty house');
+});
+
 test('art: every icon and sprite the content names exists', async () => {
   const fs = await import('node:fs');
   const read = (f: string) => JSON.parse(fs.readFileSync(new URL('../../art/' + f, import.meta.url), 'utf8'));
@@ -333,6 +370,8 @@ test('art: every icon and sprite the content names exists', async () => {
     if (c.sprite && !sprites[c.sprite]) missing.push('sprite ' + c.sprite + ' for ' + c.id);
   }
   for (const n of ['lantern', 'lantern_gold', 'lantern_out', 'pet_keeper', 'pet_keeper_reach', 'fireplace', 'fire_a', 'fire_b', 'rug', 'stall']) if (!sprites[n]) missing.push('sprite ' + n);
+  for (const t of THINGS) if (!sprites[t.sprite]) missing.push('sprite ' + t.sprite + ' for ' + t.id);
+  for (const n of ['bunk_a', 'bunk_b', 'bunk_c', 'bricked_arch', 'weapon_rack', 'table', 'stool', 'woodpile', 'torch', 'candles', 'skullpile']) if (!sprites[n]) missing.push('sprite ' + n);
   for (const n of ['npc_gnome', 'cauldron', 'burrow', 'burrow_red', 'windmill', 'windmill_sails', 'fence', 'cabbages', 'node_moonpetal', 'node_moonpetal_shim', 'node_glowcap', 'node_bramble', 'goggles', 'crow', 'spark', 'kettle_walk', 'pet_rootling_calm', 'goat']) if (!sprites[n]) missing.push('sprite ' + n);
   for (const x of [...Object.values(INGREDIENTS), ...Object.values(RECIPES)]) if (!tiles[x.icon]) missing.push('icon ' + x.icon + ' for ' + x.id);
   for (const n of ['s_gather', 's_brew']) if (!tiles[n]) missing.push('icon ' + n);
