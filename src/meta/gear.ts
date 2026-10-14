@@ -3,9 +3,10 @@
 import type { ItemDef, Rar, RoleId, SlotId } from '../content/types';
 import type { RegularSlot } from './profile';
 import { ITEMS, SETS } from '../content';
-import { EPIC, RARITY, SLOTS, SLOT_IDS, TRAITS, gearId, hpMultiplier, powerFromScore, weightedScore } from '../content/gear';
+import { EPIC, RARITY, SLOTS, SLOT_IDS, TRAITS, gearId, hpMultiplier, powerFromScore, traitDef, weightedScore } from '../content/gear';
 import type { ClassId, RaceId } from '../content/folk';
-import { createHero, roleOf, type Hero, type Profile } from './profile';
+import { activeHero, createHero, roleOf, type Hero, type Profile } from './profile';
+import { heroesFor } from './party';
 
 export interface Worn { slot: SlotId; def: ItemDef; trait?: string; unique: boolean }
 export interface Loadout {
@@ -70,6 +71,64 @@ export function itemShare(def: ItemDef): { power: number; health: number; ilvl: 
   const w = SLOTS.find((s) => s.id === def.slot)?.weight ?? 0;
   const power = (w * 0.45 * (RARITY[def.rar].score - 10)) / 12;
   return { power: Math.round(power * 1000) / 10, health: Math.round(power * 0.6 * 1000) / 10, ilvl: RARITY[def.rar].score };
+}
+
+/** Something gear does beyond its numbers: a unique's effect, an Epic weapon's trait or a set bonus. */
+export interface Effect { kind: 'unique' | 'trait' | 'set'; id: string; name: string; desc: string; later?: boolean }
+/** Everything a loadout does beyond its numbers. A set bonus that isn't ready yet comes marked `later`. */
+export function effectsOf(l: Loadout, role: RoleId): Effect[] {
+  const out: Effect[] = [];
+  const u = l.unique ? Object.values(ITEMS).find((d) => d.effect === l.unique) : undefined;
+  if (u && l.unique) out.push({ kind: 'unique', id: l.unique, name: u.name, desc: u.effectDesc || '' });
+  for (const t of l.traits) { const d = traitDef(role, t); if (d) out.push({ kind: 'trait', id: d.id, name: d.name, desc: d.desc }); }
+  for (const s of Object.values(SETS)) {
+    if (l.bonuses.includes(s.bonus2.id)) out.push({ kind: 'set', id: s.bonus2.id, name: `${s.name}, 2 pieces`, desc: s.bonus2.desc });
+    if (l.bonuses.includes(s.bonus3.id)) out.push({ kind: 'set', id: s.bonus3.id, name: `${s.name}, 3 pieces`, desc: s.bonus3.desc, ...(s.bonus3.ready ? {} : { later: true }) });
+  }
+  return out;
+}
+
+export type Verdict = 'wearing' | 'better' | 'worse' | 'same' | 'mixed';
+/** A piece held up against what is worn in its slot: the slot's item level before and after, what the
+ *  whole hero gains in power and health (in percent), its set count before and after, and the effects
+ *  it adds and takes away. */
+export interface Compare { slot: SlotId; now: Worn; ilvl: [number, number]; power: number; health: number; set: [number, number] | null; gains: Effect[]; loses: Effect[]; verdict: Verdict }
+/** Hold a piece up against what a hero wears. Better: more item level or a new effect, nothing lost.
+ *  Worse: less, or an effect lost for nothing. Both at once is a trade ('mixed'). A bonus that isn't
+ *  ready yet is listed but doesn't make a piece better. */
+export function compareOn(now: Record<SlotId, Worn>, role: RoleId, def: ItemDef): Compare {
+  const slot = def.slot, cur = now[slot];
+  const next: Record<SlotId, Worn> = { ...now, [slot]: { slot, def, unique: def.kind !== 'gear' } };
+  const a = loadoutOf(Object.values(now)), b = loadoutOf(Object.values(next));
+  const ea = effectsOf(a, role), eb = effectsOf(b, role);
+  const has = (list: Effect[], e: Effect): boolean => list.some((x) => x.kind === e.kind && x.id === e.id);
+  const gains = eb.filter((e) => !has(ea, e)), loses = ea.filter((e) => !has(eb, e));
+  const ilvl: [number, number] = [RARITY[cur.def.rar].score, RARITY[def.rar].score];
+  const pct = (x: number): number => Math.round(x * 1000) / 10 + 0;
+  const plus = ilvl[1] > ilvl[0] || gains.some((e) => !e.later), minus = ilvl[1] < ilvl[0] || loses.length > 0;
+  return {
+    slot, now: cur, ilvl,
+    power: pct(b.power - a.power), health: pct(hpMultiplier(b.power) - hpMultiplier(a.power)),
+    set: def.setId ? [a.sets[def.setId] || 0, b.sets[def.setId] || 0] : null,
+    gains, loses,
+    verdict: cur.def.id === def.id ? 'wearing' : plus && minus ? 'mixed' : plus ? 'better' : minus ? 'worse' : 'same',
+  };
+}
+/** The same for one of your heroes, against what they wear. Null when the piece isn't for their role. */
+export function compareFor(p: Profile, h: Hero, id: string): Compare | null {
+  const d = ITEMS[id];
+  return d && d.role === roleOf(h) ? compareOn(worn(p, h), d.role, d) : null;
+}
+/** What a new hero of a role starts in: the shared gear, nothing unique on. */
+export function floorWorn(p: Profile, role: RoleId): Record<SlotId, Worn> {
+  const out = {} as Record<SlotId, Worn>;
+  for (const slot of SLOT_IDS) { const r = p.warband[role][slot]; out[slot] = { slot, def: ITEMS[gearId(role, slot, r.rar)], trait: r.rar === EPIC ? r.trait : undefined, unique: false }; }
+  return out;
+}
+/** Who a piece would go on: your hero if it fits their role, or else your hero of its role you played last. */
+export function wearerOf(p: Profile, def: ItemDef): Hero | null {
+  const h = activeHero(p);
+  return h && roleOf(h) === def.role ? h : heroesFor(p, def.role)[0] || null;
 }
 
 /** Wear a unique you own in its slot, or pass null to go back to the regular piece. */

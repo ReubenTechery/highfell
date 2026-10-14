@@ -8,20 +8,22 @@ import { ACHIEVEMENT_LIST, COLLECTIBLES, DUNGEONS, ITEMS, SETS, TITLES, thing } 
 import { AB, ROLES, SLOTS_AB } from '../content/roles';
 import { ROLE_SLOTS, SLOT_IDS, TRAITS, gearId, traitDef } from '../content/gear';
 import { CLASSES, RACES, type ClassId, type RaceId } from '../content/folk';
-import type { BossInfo, CollectibleKind, DropDef, DungeonInfo, ItemDef, NodeDef, PlaceDef, Rar, RoleId, SlotId, Tier } from '../content/types';
+import type { BossInfo, DropDef, DungeonInfo, ItemDef, NodeDef, PlaceDef, Rar, RoleId, SlotId, Tier } from '../content/types';
 import { INGREDIENTS, INGREDIENT_ORDER, PLACES, RECIPES, RECIPE_ORDER, SKILLS } from '../content/vale';
 import { rankProgress, recipeUnlocked, skillRank } from '../meta/vale';
 import { activeHero, freshProfile, heroById, nameProblem, removeHero, renameHero, roleOf, setActive, type Hero } from '../meta/profile';
+import { pickRole } from '../meta/party';
 import { REROLL_COST, bestRegular, buyTrait, equip, healthPct, itemShare, loadoutFor, ownedFor, powerPct, putOn, seenSlot, waitingFor, worn, type Waiting, type Worn } from '../meta/gear';
 import { HEARTH_SPOTS, place, spotById, spotOf } from '../meta/hearth';
 import { maxPoints, points, progress } from '../meta/achievements';
 import type { App } from './app';
-import { actions, esc, fmtDate, fmtN, fmtRate, fmtT, GLYPH } from './dom';
+import { actions, cap, esc, fmtDate, fmtN, fmtRate, fmtT, GLYPH } from './dom';
 import { colourOf, heroImg, heroSprite, iconOf, nameOf, rarLook, spriteURL, tile } from './art';
 import { SFX } from './sound';
 import { ilvl } from './hearth';
 import { heroSheet, type HeroSheetState } from './herosheet';
 import { dungeonSheet, type DungeonPick } from './dungeonsheet';
+import { itemSheet, KIND_WORD, ROLE_STAT } from './itemsheet';
 
 export type LogTab = 'collection' | 'achievements' | 'lore' | 'stats';
 const LOG_TABS: LogTab[] = ['collection', 'achievements', 'lore', 'stats'];
@@ -50,35 +52,19 @@ export function normSpec(x: unknown): SheetSpec | null {
   return null;
 }
 
-const KIND_WORD: Record<CollectibleKind, string> = { pet: 'Pets', mount: 'Mounts', trophy: 'Trophies', banner: 'Banners', cosmetic: 'Looks' };
 const TIER_ORDER: Tier[] = ['bronze', 'silver', 'gold', 'meta', 'hidden'];
 const TIER_WORD: Record<Tier, string> = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', meta: 'Mastery', hidden: 'Hidden' };
-/** what power does for each seat, in plain words */
-const ROLE_STAT: Record<RoleId, { main: string; short: string }> = {
-  tank: { main: 'damage and threat', short: 'damage' },
-  healer: { main: 'healing', short: 'healing' },
-  dps: { main: 'damage', short: 'damage' },
-};
 const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 L14.9 8.7 L21.6 9.4 L16.6 13.9 L18 20.6 L12 17.2 L6 20.6 L7.4 13.9 L2.4 9.4 L9.1 8.7 Z" style="fill: #F2C230; stroke: #1E1A1A; stroke-width: 2; stroke-linejoin: round"/></svg>';
 const LEFT_SLOTS: SlotId[] = ['helm', 'shoulders', 'chest'];
 
 /** one page of the collection log: a boss and what it drops, a gathering spot or a villager's errands and what they give, or the rewards that are not drops */
 interface LogEntry { id: string; group: string; name: string; items: string[]; dg?: DungeonInfo; boss?: BossInfo; vale?: { place: PlaceDef; node?: NodeDef; table: DropDef[] } }
 const NODE_ART: Record<string, string> = { moonpetal: 'node_moonpetal', glowcap: 'node_glowcap', bramble: 'node_bramble' };
-/** where a Vale rare comes from: its table, and the counter that is its kill count */
-function valeSource(id: string): { rate: number; key: string; word: string } | null {
-  for (const pl of Object.values(PLACES)) {
-    for (const n of pl.nodes) { const d = n.table.find((x) => x.id === id); if (d) return { rate: d.rate, key: `vale.${pl.id}.${n.id}`, word: `harvested the ${n.name.toLowerCase()}` }; }
-    const d = pl.errandTable.find((x) => x.id === id);
-    if (d) return { rate: d.rate, key: `vale.${pl.id}.errands`, word: `done ${pl.villager.name.split(' ')[0]}’s errands` };
-  }
-  return null;
-}
 
 export class Sheets {
   spec: SheetSpec | null = null;
   /** the dungeon picker remembers its choices while the page is open */
-  private pick: DungeonPick = { mode: 'loot', start: 'keeper', gear: 'mine', seat: null };
+  private pick: DungeonPick = { mode: 'loot', start: 'keeper', gear: 'mine', role: null, alts: false, log: false };
   private resetArmed = false;
   /** a hero's sheet: letting them go takes two taps, and renaming has its own little form */
   private heroSt: HeroSheetState = { delArmed: false, renaming: false, err: '' };
@@ -93,13 +79,19 @@ export class Sheets {
       mode: (el) => { this.pick.mode = el.dataset.v as 'loot' | 'practice'; SFX.play('ui'); this.refresh(); },
       start: (el) => { this.pick.start = el.dataset.v!; SFX.play('ui'); this.refresh(); },
       tgear: (el) => { const v = el.dataset.v!; this.pick.gear = v === 'mine' ? 'mine' : (+v as 2 | 3); SFX.play('ui'); this.refresh(); },
-      seat: (el) => { const r = el.dataset.role as RoleId; this.pick.seat = this.pick.seat === r ? null : r; SFX.play('ui'); this.refresh(); },
+      role: (el) => {
+        const r = el.dataset.role as RoleId, p = this.app.p, was = p.active;
+        this.pick.role = r; this.pick.alts = false;
+        SFX.play('ui');
+        if (pickRole(p, r) && p.active !== was) this.app.save(); else this.refresh();
+      },
+      alts: () => { this.pick.alts = !this.pick.alts; SFX.play('ui'); this.refresh(); },
+      logx: () => { this.pick.log = !this.pick.log; SFX.play('ui'); this.refresh(); },
       playseat: (el) => {
         const h = heroById(this.app.p, el.dataset.id || null); if (!h) return;
-        setActive(this.app.p, h.id); this.pick.seat = null; SFX.play('place'); this.app.save();
-        this.app.toasts.text(h.name, `Takes the ${ROLES[roleOf(h)].title === 'DPS' ? 'DPS' : ROLES[roleOf(h)].title.toLowerCase()} seat.`);
+        setActive(this.app.p, h.id); this.pick.role = roleOf(h); this.pick.alts = false; SFX.play('place'); this.app.save();
       },
-      newseat: (el) => { const r = el.dataset.role as RoleId; this.pick.seat = null; SFX.play('ui'); this.close(); this.app.showCreate(r); },
+      newseat: (el) => { const r = el.dataset.role as RoleId; this.pick.alts = false; SFX.play('ui'); this.close(); this.app.showCreate(r); },
       go: () => this.go(),
       heroplay: () => {
         const h = this.sheetHero(); if (!h) return;
@@ -137,6 +129,7 @@ export class Sheets {
       tab: (el) => { SFX.play('ui'); this.open({ kind: 'logs', tab: el.dataset.tab as LogTab }); },
       entry: (el) => { SFX.play('ui'); this.open({ kind: 'logs', tab: 'collection', ...(el.dataset.id ? { entry: el.dataset.id } : {}) }); },
       item: (el) => { SFX.play('ui'); this.open({ kind: 'item', id: el.dataset.id!, back: this.spec || undefined }); },
+      gearat: (el) => { const h = heroById(this.app.p, el.dataset.hero || null); if (!h) return; SFX.play('ui'); this.open({ kind: 'gear', hero: h.id, slot: el.dataset.slot as SlotId }); },
       title: (el) => { const h = this.gearHero(); if (!h) return; h.title = el.dataset.id || null; SFX.play('ui'); this.app.save(); },
       place: (el) => { const s = this.spec; if (!s || s.kind !== 'picker') return; if (place(this.app.p, s.spot, el.dataset.id || null)) { SFX.play('place'); this.app.save(); this.close(); } },
       sound: () => { const p = this.app.p; p.settings.sound = !p.settings.sound; SFX.on = p.settings.sound; if (SFX.on) SFX.play('ui'); this.app.save(); },
@@ -172,7 +165,9 @@ export class Sheets {
 
   open(spec: SheetSpec): void {
     const was = !!this.spec;
-    if (spec.kind === 'dungeon' && !(this.spec && this.spec.kind === 'dungeon')) this.pick.seat = null;
+    // the dungeon picker starts fresh when it opens, but not when you come back to it from one of its drops
+    const inDungeon = (s: SheetSpec | null): boolean => !!s && (s.kind === 'dungeon' || (s.kind === 'item' && s.back?.kind === 'dungeon'));
+    if (spec.kind === 'dungeon' && !inDungeon(this.spec)) { this.pick.role = null; this.pick.alts = false; this.pick.log = false; }
     if (spec.kind === 'hero' && !(this.spec && this.spec.kind === 'hero' && this.spec.hero === spec.hero)) { clearTimeout(this.heroTimer); this.heroSt = { delArmed: false, renaming: false, err: '' }; }
     this.spec = spec;
     this.render(!was);
@@ -210,7 +205,7 @@ export class Sheets {
     const scroll = this.root.querySelector('.sheet-body')?.scrollTop || 0;
     let head = '', tabs = '', body = '', foot = '', wide = false;
     switch (s.kind) {
-      case 'dungeon': ({ head, body, foot } = dungeonSheet(this.app.p, this.pick)); break;
+      case 'dungeon': ({ head, body, foot } = dungeonSheet(this.app.p, this.pick)); wide = true; break;
       case 'hero': {
         const h = heroById(this.app.p, s.hero);
         if (!h) { this.close(); return; }
@@ -227,7 +222,7 @@ export class Sheets {
       case 'settings': ({ head, body } = this.settings()); break;
       case 'satchel': ({ head, body } = this.satchel()); break;
       case 'picker': ({ head, body } = this.picker(s.spot)); break;
-      case 'item': ({ head, body } = this.item(s.id, !!s.back)); break;
+      case 'item': ({ head, body } = itemSheet(this.app.p, s.id, !!s.back)); break;
     }
     this.root.innerHTML = `<div class="sheet-wrap"><section class="sheet ${wide ? 'wide' : ''} k-${s.kind}" role="dialog" aria-modal="true" aria-label="${esc(head.replace(/<[^>]+>/g, ' ').trim().split('  ')[0] || 'Panel')}">
       <header class="sheet-head"><div>${head}</div><button type="button" class="icon-btn" data-act="close" aria-label="Close">${GLYPH.close}</button></header>
@@ -510,42 +505,6 @@ export class Sheets {
     return out;
   }
 
-  /* ---------------------------------------------------------------- one item */
-  private item(id: string, hasBack: boolean) {
-    const p = this.app.p;
-    const t = thing(id);
-    const e = p.collection[id];
-    let kind = '', desc = '', more = '';
-    if (t?.kind === 'item') {
-      const d: ItemDef = t.def;
-      const look = rarLook(id);
-      kind = d.kind === 'unique' ? `Unique ${ROLE_SLOTS[d.role][d.slot].name.toLowerCase()} · ${ROLES[d.role].title}` : d.kind === 'set' ? `Epic · ${SETS[d.setId!].name} set · ${ROLES[d.role].title} ${d.slot}` : `${look.name} ${d.slot}`;
-      desc = d.flavor || '';
-      const share = itemShare(d);
-      more += `<div class="stats"><span class="chip">Item level <b>${share.ilvl}</b></span>${share.power > 0 ? `<span class="chip">${esc(cap(ROLE_STAT[d.role].main))} <b>+${share.power}%</b></span><span class="chip">Health <b>+${share.health}%</b></span>` : ''}</div>`;
-      if (d.effectDesc) more += `<div class="box"><b style="font-family: var(--f-display); font-weight: 400">When worn</b><span class="fine">${esc(d.effectDesc)}</span></div>`;
-      if (d.setId) { const s = SETS[d.setId]; more += `<div class="box setbox"><b style="font-family: var(--f-display); font-weight: 400">${esc(s.name)} set</b><div class="setline"><i>2</i><span>${esc(s.bonus2.desc)}</span></div><div class="setline later"><i>3</i><span>${esc(s.bonus3.desc)}</span></div></div>`; }
-    } else if (t?.kind === 'collectible') {
-      kind = KIND_WORD[t.def.kind];
-      desc = t.def.desc;
-    }
-    let source = '';
-    for (const dg of Object.values(DUNGEONS)) for (const tb of dg.loot) for (const d of tb.drops) if (d.id === id) source = `${dg.bosses.find((b) => b.id === tb.boss)?.name}, ${fmtRate(d.rate)}${d.role ? ` (${ROLES[d.role].title})` : ''}`;
-    if (!source && t?.kind === 'collectible') source = t.def.source;
-    const kc = (() => { for (const dg of Object.values(DUNGEONS)) for (const tb of dg.loot) if (tb.drops.some((d) => d.id === id)) return p.bosses[`${dg.id}.${tb.boss}`]?.kc || 0; return null; })();
-    const vs = valeSource(id);
-    const got = e ? `Got it${e.kc ? ` at ${vs ? 'count' : 'kill count'} ${fmtN(e.kc)}` : ''} on ${fmtDate(e.at)}${e.n > 1 ? `. Seen ${e.n} times.` : '.'}`
-      : kc !== null ? `Not yet. Your kill count is ${fmtN(kc)}.` : vs ? `Not yet. You’ve ${vs.word} ${fmtN(p.counters[vs.key] || 0)} times.` : 'Not yet.';
-    const spot = e ? spotOf(p, id) : null;
-    const body = `<div class="detail"><span class="tile" aria-hidden="true" style="box-shadow: 0 3px 0 var(--ink), inset 0 0 0 4px ${colourOf(id)}">${iconOf(id)}</span>
-      <div><h3>${esc(nameOf(id))}</h3><p class="fine">${esc(kind)}</p></div></div>
-      ${desc ? `<p class="lede">${esc(desc)}</p>` : ''}${more}
-      <div class="stats"><span class="chip">From <b>${esc(source || 'Unknown')}</b></span></div>
-      <p class="fine">${esc(got)}${spot ? ` It is in your house: ${esc(spotById(spot)?.label.toLowerCase() || '')}.` : ''}</p>
-      ${hasBack ? `<div class="actions"><button type="button" class="btn small" data-act="back">${GLYPH.left}Back</button></div>` : ''}`;
-    return { head: `<h2>${esc(nameOf(id))}</h2><p>${esc(kind)}</p>`, body };
-  }
-
   /* ---------------------------------------------------------------- hearth spot picker */
   private picker(spotId: string) {
     const p = this.app.p, spot = spotById(spotId)!;
@@ -648,7 +607,6 @@ function logEntries(): LogEntry[] {
   out.push({ id: 'other.rewards', group: 'Other', name: 'Rewards', items: Object.values(COLLECTIBLES).filter((c) => !drops.has(c.id)).map((c) => c.id) });
   return out;
 }
-const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
 declare const __BUILD__: string;
 const BUILD = typeof __BUILD__ === 'string' ? __BUILD__ : 'dev';

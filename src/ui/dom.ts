@@ -12,6 +12,8 @@ export function fmtT(t: number | null | undefined): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 export const fmtN = (n: number): string => Math.round(n).toLocaleString('en-AU');
+/** The first letter in capitals. */
+export const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 /** A drop rate as OSRS writes it: 1/50, 1/5,000. */
 export const fmtRate = (r: number | undefined): string => (r ? `1/${fmtN(1 / r)}` : '');
 export function fmtDate(at: number): string {
@@ -50,6 +52,12 @@ export const GLYPH = {
   shield: G('M12 3 L19 6 V11 C19 16 16 19 12 21 C8 19 5 16 5 11 V6 Z', 2.6),
   left: G('M15 5 L8 12 L15 19', 3.4),
   right: G('M9 5 L16 12 L9 19', 3.4),
+  up: G('M6 15 L12 9 L18 15', 3.2),
+  down: G('M6 9 L12 15 L18 9', 3.2),
+  rise: G('M12 20 V5 M6 11 L12 5 L18 11', 3.4),
+  fall: G('M12 4 V19 M6 13 L12 19 L18 13', 3.4),
+  same: G('M5 9 H19 M5 15 H19', 3.4),
+  swap: G('M4 8 H18 M14 4 L18 8 L14 12 M20 16 H6 M10 12 L6 16 L10 20', 3),
   door: G('M6 21 V5 C6 3 18 3 18 5 V21 M3 21 H21 M14 13 V13.5', 2.6),
   home: G('M3 11 L12 4 L21 11 M6 9 V20 H18 V9', 2.6),
   sound: G('M4 9 H8 L13 5 V19 L8 15 H4 Z M16 9 C17.5 10.5 17.5 13.5 16 15', 2.4),

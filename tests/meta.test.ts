@@ -6,14 +6,15 @@ import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, SETS, checkContent } from 
 import { BARROW } from '../src/content/barrow';
 import { activeHero, freshProfile, migrate, nameProblem, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
 import { DUPE_MARKS, resolveRun, rollTable } from '../src/meta/loot';
-import { bestRegular, buyTrait, equip, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, worn } from '../src/meta/gear';
+import { bestRegular, buyTrait, compareFor, compareOn, equip, floorWorn, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, wearerOf, worn } from '../src/meta/gear';
 import { FOUNDERS, MAX_HEROES, canMake, cleanName } from '../src/content/folk';
-import { SLOT_IDS } from '../src/content/gear';
+import { SLOT_IDS, gearId } from '../src/content/gear';
 import { INGREDIENTS, RECIPES } from '../src/content/vale';
 import { Achiever } from '../src/meta/achievements';
 import { HEARTH_SPOTS, place } from '../src/meta/hearth';
 import { HOUSE_SPOTS, ROOMS, THINGS } from '../src/content/house';
-import { heroesFor, seats } from '../src/meta/party';
+import { heroesFor, pickRole, seats } from '../src/meta/party';
+import { lootFor } from '../src/meta/loot';
 import type { GameEvent, RunSummary } from '../src/content/types';
 
 test('content: every id a table, log, set or reward points at exists', () => {
@@ -377,6 +378,68 @@ test('party: you take your hero’s seat, bots take the others, and any of your 
   const tank2 = newHero(p, { name: 'Brakka Stoutmantle', race: 'dwarf', cls: 'warrior' })!;
   setActive(p, tank2.id, 3);
   assert.deepEqual(heroesFor(p, 'tank').map((h) => h.id), [tank2.id, tank.id], 'the tank you played last comes first');
+});
+
+test('party: picking a role switches to your hero of that role you played last, or changes nothing', () => {
+  const p = freshProfile();
+  const tank = newHero(p, { name: 'Hollis Emberhand', race: 'dwarf', cls: 'warrior' })!;
+  const healer = newHero(p, { name: 'Wren Ashby', race: 'human', cls: 'cleric' })!;
+  setActive(p, tank.id, 1);
+  assert.equal(pickRole(p, 'tank', 2)?.id, tank.id, 'already the tank: nothing to do');
+  assert.equal(pickRole(p, 'dps', 3), null, 'no DPS yet');
+  assert.equal(p.active, tank.id, 'and nothing changed');
+  assert.equal(pickRole(p, 'healer', 4)?.id, healer.id);
+  assert.equal(p.active, healer.id, 'now playing the healer');
+});
+
+test('loot: each role sees its own set and weapon, with what anyone can get, and every rate is the real one', () => {
+  for (const role of ['tank', 'healer', 'dps'] as const) {
+    const l = lootFor(BARROW, role);
+    assert.equal(l.mine.length, 4, `${role}: three set pieces and a weapon`);
+    assert.ok(l.mine.every((d) => d.role === role && ITEMS[d.id]?.role === role), role);
+    assert.deepEqual(l.shared.map((d) => d.id), ['trophy.rattlebones_plume', 'dye.ghostly', 'mount.gravehound', 'pet.pint_gravekeeper']);
+  }
+  const table = BARROW.loot.flatMap((t) => t.drops);
+  for (const d of [...lootFor(BARROW, 'healer').mine, ...lootFor(BARROW, 'healer').shared]) assert.equal(d.rate, table.find((x) => x.id === d.id)!.rate);
+});
+
+test('gear: a drop held up against what its role wears says plainly if it is better, and what it adds or takes away', () => {
+  const { p, h } = withHero('tank');
+  // a new tank in Common: the set helm is 12 item levels, 9% damage and 5.4% health better, and starts the set
+  let c = compareFor(p, h, 'barrowguard.helm')!;
+  assert.equal(c.verdict, 'better');
+  assert.deepEqual(c.ilvl, [10, 22]);
+  assert.equal(c.power, 9);
+  assert.equal(c.health, 5.4);
+  assert.deepEqual(c.set, [0, 1]);
+  assert.deepEqual([c.gains, c.loses], [[], []]);
+  p.collection['barrowguard.helm'] = { n: 1, kc: 1, at: 0 };
+  equip(p, h, 'helm', 'barrowguard.helm');
+  assert.equal(compareFor(p, h, 'barrowguard.helm')!.verdict, 'wearing');
+  // a second piece turns the set's first bonus on
+  c = compareFor(p, h, 'barrowguard.chest')!;
+  assert.deepEqual(c.set, [1, 2]);
+  assert.deepEqual(c.gains.map((e) => e.id), ['barrowguard2']);
+  // a plain Uncommon helm in its place is worse
+  assert.equal(compareOn(worn(p, h), 'tank', ITEMS[gearId('tank', 'helm', 1)]).verdict, 'worse');
+  // as much power and no bonus yet: the same
+  equip(p, h, 'helm', null); h.regular.chest = { rar: 3 };
+  c = compareFor(p, h, 'barrowguard.chest')!;
+  assert.equal(c.verdict, 'same');
+  assert.equal(c.power, 0);
+  // the unique axe against an Epic axe with a trait: its effect for the trait is a trade
+  h.regular.weapon = { rar: 3, trait: 'wide' };
+  c = compareFor(p, h, 'gravekeeper.tank')!;
+  assert.equal(c.verdict, 'mixed');
+  assert.deepEqual(c.gains.map((e) => e.id), ['gravedigger']);
+  assert.deepEqual(c.loses.map((e) => e.id), ['wide']);
+  assert.equal(compareFor(p, h, 'rimebone.helm'), null, 'not for this hero');
+  // another role's drop goes against your hero of that role, or what a new one would start in
+  assert.equal(wearerOf(p, ITEMS['rimebone.helm']), null);
+  assert.equal(compareOn(floorWorn(p, 'dps'), 'dps', ITEMS['rimebone.helm']).verdict, 'better');
+  const mage = newHero(p, { name: 'Sorrel Mistvale', race: 'elf', cls: 'mage' })!;
+  assert.equal(wearerOf(p, ITEMS['rimebone.helm'])?.id, mage.id);
+  assert.equal(wearerOf(p, ITEMS['barrowguard.helm'])?.id, h.id);
 });
 
 test('art: every icon and sprite the content names exists', async () => {

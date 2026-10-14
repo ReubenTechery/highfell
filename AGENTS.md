@@ -91,7 +91,9 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
   has a ready class and art in `HERO_ART`; the rest show as "Soon".
 - **Gear:** nothing goes on by itself. A ladder piece (and the shared floor) waits in the hero's bag; a new
   unique waits in their `fresh` list. Your hero's tag at the top of the house (and the armour stand) counts what's waiting; you put it
-  on in the doll.
+  on in the doll. A drop's sheet holds it up against what its role wears (`compareOn`): better is more item level
+  or a new effect with nothing lost, worse is less or an effect lost for nothing, both at once is a trade. A
+  bonus that isn't ready yet is listed but doesn't make a piece better.
 - **The house:** its plan is data in `src/content/house.ts`: rooms, the things you tap and the display spots.
   Zoomed out, a tap goes into a room; zoomed in, a tap uses a thing. The hearth's first eight spot ids never
   change; a spot a save has never had takes what isn't on show when the save loads (`settleSpots`); a spot

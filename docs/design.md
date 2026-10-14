@@ -215,6 +215,7 @@ The weapon is the upgrade you feel; Helm, Shoulders and Chest are the set. Power
 - The weapon carries about 40% of your power, so a new one means bigger hits, bigger crits and its own glow.
 - Every clear drops a regular item better than the best you have in your weakest slot. No dead drops. It waits until you put it on. It also drops a shared piece for another role, up to Rare, so a new alt never starts cold.
 - Everything shows on your hero. Every set you earn goes in your wardrobe, to wear over any gear.
+- Tap any drop (in the collection log or the Dungeons sheet) to hold it up against what that role wears now: Upgrade, Downgrade, Same power or A trade, then what changes (item level, power, health, set count) and any effect it adds or takes away.
 - **Barrow Marks**: 1 per clear, 3 per duplicate. Spend 5 to swap your Epic weapon's trait; never on uniques.
 
 **Epic weapon traits** (each Epic weapon rolls 1 of 3)
