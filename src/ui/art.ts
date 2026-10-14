@@ -91,10 +91,12 @@ export function heroSprite(h: { race: string; cls: string }, role: RoleId, p?: P
   const art = heroArt(h.race, h.cls) || ROLES[role].sprite;
   return p && h.race === 'risen' && gildedBones(p) ? `${art}_gilded` : art;
 }
-/** A hero's front sprite as an <img>, sized by its own height so a dwarf stands shorter than an elf. */
+/** A hero's front sprite as an <img>, sized by its own height (against HERO_H) so a dwarf stands shorter
+ *  than an elf. */
+const HERO_H = 150;
 export function heroImg(sprite: string, o: { cls?: string; alt?: string } = {}): string {
   const s = ART[sprite + '_f'];
   if (!s) return '';
   const [vx, , w, h] = s.vb;
-  return `<img class="${o.cls || ''}" src="${spriteURL(sprite + '_f')}" alt="${o.alt || ''}" style="--sh: ${(h / 130).toFixed(3)}; --sx: ${((vx / w) * 100).toFixed(1)}%; aspect-ratio: ${w} / ${h}" draggable="false">`;
+  return `<img class="${o.cls || ''}" src="${spriteURL(sprite + '_f')}" alt="${o.alt || ''}" style="--sh: ${(h / HERO_H).toFixed(3)}; --sx: ${((vx / w) * 100).toFixed(1)}%; aspect-ratio: ${w} / ${h}" draggable="false">`;
 }

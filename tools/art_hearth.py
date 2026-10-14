@@ -11,6 +11,8 @@ from art_sprites import (K, s, ln, beam, c, e, halo, m, both, eyes, f,
                          BONE, BONE_D, GRN, GRN_L, STEEL, STEEL_D, STEEL_L, GOLD, GOLD_D, RED, RED_D,
                          BLUE, BLUE_D, WOOD, WOOD_D, PURP, PURP_D, STONE, STONE_T, STONE_D, FROST, FROST_L, FIRE, FLAME)
 from art_sprites import GK_COAT, GK_COAT_D, GK_SKIN, GK_SKIN_D
+import art_heads as heads
+from art_heroes import RIRON, RIRON_D, RIRON_L
 
 OUT = HF_ROOT + '/art/'
 SP = {}
@@ -496,13 +498,13 @@ KEEPER_GILD = {GK_COAT: '#C9962A', GK_COAT_D: '#8A6418', '#C9CFC2': '#FFE08A', '
 PLUME_GILD = {'#C8403F': GOLD, '#9E2F2E': GOLD_D, '#E97A6E': '#FFE08A', '#D9A520': '#B8862A'}
 
 
-def risen_head(o, cy=11):
-    """a Risen warrior's head: the horned helm over a skull with green eyes (the hero at the end of the Barrow log's bar)"""
-    o.append(halo(0, cy - 2, 30, GRN, 0.3))
-    o.append(A.skull(0, cy, 1.12))
-    o.append(s(f'M-17 {cy - 10} C-17 {cy - 32} 17 {cy - 32} 17 {cy - 10} Z', STEEL) + s(f'M-18.5 {cy - 13} H18.5 V{cy - 7} H-18.5 Z', STEEL_D, 3.5))
-    o.append(both(f'M-15 {cy - 18} C-26 {cy - 20} -33 {cy - 30} -31 {cy - 41} C-26 {cy - 33} -20 {cy - 29} -12 {cy - 27} Z', BONE, 3.5))
-    o.append(c(-9, cy - 10, 1.4, K, 0) + c(9, cy - 10, 1.4, K, 0) + c(0, cy - 10, 1.4, K, 0))
+def risen_head(o, cy=5, k=1.15):
+    """a Risen warrior's head: the long skull with green eyes under its iron crown (the hero at the end of the Barrow
+    log's bar), drawn like the hero's own (art_heads.py) with the middle of its eyes at (0, cy)"""
+    W = lambda w: w / k
+    crown = [s('M-14.5 -11 C-14.5 -27 14.5 -27 14.5 -11 Z', RIRON, W(4)) + s('M-16 -14 H16 V-8 H-16 Z', RIRON_D, W(3.2))]
+    crown += [s(f'M{x - 3} -23 L{x} -36 L{x + 3} -23 Z', RIRON_L, W(2.6)) for x in (-10, -3.5, 3.5, 10)]
+    o.append(f'<g transform="translate(0 {f(cy)}) scale({k})">' + ''.join(heads.risen_head(k, glow=1.6) + crown) + '</g>')
 
 
 def heroic_drops():

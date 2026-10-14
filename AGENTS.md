@@ -167,10 +167,10 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
   picker. Toasts,
   sound. `styles.css` is inlined by the build.
 - `src/sim` and `scripts/sim.mjs`: headless bot runs of the real engine (the balance numbers).
-- `tools/`: the art pipeline (Python writes SVG into `art/*.json`), `art_sheet.py` (look at your art),
-  `pw_check.py` (screenshot the built game).
+- `tools/`: the art pipeline (Python writes SVG into `art/*.json`; the heroes are in `art_heroes.py`, their
+  faces in `art_heads.py`), `art_sheet.py` (look at your art), `pw_check.py` (screenshot the built game).
 - `tests/`: `balance.test.ts` (bot clears must stay in their bands), `dungeon.test.ts` (threat, cages,
-  numbers, tuning), `meta.test.ts`, `vale.test.ts`.
+  numbers, tuning, where each hero's weapon and head are), `meta.test.ts`, `vale.test.ts`.
 
 ## Commands
 
