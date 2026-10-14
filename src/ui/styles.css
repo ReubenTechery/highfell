@@ -55,7 +55,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .house :focus { outline: none; }
 .house .hl { fill: transparent; stroke: transparent; stroke-width: 0; }
 .house .thing:hover .hl, .house .hero:hover .hl, .house .newhero:hover .hl, .house .spot.has:hover .hl, .house.deco .spot:hover .hl,
-.house [tabindex]:focus-visible .hl { stroke: var(--gold); stroke-width: 6; fill: rgba(242, 194, 48, 0.1); }
+.house [tabindex]:focus-visible .hl, .house .tour-hl .hl { stroke: var(--gold); stroke-width: 6; fill: rgba(242, 194, 48, 0.14); }
 .house .spot .mark, .house .spot .plus { display: none; }
 .house.deco .spot:not(.has) .mark { display: inline; fill: rgba(255, 248, 236, 0.18); stroke: #FFF8EC; stroke-width: 4; stroke-dasharray: 10 8; }
 .house.deco .spot.empty .plus { display: inline; }
@@ -115,8 +115,20 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .h-deco b { display: block; font-family: var(--f-display); font-weight: 400; font-size: 20px; }
 .h-deco small { display: block; font-family: var(--f-mono); font-size: 11px; color: var(--dim); }
 .h-deco i { font-style: normal; font-weight: 700; color: var(--ink); }
+.h-tour { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px 14px; width: min(640px, 100%); box-sizing: border-box; padding: 12px 14px; border: 3px solid var(--ink); border-radius: 20px; background: var(--panel); color: var(--ink); box-shadow: 0 0 0 3px var(--gold), 0 5px 0 var(--ink); }
+.h-tour-tx { display: grid; gap: 2px; min-width: 0; }
+.h-tour-tx b { font-family: var(--f-display); font-weight: 400; font-size: 22px; line-height: 1.1; }
+.h-tour-tx p { margin: 2px 0 0; font-size: 15px; line-height: 1.4; color: var(--soft); }
+.h-tour-acts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
 .short { display: none; }
-@media (max-width: 560px) { .long { display: none; } .short { display: inline; } }
+@media (max-width: 560px) {
+  .long { display: none; } .short { display: inline; }
+  .h-tour { grid-template-columns: minmax(0, 1fr); padding: 10px 12px; gap: 8px; }
+  .h-tour-tx b { font-size: 20px; }
+  .h-tour-tx p { font-size: 14px; }
+  .h-tour-acts { justify-content: space-between; }
+  .h-tour-acts .btn.gold { flex: 1 1 auto; }
+}
 @media (max-width: 400px) { .h-top .right .icon-btn { width: 40px; height: 40px; } .h-top .right { gap: 5px; } .h-tag b { font-size: 15px; } }
 
 /* ---- sheets: bottom sheet on phones, a centred card on wide screens ---- */
@@ -532,6 +544,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .log-moment img { width: min(240px, 52vw); filter: drop-shadow(0 0 24px rgba(155, 225, 93, 0.55)); }
 .log-moment p { max-width: 520px; line-height: 1.5; }
 .rv-log { box-shadow: 0 0 0 4px var(--gold), 0 5px 0 var(--ink); }
+.rv-log .dgx-logbar { grid-template-columns: auto auto minmax(40px, 1fr) auto; cursor: default; }
 .big-moment p { margin: 0; position: relative; font-family: var(--f-mono); font-size: 14px; color: #E9DDCB; }
 @media (prefers-reduced-motion: no-preference) {
   .big-moment .rays { animation: spin 18s linear infinite; }

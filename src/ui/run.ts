@@ -24,7 +24,7 @@ import { lootGlint, startWalkout } from '../dungeon/walkout.js';
 import { Achiever } from '../meta/achievements';
 import { loadoutFor, partyRar, plainLoadout, worn } from '../meta/gear';
 import { countBossWipe, countRunStart, resolveClear, resolveKill, runLoot, tellOf, type ClearLoot, type KillLoot } from '../meta/loot';
-import { activeHero, heroById, roleOf, type Hero } from '../meta/profile';
+import { activeHero, finishIntroRun, heroById, roleOf, type Hero } from '../meta/profile';
 import { heroArt } from '../content/folk';
 import { RECIPES } from '../content/vale';
 import { drinkForRun } from '../meta/vale';
@@ -43,6 +43,9 @@ const KEY: Record<string, string> = { a1: '1', a2: '2', a3: '3', a4: '4', dodge:
 const ROLE_ICON: Record<string, string> = { tank: 'shield', healer: 'mend', dps: 'blizzard' };
 const HINTS: Record<string, [string, string, string, number?]> = {
   move: ['Drag on the left side of the screen to move.', 'WASD or the arrow keys to move.', 'Move', 8],
+  introMove: ['You are Brannoc, a full-Epic Tank. Drag on the left to walk into the pack—you swing in range and Maren & Ivy follow.', 'You are Brannoc, a full-Epic Tank. WASD or arrows to walk into the pack—you swing in range and Maren & Ivy follow.', 'Prologue · Full Epic', 9],
+  introAb: ['Press Cleave or Slam when they glow gold. Every fifth swing with The Gravedigger stuns the pack!', 'Press Cleave (4) or Slam (1) when they glow gold. Every fifth swing with The Gravedigger stuns the pack!', 'Smash abilities', 8],
+  introChest: ['The lantern flared gold and the chest knocked twice: a unique is inside! Walk to the chest to open it.', 'The lantern flared gold and the chest knocked twice: a unique is inside! Walk to the chest to open it.', 'The walkout', 8],
   dodge: ['Swipe anywhere to dodge-roll out of the red.', 'Space to dodge-roll out of the red.', 'Dodge', 6],
   block: ['Hold the shield button. Block right before it lands to stun him and hit back.', 'Hold 2 to block. Block right before it lands to stun him and hit back.', 'Block it', 6],
   slam: ['Slam grabs everything near you. Use it when mobs run at your mates.', 'Slam (1) grabs everything near you. Use it when mobs run at your mates.', 'Slam', 6],
@@ -67,6 +70,7 @@ export class RunScene implements InputUI {
   private heroId: string | null = null;
   private role: RoleId = 'tank';
   private practice = false;
+  private intro = false;
   /** the dungeon this run counts for: the Barrow, or its heroic version */
   private dg: DungeonInfo = BARROW;
   /** the brew drunk at the door, if any */
@@ -86,6 +90,7 @@ export class RunScene implements InputUI {
 
   constructor(private app: App, private root: HTMLElement) {
     $('pause-btn').addEventListener('click', (e) => { e.stopPropagation(); this.pause(); });
+    $('intro-skip').addEventListener('click', (e) => { e.stopPropagation(); SFX.play('ui'); this.skipIntro(); });
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.active() && S && !S.paused && !S.over) this.pause(); });
   }
 
@@ -98,7 +103,7 @@ export class RunScene implements InputUI {
     el.style.left = s.ox + 'px'; el.style.top = s.oy + 'px';
     const dx = s.x - s.ox, dy = s.y - s.oy, l = Math.hypot(dx, dy), m = Math.min(l, 56);
     (el.firstElementChild as HTMLElement).style.transform = `translate(${(dx / (l || 1)) * m}px, ${(dy / (l || 1)) * m}px)`;
-    this.hintDone('move');
+    this.hintDone('move'); this.hintDone('introMove');
   }
   hintDone(key: string): void { this.hintsDone.add(key); if (this.hintKey === key) { $('hint').hidden = true; this.hintKey = null; } }
   holdBtn(slot: string, on: boolean): void { this.root.querySelector(`.ab[data-slot="${slot}"]`)?.classList.toggle('held', on); }
@@ -116,16 +121,18 @@ export class RunScene implements InputUI {
     const app = this.app, p = app.p;
     this.stop();
     this.opts = o;
-    let h: Hero | null = activeHero(p);
-    if (o.role && (!h || roleOf(h) !== o.role)) h = p.roster.find((x) => roleOf(x) === o.role) || null;
-    const role: RoleId = h ? roleOf(h) : o.role || 'tank';
+    const intro = this.intro = o.start === 'intro';
+    let h: Hero | null = intro ? null : activeHero(p);
+    if (!intro && o.role && (!h || roleOf(h) !== o.role)) h = p.roster.find((x) => roleOf(x) === o.role) || null;
+    const role: RoleId = intro ? 'tank' : h ? roleOf(h) : o.role || 'tank';
     this.heroId = h ? h.id : null;
     this.role = role;
     const test = o.testRar !== null || !h;
     this.practice = o.start !== 'entrance' || test;
-    const rar: Rar = o.testRar !== null ? o.testRar : h ? partyRar(p, h) : 0;
+    const rar: Rar = intro ? 3 : o.testRar !== null ? o.testRar : h ? partyRar(p, h) : 0;
     const loadouts: Record<string, unknown> = {};
     for (const r of ['tank', 'healer', 'dps'] as RoleId[]) loadouts[r] = r === role ? (test || !h ? plainLoadout(r, rar) : loadoutFor(p, h)) : plainLoadout(r, rar);
+    if (intro) loadouts.tank = { ...(loadouts.tank as object), unique: 'gravedigger', bonuses: ['barrowguard2'], name: 'Brannoc', sprite: 'tank' };
     // a brew from the Vale, drunk at the door: practice uses it but keeps the bottle
     const brew = h ? drinkForRun(p, !this.practice) : null;
     this.brew = brew;
@@ -133,14 +140,14 @@ export class RunScene implements InputUI {
     if (brew && this.practice) app.store.save();
     const looks = Object.keys(p.collection).filter((id) => COLLECTIBLES[id] && (COLLECTIBLES[id].kind === 'cosmetic') && !p.settings.looksOff.includes(id));
     const wornSet = !!h && Object.values(worn(p, h)).some((w) => w.def.setId && SETS[w.def.setId]);
-    const ghostly = looks.includes('dye.ghostly') && wornSet && !test;
+    const ghostly = intro || (looks.includes('dye.ghostly') && wornSet && !test);
     const dg = this.dg = o.heroic ? BARROW_HEROIC : BARROW;
     const gilded = looks.includes('dye.ghostly.gilded') && wornSet && !test;
     if (!this.practice) { countRunStart(p, dg); app.store.save(); }
     if (!this.bound) { bindInput($('touch'), this); this.bound = true; }
     setHooks({
       nope: (slot: string) => { flash(this.root.querySelector(`.ab[data-slot="${slot}"]`), 'nope', 260); SFX.play('nope'); },
-      fired: (slot: string) => flash(this.root.querySelector(`.ab[data-slot="${slot}"]`), 'fired', 300),
+      fired: (slot: string) => { flash(this.root.querySelector(`.ab[data-slot="${slot}"]`), 'fired', 300); if (this.intro) this.hintDone('introAb'); },
       hint: (key: string) => this.hint(key),
       pulseFrame: (role: string) => this.root.querySelectorAll(`[data-heal="${role}"]`).forEach((el) => flash(el, 'fired', 260)),
       onWipe: () => this.showWipe(),
@@ -157,7 +164,9 @@ export class RunScene implements InputUI {
     resetInput();
     this.hintsDone = new Set(); this.hintKey = null; $('hint').hidden = true;
     $('ov-msg').hidden = true;
-    $('practice-tag').hidden = !this.practice;
+    $('practice-tag').hidden = !this.practice || intro;
+    $('intro-tag').hidden = !intro;
+    $('intro-skip').hidden = !intro;
     $('heroic-tag').hidden = !o.heroic;
     const bt = $('brew-tag');
     bt.hidden = !brew;
@@ -168,7 +177,7 @@ export class RunScene implements InputUI {
     updateCam(0, true);
     this.lastRoom = -1;
     this.live = true; this.acc = 0;
-    setTimeout(() => this.hint('move'), 600);
+    setTimeout(() => this.hint(intro ? 'introMove' : 'move'), 500);
     if (role === 'healer') setTimeout(() => this.hint('heal'), 9000);
   }
   stop(): void {
@@ -176,6 +185,15 @@ export class RunScene implements InputUI {
     if (this.off) { this.off(); this.off = null; }
     this.app.root.classList.remove('in-run');
     $('ov-msg').hidden = true;
+    $('intro-skip').hidden = true;
+    $('intro-tag').hidden = true;
+  }
+  skipIntro(): void {
+    finishIntroRun(this.app.p);
+    this.stop();
+    this.app.store.save();
+    if (activeHero(this.app.p)) this.app.showHearth();
+    else this.app.showCreate();
   }
 
   /* ---------------------------------------------------------------- the meta glue */
@@ -221,6 +239,13 @@ export class RunScene implements InputUI {
     if (!this.opts || !S) return;
     const summary = { time: S.clearTime || S.t - S.startedAt, deaths: S.stats.deaths, perfect: S.player.stats.perfect, dmg: S.player.stats.dmg, heal: S.player.stats.heal };
     this.live = false;
+    if (this.intro) {
+      finishIntroRun(this.app.p);
+      this.app.store.save();
+      this.stop();
+      this.app.reveal.showIntro(summary.time);
+      return;
+    }
     const hero = this.hero();
     if (this.practice || !hero) { this.showPracticeDone(summary.time); return; }
     const loot = runLoot(this.app.p, this.dg, hero, this.kills, this.clear);
@@ -242,6 +267,15 @@ export class RunScene implements InputUI {
     if (!S || !this.live || S.over) return;
     if (S.paused) { S.paused = false; $('ov-msg').hidden = true; return; }
     S.paused = true;
+    if (this.intro) {
+      this.msg({ eyebrow: 'Prologue', title: 'Paused', text: 'You are playing Brannoc in full Epic gear to get a feel for tanking, dodging, blocking and teamwork.', buttons: [
+        ['Keep going', () => this.pause()],
+        [SFX.on ? 'Sound off' : 'Sound on', () => { const p = this.app.p; p.settings.sound = !p.settings.sound; SFX.on = p.settings.sound; this.app.store.save(); S.paused = false; this.pause(); }],
+        ['Restart intro', () => { if (this.opts) this.start(this.opts); }],
+        [activeHero(this.app.p) ? 'Back to the hearth' : 'Skip to hero maker', () => this.skipIntro()],
+      ] });
+      return;
+    }
     const leave = this.practice ? 'Leave practice' : 'Leave the run';
     this.msg({ eyebrow: this.practice ? 'Practice' : this.dg.name, title: 'Paused', text: `${fmtT(S.t - S.startedAt)} in.${this.practice ? '' : ' Kill counts and drops you already have are kept if you leave.'}`, buttons: [
       ['Keep going', () => this.pause()],
@@ -405,6 +439,7 @@ export class RunScene implements InputUI {
     $('hurt').style.opacity = String(clamp(S.hurtFlash, 0, 0.9));
     if (this.hintKey) { this.hintT -= dt; if (this.hintT <= 0) { $('hint').hidden = true; this.hintsDone.add(this.hintKey); this.hintKey = null; } }
     if (!this.live) return;
+    if (this.intro && S.inCombat && !this.hintsDone.has('introAb')) { this.hintDone('introMove'); this.hint('introAb'); }
     if (!this.hintsDone.has('dodge') && S.hazards.some((z: any) => !z.noDmg && inHaz(z, p.x, p.y, p.r))) this.hint('dodge');
     if (p.role === 'tank' && !this.hintsDone.has('slam') && S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp)) this.hint('slam');
     if (p.role === 'dps' && !this.hintsDone.has('aim') && S.inCombat && S.mobs.filter((m: any) => m.alive && m.state === 'fight').length >= 3) this.hint('aim');

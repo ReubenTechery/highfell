@@ -1,10 +1,11 @@
 /* Barrow Crypt: the parts of a run that only make sense here. Gates, ambushes, practice starts,
    what happens when each boss falls. The engine calls these at fixed moments. */
-import { S } from '../../dungeon/state.js';
+import { HOOKS, S } from '../../dungeon/state.js';
 import { aggro, banner, killMob, sfx } from '../../dungeon/entities.js';
 import { breakCage, cutChain } from '../../dungeon/mobs.js';
 import { pullIn, spawnChest, triggerAmbush } from '../../dungeon/game.js';
-import { dist } from '../../core/math';
+import { startWalkout } from '../../dungeon/walkout.js';
+import { clamp, dist } from '../../core/math';
 import { roomIndexOf } from '../../dungeon/world.js';
 import { MAP } from './map.js';
 
@@ -14,13 +15,13 @@ export const STARTS = [
   { id: 'keeper', name: 'The Gravekeeper' },
 ];
 
-/* practice starts skip the packs before a boss */
+/* practice starts skip the packs before a boss; the intro run plays Room 2 into Sir Rattlebones */
 export function setup(start) {
   if (!start || start === 'entrance') return;
-  const upto = start === 'knight' ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'K', 'D', 'E'];
+  const upto = start === 'intro' ? ['A', 'D', 'E', 'G'] : start === 'knight' ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'K', 'D', 'E'];
   for (const p of S.packs) if (upto.includes(p.def.id)) { p.cleared = true; p.pulled = true; p.triggered = true; p.mobs.forEach((m) => { m.alive = false; m.state = 'dead'; m.deadT = 99; }); S.cleared++; }
   if (start === 'keeper') { S.gates.g3b.closed = false; S.gates.g3t.closed = false; S.props.forEach((p) => { if (p.room === 4 && p.sp === 'coffin') p.sp = 'coffin_open'; }); }
-  S.cp = start === 'knight' ? 3 : 5;
+  S.cp = start === 'intro' ? 2 : start === 'knight' ? 3 : 5;
 }
 
 export function onBossPulled(pack) {
@@ -30,8 +31,19 @@ export function onBossPulled(pack) {
 
 export function onBossDead(m) {
   if (m.type === 'knight') {
-    S.gates.g3b.closed = false; S.gates.g3t.closed = false;
+    S.gates.g3b.closed = false;
     S.mobs.forEach((o) => { if (o.alive && o.rally) { o.hp = 1; killMob(o, null); } });
+    if (S.opts && S.opts.start === 'intro') {
+      S.hazards = [];
+      const cx = clamp(m.x, 260, 740), cy = clamp(m.y, 2620, 3060);
+      spawnChest(cx, cy, m);
+      startWalkout('unique', clamp(cx - 84, 210, 790), cy);
+      banner('Watch the lantern: gold flare and two knocks means a unique drop!', 'good', 3.4);
+      HOOKS.hint('introChest');
+      sfx('victory');
+      return;
+    }
+    S.gates.g3t.closed = false;
     banner('Sir Rattlebones falls. The way on is open.', 'good', 2.8);
     sfx('victory');
   } else {

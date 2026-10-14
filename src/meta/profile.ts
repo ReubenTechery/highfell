@@ -303,3 +303,13 @@ export function setActive(p: Profile, id: string, now = Date.now()): boolean {
   p.active = id; h.playedAt = now;
   return true;
 }
+
+/* ---------------------------------------------------------------- onboarding */
+/** A fresh profile with no heroes plays the prologue run first, once. */
+export const needsIntroRun = (p: Profile): boolean => p.roster.length === 0 && !p.counters['intro.run'];
+export const finishIntroRun = (p: Profile): void => { p.counters['intro.run'] = 1; };
+/** After making your first hero, the hearth gives a quick tour of the rooms, riding out and dungeons. */
+export const startHearthTour = (p: Profile): void => { p.counters['intro.tour'] = 1; };
+export const needsHearthTour = (p: Profile): boolean => p.roster.length > 0 && p.counters['intro.tour'] === 1;
+export const finishHearthTour = (p: Profile): void => { p.counters['intro.tour'] = 2; };
+

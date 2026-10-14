@@ -11,7 +11,7 @@ import { CLASSES, MAX_HEROES, RACES, type ClassId, type RaceId } from '../conten
 import { BUNK_SLOTS, FLOORS, HOUSE_SPOTS, ROOMS, THINGS, roomAt, type HouseAction, type HouseSpot, type ThingDef } from '../content/house';
 import { lookOf, ownedOfKind } from '../meta/hearth';
 import { loadoutFor, waiting } from '../meta/gear';
-import { activeHero, roleOf, type Hero } from '../meta/profile';
+import { activeHero, finishHearthTour, needsHearthTour, roleOf, type Hero } from '../meta/profile';
 import type { App } from './app';
 import { actions, esc, GLYPH } from './dom';
 import { ART, heroSprite, placeSprite, tile } from './art';
@@ -31,6 +31,33 @@ const HERO_AT = { x: 360, y: FLOORS.hall - 20, k: 2.2 };
 /** the room the camera starts in */
 const HOME_ROOM = 'hall';
 
+/** the 3-step guided tour shown after making your first hero */
+const TOUR_STEPS: { room: string; thing?: string; eyebrow: string; title: string; text: string; next: string }[] = [
+  {
+    room: 'hall',
+    eyebrow: 'Welcome home · 1 of 3',
+    title: 'Your Hearth',
+    text: 'Your hero stands by the fire. Tap your hero or the armour stand to put on new gear, the loft book to see your Collection Log, and Decorate to place trophies, banners, pets and room looks you earn.',
+    next: 'Next: Ride out',
+  },
+  {
+    room: 'yard',
+    thing: 'signpost',
+    eyebrow: 'Between runs · 2 of 3',
+    title: 'Ride out to the Vale',
+    text: 'Tap the signpost in the yard to ride out for a few cosy minutes. Gather herbs, stir one-run brews at the cauldron, and help Dottle with her goats on your first errand to earn the Hill Goat mount.',
+    next: 'Next: Dungeons',
+  },
+  {
+    room: 'cellar',
+    thing: 'barrow',
+    eyebrow: 'The core loop · 3 of 3',
+    title: 'Run dungeons, build your hearth',
+    text: 'Tap the Barrow door or the big Dungeons button whenever you have four minutes. Every clear upgrades your gear, rolls fixed-rate uniques and pets for your log, and brings new treasures home.',
+    next: 'Open Dungeons',
+  },
+];
+
 export class Hearth {
   /** collectibles that just arrived: they pop in the first time you see them */
   fresh = new Set<string>();
@@ -40,6 +67,7 @@ export class Hearth {
   private top: HTMLElement;
   private bottom: HTMLElement;
   private decorating = false;
+  private tourStep: number | null = null;
   private placed = false;
   private want: string | null = null;
   private lastTap = { t: 0, x: 0, y: 0 };
@@ -56,13 +84,15 @@ export class Hearth {
     this.bottom = root.querySelector('.h-bottom')!;
     this.cam = new Camera(root, () => this.svg, { bounds: HOUSE_BOUNDS, onChange: () => this.onView() });
     actions(root, {
-      dungeon: () => { SFX.play('ui'); app.sheets.open({ kind: 'dungeon' }); },
-      gear: () => { SFX.play('ui'); this.act('gear'); },
+      dungeon: () => { SFX.play('ui'); if (this.tourStep !== null) this.endTour(true); else app.sheets.open({ kind: 'dungeon' }); },
+      gear: () => { SFX.play('ui'); if (this.tourStep !== null) this.endTour(false); this.act('gear'); },
       settings: () => { SFX.play('ui'); app.sheets.open({ kind: 'settings' }); },
-      deco: () => { this.decorating = !this.decorating; SFX.play('ui'); this.render(); },
+      deco: () => { if (this.tourStep !== null) this.endTour(false); this.decorating = !this.decorating; SFX.play('ui'); this.render(); },
       looks: () => { SFX.play('ui'); app.sheets.open({ kind: 'looks' }); },
       zoom: () => { SFX.play('ui'); if (this.far()) this.goRoom(HOME_ROOM); else this.overview(); },
       room: (el) => { SFX.play('ui'); this.goRoom(el.dataset.room!); },
+      tournext: () => { SFX.play('ui'); this.nextTour(); },
+      tourskip: () => { SFX.play('ui'); this.endTour(false); },
     });
     this.svg.addEventListener('click', (e) => this.tap(e));
     this.svg.addEventListener('keydown', (e) => {
@@ -87,9 +117,43 @@ export class Hearth {
   /** The next time the house is drawn, go to this room (the bunk room after making a hero, say). */
   aim(room: string): void { this.want = room; }
 
+  /** Start (or replay) the 3-step Hearth & Ride tour. */
+  startTour(): void {
+    this.decorating = false;
+    this.tourStep = 0;
+    this.want = TOUR_STEPS[0].room;
+    this.app.showHearth(TOUR_STEPS[0].room);
+  }
+
+  private nextTour(): void {
+    if (this.tourStep === null) return;
+    if (this.tourStep < TOUR_STEPS.length - 1) {
+      this.tourStep++;
+      const step = TOUR_STEPS[this.tourStep];
+      this.svg.innerHTML = this.scene(activeHero(this.app.p)!);
+      this.hud(activeHero(this.app.p)!);
+      this.goRoom(step.room);
+    } else {
+      this.endTour(true);
+    }
+  }
+
+  private endTour(openDungeons = false): void {
+    this.tourStep = null;
+    finishHearthTour(this.app.p);
+    this.app.save();
+    this.goRoom(HOME_ROOM);
+    if (openDungeons) this.app.sheets.open({ kind: 'dungeon' });
+  }
+
   render(): void {
     const p = this.app.p, h = activeHero(p);
     if (!h) return;
+    if (this.tourStep === null && needsHearthTour(p)) {
+      this.tourStep = 0;
+      this.decorating = false;
+      this.want = TOUR_STEPS[0].room;
+    }
     this.svg.innerHTML = this.scene(h);
     this.svg.classList.toggle('deco', this.decorating);
     this.root.classList.toggle('decorating', this.decorating);
@@ -181,6 +245,13 @@ export class Hearth {
   private use(el: Element): void {
     const d = (el as SVGElement).dataset;
     SFX.play('ui');
+    if (this.tourStep !== null) {
+      this.tourStep = null;
+      finishHearthTour(this.app.p);
+      this.app.store.save();
+      const h = activeHero(this.app.p);
+      if (h) this.hud(h);
+    }
     if (d.thing) { const t = THINGS.find((x) => x.id === d.thing); if (t) this.act(t.action); }
     else if (d.spot) this.app.sheets.open({ kind: 'picker', spot: d.spot });
     else if (d.hero) { if (d.hero === this.app.p.active) this.act('gear'); else this.app.sheets.open({ kind: 'hero', hero: d.hero }); }
@@ -224,7 +295,8 @@ export class Hearth {
     if (t.id === 'signpost') extra = `<text class="sign" x="${t.x + 4 * k}" y="${t.y - 162 * k}" style="font-size: ${Math.round(30 * k)}px">Ride out</text>`;
     if (t.action === 'gear') { const up = waiting(this.app.p, h).length; if (up) extra = pip(t.x + 60, top + 20, String(up)); }
     if (t.action === 'dungeons') extra = `<text class="lbl" x="${t.x}" y="${t.y + 44}">Dungeons</text>`;
-    return `<g class="thing a-${t.action}" data-thing="${t.id}" data-x="${t.x}" data-y="${t.y}" tabindex="0" role="button" aria-label="${esc(t.label)}">
+    const hl = this.tourStep !== null && TOUR_STEPS[this.tourStep]?.thing === t.id ? ' tour-hl' : '';
+    return `<g class="thing a-${t.action}${hl}" data-thing="${t.id}" data-x="${t.x}" data-y="${t.y}" tabindex="0" role="button" aria-label="${esc(t.label)}">
       ${placeSprite(t.sprite, t.x, t.y, { k })}${extra}<rect class="hl" x="${(t.x + vx * k).toFixed(1)}" y="${top.toFixed(1)}" width="${(w * k).toFixed(1)}" height="${(hh * k).toFixed(1)}" rx="16"/></g>`;
   }
 
@@ -257,7 +329,8 @@ export class Hearth {
   private heroes(h: Hero): { y: number; svg: string }[] {
     const p = this.app.p, out: { y: number; svg: string }[] = [];
     const { x, y, k } = HERO_AT;
-    out.push({ y, svg: `<g class="hero me" data-hero="${esc(h.id)}" data-x="${x}" data-y="${y}" tabindex="0" role="button" aria-label="${esc(h.name)}: gear">
+    const hl = this.tourStep === 0 ? ' tour-hl' : '';
+    out.push({ y, svg: `<g class="hero me${hl}" data-hero="${esc(h.id)}" data-x="${x}" data-y="${y}" tabindex="0" role="button" aria-label="${esc(h.name)}: gear">
       <circle cx="${x}" cy="${y - 150 * k * 0.45}" r="${120 * k}" style="fill: url(#h-hero)"/>
       <ellipse cx="${x}" cy="${y}" rx="${34 * k}" ry="${10 * k}" style="fill: rgba(18, 12, 28, 0.45)"/>
       ${placeSprite(heroSprite(h, roleOf(h), p) + '_f', x, y, { k, cls: 'breathe' })}
@@ -300,7 +373,20 @@ export class Hearth {
         <button type="button" class="icon-btn" data-act="deco" aria-pressed="${this.decorating}" aria-label="Decorate" title="Decorate">${GLYPH.pen}</button>
         <button type="button" class="icon-btn" data-act="settings" aria-label="Settings" title="Settings">${GLYPH.gear}</button>
       </div>`;
-    this.bottom.innerHTML = this.decorating
+    const step = this.tourStep !== null ? TOUR_STEPS[this.tourStep] : null;
+    this.bottom.innerHTML = step
+      ? `<div class="h-tour" role="region" aria-label="Welcome tour">
+          <div class="h-tour-tx">
+            <span class="eyebrow">${esc(step.eyebrow)}</span>
+            <b>${esc(step.title)}</b>
+            <p>${esc(step.text)}</p>
+          </div>
+          <div class="h-tour-acts">
+            <button type="button" class="btn small" data-act="tourskip">Skip</button>
+            <button type="button" class="btn gold" data-act="tournext">${this.tourStep === TOUR_STEPS.length - 1 ? GLYPH.door : ''}${esc(step.next)}</button>
+          </div>
+        </div>`
+      : this.decorating
       ? `<div class="h-deco"><span><b>Decorating</b><small>Tap a <i aria-hidden="true">+</i> to put something there</small></span><button type="button" class="btn small" data-act="looks">${GLYPH.roller}Looks</button><button type="button" class="btn gold" data-act="deco">Done</button></div>`
       : `<div class="h-bar">
           <button type="button" class="icon-btn h-zoom" data-act="zoom" aria-label="See the whole house" title="See the whole house">${HOUSE_GLYPH}</button>

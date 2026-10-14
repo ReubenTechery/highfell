@@ -164,6 +164,7 @@ export function hurtHero(h, amt, src, o) {
     }
   }
   a = Math.round(a);
+  if (S.opts && S.opts.start === 'intro') a = Math.min(a, Math.max(0, h.hp - Math.round(h.maxHp * 0.2)));
   if (a > 0) {
     h.hp -= a; h.flash = 0.12; h.hurtT = 0.25; h.stats.taken += a;
     if (!o.quiet && h.isPlayer) fxText(h.x, h.y - 60, '-' + a, o.numCol || '#FF6B5E', o.numSize || (a >= 100 ? 26 : 20), o.numDur ? { dur: o.numDur } : undefined);

@@ -22,7 +22,7 @@ export function newGame(dg, opts) {
     cp: 0, quiet: !!opts.quiet, auto: !!opts.auto, noEvents: !!opts.noEvents, cleared: 0, total: dg.packs.length, startedAt: 0,
     // how hard this dungeon is: hit (everything that hurts a hero), trashHp (health of everything but the
     // bosses), bossHp (the bosses' health). opts.heroic plays it at the dungeon's heroic tune instead.
-    tune: Object.assign({ hit: 1, trashHp: 1, bossHp: 1 }, (opts.heroic && dg.heroic) || dg.tune || {}),
+    tune: Object.assign({ hit: 1, trashHp: 1, bossHp: 1 }, opts.start === 'intro' ? { hit: 0.5, trashHp: 0.5, bossHp: 0.45 } : (opts.heroic && dg.heroic) || dg.tune || {}),
   });
   S.props = dg.props.map((p) => Object.assign({}, p, { room: roomIndexOf(p.x, p.y), sp0: p.sp }));
   const roles = opts.solo ? ['dps'] : ORDER;

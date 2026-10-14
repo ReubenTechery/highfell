@@ -126,3 +126,29 @@ test('heroes: every one the game can draw knows where its weapon is and how tall
   // from behind, the weapon is in the other hand
   assert.equal(heroFit('tank', true).wx, -heroFit('tank', false).wx);
 });
+
+test('intro: starts in the Ossuary, protects the party from dying, and spawns the walkout and chest when Sir Rattlebones falls', () => {
+  const { s, tank, healer, dps } = game('tank', 'intro');
+  assert.ok(s.tune.hit < 1 && s.tune.bossHp < 1, 'intro tuning is gentler and faster');
+  // Room 1 and Rooms 4-5 are already marked cleared so the run ends at Sir Rattlebones
+  const byId = (id: string) => s.packs.find((p: any) => p.def.id === id);
+  assert.equal(byId('A').cleared, true);
+  assert.equal(byId('B').cleared, false);
+  assert.equal(byId('C').cleared, false);
+  assert.equal(byId('K').cleared, false);
+  assert.equal(byId('D').cleared, true);
+  assert.equal(byId('E').cleared, true);
+  assert.equal(byId('G').cleared, true);
+  // non-lethal protection: no hero can drop below 20% health in the intro
+  hurtHero(tank, 99999, null, { pierce: true, dodge: false, block: false });
+  assert.ok(tank.alive && tank.hp >= Math.round(tank.maxHp * 0.2), 'cannot die in the intro');
+  tank.hp = tank.maxHp;
+  for (const h of [tank, healer, dps]) h.power = 1.45;
+  s.auto = true;
+  for (let i = 0; i < 60 * 75 && s.over !== 'victory'; i++) update(1 / 60);
+  assert.equal(byId('K').cleared, true, 'Sir Rattlebones is defeated');
+  assert.ok(s.walkout && s.walkout.tell === 'unique', 'the unique lantern walkout played');
+  assert.ok(s.chest && s.chest.open, 'the chest spawned in the tomb and opened');
+  assert.equal(s.over, 'victory');
+});
+

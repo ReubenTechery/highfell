@@ -142,6 +142,15 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
 - **Brews:** the ingredients go in when the stir starts (leaving still bottles it). One bottle a run, drunk
   at the door; practice uses the brew but keeps the bottle. Effects live in the engine under the recipe id
   (`tonic`, `fizz`, `glow`, `elixir`).
+- **Onboarding:** a fresh save with no heroes opens on a 60-second prologue run (`start: 'intro'`) as Brannoc in
+  full Epic gear, the Barrowguard set and *The Gravedigger* alongside Maren and Ivy in the Ossuary and Sir
+  Rattlebones's tomb. Prompts teach movement, abilities, dodge-rolling (`Shield Charge`), blocking (`Cleaving
+  Sweep`) and peeling (`Slam`); heroes cannot drop below 20% health, and `Skip intro` jumps straight to the
+  hero maker. Killing Sir Rattlebones plays the gold `unique` walkout tell and opens a showcase chest reveal
+  (`reveal.showIntro`) that explains the regular gear ladder, fixed drop rates, the Collection Log (and the
+  Barrow's three log rewards) and building your hearth, then leads into the hero maker. Creating your first
+  hero starts a 3-step guided camera tour of the Hearth (`hall` → `yard` signpost → `cellar` Barrow door). Both
+  can be replayed from Settings.
 - The game's name isn't final: it lives in one constant, `GAME_NAME` in `src/content/index.ts`.
 
 ## Map of the code
@@ -198,9 +207,9 @@ python3 tools/art_sheet.py shots/art.png art/vale.json        # a contact sheet 
 In the page, `window.highfell` is the running app: `highfell.startRun({ start, testRar, role?, heroic? })`,
 `highfell.run.autoplay(seconds)`, `highfell.reveal.preview('normal' | 'unique' | 'pet' | 'log')`, `highfell.showVale()`,
 `highfell.showBrew()`, `highfell.showHearth('bunks')` (any room's id), and `highfell.p` is the live save (change it, then
-`highfell.save()`). A fresh browser opens on the hero maker: click `#cr-go` to make the rolled hero.
-Settings has testing switches (walkout and log-complete previews, free Vale harvests, lucky ×50, and
-"Everything open": the log rewards and Heroic before they're earned).
+`highfell.save()`). A fresh browser opens on the prologue run: click `#intro-skip` (then `#cr-go`) to make the rolled hero.
+Settings has testing switches (walkout and log-complete previews, free Vale harvests, lucky ×50,
+"Everything open": the log rewards and Heroic before they're earned, and buttons to replay the prologue and Hearth tour).
 
 ## How we keep the code good (no vibe coding)
 
