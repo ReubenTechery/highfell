@@ -2,16 +2,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRng } from '../src/core/rng';
-import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, SETS, checkContent } from '../src/content';
+import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, SETS, checkContent, heroicVersion } from '../src/content';
 import { BARROW } from '../src/content/barrow';
-import { activeHero, dungeonRecord, freshProfile, migrate, nameProblem, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
-import { DUPE_MARKS, resolveRun, rollTable } from '../src/meta/loot';
+import { activeHero, createHero, dungeonRecord, freshProfile, migrate, nameProblem, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
+import { DUPE_MARKS, heroicOpen, heroicProgress, resolveRun, rollTable } from '../src/meta/loot';
 import { bestRegular, buyTrait, compareFor, compareOn, equip, floorWorn, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, wearerOf, worn } from '../src/meta/gear';
-import { FOUNDERS, MAX_HEROES, canMake, cleanName } from '../src/content/folk';
+import { FOUNDERS, HERO_ART, MAX_HEROES, canMake, cleanName } from '../src/content/folk';
 import { SLOT_IDS, gearId } from '../src/content/gear';
 import { INGREDIENTS, RECIPES } from '../src/content/vale';
-import { Achiever } from '../src/meta/achievements';
-import { HEARTH_SPOTS, lookOf, lookProgress, place, setLook } from '../src/meta/hearth';
+import { Achiever, progress } from '../src/meta/achievements';
+import { logProgress, opened } from '../src/meta/logs';
+import { HEARTH_SPOTS, lookOf, lookOpen, lookProgress, place, setLook } from '../src/meta/hearth';
 import { HOUSE_SPOTS, LOOK_ROOMS, ROOMS, THINGS } from '../src/content/house';
 import { heroesFor, pickRole, seats } from '../src/meta/party';
 import { lootFor } from '../src/meta/loot';
@@ -363,10 +364,10 @@ test('house: spots a save has never had fill with what is not on show, once; emp
 test('house looks: a room shows the look you put on it once you have earned it, and the tavern is always yours', () => {
   const { p } = withHero('tank');
   assert.equal(lookOf(p, 'hall'), 'tavern');
-  assert.deepEqual(lookProgress(p, 'barrow'), { have: 0, need: 100 });
+  assert.deepEqual(lookProgress(p, 'barrow'), { have: 0, need: 16 });
   assert.equal(setLook(p, 'hall', 'barrow'), false, 'not earned yet');
   assert.equal(setLook(p, 'hall', 'nope'), false);
-  dungeonRecord(p, 'barrow').clears = 100;
+  p.achievements['barrow.log'] = { at: 1 };
   assert.ok(setLook(p, 'hall', 'barrow'));
   assert.equal(lookOf(p, 'hall'), 'barrow');
   assert.equal(lookOf(p, 'loft'), 'tavern', 'one room at a time');
@@ -395,6 +396,69 @@ test('profile: a v5 save gets the tavern in every room, and what is in the house
   assert.equal(p.hearth.spots['mantel.1'], 'trophy.barrow_key');
   assert.equal(p.hearth.spots['pet.rug'], null);
   assert.ok(LOOK_ROOMS.every((r) => lookOf(p, r) === 'tavern'));
+});
+
+test('collection log: filling the Barrow’s whole log opens Barrow Hall, a title and the Risen, for keeps', () => {
+  const { p } = withHero('tank');
+  const ach = new Achiever(p, { dungeon: 'barrow', role: 'tank', practice: false, testGear: false });
+  assert.deepEqual(logProgress(p, 'barrow'), { have: 0, need: 16 });
+  assert.equal(lookOpen(p, 'barrow'), false);
+  assert.equal(opened(p, 'race', 'risen'), false);
+  assert.ok(['dwarf', 'elf', 'human'].every((r) => opened(p, 'race', r)), 'dwarves, elves and humans are open from the start');
+  assert.ok(['gnome', 'goblin', 'orc'].every((r) => !opened(p, 'race', r)), 'the rest wait for dungeons of their own');
+  assert.equal(createHero(p, { name: 'Morrow Gravesend', race: 'risen', cls: 'warrior' }), null, 'the Risen are locked');
+  // every slot but the last: the log isn't done
+  const last = 'barrowguard.helm';
+  for (const id of BARROW.collection.filter((x) => x !== last)) { p.collection[id] = { n: 1, kc: 1, at: 1 }; assert.ok(!ach.collected(id).includes('barrow.log')); }
+  assert.deepEqual(progress(p, ACHIEVEMENTS['barrow.log']), { have: 15, need: 16 });
+  assert.deepEqual(lookProgress(p, 'barrow'), { have: 15, need: 16 });
+  p.collection[last] = { n: 1, kc: 1, at: 1 };
+  assert.deepEqual(ach.collected(last), ['barrow.log']);
+  assert.ok(p.titles.includes('title.gravewarden'));
+  assert.ok(lookOpen(p, 'barrow'));
+  assert.ok(opened(p, 'race', 'risen'));
+  assert.ok(createHero(p, { name: 'Morrow Gravesend', race: 'risen', cls: 'cleric' }), 'now you can make one, any of the three classes');
+  // the heroic log is its own: its rewards stay locked
+  assert.equal(lookOpen(p, 'barrow-gilded'), false);
+  assert.equal(p.collection['cosmetic.gilded_bones'], undefined);
+  // earned is for keeps, even if the log had a slot it doesn't have now
+  delete p.collection[last];
+  assert.ok(opened(p, 'race', 'risen') && lookOpen(p, 'barrow'));
+  // a log already full when the save loads counts too
+  const q = withHero('dps').p;
+  for (const id of DUNGEONS['barrow-heroic'].collection) q.collection[id] = { n: 1, kc: 1, at: 1 };
+  assert.ok(new Achiever(q, { dungeon: 'barrow', role: 'dps', practice: false, testGear: false }).check().includes('barrow-heroic.log'));
+  assert.ok(q.titles.includes('title.undying'));
+  assert.ok(q.collection['cosmetic.gilded_bones'], 'gilded bones for your Risen');
+  assert.ok(lookOpen(q, 'barrow-gilded'));
+  assert.equal(lookOpen(q, 'barrow'), false, 'and the Barrow’s own log is still its own');
+});
+
+test('heroic: opens after ten clears, drops the Barrow’s pieces gilded at the same rates, pays Barrow Marks, keeps its own kill counts', () => {
+  const { p, h } = withHero('tank');
+  assert.equal(heroicOpen(p, 'barrow'), false);
+  dungeonRecord(p, 'barrow').clears = 9;
+  assert.deepEqual(heroicProgress(p, 'barrow'), { have: 9, need: 10 });
+  dungeonRecord(p, 'barrow').clears = 10;
+  assert.ok(heroicOpen(p, 'barrow'));
+  const H = heroicVersion('barrow')!;
+  assert.equal(H.id, 'barrow-heroic');
+  // every line of the Barrow's tables, gilded, at the same rate and for the same role
+  const plain = BARROW.loot.flatMap((t) => t.drops), gold = H.loot.flatMap((t) => t.drops);
+  assert.deepEqual(gold.map((d) => [d.id, d.rate, d.role]), plain.map((d) => [`${d.id}.gilded`, d.rate, d.role]));
+  assert.deepEqual(H.collection, BARROW.collection.map((id) => `${id}.gilded`));
+  // a heroic clear counts its own kills and clears, and pays Barrow Marks
+  const marks0 = p.dungeons.barrow.marks;
+  resolveRun(p, H, clear(h), makeRng(3));
+  assert.equal(p.bosses['barrow-heroic.keeper'].kc, 1);
+  assert.equal(p.bosses['barrow.keeper'], undefined);
+  assert.equal(p.dungeons['barrow-heroic'].clears, 1);
+  assert.ok(p.dungeons.barrow.marks > marks0, 'the clear paid a Barrow Mark');
+  assert.equal(p.dungeons['barrow-heroic'].marks, 0, 'there are no heroic Marks');
+  // a gilded piece wears exactly like the plain one: the same set, the same power
+  for (const id of ['barrowguard.helm.gilded', 'barrowguard.chest']) { p.collection[id] = { n: 1, kc: 1, at: 1 }; assert.ok(equip(p, h, ITEMS[id].slot, id)); }
+  assert.ok(loadoutFor(p, h).bonuses.includes('barrowguard2'), 'gilded and plain count for the same set');
+  assert.equal(compareFor(p, h, 'barrowguard.helm')!.verdict, 'same');
 });
 
 test('party: you take your hero’s seat, bots take the others, and any of your heroes can take a seat they fit', () => {
@@ -492,7 +556,10 @@ test('art: every icon and sprite the content names exists', async () => {
   }
   for (const n of ['lantern', 'lantern_gold', 'lantern_out', 'pet_keeper', 'pet_keeper_reach', 'fireplace', 'fire_a', 'fire_b', 'rug', 'stall']) if (!sprites[n]) missing.push('sprite ' + n);
   for (const t of THINGS) if (!sprites[t.sprite]) missing.push('sprite ' + t.sprite + ' for ' + t.id);
-  for (const n of ['bunk_a', 'bunk_b', 'bunk_c', 'bricked_arch', 'weapon_rack', 'table', 'stool', 'woodpile', 'torch', 'candles', 'skullpile']) if (!sprites[n]) missing.push('sprite ' + n);
+  for (const n of ['bunk_a', 'bunk_b', 'bunk_c', 'bricked_arch', 'weapon_rack', 'table', 'stool', 'woodpile', 'torch', 'candles', 'skullpile', 'gfire_a', 'gfire_b', 'coffin', 'tomb1', 'bones', 'wisp']) if (!sprites[n]) missing.push('sprite ' + n);
+  // every hero a race and class can be drawn as, front and back, and gilded for the Risen
+  for (const art of Object.values(HERO_ART)) for (const v of ['_f', '_b', ...(art.startsWith('risen') ? ['_gilded_f', '_gilded_b'] : [])]) if (!sprites[art + v]) missing.push('sprite ' + art + v);
+  for (const n of ['c_risen']) if (!tiles[n]) missing.push('icon ' + n);
   for (const n of ['npc_gnome', 'cauldron', 'burrow', 'burrow_red', 'windmill', 'windmill_sails', 'fence', 'cabbages', 'node_moonpetal', 'node_moonpetal_shim', 'node_glowcap', 'node_bramble', 'goggles', 'crow', 'spark', 'kettle_walk', 'pet_rootling_calm', 'goat']) if (!sprites[n]) missing.push('sprite ' + n);
   for (const x of [...Object.values(INGREDIENTS), ...Object.values(RECIPES)]) if (!tiles[x.icon]) missing.push('icon ' + x.icon + ' for ' + x.id);
   for (const n of ['s_gather', 's_brew']) if (!tiles[n]) missing.push('icon ' + n);

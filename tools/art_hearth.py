@@ -11,6 +11,8 @@ from art_sprites import (K, s, ln, beam, c, e, halo, m, both, eyes, f,
                          BONE, BONE_D, GRN, GRN_L, STEEL, STEEL_D, STEEL_L, GOLD, GOLD_D, RED, RED_D,
                          BLUE, BLUE_D, WOOD, WOOD_D, PURP, PURP_D, STONE, STONE_T, STONE_D, FROST, FROST_L, FIRE, FLAME)
 from art_sprites import GK_COAT, GK_COAT_D, GK_SKIN, GK_SKIN_D
+import art_heads as heads
+from art_heroes import RIRON, RIRON_D, RIRON_L
 
 OUT = HF_ROOT + '/art/'
 SP = {}
@@ -491,13 +493,42 @@ def signpost():
     sprite('signpost', (-76, -210, 156, 214), o)
 
 
+# ================================================================ the heroic Barrow, and the log rewards
+KEEPER_GILD = {GK_COAT: '#C9962A', GK_COAT_D: '#8A6418', '#C9CFC2': '#FFE08A', '#4A4458': '#8A6418'}
+PLUME_GILD = {'#C8403F': GOLD, '#9E2F2E': GOLD_D, '#E97A6E': '#FFE08A', '#D9A520': '#B8862A'}
+
+
+def risen_head(o, cy=5, k=1.15):
+    """a Risen warrior's head: the long skull with green eyes under its iron crown (the hero at the end of the Barrow
+    log's bar), drawn like the hero's own (art_heads.py) with the middle of its eyes at (0, cy)"""
+    W = lambda w: w / k
+    crown = [s('M-14.5 -11 C-14.5 -27 14.5 -27 14.5 -11 Z', RIRON, W(4)) + s('M-16 -14 H16 V-8 H-16 Z', RIRON_D, W(3.2))]
+    crown += [s(f'M{x - 3} -23 L{x} -36 L{x + 3} -23 Z', RIRON_L, W(2.6)) for x in (-10, -3.5, 3.5, 10)]
+    o.append(f'<g transform="translate(0 {f(cy)}) scale({k})">' + ''.join(heads.risen_head(k, glow=1.6) + crown) + '</g>')
+
+
+def heroic_drops():
+    for n, extra in (('pet_keeper', KEEPER_GILD), ('mount_hound', {}), ('tr_plume', PLUME_GILD)):
+        SP[n + '_gilded'] = {'svg': A.gild(SP[n]['svg'], extra), 'vb': SP[n]['vb']}
+    for n, extra in (('c_pet_keeper', KEEPER_GILD), ('c_mount_hound', {}), ('c_plume', PLUME_GILD)):
+        ICONS[n + '_gilded'] = A.gild(ICONS[n], extra, tile=True)
+    o = []; risen_head(o)
+    icon('c_risen', '#2E3A2A', o, k=0.8, ground=36)
+    o = [halo(0, 0, 28, GOLD, 0.3), A.bone_limb('M-22 -18 L22 18', 6) + A.bone_limb('M22 -18 L-22 18', 6)]
+    for (x, y) in ((-22, -18), (22, -18), (-22, 18), (22, 18)):
+        o.append(c(x - 3, y - 2, 4, BONE, 2.6) + c(x + 3, y + 2, 4, BONE, 2.6))
+    o.append(A.skull(0, -4, 1.25))
+    icon('c_gilded_bones', '#3A2C10', o, k=0.95, ground=34)
+    ICONS['c_gilded_bones'] = A.gild(ICONS['c_gilded_bones'], tile=True)
+
+
 def house_props():
     lectern(); armor_stand(); weapon_rack(); larder(); barrow_door(); bricked_arch(); signpost()
     bunk('bunk_a', BLUE, RED); bunk('bunk_b', '#4E9A4A', GOLD_D); bunk('bunk_c', PURP, '#2F8F8F')
 
 
 def build():
-    lanterns(); pets(); hound(); trophies(); fireplace(); fire(); rug(); stall(); window(); door(); furniture(); house_props()
+    lanterns(); pets(); hound(); trophies(); fireplace(); fire(); rug(); stall(); window(); door(); furniture(); house_props(); heroic_drops()
     return SP
 
 

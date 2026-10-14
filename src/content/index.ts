@@ -8,9 +8,11 @@ import { BARROW } from './barrow';
 import { BARROW_ITEMS, BARROW_SETS } from './barrow/items';
 import { BARROW_COLLECTIBLES, BARROW_TITLES } from './barrow/collectibles';
 import { BARROW_ACHIEVEMENTS } from './barrow/achievements';
+import { BARROW_HEROIC, HEROIC_ACHIEVEMENTS, HEROIC_COLLECTIBLES, HEROIC_ITEMS, HEROIC_TITLES } from './barrow/heroic';
 import { BRAMBLEWICK_ACHIEVEMENTS, BRAMBLEWICK_COLLECTIBLES, BRAMBLEWICK_TITLES } from './vale/bramblewick';
 import { INGREDIENTS, PLACES, RECIPES } from './vale';
 import { LOOKS } from './house';
+import { RACES } from './folk';
 
 /** The game's name, in one place so a rename is one line. */
 export const GAME_NAME = 'Highfell';
@@ -21,13 +23,16 @@ const byId = <T extends { id: string }>(list: T[]): Record<string, T> => {
   return out;
 };
 
-export const DUNGEONS: Record<string, DungeonInfo> = byId([BARROW]);
-export const ITEMS: Record<string, ItemDef> = byId([...regularItems(), ...BARROW_ITEMS]);
+/** every dungeon, the heroic ones too (a heroic one names the dungeon it is the harder version of) */
+export const DUNGEONS: Record<string, DungeonInfo> = byId([BARROW, BARROW_HEROIC]);
+export const ITEMS: Record<string, ItemDef> = byId([...regularItems(), ...BARROW_ITEMS, ...HEROIC_ITEMS]);
 export const SETS: Record<string, SetDef> = byId([...BARROW_SETS]);
-export const COLLECTIBLES: Record<string, CollectibleDef> = byId([...BARROW_COLLECTIBLES, ...BRAMBLEWICK_COLLECTIBLES]);
-export const TITLES: Record<string, TitleDef> = byId([...BARROW_TITLES, ...BRAMBLEWICK_TITLES]);
-export const ACHIEVEMENTS: Record<string, AchievementDef> = byId([...BARROW_ACHIEVEMENTS, ...BRAMBLEWICK_ACHIEVEMENTS]);
-export const ACHIEVEMENT_LIST: AchievementDef[] = [...BARROW_ACHIEVEMENTS, ...BRAMBLEWICK_ACHIEVEMENTS];
+export const COLLECTIBLES: Record<string, CollectibleDef> = byId([...BARROW_COLLECTIBLES, ...HEROIC_COLLECTIBLES, ...BRAMBLEWICK_COLLECTIBLES]);
+export const TITLES: Record<string, TitleDef> = byId([...BARROW_TITLES, ...HEROIC_TITLES, ...BRAMBLEWICK_TITLES]);
+export const ACHIEVEMENTS: Record<string, AchievementDef> = byId([...BARROW_ACHIEVEMENTS, ...HEROIC_ACHIEVEMENTS, ...BRAMBLEWICK_ACHIEVEMENTS]);
+export const ACHIEVEMENT_LIST: AchievementDef[] = [...BARROW_ACHIEVEMENTS, ...HEROIC_ACHIEVEMENTS, ...BRAMBLEWICK_ACHIEVEMENTS];
+/** The heroic version of a dungeon, if it has one. */
+export const heroicVersion = (id: string): DungeonInfo | undefined => Object.values(DUNGEONS).find((d) => d.heroicOf === id);
 
 /** What a drop id points at. */
 export type Thing = { kind: 'item'; def: ItemDef } | { kind: 'collectible'; def: CollectibleDef };
@@ -44,6 +49,7 @@ export function checkContent(): string[] {
     for (const t of d.loot) for (const dr of t.drops) if (!thing(dr.id)) bad.push(`${d.id} loot ${dr.id}`);
     for (const id of d.collection) if (!thing(id)) bad.push(`${d.id} collection ${id}`);
     for (const id of d.achievements) if (!ACHIEVEMENTS[id]) bad.push(`${d.id} achievement ${id}`);
+    if (d.heroicOf && !DUNGEONS[d.heroicOf]) bad.push(`${d.id} heroic of ${d.heroicOf}`);
   }
   for (const s of Object.values(SETS)) for (const id of s.pieces) if (!ITEMS[id] || ITEMS[id].setId !== s.id) bad.push(`set ${s.id} piece ${id}`);
   for (const pl of Object.values(PLACES)) {
@@ -61,7 +67,9 @@ export function checkContent(): string[] {
     if (a.reward.collectible && !COLLECTIBLES[a.reward.collectible]) bad.push(`${a.id} collectible ${a.reward.collectible}`);
     for (const n of a.needs || []) if (!ACHIEVEMENTS[n]) bad.push(`${a.id} needs ${n}`);
     if (a.collect && !thing(a.collect)) bad.push(`${a.id} collect ${a.collect}`);
+    if (a.log && !DUNGEONS[a.log]) bad.push(`${a.id} log ${a.log}`);
+    if (a.reward.look && !LOOKS.some((l) => l.id === a.reward.look)) bad.push(`${a.id} look ${a.reward.look}`);
+    if (a.reward.race && !(a.reward.race in RACES)) bad.push(`${a.id} race ${a.reward.race}`);
   }
-  for (const l of LOOKS) if (l.unlock && !DUNGEONS[l.unlock.dungeon]) bad.push(`look ${l.id} dungeon ${l.unlock.dungeon}`);
   return bad;
 }

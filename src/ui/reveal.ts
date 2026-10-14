@@ -1,9 +1,11 @@
 /**
  * The reveal: the chest after a clear. The lantern beside it repeats the walkout's tell, then the
  * chest opens and the cards come out face down and flip one by one, rarest last. A pet or a mount
- * gets the whole screen. Then the numbers: kill counts, time, marks, the collection log.
+ * gets the whole screen, and so does a collection log filled at last: its hero walks out, and what it
+ * gave stays on the page with a way to it. Then the numbers: kill counts, time, marks, the log.
  */
-import { ACHIEVEMENTS, COLLECTIBLES, ITEMS, TITLES } from '../content';
+import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, TITLES } from '../content';
+import type { RaceId } from '../content/folk';
 import { BARROW } from '../content/barrow';
 import { RARITY, ROLE_SLOTS, traitDef } from '../content/gear';
 import { ROLES } from '../content/roles';
@@ -15,10 +17,14 @@ import { waiting } from '../meta/gear';
 import type { App } from './app';
 import { actions, esc, fmtN, fmtRate, fmtT, reducedMotion, wait } from './dom';
 import { colourOf, iconOf, nameOf, spriteURL } from './art';
+import { rewards } from './dungeonsheet';
 import { SFX } from './sound';
 import type { RunOpts } from './run';
 
 export interface RevealExtra { unlocked: string[]; hero: string | null; role: RoleId; deaths: number; again: RunOpts | null; preview?: boolean }
+
+/** who walks out when a dungeon's whole log is filled: the Barrow's gives the Risen, its heroic log gilds them */
+const LOG_ART: Record<string, string> = { 'barrow.log': 'risen_tank_f', 'barrow-heroic.log': 'risen_tank_gilded_f' };
 
 /** rarest last: regular gear, then table drops from most to least common */
 const order = (d: Drop): number => (d.source === 'regular' ? 0 : d.source === 'spare' ? 1 : 2 + (1 - (d.rate || 0)) * 1000);
@@ -43,6 +49,8 @@ export class Reveal {
       keep: () => { this.trait = null; SFX.play('ui'); this.renderOffer(); },
       take: (el) => { const t = el.dataset.trait!; const h = heroById(this.app.p, this.extra?.hero); if (!this.extra?.preview && h) { takeTrait(h, t); this.app.store.save(); } this.trait = t; SFX.play('coin'); this.renderOffer(); },
       moment: () => this.closeMoment(),
+      makerace: (el) => { SFX.play('ui'); this.goHome(); this.app.showCreate(undefined, el.dataset.race as RaceId); },
+      putlook: () => { SFX.play('ui'); this.goHome(); this.app.sheets.open({ kind: 'looks' }); },
     });
   }
 
@@ -51,10 +59,13 @@ export class Reveal {
     this.cards = [...loot.drops].sort((a, b) => order(a) - order(b));
     this.flipped = 0; this.skipping = false; this.running = false; this.trait = null;
     const tell: Tell = loot.tell;
+    const dg = DUNGEONS[loot.dungeon] || BARROW;
     this.root.className = `scene reveal t-${tell}`;
-    const head = extra.preview ? 'Preview: nothing is added' : `${BARROW.name} · clear ${fmtN(loot.clears)}`;
-    const lantern = tell === 'pet' ? 'pet_keeper' : tell === 'unique' ? 'lantern_gold' : 'lantern_out';
-    const kcChips = Object.entries(loot.kc).map(([b, n]) => `<span class="chip dark">${esc(BARROW.bosses.find((x) => x.id === b)?.name || b)} <b>KC ${fmtN(n)}</b></span>`).join('');
+    const head = extra.preview ? 'Preview: nothing is added' : `${dg.name} · clear ${fmtN(loot.clears)}`;
+    // the pet that came out of the chest stands in for the lantern (gilded from Heroic)
+    const pet = loot.drops.find((d) => d.source === 'table' && COLLECTIBLES[d.id]?.kind === 'pet');
+    const lantern = tell === 'pet' ? (pet && COLLECTIBLES[pet.id].sprite) || 'pet_keeper' : tell === 'unique' ? 'lantern_gold' : 'lantern_out';
+    const kcChips = Object.entries(loot.kc).map(([b, n]) => `<span class="chip dark">${esc(dg.bosses.find((x) => x.id === b)?.name || b)} <b>KC ${fmtN(n)}</b></span>`).join('');
     this.root.innerHTML = `<div class="rv-inner">
       <div class="rv-head"><p class="eyebrow">${esc(head)}</p><h1>The Gravekeeper is buried</h1>
         <div class="chips"><span class="chip dark ${loot.newPb ? 'pb' : ''}">${loot.newPb ? 'New best · ' : ''}<b>${fmtT(loot.time)}</b></span>${kcChips}</div></div>
@@ -67,6 +78,7 @@ export class Reveal {
       <div class="cards" id="rv-cards" hidden></div>
       <div class="rv-panel" id="rv-offer" hidden></div>
       <div class="rv-panel" id="rv-sum" hidden></div>
+      <div class="rv-panel rv-log" id="rv-log" hidden></div>
       <div class="rv-panel" id="rv-ach" hidden></div>
       <div class="rv-actions" id="rv-actions" hidden>
         ${extra.again && !extra.preview ? '<button type="button" class="btn gold big" data-act="again">Run it again</button>' : ''}
@@ -110,8 +122,29 @@ export class Reveal {
       this.flip(i);
       if (!this.skipping) await this.pause(big ? 750 : 380);
     }
+    // a whole collection log filled: the biggest moment of all
+    for (const id of this.extra?.unlocked || []) if (ACHIEVEMENTS[id]?.log && !this.skipping) await this.logMoment(id);
     ($('rv-skip', this.root)).hidden = true;
     this.after();
+  }
+
+  /** a log filled at last takes the screen: who it gives you walks out, and what else it gave */
+  private logMoment(id: string): Promise<void> {
+    const a = ACHIEVEMENTS[id], dg = DUNGEONS[a.log!];
+    return new Promise((res) => {
+      const el = document.createElement('div');
+      el.className = 'big-moment gold log-moment';
+      el.setAttribute('data-act', 'moment');
+      el.setAttribute('role', 'dialog');
+      el.setAttribute('aria-label', a.name);
+      el.innerHTML = `<span class="rays"></span><div class="bm"><p class="eyebrow">${esc(dg?.name || '')} · collection log complete</p>
+        ${LOG_ART[id] ? `<img src="${spriteURL(LOG_ART[id])}" alt="">` : ''}<h2>${esc(a.name)}</h2>
+        <p>${esc(a.reward.text)}.</p><p style="opacity: 0.7">Tap to carry on</p></div>`;
+      this.root.appendChild(el);
+      SFX.play('petfound');
+      this.momentDone = () => { el.remove(); this.momentDone = null; res(); };
+      el.focus?.();
+    });
   }
   private async pause(ms: number): Promise<void> { if (!this.skipping) await wait(ms); }
 
@@ -179,10 +212,11 @@ export class Reveal {
   /** the numbers, the trait offer, the achievements, the buttons */
   private after(): void {
     const loot = this.loot!, extra = this.extra!, p = this.app.p;
-    const dg = BARROW;
+    const dg = DUNGEONS[loot.dungeon] || BARROW;
     const got = dg.collection.filter((id) => p.collection[id]).length;
     const newSlots = loot.drops.filter((d) => d.source === 'table' && d.isNew).length;
-    const rec = p.dungeons[dg.id];
+    // a heroic clear pays the Barrow's own Marks
+    const rec = p.dungeons[dg.heroicOf || dg.id];
     const kc = Object.entries(loot.kc);
     const sum = $('rv-sum', this.root);
     sum.hidden = false;
@@ -194,6 +228,14 @@ export class Reveal {
       <div class="kv"><span>Party deaths</span><b>${extra.deaths}</b></div>
     </div>`;
     this.renderOffer();
+    // what a filled log gave, with the way to it: make one of the new heroes, put the look up
+    const logs = extra.unlocked.map((id) => ACHIEVEMENTS[id]).filter((a) => a?.log);
+    if (logs.length) {
+      const el = $('rv-log', this.root);
+      el.hidden = false;
+      el.innerHTML = logs.map((a) => `<h3>${esc(a.name)}</h3>${rewards(a, true)}
+        <div class="actions">${a.reward.race ? `<button type="button" class="btn gold" data-act="makerace" data-race="${esc(a.reward.race)}">Make a hero</button>` : ''}${a.reward.look ? '<button type="button" class="btn" data-act="putlook">Put up the look</button>' : ''}</div>`).join('');
+    }
     if (extra.unlocked.length) {
       const ach = $('rv-ach', this.root);
       ach.hidden = false;
@@ -226,8 +268,10 @@ export class Reveal {
     this.app.home();
   }
 
-  /** the reveal with made-up loot, for testing the look. Touches nothing in the save. */
-  preview(tell: Tell): void {
+  /** the reveal with made-up loot, for testing the look. Touches nothing in the save. 'log' plays a run
+   *  that fills the Barrow's whole collection log. */
+  preview(kind: Tell | 'log'): void {
+    const tell: Tell = kind === 'log' ? 'unique' : kind;
     const p = this.app.p, h = activeHero(p), role: RoleId = h ? roleOf(h) : 'tank';
     const kcK = (p.bosses['barrow.keeper']?.kc || 0) + 1, kcN = (p.bosses['barrow.knight']?.kc || 0) + 1;
     const drops: Drop[] = [
@@ -240,7 +284,7 @@ export class Reveal {
     if (tell === 'pet') drops.push({ id: 'pet.pint_gravekeeper', source: 'table', boss: 'keeper', rate: 1 / 5000, kc: kcK, role, isNew: true, dupe: false, marks: 0 });
     const loot: RunLoot = { dungeon: 'barrow', role, hero: h?.id || '', drops, tell, kc: { knight: kcN, keeper: kcK }, marks: 1 + drops.reduce((a, d) => a + d.marks, 0), clears: (p.dungeons.barrow?.clears || 0) + 1, time: 247, pb: p.dungeons.barrow?.pb ?? 247, newPb: false, firstClear: false };
     this.app.show('reveal');
-    this.show(loot, { unlocked: [], hero: h?.id || null, role, deaths: 0, again: null, preview: true });
+    this.show(loot, { unlocked: kind === 'log' ? ['barrow.log'] : [], hero: h?.id || null, role, deaths: 0, again: null, preview: true });
   }
 }
 

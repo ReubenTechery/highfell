@@ -55,6 +55,16 @@ export interface RunLoot {
 
 export const DUPE_MARKS = 3;
 export const CLEAR_MARKS = 1;
+/** A heroic dungeon opens once you've cleared its normal one this many times: about when gear tops out. */
+export const HEROIC_AFTER = 10;
+
+/** How close you are to a dungeon's heroic version: clears of the normal one, out of HEROIC_AFTER. */
+export function heroicProgress(p: Profile, dungeon: string): { have: number; need: number } {
+  return { have: Math.min(HEROIC_AFTER, p.dungeons[dungeon]?.clears || 0), need: HEROIC_AFTER };
+}
+export const heroicOpen = (p: Profile, dungeon: string): boolean => heroicProgress(p, dungeon).have >= HEROIC_AFTER;
+/** whose Marks a dungeon pays: a heroic one pays its normal one's */
+const marksOf = (dg: DungeonInfo): string => dg.heroicOf || dg.id;
 
 /** Each line rolls on its own. Role-locked lines only roll for that role. */
 export function rollTable(t: BossLootDef, role: RoleId, rng: Rng): DropDef[] {
@@ -155,7 +165,7 @@ export function resolveKill(p: Profile, dg: DungeonInfo, boss: string, h: Hero, 
   const table = dg.loot.find((t) => t.boss === boss);
   if (table) for (const d of rollTable(table, role, rng)) out.drops.push(grant(p, h, d.id, { source: 'table', boss, rate: d.rate, kc: br.kc }, now));
   out.marks = out.drops.reduce((a, d) => a + d.marks, 0);
-  dungeonRecord(p, dg.id).marks += out.marks;
+  dungeonRecord(p, marksOf(dg)).marks += out.marks;
   return out;
 }
 
@@ -172,7 +182,7 @@ export function resolveClear(p: Profile, dg: DungeonInfo, h: Hero, time: number,
   out.drops.push(regularDrop(p, h, rng));
   const spare = spareDrop(p, roleOf(h), rng);
   if (spare) out.drops.push(spare);
-  rec.marks += out.marks;
+  dungeonRecord(p, marksOf(dg)).marks += out.marks;
   return out;
 }
 

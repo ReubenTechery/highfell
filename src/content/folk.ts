@@ -1,12 +1,15 @@
 /**
- * Who you can be: the four folk of the Vale and the six classes, as set out in the Look Book.
- * A hero is one race and one class, fixed when the hero is made. You can have up to six.
- * A combo is makeable once it has in-game art (HERO_ART); the races and classes pass fills the rest.
+ * Who you can be. Dwarves, elves and humans from the start; gnomes, goblins, the Risen (undead) and orcs
+ * are earned, each in its own dungeon: finishing that dungeon's collection log opens them (the
+ * achievement that gives a race says so in its reward), so the Risen come from the Barrow and the others
+ * with dungeons to come. Four classes: warrior, cleric, mage and rogue. A hero is one race and one class,
+ * fixed when the hero is made. You can have up to six. A combo is makeable once it has in-game art
+ * (HERO_ART); the races and classes pass fills the rest.
  */
 import type { RoleId } from './types';
 
-export type RaceId = 'dwarf' | 'gnome' | 'elf' | 'human';
-export type ClassId = 'warrior' | 'cleric' | 'mage' | 'rogue' | 'ranger' | 'bard';
+export type RaceId = 'dwarf' | 'elf' | 'human' | 'gnome' | 'goblin' | 'risen' | 'orc';
+export type ClassId = 'warrior' | 'cleric' | 'mage' | 'rogue';
 
 export interface RaceDef {
   id: RaceId;
@@ -21,6 +24,8 @@ export interface RaceDef {
   trick: { name: string; desc: string };
   first: string[];
   family: string[];
+  /** earned in its own dungeon: locked until an achievement (that dungeon's whole log) gives it */
+  earned?: boolean;
 }
 
 export interface ClassDef {
@@ -50,9 +55,19 @@ export const RACES: Record<RaceId, RaceDef> = {
     trick: { name: 'Pocket gadget', desc: 'Once a raid, reroll one action that failed.' },
     first: ['Wren', 'Pip', 'Tibbet', 'Fennick', 'Dottle', 'Quill', 'Nib', 'Bramble'],
     family: ['Copperkettle', 'Sparkwhistle', 'Gearpatch', 'Tinkerwick', 'Burrowfield', 'Thimblesprocket'],
+    earned: true,
+  },
+  goblin: {
+    id: 'goblin', name: 'Goblin', plural: 'Goblins', hometown: 'The Rattlecoin Warrens', light: '#B5D640', height: 'About 2 heads tall',
+    lore: 'Small, green, loud and always selling something. Most of it used to be yours, and they will sell it back at a very fair price.',
+    look: 'Knee-high, all ears and teeth, pockets on the pockets.',
+    trick: { name: 'Finders keepers', desc: 'Once a raid, pick up something nobody else saw.' },
+    first: ['Snik', 'Grubb', 'Pazz', 'Nettle', 'Rikka', 'Fizzwick', 'Dob', 'Mott'],
+    family: ['Coinbiter', 'Ratchetgrin', 'Mudpocket', 'Sparkfinger', 'Junkwhistle', 'Tinbuckle'],
+    earned: true,
   },
   elf: {
-    id: 'elf', name: 'Elf', plural: 'Elves', hometown: 'Moonmere', light: '#8FD6FF', height: 'About 5½ heads tall',
+    id: 'elf', name: 'Elf', plural: 'Elves', hometown: 'Moonmere', light: '#8FD6FF', height: 'About 4 heads tall',
     lore: 'They remember the last time the Frost King woke. They won’t say how it ended, which is never a good sign.',
     look: 'Tall and narrow, long ears, long hair, very calm about everything.',
     trick: { name: 'Old magic', desc: 'Once a raid, add three seconds to one live window for the whole party.' },
@@ -60,15 +75,34 @@ export const RACES: Record<RaceId, RaceDef> = {
     family: ['Stillwater', 'Moonmere', 'Hollowbrook', 'Nightfern', 'Mistvale', 'Larkreed'],
   },
   human: {
-    id: 'human', name: 'Human', plural: 'Humans', hometown: 'Highfell', light: '#F4B942', height: 'About 5 heads tall',
+    id: 'human', name: 'Human', plural: 'Humans', hometown: 'Highfell', light: '#F4B942', height: 'About 4 heads tall',
     lore: 'Everyone ends up in Highfell eventually. It’s the market town at the foot of the hills, and the Last Lantern never closes.',
     look: 'Middle height, any shape, any face. The everyday hero.',
     trick: { name: 'Seen it all', desc: 'Once a raid, for one round, see what another class sees.' },
     first: ['Maren', 'Tomas', 'Edda', 'Corwin', 'Pell', 'Isolde', 'Rook', 'Annis', 'Garret', 'Wynna'],
     family: ['Brightwell', 'Thatcher', 'Fairweather', 'Lanternby', 'Holloway', 'Ashby', 'Millward', 'Crane'],
   },
+  risen: {
+    id: 'risen', name: 'Risen', plural: 'Risen', hometown: 'The Barrow', light: '#9BE15D', height: 'As tall as they ever were',
+    lore: 'Heroes who went down into the Barrow and didn’t come back up. Then, one night, they did. They’re on your side now, and they’d like their old room back.',
+    look: 'Bones in their old armour, a skull under the helm, two green lights for eyes.',
+    trick: { name: 'Not again', desc: 'Once a raid, get back up for six seconds after you go down.' },
+    first: ['Morrow', 'Sable', 'Grisel', 'Hollin', 'Wick', 'Vesper', 'Rattick', 'Dusk', 'Tallow', 'Brine'],
+    family: ['Gravesend', 'Coffinwood', 'Barrowmoor', 'Dustmantle', 'Stillheart', 'Lanternless', 'Ashgrave', 'Bonewright'],
+    earned: true,
+  },
+  orc: {
+    id: 'orc', name: 'Orc', plural: 'Orcs', hometown: 'Thunderhorn Hold', light: '#D9603A', height: 'About 5 heads tall, mostly shoulders',
+    lore: 'Built like a castle wall and twice as stubborn. In the Hold they count a friend by the fights you have been in together.',
+    look: 'Huge shoulders, little tusks, a jaw like an anvil. Very gentle with small animals.',
+    trick: { name: 'War cry', desc: 'Once a raid, shout the party back to their feet for a moment.' },
+    first: ['Grokka', 'Thar', 'Uzra', 'Brakk', 'Morga', 'Durn', 'Hasha', 'Korl'],
+    family: ['Ironhorn', 'Stonejaw', 'Redhand', 'Thunderhide', 'Skullsplit', 'Ashbrow'],
+    earned: true,
+  },
 };
-export const RACE_ORDER: RaceId[] = ['dwarf', 'gnome', 'elf', 'human'];
+/** the folk in the hero maker's order: the three from the start, then the ones you earn */
+export const RACE_ORDER: RaceId[] = ['dwarf', 'elf', 'human', 'gnome', 'goblin', 'risen', 'orc'];
 
 export const CLASSES: Record<ClassId, ClassDef> = {
   warrior: { id: 'warrior', name: 'Warrior', role: 'tank', roleName: 'Tank', ready: true,
@@ -79,18 +113,17 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     blurb: 'Hits the hardest and freezes the rest. Stands still to cast and would like everyone to stop shouting.' },
   rogue: { id: 'rogue', name: 'Rogue', role: 'dps', roleName: 'DPS', ready: false,
     blurb: 'The only one who can interrupt a spell, and the first to the chest.' },
-  ranger: { id: 'ranger', name: 'Ranger', role: 'dps', roleName: 'DPS', ready: false,
-    blurb: 'Sees the boss’s next two moves and calls them out loud, usually a second too late.' },
-  bard: { id: 'bard', name: 'Bard', role: 'healer', roleName: 'Support', ready: false,
-    blurb: 'Counts the party in for the Battle Hymn. Has a song about every raid, including the ones he missed.' },
 };
-export const CLASS_ORDER: ClassId[] = ['warrior', 'cleric', 'mage', 'rogue', 'ranger', 'bard'];
+export const CLASS_ORDER: ClassId[] = ['warrior', 'cleric', 'mage', 'rogue'];
 
 /** Which race and class combos have in-game art, and the sprite set that draws them. */
 export const HERO_ART: Partial<Record<`${RaceId}.${ClassId}`, string>> = {
   'dwarf.warrior': 'tank',
   'human.cleric': 'healer',
   'elf.mage': 'dps',
+  'risen.warrior': 'risen_tank',
+  'risen.cleric': 'risen_healer',
+  'risen.mage': 'risen_dps',
 };
 export const heroArt = (race: string, cls: string): string | null => HERO_ART[`${race}.${cls}` as `${RaceId}.${ClassId}`] || null;
 /** A hero can be made from a combo with a kit and art. */

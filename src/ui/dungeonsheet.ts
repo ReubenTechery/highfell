@@ -1,31 +1,38 @@
 /**
- * The Dungeons sheet, opened by the big Dungeons button or the Barrow door. The dungeon's picture, and
- * right under it one small line for its collection log that opens to show what each role can get here
- * (what you have lit up, every drop rate; tap one to hold it up against what you wear). Then the main
- * thing: your role, your hero (picking a role picks the hero of that role you played last; change to
- * another or make one) and your brew, then loot or practice. Bots take the other seats at your gear
- * level. The sheets wire up its buttons.
+ * The Dungeons sheet, opened by the big Dungeons button or the Barrow door. The dungeon's picture with
+ * its Normal / Heroic switch (Heroic opens after ten clears and plays harder, for gilded drops), and right
+ * under it one small line for that version's collection log: how full it is, with what finishing it gives
+ * at the end of the bar (the Barrow's: a new kind of hero, the Risen). It opens to show those rewards and
+ * what each role can get (what you have lit up, every drop rate; tap one to hold it up against what you
+ * wear). Then the main thing: your role, your hero (picking a role picks the hero of that role you played
+ * last; change to another or make one) and your brew, then loot or practice. Bots take the other seats at
+ * your gear level. The sheets wire up its buttons.
  */
-import { DUNGEONS } from '../content';
-import { MAX_HEROES } from '../content/folk';
+import { COLLECTIBLES, DUNGEONS, TITLES, heroicVersion } from '../content';
+import { MAX_HEROES, RACES, type RaceId } from '../content/folk';
+import { LOOKS } from '../content/house';
 import { ORDER, ROLES } from '../content/roles';
-import type { DropDef, RoleId } from '../content/types';
+import type { AchievementDef, DropDef, DungeonInfo, RoleId } from '../content/types';
 import { RECIPES, RECIPE_ORDER } from '../content/vale';
 import { STARTS } from '../content/barrow/script.js';
 import { loadoutFor } from '../meta/gear';
-import { lootFor } from '../meta/loot';
+import { HEROIC_AFTER, heroicOpen, heroicProgress, lootFor } from '../meta/loot';
+import { logAchievement, logProgress } from '../meta/logs';
 import { heroesFor, seats } from '../meta/party';
 import { activeHero, roleOf, type Profile } from '../meta/profile';
 import { esc, fmtRate, fmtT, GLYPH } from './dom';
 import { colourOf, heroImg, heroSprite, iconOf, nameOf, placeSprite, tile } from './art';
 import { ilvl } from './hearth';
+import { SWATCH } from './lookssheet';
 
-/** what the sheet remembers while the page is open: the run's options, the role you're looking at, and
- *  whether the list of your other heroes is open */
-export interface DungeonPick { mode: 'loot' | 'practice'; start: string; gear: 'mine' | 2 | 3; role: RoleId | null; alts: boolean; log: boolean }
+/** what the sheet remembers while the page is open: the run's options, the role you're looking at,
+ *  whether the list of your other heroes and the log are open, and Normal or Heroic */
+export interface DungeonPick { mode: 'loot' | 'practice'; start: string; gear: 'mine' | 2 | 3; role: RoleId | null; alts: boolean; log: boolean; heroic: boolean }
 
 /** each role's icon on its tab */
 const ROLE_ICON: Record<RoleId, string> = { tank: 'shield', healer: 'mend', dps: 'comet' };
+/** the picture for a kind of hero a log gives: its head */
+const RACE_ICON: Partial<Record<RaceId, string>> = { risen: 'c_risen' };
 const word = (r: RoleId): string => (r === 'dps' ? 'DPS' : ROLES[r].title.toLowerCase());
 const seg = (act: string, cur: string, opts: [string, string][]): string =>
   `<div class="seg" role="radiogroup">${opts.map(([v, t]) => `<button type="button" class="sg" role="radio" data-act="${act}" data-v="${v}" aria-checked="${cur === v}">${esc(t)}</button>`).join('')}</div>`;
@@ -35,22 +42,39 @@ export function pickedRole(p: Profile, pick: DungeonPick): RoleId {
   const h = activeHero(p);
   return pick.role || (h ? roleOf(h) : 'tank');
 }
+/** The version of the Barrow the sheet shows, and whether you can go in (Heroic opens after ten clears;
+ *  `allOpen` is the testing switch). */
+export function pickedDungeon(p: Profile, pick: DungeonPick, allOpen: boolean): { dg: DungeonInfo; open: boolean } {
+  const base = DUNGEONS.barrow, hero = heroicVersion(base.id);
+  if (!pick.heroic || !hero) return { dg: base, open: true };
+  return { dg: hero, open: allOpen || heroicOpen(p, base.id) };
+}
 
-export function dungeonSheet(p: Profile, pick: DungeonPick): { head: string; body: string; foot: string } {
-  const dg = DUNGEONS.barrow, rec = p.dungeons.barrow, keeper = p.bosses[`${dg.id}.${dg.finalBoss}`];
+export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): { head: string; body: string; foot: string } {
+  const base = DUNGEONS.barrow;
+  const { dg, open } = pickedDungeon(p, pick, allOpen);
+  const rec = p.dungeons[dg.id], keeper = p.bosses[`${dg.id}.${dg.finalBoss}`];
   const role = pickedRole(p, pick);
   const h = activeHero(p);
   const playing = !!h && roleOf(h) === role;
   const practice = pick.mode === 'practice';
-  const got = dg.collection.filter((id) => p.collection[id]).length, all = dg.collection.length;
-  const body = `<div class="dgx">
+  const { have: got, need: all } = logProgress(p, dg.id);
+  const ach = logAchievement(dg.id);
+  const done = !!ach && !!p.achievements[ach.id];
+  const hp = heroicProgress(p, base.id);
+  const hOpen = allOpen || heroicOpen(p, base.id);
+  const diff = `<div class="dgx-diff" role="radiogroup" aria-label="Normal or Heroic">
+      <button type="button" class="dgx-d" role="radio" data-act="diff" data-v="normal" aria-checked="${!pick.heroic}">Normal</button>
+      <button type="button" class="dgx-d h" role="radio" data-act="diff" data-v="heroic" aria-checked="${pick.heroic}">${hOpen ? '' : GLYPH.lock}Heroic${hOpen ? '' : ` <small>${hp.have}/${hp.need}</small>`}</button></div>`;
+  const main = ach ? mainReward(ach) : null;
+  const body = `<div class="dgx${pick.heroic ? ' heroic' : ''}">
     <div class="dgx-side">
-      <div class="dgx-art">${BANNER}
-        <div class="dgx-name"><h3>${esc(dg.name)}</h3><span class="dg-stats"><span>Clears <b>${rec ? rec.clears : 0}</b></span><span>Best <b>${fmtT(rec?.pb)}</b></span><span>KC <b>${keeper ? keeper.kc : 0}</b></span></span></div>
+      <div class="dgx-art">${banner(pick.heroic)}${diff}
+        <div class="dgx-name"><h3>${esc(base.name)}${pick.heroic ? ' <em class="dgx-h">Heroic</em>' : ''}</h3><span class="dg-stats"><span>Clears <b>${rec ? rec.clears : 0}</b></span><span>Best <b>${fmtT(rec?.pb)}</b></span><span>KC <b>${keeper ? keeper.kc : 0}</b></span></span></div>
       </div>
       <section class="dgx-log">
-        <button type="button" class="dgx-logbar" data-act="logx" aria-expanded="${pick.log}"><span>Collection log</span><b>${got}/${all}</b><i aria-hidden="true"><i style="width: ${((got / all) * 100).toFixed(1)}%"></i></i><span class="dgx-more">${pick.log ? 'Hide' : 'Loot'}${pick.log ? GLYPH.up : GLYPH.down}</span></button>
-        ${pick.log ? `<div class="dgx-loot">${ORDER.map((r) => lootRow(p, ROLES[r].title, r, lootFor(dg, r).mine, r === role)).join('')}${lootRow(p, 'Anyone', null, lootFor(dg, role).shared, false)}
+        <button type="button" class="dgx-logbar${done ? ' done' : ''}" data-act="logx" aria-expanded="${pick.log}"><span>Collection log</span><b>${got}/${all}</b><i aria-hidden="true"><i style="width: ${((got / all) * 100).toFixed(1)}%"></i></i>${main ? `<span class="dgx-prize${done ? ' got' : ''}" title="${esc(main.name)}" aria-hidden="true">${tile(main.icon)}</span>` : ''}<span class="dgx-more">${pick.log ? 'Hide' : 'Loot'}${pick.log ? GLYPH.up : GLYPH.down}</span></button>
+        ${pick.log ? `<div class="dgx-loot">${ach ? rewards(ach, done) : ''}${ORDER.map((r) => lootRow(p, ROLES[r].title, r, lootFor(dg, r).mine, r === role)).join('')}${lootRow(p, 'Anyone', null, lootFor(dg, role).shared, false)}
           <button type="button" class="btn small" data-act="entry" data-id="${dg.id}.${dg.finalBoss}">${GLYPH.book}Open the collection log</button></div>` : ''}
       </section>
     </div>
@@ -71,10 +95,31 @@ export function dungeonSheet(p: Profile, pick: DungeonPick): { head: string; bod
     </div>
   </div>`;
   let foot: string;
-  if (playing) foot = `<button type="button" class="btn gold big" data-act="go">${practice ? 'Start practice' : `Enter the ${esc(dg.name.split(' ')[0])}`}</button>`;
+  if (!open) foot = `<p class="fine dgx-shut">${GLYPH.lock}Heroic opens after ${HEROIC_AFTER} clears of the ${esc(base.name.split(' ')[0])}. You have ${hp.have}.</p>`;
+  else if (playing) foot = `<button type="button" class="btn gold big${pick.heroic ? ' heroic' : ''}" data-act="go">${practice ? 'Start practice' : pick.heroic ? 'Enter Heroic' : `Enter the ${esc(base.name.split(' ')[0])}`}</button>`;
   else if (p.roster.length < MAX_HEROES) foot = `<button type="button" class="btn gold big" data-act="newseat" data-role="${role}">${GLYPH.plus}Make a ${esc(word(role))}</button>`;
   else foot = `<p class="fine">Your bunk room is full. Let a hero go to make a ${esc(word(role))}.</p>`;
   return { head: '<h2>Dungeons</h2>', body, foot };
+}
+
+/** the big one a log gives, for the end of its bar: a new kind of hero, or else what it gives your heroes */
+export function mainReward(a: AchievementDef): { name: string; what: string; icon: string } | null {
+  const r = a.reward;
+  if (r.race && RACES[r.race as RaceId]) return { name: `The ${RACES[r.race as RaceId].plural}`, what: 'A new kind of hero', icon: RACE_ICON[r.race as RaceId] || 'c_risen' };
+  if (r.collectible && COLLECTIBLES[r.collectible]) return { name: COLLECTIBLES[r.collectible].name, what: COLLECTIBLES[r.collectible].desc, icon: COLLECTIBLES[r.collectible].icon };
+  return null;
+}
+
+/** what finishing the log gives: the big one first, then a look for the house and a title */
+export function rewards(a: AchievementDef, done: boolean): string {
+  const main = mainReward(a);
+  const look = a.reward.look ? LOOKS.find((l) => l.id === a.reward.look) : undefined;
+  const title = a.reward.title ? TITLES[a.reward.title] : undefined;
+  const rw = (pic: string, name: string, what: string, cls = ''): string => `<div class="dgx-rw ${cls}"><span class="dgx-rw-pic" aria-hidden="true">${pic}</span><span><b>${esc(name)}</b><small>${esc(what)}</small></span></div>`;
+  return `<div class="dgx-rewards${done ? ' done' : ''}"><p class="dgx-rw-h">${done ? `${GLYPH.check}Log complete: these are yours` : 'Fill the log to earn'}</p>
+    ${main ? rw(tile(main.icon), main.name, main.what, 'main') : ''}
+    ${look ? rw(`<span class="lk-sw">${SWATCH[look.id] || ''}</span>`, look.name, 'A look for your house') : ''}
+    ${title ? rw(`<span class="dgx-ttl">${GLYPH.pen}</span>`, title.text, 'A title for every hero') : ''}</div>`;
 }
 
 /** one row of the loot: who can get it, then each drop */
@@ -100,7 +145,7 @@ function me(p: Profile, role: RoleId, pick: DungeonPick): string {
     ? `<div class="seat-pick">${others.map((x) => `<button type="button" class="btn small" data-act="playseat" data-id="${esc(x.id)}">${GLYPH.play}${esc(x.name.split(' ')[0])}</button>`).join('')}${room ? `<button type="button" class="btn small" data-act="newseat" data-role="${role}">${GLYPH.plus}New ${esc(word(role))}</button>` : ''}</div>`
     : '';
   return `<div class="dgx-me r-${role}">
-      <span class="dgx-fig" aria-hidden="true">${heroImg(heroSprite(h, role), { cls: 'dgx-img' })}</span>
+      <span class="dgx-fig" aria-hidden="true">${heroImg(heroSprite(h, role, p), { cls: 'dgx-img' })}</span>
       <span class="dgx-who"><b>${esc(h.name)}</b><span>Item level ${ilvl(loadoutFor(p, h).score)}</span></span>
       ${others.length || room ? `<button type="button" class="btn small" data-act="alts" aria-expanded="${pick.alts}">Change</button>` : ''}
     </div>${list}
@@ -121,9 +166,12 @@ function brews(p: Profile, practice: boolean): string {
     <p class="fine">${esc(drink ? RECIPES[drink].desc : 'Go in as you are.')}${drink && practice ? ' Practice keeps the bottle.' : ''}</p>`;
 }
 
-/** the dungeon's picture: its bosses in the crypt, in the green light of the Gravekeeper's lantern */
-const BANNER = (() => {
-  const o: string[] = ['<rect x="0" y="0" width="640" height="300" style="fill: #241C33"/>', '<circle cx="320" cy="168" r="230" style="fill: url(#dgx-glow)"/>'];
+/** the dungeon's picture: its bosses in the crypt, in the green light of the Gravekeeper's lantern
+ *  (gold for Heroic) */
+const BANNERS: Record<string, string> = {};
+const banner = (heroic: boolean): string => (BANNERS[String(heroic)] ||= bannerSvg(heroic ? '#F2C230' : '#9BE15D', heroic ? 'dgx-glow-h' : 'dgx-glow'));
+function bannerSvg(light: string, id: string): string {
+  const o: string[] = ['<rect x="0" y="0" width="640" height="300" style="fill: #241C33"/>', `<circle cx="320" cy="168" r="230" style="fill: url(#${id})"/>`];
   o.push(placeSprite('arch', 320, 262, { k: 1.32 }));
   o.push(placeSprite('pillar', 92, 266, { k: 1.06 }) + placeSprite('pillar', 548, 266, { k: 1.06 }));
   o.push('<path d="M-4 256 H644 V304 H-4 Z" style="fill: #3A3150; stroke: #1E1A1A; stroke-width: 4"/>');
@@ -133,7 +181,7 @@ const BANNER = (() => {
   o.push(placeSprite('candles', 248, 296, { k: 0.95 }) + placeSprite('candles', 404, 298, { k: 0.95 }));
   o.push('<rect x="0" y="0" width="640" height="300" style="fill: url(#dgx-vig)"/>');
   return `<svg class="dgx-svg" viewBox="0 0 640 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs>
-    <radialGradient id="dgx-glow"><stop offset="0" stop-color="#9BE15D" stop-opacity="0.42"/><stop offset="1" stop-color="#9BE15D" stop-opacity="0"/></radialGradient>
+    <radialGradient id="${id}"><stop offset="0" stop-color="${light}" stop-opacity="0.42"/><stop offset="1" stop-color="${light}" stop-opacity="0"/></radialGradient>
     <radialGradient id="dgx-vig" cx="50%" cy="42%" r="72%"><stop offset="0.62" stop-color="#140E18" stop-opacity="0"/><stop offset="1" stop-color="#140E18" stop-opacity="0.6"/></radialGradient>
   </defs>${o.join('')}</svg>`;
-})();
+}

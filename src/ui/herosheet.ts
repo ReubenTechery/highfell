@@ -26,7 +26,7 @@ export function heroSheet(p: Profile, h: Hero, st: HeroSheetState): { head: stri
     ? `<form class="cp-rename" autocomplete="off"><label class="sr" for="cp-name">New name</label><input id="cp-name" maxlength="24" value="${esc(h.name)}" spellcheck="false"><button type="submit" class="btn small gold">${GLYPH.check}Save</button><button type="button" class="btn small" data-act="herocancel">Cancel</button>${st.err ? `<p class="err">${esc(st.err)}</p>` : '<p class="fine">You can rename this hero once.</p>'}</form>`
     : '';
   const body = `<div class="hero-card" style="--light: ${race?.light || '#F4B942'}">
-      <span class="hc-fig" aria-hidden="true">${heroImg(heroSprite(h, role), { cls: 'hc-img' })}</span>
+      <span class="hc-fig" aria-hidden="true">${heroImg(heroSprite(h, role, p), { cls: 'hc-img' })}</span>
       <div class="hc-tx"><b>${esc(h.name)}</b>${title ? `<span class="hc-title">${esc(title)}</span>` : ''}
         <span>${esc(race?.name || h.race)} ${esc(cls?.name || h.cls)} · <i class="rdot ${role}"></i>${esc(cls?.roleName || ROLES[role].title)}</span>
         <span>Item level ${ilvl(loadoutFor(p, h).score)} · ${fmtN(h.clears)} clear${h.clears === 1 ? '' : 's'} · made ${fmtDate(h.createdAt)}</span></div>

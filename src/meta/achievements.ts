@@ -6,6 +6,7 @@
 import type { AchievementDef, GameEvent, RoleId, RunSummary } from '../content/types';
 import { ACHIEVEMENTS, ACHIEVEMENT_LIST, COLLECTIBLES } from '../content';
 import { autoPlace } from './hearth';
+import { logDone, logProgress } from './logs';
 import { count, type Profile } from './profile';
 
 export interface AchContext { dungeon: string; role: RoleId; practice: boolean; testGear: boolean }
@@ -53,18 +54,26 @@ export class Achiever {
     return this.unlocked.slice(before);
   }
 
-  /** Check the counter achievements now: for things outside a run, like gathering and brewing. */
+  /** Check the counter achievements now: for things outside a run, like gathering and brewing. Any
+   *  collection log already full counts too, wherever it was filled. */
   check(): string[] {
     const before = this.unlocked.length;
     for (const a of ACHIEVEMENT_LIST) if (this.eligible(a) && a.counter && (this.p.counters[a.counter.key] || 0) >= a.counter.target) this.unlock(a.id);
+    this.logs();
     return this.unlocked.slice(before);
   }
 
-  /** Something new arrived in the collection. */
+  /** Something new arrived in the collection: it may finish a collection log. */
   collected(id: string): string[] {
     const before = this.unlocked.length;
     for (const a of ACHIEVEMENT_LIST) if (!this.p.achievements[a.id] && a.collect === id) this.unlock(a.id);
+    this.logs();
     return this.unlocked.slice(before);
+  }
+
+  /** every collection log that's full earns its achievement */
+  private logs(): void {
+    for (const a of ACHIEVEMENT_LIST) if (a.log && !this.p.achievements[a.id] && logDone(this.p, a.log)) this.unlock(a.id);
   }
 
   private unlock(id: string): void {
@@ -82,9 +91,10 @@ export class Achiever {
   }
 }
 
-/** Progress toward a counter achievement, for the log. */
+/** Progress toward a counter achievement, a collection log or a meta achievement, for the log. */
 export function progress(p: Profile, a: AchievementDef): { have: number; need: number } | null {
   if (a.counter) return { have: Math.min(p.counters[a.counter.key] || 0, a.counter.target), need: a.counter.target };
+  if (a.log) return logProgress(p, a.log);
   if (a.needs) return { have: a.needs.filter((n) => p.achievements[n]).length, need: a.needs.length };
   return null;
 }

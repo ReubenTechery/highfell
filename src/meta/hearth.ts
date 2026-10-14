@@ -6,6 +6,7 @@
 import type { CollectibleKind } from '../content/types';
 import { COLLECTIBLES } from '../content';
 import { DEFAULT_LOOK, HOUSE_SPOTS, LOOKS, LOOK_ROOMS } from '../content/house';
+import { openProgress, opened } from './logs';
 import type { Profile } from './profile';
 
 export interface Spot { id: string; kind: CollectibleKind; label: string }
@@ -54,15 +55,10 @@ export function autoPlace(p: Profile, id: string): string | null {
   return free.id;
 }
 
-/** How far you are toward a look: clears of its dungeon, out of what it needs. The tavern needs none. */
-export function lookProgress(p: Profile, id: string): { have: number; need: number } {
-  const u = LOOKS.find((l) => l.id === id)?.unlock;
-  return u ? { have: Math.min(u.clears, p.dungeons[u.dungeon]?.clears || 0), need: u.clears } : { have: 0, need: 0 };
-}
-export function lookOpen(p: Profile, id: string): boolean {
-  const { have, need } = lookProgress(p, id);
-  return LOOKS.some((l) => l.id === id) && have >= need;
-}
+/** How close you are to a look: the slots of the collection log that opens it. The tavern needs none. */
+export const lookProgress = (p: Profile, id: string): { have: number; need: number } => openProgress(p, 'look', id);
+/** A look you can put on: the tavern, or one whose collection log you've finished. */
+export const lookOpen = (p: Profile, id: string): boolean => LOOKS.some((l) => l.id === id) && opened(p, 'look', id);
 
 /** The look a room is drawn in: the one you put on it once you've earned it (or with `free`, the testing
  *  switch), otherwise the tavern. A look this build doesn't know, from a newer one, is drawn as the tavern. */

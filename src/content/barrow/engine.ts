@@ -10,4 +10,8 @@ export const BARROW_ENGINE = {
   // how hard it is: everything that hurts a hero hits 1.5 times as hard as written, and the ordinary
   // mobs have a third more health (the bosses keep theirs). Raised from 1 and 1 so tanking and healing matter.
   tune: { hit: 1.5, trashHp: 1.3 },
+  // heroic: made for full Epic. Everything hits twice as hard as here, ordinary mobs have 60% more health
+  // and the bosses 40% more. Bots in full Epic clear it in about four minutes without wiping; in Rare they
+  // wipe once or twice; in Common they get buried (tests/balance.test.ts).
+  heroic: { hit: 3, trashHp: 1.6, bossHp: 1.4 },
 };

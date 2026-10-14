@@ -196,7 +196,7 @@ export function ownedFor(p: Profile, h: Hero, slot: SlotId): ItemDef[] {
 
 /** Make a hero: it starts wearing the shared gear for its role, and the uniques the roster owns for
  *  that role wait for it to put them on. */
-export function newHero(p: Profile, o: { name: string; race: RaceId; cls: ClassId }, now = Date.now()): Hero | null {
+export function newHero(p: Profile, o: { name: string; race: RaceId; cls: ClassId; free?: boolean }, now = Date.now()): Hero | null {
   const h = createHero(p, o, now);
   if (h) for (const slot of SLOT_IDS) for (const u of ownedFor(p, h, slot)) h.fresh.push(u.id);
   return h;

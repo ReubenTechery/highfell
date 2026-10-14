@@ -181,13 +181,43 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-main .bc { flex: none; }
 @media (min-width: 820px) { .dgx-main .brewchips { flex-wrap: wrap; overflow: visible; } }
 .dgx-log { display: grid; gap: 10px; }
-.dgx-logbar { display: grid; grid-template-columns: auto auto minmax(40px, 1fr) auto; align-items: center; gap: 10px; min-height: 44px; padding: 4px 8px 4px 12px; border: 3px solid var(--ink); border-radius: 14px; background: var(--panel-2); box-shadow: 0 3px 0 var(--ink); font-family: var(--f-display); font-size: 15px; color: var(--ink); cursor: pointer; text-align: left; }
+.dgx-logbar { display: grid; grid-template-columns: auto auto minmax(40px, 1fr) auto auto; align-items: center; gap: 10px; min-height: 44px; padding: 4px 8px 4px 12px; border: 3px solid var(--ink); border-radius: 14px; background: var(--panel-2); box-shadow: 0 3px 0 var(--ink); font-family: var(--f-display); font-size: 15px; color: var(--ink); cursor: pointer; text-align: left; }
 .dgx-logbar b { font-family: var(--f-mono); font-weight: 500; font-size: 13px; }
 .dgx-logbar > i { position: relative; height: 12px; border-radius: 999px; background: var(--track); border: 2px solid var(--ink); overflow: hidden; }
 .dgx-logbar > i > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--gold); }
+/* the prize at the end of the log's bar: what finishing it gives (the Barrow's, the Risen) */
+.dgx-prize { width: 32px; height: 32px; margin-left: -4px; border-radius: 9px; border: 2px solid var(--ink); overflow: hidden; filter: grayscale(0.5) brightness(0.85); }
+.dgx-prize svg { display: block; width: 100%; height: 100%; }
+.dgx-prize.got { filter: none; box-shadow: 0 0 0 3px var(--gold); }
+.dgx-logbar.done > i > i { background: #3E9B3A; }
 .dgx-more { display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; border-radius: 10px; background: var(--panel); border: 2px solid var(--ink); font-size: 14px; }
 .dgx-more svg { width: 16px; height: 16px; }
 .dgx-loot { display: grid; gap: 10px; padding: 10px; border: 3px solid var(--ink); border-radius: 16px; background: var(--panel-2); }
+/* Normal or Heroic, on the picture; Heroic turns the picture's light gold */
+.dgx-diff { position: absolute; top: 8px; right: 8px; z-index: 1; display: flex; padding: 3px; gap: 3px; border: 2px solid var(--ink); border-radius: 999px; background: rgba(23, 18, 31, 0.82); }
+.dgx-d { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: none; font-family: var(--f-display); font-size: 15px; color: #E9DDCB; cursor: pointer; }
+.dgx-d svg { width: 14px; height: 14px; }
+.dgx-d small { font-family: var(--f-mono); font-size: 11px; opacity: 0.85; }
+.dgx-d[aria-checked="true"] { background: var(--panel); color: var(--ink); }
+.dgx-d.h[aria-checked="true"] { background: var(--gold); }
+.dgx-h { font-style: normal; font-family: var(--f-mono); font-size: 12px; vertical-align: middle; padding: 2px 8px; margin-left: 6px; border-radius: 999px; background: var(--gold); color: var(--ink); border: 2px solid var(--ink); }
+.dgx.heroic .dgx-art { box-shadow: 0 0 0 4px var(--gold), 0 4px 0 var(--ink); }
+.dgx-shut { display: inline-flex; align-items: center; gap: 6px; text-align: center; }
+.dgx-shut svg { width: 18px; height: 18px; flex: none; }
+/* what finishing the log gives: the big one first */
+.dgx-rewards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 10px; border: 3px solid var(--ink); border-radius: 14px; background: var(--panel); }
+.dgx-rewards.done { background: #FFF3C4; box-shadow: inset 0 0 0 3px var(--gold); }
+.dgx-rw-h { grid-column: 1 / -1; display: inline-flex; align-items: center; gap: 6px; margin: 0; font-family: var(--f-display); font-size: 16px; }
+.dgx-rw-h svg { width: 18px; height: 18px; color: #2E7D32; }
+.dgx-rw { display: grid; justify-items: center; align-content: start; gap: 4px; text-align: center; }
+.dgx-rw b { display: block; font-family: var(--f-display); font-weight: 400; font-size: 15px; line-height: 1.1; }
+.dgx-rw small { display: block; font-family: var(--f-mono); font-size: 10px; line-height: 1.3; color: var(--dim); }
+.dgx-rw-pic { display: grid; place-items: center; width: 54px; height: 54px; border: 3px solid var(--ink); border-radius: 12px; overflow: hidden; background: var(--panel-2); }
+.dgx-rw-pic svg { display: block; width: 100%; height: 100%; }
+.dgx-rw.main .dgx-rw-pic { width: 64px; height: 64px; box-shadow: 0 0 0 3px var(--gold); }
+.dgx-rw-pic .lk-sw { width: 100%; height: 100%; border: 0; border-radius: 0; aspect-ratio: auto; }
+.dgx-ttl { display: grid; place-items: center; width: 100%; height: 100%; background: #6A4BA3; color: #FFFFFF; }
+.dgx-ttl svg { width: 28px; height: 28px; }
 .dgx-loot > .btn { justify-self: start; }
 .dgx-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 8px; justify-items: center; padding: 8px; border-radius: 12px; }
 .dgx-row.yours { background: color-mix(in srgb, var(--rc) 20%, var(--panel)); box-shadow: inset 0 0 0 3px var(--rc); }
@@ -277,7 +307,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .ach .pts small { display: block; font-family: var(--f-mono); font-size: 10px; color: var(--dim); }
 .ach .bar { grid-column: 2 / -1; height: 10px; }
 .medal { width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--ink); display: grid; place-items: center; font-family: var(--f-display); font-size: 16px; color: var(--ink); }
-.medal.bronze { background: #D08A4E; } .medal.silver { background: #C9D2DC; } .medal.gold { background: var(--gold); } .medal.meta { background: var(--moon); } .medal.hidden { background: #5C5070; color: #FFF8EC; }
+.medal.log { background: #E7B53C; box-shadow: inset 0 0 0 3px #FFF3C4; } .medal.bronze { background: #D08A4E; } .medal.silver { background: #C9D2DC; } .medal.gold { background: var(--gold); } .medal.meta { background: var(--moon); } .medal.hidden { background: #5C5070; color: #FFF8EC; }
 .titles { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* picker for hearth spots */
@@ -384,6 +414,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .pd .fb { height: 11px; }
 .run-tags { position: absolute; left: 50%; top: calc(var(--pad-t) + 74px); transform: translateX(-50%); z-index: 4; pointer-events: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; width: max-content; max-width: calc(100% - 16px); }
 .brew-tag .ic { border-radius: 50%; }
+.chip.dark.heroic-tag { background: var(--gold); color: var(--ink); border-color: var(--ink); font-family: var(--f-display); font-size: 13px; }
 .in-run .toasts { top: calc(var(--pad-t) + 110px); }
 @media (min-width: 900px) and (min-height: 560px) {
   .hud-top { grid-template-columns: 250px minmax(0, 1fr) auto; grid-template-areas: "frames boss menu"; }
@@ -497,6 +528,10 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .big-moment img { width: min(220px, 50vw); height: auto; position: relative; }
 .big-moment h2 { margin: 0; position: relative; font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 7vw, 56px); line-height: 1; color: #C8F5E8; text-shadow: 0 4px 0 var(--ink), 3px 0 0 var(--ink), -3px 0 0 var(--ink), 0 -3px 0 var(--ink); }
 .big-moment.gold h2 { color: var(--gold); }
+.log-moment .eyebrow { position: relative; margin: 0; font-family: var(--f-mono); font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: #FFE08A; }
+.log-moment img { width: min(240px, 52vw); filter: drop-shadow(0 0 24px rgba(155, 225, 93, 0.55)); }
+.log-moment p { max-width: 520px; line-height: 1.5; }
+.rv-log { box-shadow: 0 0 0 4px var(--gold), 0 5px 0 var(--ink); }
 .big-moment p { margin: 0; position: relative; font-family: var(--f-mono); font-size: 14px; color: #E9DDCB; }
 @media (prefers-reduced-motion: no-preference) {
   .big-moment .rays { animation: spin 18s linear infinite; }
@@ -553,6 +588,11 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .cr-chip:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
 .cr-chip .sw { width: 20px; height: 20px; box-sizing: border-box; border-radius: 50%; border: 3px solid var(--ink); background: var(--c); box-shadow: 0 0 10px 3px color-mix(in srgb, var(--c) 55%, transparent); }
 .cr-chip .rdot { width: 16px; height: 16px; }
+/* a race you earn: grey while it's locked, a gold badge once it's yours */
+.cr-chip.locked { background: #E6E0EE; }
+.cr-chip.locked .sw { filter: grayscale(0.7); box-shadow: none; }
+.cr-chip.earned:not(.locked) em { background: var(--gold); color: var(--ink); }
+.cr-sub { margin: 12px 0 6px; font-family: var(--f-mono); font-weight: 400; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #CFC3DD; }
 .cr-model { position: relative; display: grid; justify-items: center; align-content: end; gap: 2px; }
 .cr-light { position: absolute; left: 50%; bottom: 20%; width: min(560px, 110%); aspect-ratio: 1; transform: translate(-50%, 40%); border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--light) 55%, transparent), transparent 64%); pointer-events: none; }
 .cr-fig { position: relative; width: 100%; height: min(46vh, 400px); }
@@ -582,8 +622,10 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
   .cr-home { margin-top: 10px; font-size: 20px; }
   .cr-soon { font-size: 18px; }
   .cr-col h3 { display: none; }
-  .cr-races .cr-chips { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-  .cr-classes .cr-chips { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .cr-races .cr-chips { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .cr-races .cr-chips.earned { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .cr-classes .cr-chips { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .cr-sub { margin: 8px 0 4px; }
   .cr-chip { grid-template-columns: auto auto; grid-template-areas: "sw b" "s s"; justify-content: center; justify-items: center; text-align: center; padding: 6px 4px 7px; column-gap: 5px; row-gap: 1px; }
   .cr-chip > .sw, .cr-chip > .rdot { width: 12px; height: 12px; border-width: 2px; box-shadow: none; }
   .cr-chip b { font-size: 16px; }
@@ -713,6 +755,18 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .cl-total { margin: 0 0 2px; font-family: var(--f-mono); font-size: 12px; color: var(--dim); }
 .cl-total b { color: var(--ink); font-weight: 500; }
 .cl-group { margin: 8px 0 1px; font-family: var(--f-display); font-weight: 400; font-size: 17px; color: #8A5A10; }
+/* Normal or Heroic, and each dungeon's whole log: its bar, with what finishing it gives at the end */
+.cl-diff { margin-bottom: 2px; }
+.cl-dg { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "n c p" "bar bar p"; align-items: center; gap: 5px 8px; margin: 8px 0 2px; padding: 8px 8px 9px 10px; border: 2px solid var(--ink); border-radius: 12px; background: #3A3150; color: var(--panel); text-align: left; cursor: pointer; }
+.cl-dg > span:first-child { grid-area: n; font-family: var(--f-display); font-size: 16px; line-height: 1.1; color: #E9B96E; }
+.cl-dg > b { grid-area: c; font-family: var(--f-mono); font-weight: 500; font-size: 12px; }
+.cl-dg[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--gold); }
+.cl-bar { grid-area: bar; position: relative; height: 10px; border-radius: 999px; background: var(--track); border: 2px solid var(--ink); overflow: hidden; }
+.cl-bar > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--gold); }
+.cl-dg.done .cl-bar > i { background: #3E9B3A; }
+.cl-prize { grid-area: p; width: 38px; height: 38px; border-radius: 9px; border: 2px solid var(--ink); overflow: hidden; filter: grayscale(0.5) brightness(0.85); }
+.cl-prize svg { display: block; width: 100%; height: 100%; }
+.cl-prize.got { filter: none; box-shadow: 0 0 0 3px var(--gold); }
 .cl-entry { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 42px; padding: 0 10px; border: 2px solid var(--ink); border-radius: 10px; background: var(--panel); color: var(--ink); font-family: var(--f-display); font-size: 15px; line-height: 1.1; text-align: left; cursor: pointer; }
 .cl-entry b { font-family: var(--f-mono); font-weight: 500; font-size: 12px; color: #B0412F; }
 .cl-entry.part b { color: #A86E0A; } .cl-entry.done b { color: #2E6B2A; }

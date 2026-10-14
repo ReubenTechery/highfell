@@ -46,3 +46,18 @@ test('balance: every trait, set bonus and unique effect runs in a real clear', (
   assert.equal(r.over, 'victory');
   assert.equal(r.wipes, 0);
 });
+
+test('balance: heroic in full Epic clears in about four minutes without wiping', () => {
+  for (const [role, seed] of [['tank', 707], ['healer', 808], ['dps', 909]] as [RoleId, number][]) {
+    const r = simRun({ role, seed, heroic: true, loadouts: gear(3) });
+    assert.equal(r.over, 'victory', `${role} seed ${seed} did not clear`);
+    assert.equal(r.wipes, 0, `${role} seed ${seed} wiped`);
+    assert.ok(r.clear! > 205 && r.clear! < 275, `${role} seed ${seed} cleared heroic in ${r.clear}s`);
+  }
+});
+
+test('balance: heroic in Common gear gets buried', () => {
+  const r = simRun({ role: 'tank', seed: 1001, heroic: true, maxWipes: 3 });
+  assert.notEqual(r.over, 'victory', `cleared heroic in Common in ${r.clear}s`);
+  assert.ok(r.wipes >= 3);
+});

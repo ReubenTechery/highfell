@@ -3,7 +3,7 @@ HF_ROOT = _hf_os.environ.get('HIGHFELL_ROOT') or _hf_os.path.dirname(_hf_os.path
 # Barrow Crypt sprites in the locked TV-cartoon style: chunky in-game sizes, one black line, flat colour.
 # Every sprite is drawn around its ground point (0, 0): x right, y down, so the art sits at negative y.
 # 1 art unit = 1 world unit. Usage: python3 tools/art_sprites.py -> art/sprites.json + art/_sprites_preview.html
-import json, math, os, sys
+import json, math, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from tvworld import mirror
 
@@ -76,6 +76,22 @@ def eyes(x, y, rx=3.8, ry=4.6, gap=5.6, look=(0.4, 0.4), w=2.4):
 
 SPRITES = {}
 
+# Gilded: a heroic drop is the same picture with its bone and steel in gold. On a 64x64 tile it also gets a
+# dark gold ground and a sparkle in the corner, so the heroic one reads at a glance.
+GILD = {BONE: GOLD, BONE_D: GOLD_D, STEEL: '#E7B53C', STEEL_D: '#B8862A', STEEL_L: '#FFE08A', '#8E96A3': '#E7B53C',
+        '#D7DEE6': '#FFE9A8', '#F6F1E4': '#FFE9A8', '#DDF3FF': '#FFE08A'}
+GILD_BG = '#3A2C10'
+SPARKLE = '<path d="M52 3 L54.4 9.6 L61 12 L54.4 14.4 L52 21 L49.6 14.4 L43 12 L49.6 9.6 Z" style="fill: #FFF3C4; stroke: #1E1A1A; stroke-width: 1.8; stroke-linejoin: round"/>'
+
+
+def gild(svg, extra=None, tile=False):
+    cmap = {**GILD, **(extra or {})}
+    svg = re.sub(r'#[0-9A-Fa-f]{6}', lambda mm: cmap.get(mm.group(0).upper(), mm.group(0)), svg)
+    if tile:
+        svg = re.sub(r'(<rect width="64" height="64" style="fill: )#[0-9A-Fa-f]{6}', r'\g<1>' + GILD_BG, svg, count=1)
+        svg = svg[:svg.rindex('</svg>')] + SPARKLE + '</svg>'
+    return svg
+
 
 def sprite(name, vb, body, note=''):
     x, y, w, h = vb
@@ -85,183 +101,7 @@ def sprite(name, vb, body, note=''):
 
 
 # ====================================================================== heroes
-SKIN, SKIN_D = '#F2B48C', '#E0956C'
-BEARD, BEARD_D = '#E2733A', '#B8552A'
-
-
-def tank_axe(x, top, flip=1):
-    # long handle with a crescent blade pointing away from the body
-    o = beam(f'M{x} -4 L{x - 2 * flip} {top}', WOOD, 5)
-    bx, by = x - 2 * flip, top + 10
-    blade = f'M{bx} {by - 12} C{bx - 16 * flip} {by - 20} {bx - 24 * flip} {by - 6} {bx - 22 * flip} {by + 8} C{bx - 14 * flip} {by + 4} {bx - 6 * flip} {by + 6} {bx} {by + 10} Z'
-    o += s(blade, STEEL_L) + ln(f'M{bx - 6 * flip} {by - 10} C{bx - 16 * flip} {by - 12} {bx - 20 * flip} {by - 4} {bx - 20 * flip} {by + 4}', '#FFFFFF', 2)
-    o += c(bx, by, 4, STEEL_D, 3)
-    return o
-
-
-def tank_front():
-    o = []
-    o.append(tank_axe(-34, -70))
-    o.append(s('M-18 -12 H-4 V0 H-21 C-22 -5 -21 -9 -18 -12 Z', '#5A3A2A') + s(m('M-18 -12 H-4 V0 H-21 C-22 -5 -21 -9 -18 -12 Z'), '#5A3A2A'))
-    o.append(s('M-24 -50 C-29 -36 -28 -22 -23 -11 H23 C28 -22 29 -36 24 -50 Z', BLUE))
-    o.append(s('M-26 -25 H26 V-17 H-25 Z', WOOD_D, 3.5) + s('M-6 -27 H6 V-15 H-6 Z', GOLD, 3))
-    o.append(s('M-24 -48 C-34 -42 -37 -30 -35 -21 L-27 -21 C-27 -29 -25 -37 -20 -42 Z', BLUE))
-    o.append(c(-31, -21, 6, SKIN, 3.5))
-    # shield on the left arm (viewer's right)
-    o.append(c(23, -30, 19, GOLD) + c(23, -30, 13.5, RED, 3) + ln('M23 -43 V-17 M10 -30 H36', RED_D, 2.5) + c(23, -30, 5, STEEL_L, 3))
-    o.append(both('M-31 -47 C-33 -58 -16 -63 -11 -52 C-15 -45 -24 -43 -31 -47 Z', STEEL))
-    o.append(s('M-16 -57 C-21 -43 -14 -29 0 -23 C14 -29 21 -43 16 -57 Z', BEARD) + ln('M-7 -48 C-7 -40 -5 -34 -3 -30 M7 -48 C7 -40 5 -34 3 -30', BEARD_D, 2.5))
-    o.append(c(-3, -28, 2.6, GOLD, 2) + c(3, -28, 2.6, GOLD, 2))
-    o.append(e(0, -66, 15, 12, SKIN))
-    o.append(eyes(0, -69, 3.6, 4.4, 5.8))
-    o.append(ln('M-11.5 -76 L-2.5 -74.2 M11.5 -76 L2.5 -74.2', K, 3.4))
-    o.append(s('M-12 -59.5 C-8 -63 -3 -61.5 0 -59.5 C3 -61.5 8 -63 12 -59.5 C9 -55.5 3 -55.5 0 -57 C-3 -55.5 -9 -55.5 -12 -59.5 Z', BEARD, 3))
-    o.append(c(0, -63, 4.6, SKIN_D, 3))
-    o.append(s('M-17 -73 C-17 -95 17 -95 17 -73 Z', STEEL) + s('M-18.5 -75.5 H18.5 V-69.5 H-18.5 Z', STEEL_D, 3.5))
-    o.append(both('M-15 -82 C-26 -84 -33 -94 -31 -105 C-26 -97 -20 -93 -12 -91 Z', BONE, 3.5))
-    o.append(c(-9, -72.5, 1.4, K, 0) + c(9, -72.5, 1.4, K, 0) + c(0, -72.5, 1.4, K, 0))
-    sprite('tank_f', (-62, -112, 104, 118), o, 'Brannoc front')
-
-
-def tank_back():
-    o = []
-    o.append(s('M-18 -12 H-4 V0 H-21 C-22 -5 -21 -9 -18 -12 Z', '#5A3A2A') + s(m('M-18 -12 H-4 V0 H-21 C-22 -5 -21 -9 -18 -12 Z'), '#5A3A2A'))
-    o.append(s('M-24 -50 C-29 -36 -28 -22 -23 -11 H23 C28 -22 29 -36 24 -50 Z', BLUE))
-    o.append(s('M-26 -25 H26 V-17 H-25 Z', WOOD_D, 3.5))
-    o.append(s('M-20 -53 C-25 -38 -25 -24 -22 -13 L-12 -18 L0 -13 L12 -18 L22 -13 C25 -24 25 -38 20 -53 Z', '#B8383A'))
-    o.append(tank_axe(34, -70, -1))
-    o.append(s(m('M-24 -48 C-34 -42 -37 -30 -35 -21 L-27 -21 C-27 -29 -25 -37 -20 -42 Z'), BLUE))
-    o.append(c(31, -21, 6, SKIN, 3.5))
-    # back of the shield on the left arm, now on the viewer's left
-    o.append(c(-23, -30, 19, WOOD) + ln('M-23 -48 V-12 M-41 -30 H-5', WOOD_D, 3) + s('M-30 -34 H-16 V-26 H-30 Z', '#4A3A30', 3))
-    o.append(both('M-31 -47 C-33 -58 -16 -63 -11 -52 C-15 -45 -24 -43 -31 -47 Z', STEEL))
-    o.append(both('M-19 -66 C-24 -62 -23 -54 -17 -52 C-14 -56 -14 -62 -15 -66 Z', BEARD, 3))
-    o.append(s('M-5 -70 C-7 -60 -5 -50 0 -42 C5 -50 7 -60 5 -70 Z', BEARD, 3.5) + ln('M-3 -62 L3 -58 M-3 -54 L3 -50', BEARD_D, 2.2))
-    o.append(c(0, -42, 3, GOLD, 2.2))
-    o.append(s('M-17 -71 C-17 -95 17 -95 17 -71 Z', STEEL) + s('M-18.5 -75.5 H18.5 V-69.5 H-18.5 Z', STEEL_D, 3.5))
-    o.append(both('M-15 -82 C-26 -84 -33 -94 -31 -105 C-26 -97 -20 -93 -12 -91 Z', BONE, 3.5))
-    o.append(ln('M0 -93 V-77', STEEL_D, 3))
-    sprite('tank_b', (-44, -112, 104, 118), o, 'Brannoc back')
-
-
-HSKIN, HSKIN_D, HAIR = '#A86F4C', '#8E5A3B', '#3A2A22'
-ROBE, ROBE_D, HBLUE = '#F6F1E4', '#E2D9C2', '#4F86C6'
-
-
-def sun_staff(x):
-    o = beam(f'M{x} 2 L{x} -96', WOOD, 4.5)
-    o += halo(x, -104, 20, '#F4B942', 0.3)
-    for k in range(8):
-        a = math.radians(k * 45 + 22.5)
-        x1, y1 = x + 10 * math.cos(a), -104 + 10 * math.sin(a)
-        x2, y2 = x + 16 * math.cos(a), -104 + 16 * math.sin(a)
-        o += beam(f'M{f(x1)} {f(y1)} L{f(x2)} {f(y2)}', GOLD, 3, 3)
-    o += c(x, -104, 8, GOLD, 3.5) + c(x - 2, -106, 2, '#FFF6D0', 0)
-    return o
-
-
-def healer_front():
-    o = []
-    o.append(sun_staff(-31))
-    o.append(s('M-15 -56 C-20 -36 -24 -16 -28 -2 H28 C24 -16 20 -36 15 -56 Z', ROBE))
-    o.append(s('M-7 -54 L-10 -4 H-4 L-3 -54 Z', HBLUE, 3) + s(m('M-7 -54 L-10 -4 H-4 L-3 -54 Z'), HBLUE, 3))
-    o.append(s('M-28 -7 C-12 -4 12 -4 28 -7 L29 -1 C12 2 -12 2 -29 -1 Z', GOLD, 3.5))
-    o.append(s('M-18 -38 C-6 -34 6 -34 18 -38 L18 -31 C6 -27 -6 -27 -18 -31 Z', GOLD, 3.5))
-    o.append(s('M-15 -54 C-27 -48 -33 -38 -35 -29 C-30 -25 -24 -25 -20 -30 C-20 -38 -16 -44 -12 -48 Z', ROBE))
-    o.append(c(-31, -30, 5, HSKIN, 3))
-    o.append(s('M15 -54 C25 -48 29 -38 29 -27 C25 -23 19 -23 16 -27 C16 -36 14 -44 12 -48 Z', ROBE))
-    o.append(c(22, -25, 5, HSKIN, 3))
-    o.append(halo(22, -25, 11, '#F4B942', 0.35))
-    o.append(s('M-14 -58 C-8 -51 8 -51 14 -58 L12 -63 C6 -58 -6 -58 -12 -63 Z', ROBE, 3.5) + ln('M-12 -59 C-6 -54 6 -54 12 -59', GOLD, 2.2))
-    o.append(s('M-12 -73 C-12 -88 12 -88 12 -73 C12 -63 6 -59 0 -59 C-6 -59 -12 -63 -12 -73 Z', HSKIN))
-    o.append(eyes(0, -73, 3.4, 4.2, 5.2))
-    o.append(ln('M-9 -79.5 C-7 -81 -4 -81 -2 -80 M9 -79.5 C7 -81 4 -81 2 -80', K, 3))
-    o.append(c(0, -68.5, 2.6, HSKIN_D, 2.2) + ln('M-3.5 -64 C-1.5 -62.5 1.5 -62.5 3.5 -64', K, 2.2))
-    o.append(s('M-13 -74 C-16 -93 16 -93 13 -74 C11 -82 5 -86 0 -86 C-5 -86 -11 -82 -13 -74 Z', HAIR, 3.5))
-    o.append(c(0, -93, 7, HAIR, 3.5))
-    o.append(ln('M-12 -80.5 C-6 -83 6 -83 12 -80.5', GOLD, 2.8) + c(0, -82.5, 2.4, HBLUE, 1.8))
-    sprite('healer_f', (-56, -130, 94, 136), o, 'Maren front')
-
-
-def healer_back():
-    o = []
-    o.append(sun_staff(31))
-    o.append(s('M-15 -56 C-20 -36 -24 -16 -28 -2 H28 C24 -16 20 -36 15 -56 Z', ROBE))
-    o.append(s('M-28 -7 C-12 -4 12 -4 28 -7 L29 -1 C12 2 -12 2 -29 -1 Z', GOLD, 3.5))
-    o.append(halo(0, -34, 13, '#F4B942', 0.25))
-    for k in range(8):
-        a = math.radians(k * 45)
-        o.append(beam(f'M{f(9 * math.cos(a))} {f(-34 + 9 * math.sin(a))} L{f(14 * math.cos(a))} {f(-34 + 14 * math.sin(a))}', GOLD, 2.6, 2.4))
-    o.append(c(0, -34, 6.5, GOLD, 3))
-    o.append(s(m('M-15 -54 C-27 -48 -33 -38 -35 -29 C-30 -25 -24 -25 -20 -30 C-20 -38 -16 -44 -12 -48 Z'), ROBE))
-    o.append(c(31, -30, 5, HSKIN, 3))
-    o.append(s(m('M15 -54 C25 -48 29 -38 29 -27 C25 -23 19 -23 16 -27 C16 -36 14 -44 12 -48 Z'), ROBE))
-    o.append(c(-22, -25, 5, HSKIN, 3))
-    o.append(s('M-14 -58 C-8 -53 8 -53 14 -58 L12 -63 C6 -60 -6 -60 -12 -63 Z', ROBE, 3.5))
-    o.append(s('M-13 -64 C-16 -92 16 -92 13 -64 C8 -60 -8 -60 -13 -64 Z', HAIR, 3.5))
-    o.append(c(0, -91, 7.5, HAIR, 3.5) + ln('M-5 -91 C-2 -88 2 -88 5 -91', '#5A4436', 2))
-    o.append(ln('M-13 -79 C-6 -76 6 -76 13 -79', GOLD, 2.8))
-    sprite('healer_b', (-38, -130, 94, 136), o, 'Maren back')
-
-
-ISKIN, ISKIN_D, IHAIR, IROBE, IROBE_D = '#F3D7C4', '#E3B9A2', '#EEF2F6', '#3D7FC1', '#2F6699'
-
-
-def ice_staff(x):
-    o = beam(f'M{x} 2 L{x - 1} -86', WOOD, 4.5)
-    o += halo(x - 1, -96, 19, FROST, 0.32)
-    o += s(f'M{x - 1} -110 L{x + 7} -96 L{x - 1} -83 L{x - 9} -96 Z', FROST, 3.5) + ln(f'M{x - 3} -104 L{x - 6} -97', '#FFFFFF', 2.2)
-    o += s(f'M{x - 7} -86 H{x + 5} V-82 H{x - 7} Z', GOLD, 2.5)
-    return o
-
-
-def wizard_hat(back=False):
-    o = e(0, -77, 21, 5.5, IROBE, 3.5)
-    o += s('M-12 -79 C-10 -93 -3 -106 8 -114 C5 -103 7 -91 12 -79 Z', IROBE)
-    o += s('M-12.5 -80 C-4 -77 4 -77 12.5 -80 L11.5 -86 C4 -83 -4 -83 -11.5 -86 Z', GOLD, 3)
-    if not back:
-        o += ln('M2 -98 V-90 M-1.5 -96 L5.5 -92 M-1.5 -92 L5.5 -96', '#FFFFFF', 1.8)
-    return o
-
-
-def dps_front():
-    o = []
-    o.append(ice_staff(29))
-    o.append(s('M-14 -74 C-19 -60 -19 -46 -13 -40 H13 C19 -46 19 -60 14 -74 Z', IHAIR, 3.5))
-    o.append(s('M-14 -50 C-18 -32 -22 -14 -24 -2 H24 C22 -14 18 -32 14 -50 Z', IROBE))
-    o.append(s('M-6 -48 L-9 -2 H9 L6 -48 Z', GOLD, 3))
-    o.append(s('M-15 -32 C-5 -29 5 -29 15 -32 V-27 C5 -24 -5 -24 -15 -27 Z', IROBE_D, 3))
-    o.append(s('M-14 -48 C-24 -42 -28 -32 -28 -24 C-24 -21 -19 -22 -16 -26 C-16 -34 -13 -40 -10 -44 Z', IROBE))
-    o.append(c(-24, -24, 4.5, ISKIN, 3))
-    o.append(halo(-25, -33, 11, FROST, 0.4) + c(-25, -33, 5.5, FROST_L, 3))
-    o.append(s('M14 -48 C22 -46 27 -42 28 -36 C26 -32 22 -32 19 -35 C17 -40 14 -42 10 -44 Z', IROBE))
-    o.append(c(27, -38, 4.5, ISKIN, 3))
-    o.append(s('M-15 -52 C-8 -44 8 -44 15 -52 C10 -57 -10 -57 -15 -52 Z', '#FFFFFF', 3.5))
-    o.append(s('M-11 -66 L-23 -75 L-13 -59 Z', ISKIN, 3) + s(m('M-11 -66 L-23 -75 L-13 -59 Z'), ISKIN, 3))
-    o.append(s('M-11 -67 C-11 -80 11 -80 11 -67 C11 -58 6 -54 0 -54 C-6 -54 -11 -58 -11 -67 Z', ISKIN))
-    o.append(eyes(0, -66, 3.3, 4.2, 4.9))
-    o.append(ln('M-8 -72.5 L-2.5 -71.5 M8 -72.5 L2.5 -71.5', '#5E6E86', 2.8))
-    o.append(c(0, -62, 2.3, ISKIN_D, 2) + ln('M-2.5 -58.5 C-1 -57.5 1 -57.5 2.5 -58.5', K, 2))
-    o.append(s('M-12 -70 C-8 -75 -2 -73 0 -71 C2 -73 8 -75 12 -70 C12 -79 -12 -79 -12 -70 Z', IHAIR, 3))
-    o.append(wizard_hat())
-    sprite('dps_f', (-40, -122, 82, 128), o, 'Ivy front')
-
-
-def dps_back():
-    o = []
-    o.append(ice_staff(-29))
-    o.append(s('M-14 -50 C-18 -32 -22 -14 -24 -2 H24 C22 -14 18 -32 14 -50 Z', IROBE))
-    o.append(s('M-15 -32 C-5 -29 5 -29 15 -32 V-27 C5 -24 -5 -24 -15 -27 Z', IROBE_D, 3))
-    o.append(s(m('M-14 -48 C-24 -42 -28 -32 -28 -24 C-24 -21 -19 -22 -16 -26 C-16 -34 -13 -40 -10 -44 Z'), IROBE))
-    o.append(c(24, -24, 4.5, ISKIN, 3))
-    o.append(halo(25, -33, 11, FROST, 0.4) + c(25, -33, 5.5, FROST_L, 3))
-    o.append(s(m('M14 -48 C22 -46 27 -42 28 -36 C26 -32 22 -32 19 -35 C17 -40 14 -42 10 -44 Z'), IROBE))
-    o.append(c(-27, -38, 4.5, ISKIN, 3))
-    o.append(s('M-11 -66 L-23 -75 L-13 -59 Z', ISKIN, 3) + s(m('M-11 -66 L-23 -75 L-13 -59 Z'), ISKIN, 3))
-    o.append(s('M-14 -76 C-19 -60 -18 -40 -10 -30 L0 -34 L10 -30 C18 -40 19 -60 14 -76 Z', IHAIR, 3.5))
-    o.append(ln('M-6 -66 C-7 -54 -6 -44 -4 -36 M6 -66 C7 -54 6 -44 4 -36', '#C9D4E0', 2.2))
-    o.append(wizard_hat(True))
-    sprite('dps_b', (-42, -122, 82, 128), o, 'Ivy back')
+# The heroes (and the Risen, gilded too) are drawn in art_heroes.py; build() adds them to SPRITES.
 
 
 # ====================================================================== mobs
@@ -290,6 +130,16 @@ def ribcage(cx, top, wd, ht):
 
 def bone_limb(d, w=5.5):
     return beam(d, BONE, w, 3.6)
+
+
+def bone_hand(x, y, r=5.5):
+    return c(x, y, r, BONE, 3.5) + ln(f'M{f(x - r * 0.45)} {f(y + r * 0.2)} V{f(y + r * 0.85)} M{f(x + r * 0.45)} {f(y + r * 0.2)} V{f(y + r * 0.85)}', K, 1.6)
+
+
+def ragged(x0, x1, y, n, d=5):
+    """a torn hem from x0 to x1 along y: points dipping by d"""
+    w = (x1 - x0) / n
+    return ' '.join(f'L{f(x0 + w * (i + 0.5))} {f(y + (d if i % 2 == 0 else 0))} L{f(x0 + w * (i + 1))} {f(y)}' for i in range(n))
 
 
 def rattler(helm=False):
@@ -666,7 +516,8 @@ def projectiles():
 
 
 def build():
-    tank_front(); tank_back(); healer_front(); healer_back(); dps_front(); dps_back()
+    import art_heroes  # here, not at the top: it imports this file's helpers
+    SPRITES.update(art_heroes.build())
     rattler(); rattler(True); archer(); brute(); caller(); wisp(); knight(); keeper(); keeper_smash()
     pillar(); coffin(); coffin(True); torch(); candles(); bones(); skullpile(); urn(); banner()
     tombstone(0); tombstone(1); tombstone(2); grave(); tree(); chest(); chest(True); gate(); hand(); cage(); arch()

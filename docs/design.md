@@ -12,16 +12,18 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 14 
 
 | Part | Built | Still design |
 | --- | --- | --- |
-| Heroes | Race and class picked once, for keeps; up to 6 heroes; beds in the house to switch, rename once or let one go; your hero by the fire | Gnomes and the other race and class combos, the Rogue, Ranger and Bard kits, racial tricks |
+| Heroes | Race and class picked once, for keeps; up to 6 heroes; beds in the house to switch, rename once or let one go; your hero by the fire. Dwarf, Elf and Human from the start; the Risen (undead) earned from the Barrow's collection log, as any class | Gnomes, goblins and orcs, each earned in a dungeon of its own; the other race and class combos; the Rogue's kit; racial tricks |
 | Abilities | Four buttons per role plus the dodge; a perfect block stuns and hits back | Ults, Openings, team combos |
 | Talents | Epic weapon traits, swappable for 5 Barrow Marks | The three paths and four rows per role, hero levels |
 | Gear and sets | 4 slots on a gear doll that shows rarity, set count and what each piece adds; Common to Epic in about ten clears, Barrow sets with their 2-piece bonuses, the three Gravekeeper weapons. Nothing goes on by itself: new pieces glow on the doll until you put them on | 3-piece bonuses (they need summons), the wardrobe, gear drawn on your hero |
 | Threat and difficulty | The tank earns threat (Slam taunts and drags mobs in, Charge grabs one), loose mobs go wild on the squishies, a caged tank loses the boss; Barrow hits 1.5 times as hard and its packs have more health; you see only your own numbers | Ults, Openings |
 | Loot | Every line rolls on its own, kill counts, duplicates to Marks, the walkout and the chest reveal |  |
+| Heroic | Heroic Barrow: open after 10 clears, made for full Epic (enemies hit twice as hard, more health); the same drops gilded at the same rates and power, its own kill counts and log, Barrow Marks | A heroic version of every new dungeon |
+| Collection log rewards | Each dungeon's whole log (every drop, every role) gives a house look, a title and one big prize: the Barrow's are Barrow Hall, the Gravewarden and the Risen; its heroic log's Gilded Barrow Hall, the Undying and Gilded Bones. The prize waits at the end of the log's bar | One per new dungeon: a race, a race and class combo, or something else |
 | Achievements | All 12, the meta and the 3 hidden ones, with titles, trophies, looks and the Lantern Ghost |  |
-| Home | The Hearth, a tall house cut open: zoom out to see every room, tap things to use them (the Barrow door, the signpost to ride out, the armour stand, the big book of the collection log, the cauldron, the larder); about 30 spots for pets, mounts, trophies and banners; Decorate; looks for a room or the whole house (the tavern, Barrow Hall at 100 Barrow clears); one big Dungeons button | Heroic versions of the looks, looks for Vale places, rooms that come with new dungeons and places, inviting people over |
-| Dungeon picker | Dungeons: pick a dungeon, see your group's three seats (you in your hero's, bots at your gear level in the others), tap a seat to play it with one of your heroes or make one for it, loot or practice, a brew | Friends in the seats (needs online play), more dungeons |
-| Logs | Collection log by boss and gathering spot, grouped by dungeon and place, OSRS style: drops, kill count, fastest kill, wipes; achievements; the Vale's story; stats |  |
+| Home | The Hearth, a tall house cut open: zoom out to see every room, tap things to use them (the Barrow door, the signpost to ride out, the armour stand, the big book of the collection log, the cauldron, the larder); about 30 spots for pets, mounts, trophies and banners; Decorate; looks for a room or the whole house (the tavern; Barrow Hall from the Barrow's collection log, Gilded Barrow Hall from its heroic one); one big Dungeons button | Looks for Vale places, rooms that come with new dungeons and places, inviting people over |
+| Dungeon picker | Dungeons: the dungeon's picture with Normal or Heroic, its collection log line with the prize at the end (inside: what finishing it gives and the loot per role; tap a drop to hold it up against what that role wears), then your role, hero and brew, loot or practice; bots at your gear level in the other seats | Friends in the seats (needs online play), more dungeons |
+| Logs | Collection log by boss and gathering spot, grouped by dungeon and place, OSRS style: drops, kill count, fastest kill, wipes; Normal or Heroic; each dungeon's whole log with what finishing it gives; achievements; the Vale's story; stats |  |
 | Riding out | The Vale map (Bramblewick is the one place open); walking out, or riding once you have a mount; Bramblewick Hollow with three gathering close-ups that pay XP every cut, Dottle's errands (goats, crows, sparks, the kettle, deliveries) and 8 story pages; Gathering and Brewing ranks; the Hill Goat from the goats errand; 3 pets, 4 trophies, bunting and a hare | Moonmere and Emberdeep, friends seen out riding, more close-ups |
 | Brews | The cauldron by your fire, 4 brews, one bottle a run, picked on the dungeon sheet | More recipes as places open |
 
@@ -150,7 +152,9 @@ A hero is one race and one class, picked when you make them and fixed after. You
 - **Every hero shares:** the collection (a unique fits any hero of its role), kill counts, Marks, achievements, titles and the Hearth.
 - **Shared gear:** a floor per role, up to Rare. Spare pieces and your own ladder raise it, and every hero of that role can put it on, including heroes made later (a new hero starts wearing it). Epic is earned on the hero.
 - **Nothing goes on by itself.** A new piece waits in the hero's bag and glows on the gear doll with "Up" (a better regular piece) or "New" (a unique). Your hero's tag at the top of the house counts what's waiting; tap the slot, compare, and Put it on: the slot bursts, the item level counts up. The chest reveal says "Put it on in Gear".
-- **Drawn today:** Dwarf Warrior (tank), Human Cleric (healer), Elf Mage (DPS). The rest show in the hero maker as Soon.
+- **Races:** Dwarf, Elf and Human from the start. Gnome, Goblin, the Risen (undead) and Orc are earned, each in its own dungeon: the Risen from filling Barrow Crypt's whole collection log, the others with dungeons to come. The hero maker shows how close you are to each.
+- **Classes:** Warrior (tank), Cleric (healer), Mage (DPS) and Rogue (DPS, its kit still to come). That's all four.
+- **Drawn today:** Dwarf Warrior (tank), Human Cleric (healer), Elf Mage (DPS), and the Risen as all three: skeletons in their class's own outfit, with green light in their eyes (gold bones with Gilded Bones). The rest show in the hero maker as Soon.
 - **Old saves:** became one hero, named for the role you last played, with a one-time rename.
 
 ## Home: the house
@@ -164,8 +168,9 @@ Home is a tall house on the hill, cut open like a doll's house. Built 14 Oct aft
 - **Dungeons** (the big button or the Barrow door): the dungeon's picture, with one small collection log line under it that opens to show what each role can get. Then you: pick a role and you play your hero of that role you played last (Change picks another or makes one), your brew, and loot or practice. Brannoc, Maren or Ivy take the other seats as bots at your gear level. Friends take seats once there is online play.
 - **Looks:** Decorate, then Looks: pick a look and put it on a room or the whole house. Looks only; everything you placed stays where it is.
   - **Tavern:** the default. Wood, plaster, lamplight and a crackling fire.
-  - **Barrow Hall:** opens at 100 Barrow clears, and shows how close you are until then. The Barrow's own brick and flagstones, burial niches with skulls, green lanterns, the Gravekeeper's green fire in the hall, a coffin in the armory, a gravestone in the stable, wisps in the cellar. Put it on the whole house and the beams and outer walls turn to stone and the roof to slate.
-  - Every dungeon brings a look like this; a heroic version of each comes once heroic exists.
+  - **Barrow Hall:** opens when you fill the Barrow's whole collection log, and shows how close you are until then. The Barrow's own brick and flagstones, burial niches with skulls, green lanterns, the Gravekeeper's green fire in the hall, a coffin in the armory, a gravestone in the stable, wisps in the cellar. Put it on the whole house and the beams and outer walls turn to stone and the roof to slate.
+  - **Gilded Barrow Hall:** from the heroic Barrow's log. Gold bones, gold frames and lanterns, the green fire burning higher.
+  - Every dungeon brings a look like this, and a gilded one from its heroic log.
 - **Next:** rooms that come with new dungeons and Vale places (the cellar's bricked arches become new dungeons' doors).
 
 ## Riding out (the Vale)
@@ -305,6 +310,28 @@ The final chest has a tell before the loot shows, and the game never explains it
 - Every dungeon gets its own tell, so each new dungeon is something new to learn.
 
 **Open call:** add Boots and Gloves to the sets? More to chase, about 2 more hours per full set. My pick: save them for raid sets and keep dungeon one at 3 pieces.
+
+## Heroic
+
+Every dungeon has a harder version, its Heroic, for after the gear cap. It never gives more power.
+
+- **Opens** after 10 clears of the dungeon, about when your gear tops out. The Dungeons sheet switches between Normal and Heroic on the dungeon's picture; until it opens, it shows how close you are.
+- **Harder:** the same dungeon and mechanics, made for full Epic. In the Barrow, everything hits twice as hard as on Normal, ordinary mobs have 60% more health and the bosses 40%. Bots in full Epic clear it in about four minutes without wiping; in Rare they wipe once or twice; in Common they get buried.
+- **Gilded drops:** every drop is the normal one gilded, at the same rate and the same power: a gilded set piece counts for the same set, a gilded weapon has the same effect. Heroic is a collection of its own, with its own kill counts and its own collection log.
+- **Marks and achievements:** a heroic clear pays the dungeon's own Marks and counts for its achievements.
+
+## Collection log rewards
+
+Filling a dungeon's whole collection log (every drop for every role, so it takes a tank, a healer and a DPS of yours) is the long chase, and it pays out for keeps. Each log gives a look for the house, a title, and one big prize that waits at the end of the log's bar.
+
+| Log | Big prize | House look | Title |
+| --- | --- | --- | --- |
+| Barrow Crypt | **The Risen**: a new race, skeletons who came back from the Barrow, as any class | Barrow Hall | the Gravewarden |
+| Heroic Barrow Crypt | **Gilded Bones**: your Risen heroes' bones turn to gold | Gilded Barrow Hall | the Undying |
+
+- When the last slot fills, the chest reveal gives it the whole screen: the prize walks out, then a panel with what the log gave and the way to it (make a hero, put up the look).
+- The Dungeons sheet and the collection log show each log's bar with its prize at the end, and what finishing it gives.
+- Not every dungeon's prize is a race. With a lot of dungeons to come, a prize can be a race, a race and class combo (a Dwarf Mage, say), or something else.
 
 ## Achievements
 

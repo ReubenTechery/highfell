@@ -1,0 +1,43 @@
+/**
+ * What the collection log gives. Filling a dungeon's whole log (every drop for every role) earns an
+ * achievement, one per dungeon and one per heroic version, and its reward can open a look for the house
+ * and a new kind of hero (a race). Until it's earned they stay locked and the log's progress bar says
+ * how close you are. Earned is for keeps, even if a later update adds a slot to the log.
+ */
+import { ACHIEVEMENT_LIST, DUNGEONS } from '../content';
+import { RACES, type RaceId } from '../content/folk';
+import type { AchievementDef } from '../content/types';
+import type { Profile } from './profile';
+
+/** How full a dungeon's collection log is: slots filled, out of all of them. */
+export function logProgress(p: Profile, dungeon: string): { have: number; need: number } {
+  const dg = DUNGEONS[dungeon];
+  return dg ? { have: dg.collection.filter((id) => p.collection[id]).length, need: dg.collection.length } : { have: 0, need: 0 };
+}
+export function logDone(p: Profile, dungeon: string): boolean {
+  const { have, need } = logProgress(p, dungeon);
+  return need > 0 && have >= need;
+}
+
+/** The achievement for filling a dungeon's whole log. */
+export const logAchievement = (dungeon: string): AchievementDef | undefined => ACHIEVEMENT_LIST.find((a) => a.log === dungeon);
+
+/** The achievement whose reward gives a look or a race, if one does (the rest are open from the start). */
+export const unlockOf = (kind: 'look' | 'race', id: string): AchievementDef | undefined => ACHIEVEMENT_LIST.find((a) => a.reward[kind] === id);
+
+/** A look or a race is open when nothing locks it, or you've earned what does. A race that's earned in
+ *  its own dungeon (gnomes, goblins, orcs) stays locked until there's a dungeon that gives it. */
+export function opened(p: Profile, kind: 'look' | 'race', id: string): boolean {
+  const a = unlockOf(kind, id);
+  if (!a) return !(kind === 'race' && RACES[id as RaceId]?.earned);
+  return !!p.achievements[a.id];
+}
+
+/** How close you are to opening a look or a race: the slots of the log that opens it (0 of 0 when
+ *  nothing locks it, and everything once it's earned). */
+export function openProgress(p: Profile, kind: 'look' | 'race', id: string): { have: number; need: number } {
+  const a = unlockOf(kind, id);
+  if (!a) return { have: 0, need: 0 };
+  const pr = a.log ? logProgress(p, a.log) : { have: 0, need: 1 };
+  return p.achievements[a.id] ? { have: pr.need, need: pr.need } : pr;
+}

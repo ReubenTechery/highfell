@@ -41,7 +41,7 @@ export function variant(s, kind) {
   const g = c.getContext('2d');
   g.drawImage(s.bmp, 0, 0);
   g.globalCompositeOperation = 'source-atop';
-  g.fillStyle = kind === 'flash' ? '#FFFFFF' : kind === 'frost' ? 'rgba(143, 214, 255, 0.55)' : kind === 'ghost' ? 'rgba(220, 255, 240, 0.85)' : 'rgba(22, 16, 30, 0.6)';
+  g.fillStyle = kind === 'flash' ? '#FFFFFF' : kind === 'frost' ? 'rgba(143, 214, 255, 0.55)' : kind === 'ghost' ? 'rgba(220, 255, 240, 0.85)' : kind === 'gold' ? 'rgba(242, 194, 48, 0.85)' : 'rgba(22, 16, 30, 0.6)';
   g.fillRect(0, 0, c.width, c.height);
   s[kind] = c;
   return c;

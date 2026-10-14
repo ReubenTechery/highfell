@@ -131,8 +131,9 @@ export interface TitleDef { id: string; text: string }
 export interface DropDef { id: string; rate: number; role?: RoleId }
 export interface BossLootDef { boss: string; drops: DropDef[] }
 
-export type Tier = 'bronze' | 'silver' | 'gold' | 'meta' | 'hidden';
-export interface RewardDef { title?: string; collectible?: string; text: string }
+export type Tier = 'bronze' | 'silver' | 'gold' | 'meta' | 'hidden' | 'log';
+/** What an achievement gives. A look (a house look id) or a race (a folk id) it gives is locked until it's earned. */
+export interface RewardDef { title?: string; collectible?: string; look?: string; race?: string; text: string }
 export interface AchievementDef {
   id: string;
   dungeon: string;
@@ -152,6 +153,8 @@ export interface AchievementDef {
   needs?: string[];
   /** completes when this collectible is obtained */
   collect?: string;
+  /** completes when every slot of this dungeon's collection log is filled */
+  log?: string;
 }
 
 export interface BossInfo { id: string; name: string; phases: number; enrage: number; room: number }
@@ -168,4 +171,6 @@ export interface DungeonInfo {
   /** every slot in this dungeon's collection log, in display order */
   collection: string[];
   achievements: string[];
+  /** a heroic dungeon: the normal one it is the harder version of. It pays that one's Marks and counts for its achievements. */
+  heroicOf?: string;
 }

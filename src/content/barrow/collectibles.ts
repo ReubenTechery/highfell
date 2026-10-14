@@ -25,4 +25,5 @@ export const BARROW_TITLES: TitleDef[] = [
   { id: 'title.barrowborn', text: 'the Barrow-born' },
   { id: 'title.braveish', text: 'the Brave(ish)' },
   { id: 'title.stubborn', text: 'the Stubborn' },
+  { id: 'title.gravewarden', text: 'the Gravewarden' },
 ];

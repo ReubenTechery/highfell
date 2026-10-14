@@ -87,11 +87,13 @@ function shelf(xs: number[], n0: number): HouseSpot[] {
 }
 
 /** A look for a room or the whole house. Looks only: it never changes what anything does, or where
- *  anything you put in the house sits. One per dungeon, opened by clearing it a hundred times. */
-export interface LookDef { id: string; name: string; blurb: string; unlock: { dungeon: string; clears: number } | null }
+ *  anything you put in the house sits. Every dungeon has one, and its heroic version a gilded one; an
+ *  achievement that gives a look (finishing that dungeon's collection log) opens it. */
+export interface LookDef { id: string; name: string; blurb: string }
 export const LOOKS: LookDef[] = [
-  { id: 'tavern', name: 'Tavern', blurb: 'Warm wood, lamplight and a crackling fire.', unlock: null },
-  { id: 'barrow', name: 'Barrow Hall', blurb: 'Cold stone, old bones and the Gravekeeper’s green fire.', unlock: { dungeon: 'barrow', clears: 100 } },
+  { id: 'tavern', name: 'Tavern', blurb: 'Warm wood, lamplight and a crackling fire.' },
+  { id: 'barrow', name: 'Barrow Hall', blurb: 'Cold stone, old bones and the Gravekeeper’s green fire.' },
+  { id: 'barrow-gilded', name: 'Gilded Barrow Hall', blurb: 'Barrow Hall for the Undying: gold on every bone, gold lanterns, the green fire burning high.' },
 ];
 export const DEFAULT_LOOK = 'tavern';
 /** the rooms a look can go on: every room inside the house */

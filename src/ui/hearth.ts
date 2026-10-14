@@ -210,7 +210,7 @@ export class Hearth {
     layer.push(...this.heroes(h));
     layer.sort((a, b) => a.y - b.y);
     const unseen = Object.keys(p.collection).some((id) => !p.seen[id]);
-    const look = (room: string): string => lookOf(p, room, this.app.dev.looksFree);
+    const look = (room: string): string => lookOf(p, room, this.app.dev.allOpen);
     return `<defs>${houseDefs()}<radialGradient id="h-hero"><stop offset="0" stop-color="${light}" stop-opacity="0.38"/><stop offset="0.6" stop-color="${light}" stop-opacity="0.12"/><stop offset="1" stop-color="${light}" stop-opacity="0"/></radialGradient></defs>
       ${houseBack(look)}${layer.map((l) => l.svg).join('')}${houseFront(look)}${unseen ? pip(600, -1940, '!') : ''}`;
   }
@@ -260,7 +260,7 @@ export class Hearth {
     out.push({ y, svg: `<g class="hero me" data-hero="${esc(h.id)}" data-x="${x}" data-y="${y}" tabindex="0" role="button" aria-label="${esc(h.name)}: gear">
       <circle cx="${x}" cy="${y - 150 * k * 0.45}" r="${120 * k}" style="fill: url(#h-hero)"/>
       <ellipse cx="${x}" cy="${y}" rx="${34 * k}" ry="${10 * k}" style="fill: rgba(18, 12, 28, 0.45)"/>
-      ${placeSprite(heroSprite(h, roleOf(h)) + '_f', x, y, { k, cls: 'breathe' })}
+      ${placeSprite(heroSprite(h, roleOf(h), p) + '_f', x, y, { k, cls: 'breathe' })}
       <rect class="hl" x="${x - 46 * k}" y="${y - 140 * k}" width="${92 * k}" height="${146 * k}" rx="20"/></g>` });
     const others = p.roster.filter((x2) => x2.id !== p.active);
     others.forEach((o, i) => {
@@ -268,7 +268,7 @@ export class Hearth {
       const up = waiting(p, o).length;
       out.push({ y: by, svg: `<g class="hero" data-hero="${esc(o.id)}" data-x="${bx}" data-y="${by}" tabindex="0" role="button" aria-label="${esc(o.name)}, ${esc(CLASSES[o.cls as ClassId]?.name || o.cls)}">
         <ellipse cx="${bx}" cy="${by}" rx="${30 * bk}" ry="${9 * bk}" style="fill: rgba(18, 12, 28, 0.4)"/>
-        ${placeSprite(heroSprite(o, role) + '_f', bx, by, { k: bk })}
+        ${placeSprite(heroSprite(o, role, p) + '_f', bx, by, { k: bk })}
         <text class="lbl small" x="${bx}" y="${FLOORS.upper + 26}">${esc(o.name.split(' ')[0])}</text>
         ${up ? pip(bx + 34, by - 170, String(up)) : ''}
         <rect class="hl" x="${bx - 48}" y="${by - 200}" width="96" height="210" rx="16"/></g>` });

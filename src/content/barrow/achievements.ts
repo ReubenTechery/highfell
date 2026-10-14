@@ -1,8 +1,9 @@
-/** Barrow Crypt's twelve achievements, the meta one and the hidden ones. Rewards are looks, never power. */
+/** Barrow Crypt's twelve achievements, the meta one, the hidden ones, and the big one: its whole
+ *  collection log. Rewards are looks, never power. */
 import type { AchievementDef } from '../types';
 
 const D = 'barrow';
-const POINTS = { bronze: 10, silver: 25, gold: 50, meta: 100, hidden: 15 } as const;
+const POINTS = { bronze: 10, silver: 25, gold: 50, meta: 100, hidden: 15, log: 250 } as const;
 
 export const BARROW_ACHIEVEMENTS: AchievementDef[] = [
   { id: 'barrow.into', dungeon: D, tier: 'bronze', points: POINTS.bronze, name: 'Into the Barrow', how: 'Clear the Crypt.',
@@ -39,4 +40,8 @@ export const BARROW_ACHIEVEMENTS: AchievementDef[] = [
     reward: { title: 'title.stubborn', text: 'Title: the Stubborn' }, live: (e) => e.type === 'boss.killed' && e.onlyPlayerAlive },
   { id: 'barrow.lucky', dungeon: D, tier: 'hidden', points: POINTS.hidden, name: 'Lucky Dig', how: 'Get the Pint-sized Gravekeeper.',
     reward: { text: 'Bragging rights' }, collect: 'pet.pint_gravekeeper' },
+  // every drop for every role: you've played all three seats and seen it all
+  { id: 'barrow.log', dungeon: D, tier: 'log', points: POINTS.log, name: 'Every Last Bone', how: 'Fill every slot of Barrow Crypt’s collection log.',
+    reward: { look: 'barrow', title: 'title.gravewarden', race: 'risen', text: 'Barrow Hall for your house, the title the Gravewarden, and a new kind of hero: the Risen' },
+    log: 'barrow' },
 ];
