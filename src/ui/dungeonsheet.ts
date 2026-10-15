@@ -5,8 +5,8 @@
  * at the end of the bar (the Barrow's: a new kind of hero, the Risen). It opens to show those rewards and
  * what each role can get (what you have lit up, every drop rate; tap one to hold it up against what you
  * wear). Then the main thing: your role, your hero (picking a role picks the hero of that role you played
- * last; change to another or make one) and your brew, then loot or practice. Bots take the other seats at
- * your gear level. The sheets wire up its buttons.
+ * last; change to another or make one) and your brew, then loot or practice. Your own Warband heroes from
+ * your bunk room fill the other seats in their own gear (or bots stand in until you make them).
  */
 import { COLLECTIBLES, DUNGEONS, TITLES, heroicVersion } from '../content';
 import { MAX_HEROES, RACES, type RaceId } from '../content/folk';
@@ -134,13 +134,15 @@ function item(p: Profile, d: DropDef): string {
     <span class="tile" aria-hidden="true">${iconOf(d.id)}</span><small>${have ? GLYPH.check : fmtRate(d.rate)}</small></button>`;
 }
 
-/** who plays the role: your hero, a way to change to another of yours, and who the bots are */
+/** who plays the role: your hero, a way to change to another of yours, and who your Warband companions/bots are */
 function me(p: Profile, role: RoleId, pick: DungeonPick): string {
   const h = activeHero(p);
   if (!h || roleOf(h) !== role) return `<div class="dgx-me none r-${role}"><b>No ${esc(word(role))} yet</b><span class="fine">Make one to play this seat.</span></div>`;
   const others = heroesFor(p, role).filter((x) => x.id !== h.id);
   const room = p.roster.length < MAX_HEROES;
-  const bots = seats(p).filter((s) => s.bot).map((s) => s.bot);
+  const mates = seats(p)
+    .filter((s) => s.role !== role)
+    .map((s) => (s.hero ? `${s.hero.name} (ilvl ${ilvl(loadoutFor(p, s.hero).score)})` : `${s.bot} (bot)`));
   const list = pick.alts
     ? `<div class="seat-pick">${others.map((x) => `<button type="button" class="btn small" data-act="playseat" data-id="${esc(x.id)}">${GLYPH.play}${esc(x.name.split(' ')[0])}</button>`).join('')}${room ? `<button type="button" class="btn small" data-act="newseat" data-role="${role}">${GLYPH.plus}New ${esc(word(role))}</button>` : ''}</div>`
     : '';
@@ -149,7 +151,7 @@ function me(p: Profile, role: RoleId, pick: DungeonPick): string {
       <span class="dgx-who"><b>${esc(h.name)}</b><span>Item level ${ilvl(loadoutFor(p, h).score)}</span></span>
       ${others.length || room ? `<button type="button" class="btn small" data-act="alts" aria-expanded="${pick.alts}">Change</button>` : ''}
     </div>${list}
-    <p class="fine">${esc(bots.join(' and '))} join as bots.</p>`;
+    <p class="fine">Warband: ${esc(mates.join(' & '))} join your party.</p>`;
 }
 
 /** which brew you take in: one bottle a run */

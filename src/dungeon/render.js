@@ -145,6 +145,7 @@ export function drawMap(ctx, v) {
 }
 /* ---------- ground layer: shadows, telegraphs, zones ---------- */
 export function drawGround(ctx, v) {
+  if (S.seal && S.seal.active && !S.seal.done) drawSeal(ctx);
   for (const z of S.zones) drawZone(ctx, z);
   for (const z of S.hazards) drawHazard(ctx, z);
   for (const g of S.rings) {
@@ -161,6 +162,7 @@ export function drawGround(ctx, v) {
   const ents = [];
   for (const h of S.heroes) ents.push(h);
   for (const m of S.mobs) if (m.alive && !m.cage) ents.push(m);
+  for (const tr of S.thralls || []) if (tr.alive) ents.push(tr);
   ctx.fillStyle = 'rgba(18, 12, 28, 0.36)';
   for (const e of ents) {
     if (e.y < v.y0 || e.y > v.y1) continue;
@@ -171,15 +173,48 @@ export function drawGround(ctx, v) {
   }
   const p = S.player;
   if (p.alive) {
-    ctx.strokeStyle = '#F2C230'; ctx.lineWidth = 3.5;
+    ctx.strokeStyle = p.st && p.st.surge > 0 ? '#FFE08A' : p.st && p.st.zeal > 0 ? '#9BE15D' : '#F2C230';
+    ctx.lineWidth = 3.5;
     ctx.beginPath(); ctx.ellipse(p.x, p.y + 2, p.r + 12, (p.r + 12) * 0.38, 0, 0, TAU); ctx.stroke();
     const t = p.picked || p.target;
     if (t && t.alive && !t.hidden) {
-      ctx.strokeStyle = '#FF6B5E'; ctx.lineWidth = 3.5; ctx.setLineDash([10, 8]);
+      ctx.strokeStyle = t.exposed > 0 ? '#F2C230' : '#FF6B5E'; ctx.lineWidth = 3.5; ctx.setLineDash([10, 8]);
       const rr = (t.isBoss ? t.r * 1.6 : t.r * 1.5) + 8;
       ctx.beginPath(); ctx.ellipse(t.x, t.y + 2, rr, rr * 0.38, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
     }
   }
+}
+export function drawSeal(ctx) {
+  const seal = S.seal;
+  if (!seal || !seal.pads) return;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(242, 194, 48, 0.38)';
+  ctx.lineWidth = 4;
+  ctx.setLineDash([10, 8]);
+  ctx.beginPath();
+  for (let i = 0; i < seal.pads.length; i++) {
+    const a = seal.pads[i], b = seal.pads[(i + 1) % seal.pads.length];
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+  const roleCol = { tank: '#F2C230', healer: '#9BE15D', dps: '#8FD6FF' };
+  for (const pad of seal.pads) {
+    const col = roleCol[pad.role] || '#F2C230';
+    const pulse = 1 + Math.sin(S.t * 6) * 0.06;
+    ctx.fillStyle = pad.lit ? 'rgba(242, 194, 48, 0.34)' : 'rgba(30, 22, 44, 0.55)';
+    ctx.beginPath(); ctx.arc(pad.x, pad.y, pad.r * pulse, 0, TAU); ctx.fill();
+    ctx.lineWidth = 6; ctx.strokeStyle = K; ctx.stroke();
+    ctx.lineWidth = 3.5; ctx.strokeStyle = pad.lit ? '#FFE08A' : col; ctx.stroke();
+    ctx.beginPath(); ctx.arc(pad.x, pad.y, pad.r * 0.45, 0, TAU); ctx.stroke();
+  }
+  ctx.font = `18px ${FONT}`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.lineWidth = 5; ctx.strokeStyle = K;
+  ctx.strokeText(`Crypt Seal: ${seal.name}`, seal.x, seal.y - 88);
+  ctx.fillStyle = '#FFE08A';
+  ctx.fillText(`Crypt Seal: ${seal.name}`, seal.x, seal.y - 88);
+  ctx.restore();
 }
 export function hazardPath(ctx, z, k) {
   ctx.beginPath();
@@ -267,13 +302,17 @@ export function drawZone(ctx, z) {
 }
 export function drawFireRing(ctx) {
   const A = S.dg.map.arena, R = S.ring.r;
-  ctx.fillStyle = 'rgba(80, 160, 60, 0.18)';
-  ctx.beginPath(); ctx.arc(A.x, A.y, A.r + 200, 0, TAU); ctx.arc(A.x, A.y, R, 0, TAU, true); ctx.fill();
-  ctx.lineWidth = 8; ctx.strokeStyle = K; ctx.beginPath(); ctx.arc(A.x, A.y, R, 0, TAU); ctx.stroke();
+  const rx = S.ring.x !== undefined ? S.ring.x : A.x;
+  const ry = S.ring.y !== undefined ? S.ring.y : A.y;
+  ctx.fillStyle = 'rgba(80, 160, 60, 0.22)';
+  ctx.beginPath(); ctx.arc(A.x, A.y, A.r + 300, 0, TAU); ctx.arc(rx, ry, R, 0, TAU, true); ctx.fill();
+  ctx.fillStyle = 'rgba(155, 225, 93, 0.09)';
+  ctx.beginPath(); ctx.arc(rx, ry, R, 0, TAU); ctx.fill();
+  ctx.lineWidth = 8; ctx.strokeStyle = K; ctx.beginPath(); ctx.arc(rx, ry, R, 0, TAU); ctx.stroke();
   ctx.lineWidth = 4; ctx.strokeStyle = '#9BE15D'; ctx.stroke();
   const n = Math.round((TAU * R) / 34);
   for (let i = 0; i < n; i++) {
-    const a = (i / n) * TAU, x = A.x + Math.cos(a) * R, y = A.y + Math.sin(a) * R;
+    const a = (i / n) * TAU, x = rx + Math.cos(a) * R, y = ry + Math.sin(a) * R;
     const h = 16 + Math.sin(S.t * 10 + i * 1.7) * 6;
     ctx.fillStyle = i % 2 ? '#9BE15D' : '#D8FFB8'; ctx.strokeStyle = K; ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.moveTo(x - 7, y); ctx.quadraticCurveTo(x - 7, y - h * 0.6, x, y - h); ctx.quadraticCurveTo(x + 7, y - h * 0.6, x + 7, y); ctx.closePath(); ctx.fill(); ctx.stroke();
@@ -292,6 +331,7 @@ export function drawObjects(ctx, v) {
   for (const m of S.mobs) if (m.y > v.y0 - 60 && m.y < v.y1 + 340) list.push({ y: m.y + (m.cage ? 2 : 0), k: 4, o: m });
   for (const f of S.fx) if (f.type === 'hand') list.push({ y: f.y, k: 5, o: f });
   if (S.chest) list.push({ y: S.chest.y, k: 6, o: S.chest });
+  for (const tr of S.thralls || []) if (tr.alive && tr.y > v.y0 - 40 && tr.y < v.y1 + 200) list.push({ y: tr.y, k: 7, o: tr });
   list.sort((a, b) => a.y - b.y);
   for (const it of list) {
     const o = it.o;
@@ -307,8 +347,17 @@ export function drawObjects(ctx, v) {
       if (!o.open && ready) { ctx.globalAlpha = 0.25 + Math.sin(S.t * 4) * 0.1; ctx.fillStyle = '#F2C230'; ctx.beginPath(); ctx.arc(o.x, o.y - 30, 70, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
       const hop = o.knockT > 0 ? Math.sin((o.knockT / 0.22) * Math.PI) * 14 : 0;
       drawSpr(ctx, s, o.x, o.y - hop, { sx: 1.15 + hop * 0.004, sy: 1.15 - hop * 0.004 + (o.open || !ready ? 0 : Math.sin(S.t * 5) * 0.02) });
-    }
+    } else if (it.k === 7) drawThrall(ctx, o);
   }
+}
+export function drawThrall(ctx, tr) {
+  const sp = tr.sp === 'rattler' ? 'rattler' : tr.sp + '_f';
+  const fade = clamp(tr.life / 0.5, 0, 1);
+  let x = tr.x, y = tr.y, sy = 0.78;
+  if (tr.moving > 0) y -= Math.abs(Math.sin(tr.walkT)) * 4;
+  if (tr.lunge > 0) { const k = tr.lunge / 0.14; x += Math.cos(tr.lungeA) * 9 * k; y += Math.sin(tr.lungeA) * 5 * k; }
+  const tint = tr.kind === 'shade' ? 'ghost' : tr.kind === 'frost' ? 'frost' : 'gold';
+  drawSpr(ctx, sp, x, y, { flip: tr.flip, sx: 0.78, sy, alpha: fade * (tr.kind === 'shade' ? 0.72 : 0.92), tint, tintA: 0.48 });
 }
 /** Each hero sprite set: where its weapon is, seen from the front (the glow goes behind it), and the top of its
  *  head or hat (what floats over a hero goes above it). heroFit() reads it for a gilded set too, and from
@@ -410,8 +459,12 @@ export function drawHero(ctx, h) {
   }
   const yy = h.dodgeT > 0 ? y + 26 : y;
   // the Barrow dyes on your set: the Gravegold Dye (heroic) wins over the Ghostly one
-  const gold = h.isPlayer && S.opts.gilded, ghost = !gold && h.isPlayer && S.opts.ghostly;
-  drawSpr(ctx, name, x, yy, { flip: spinFlip, sx, sy, rot: rot, alpha: ghost ? 0.78 : 1, tint: h.flash > 0 ? 'flash' : gold ? 'gold' : ghost ? 'ghost' : null, tintA: h.flash > 0 ? Math.max(0, h.flash) / 0.12 : gold ? 0.4 : 0.45 });
+  const gold = h.isPlayer && S.opts.gilded, ghost = (h.st && h.st.ghost > 0) || (!gold && h.isPlayer && S.opts.ghostly);
+  drawSpr(ctx, name, x, yy, { flip: spinFlip, sx, sy, rot: rot, alpha: ghost ? 0.76 : 1, tint: h.flash > 0 ? 'flash' : gold ? 'gold' : ghost ? 'ghost' : null, tintA: h.flash > 0 ? Math.max(0, h.flash) / 0.12 : gold ? 0.4 : 0.45 });
+  if (h.st && h.st.ghost > 0) {
+    ctx.globalAlpha = 0.3 + Math.sin(S.t * 8) * 0.1; ctx.strokeStyle = '#FFE08A'; ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.ellipse(h.x, h.y + (top + 2) / 2, 48, (24 - top) / 2, 0, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
+  }
   if (h.blocking) {
     const a = h.face, cx = h.x + Math.cos(a) * 24, cy = h.y - 34 + Math.sin(a) * 12;
     ctx.lineWidth = 11; ctx.strokeStyle = K; ctx.beginPath(); ctx.arc(cx - Math.cos(a) * 14, cy - Math.sin(a) * 8, 34, a - 1.05, a + 1.05); ctx.stroke();
@@ -467,6 +520,11 @@ export function drawMob(ctx, m) {
   sx = (2 - sy) * 1;
   const frozen = m.st.freeze > 0;
   if (m.armorUp > 0) { ctx.globalAlpha = 0.12 + Math.sin(S.t * 6) * 0.05; ctx.fillStyle = '#F0E8D2'; ctx.beginPath(); ctx.ellipse(m.x, m.y - 90, 86, 110, 0, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; ctx.lineWidth = 4; ctx.strokeStyle = '#F0E8D2'; ctx.setLineDash([12, 10]); ctx.stroke(); ctx.setLineDash([]); }
+  if (m.exposed > 0 && m.alive) {
+    ctx.globalAlpha = 0.22 + Math.sin(S.t * 10) * 0.08; ctx.fillStyle = '#F2C230';
+    ctx.beginPath(); ctx.ellipse(m.x, m.y + 2, m.r * 1.65, m.r * 0.65, 0, 0, TAU); ctx.fill();
+    ctx.globalAlpha = 0.95; ctx.lineWidth = 4; ctx.strokeStyle = '#F2C230'; ctx.stroke(); ctx.globalAlpha = 1;
+  }
   drawSpr(ctx, name, x, y, { flip: m.flip, sx, sy, rot, alpha, tint: m.flash > 0 ? 'flash' : frozen ? 'frost' : null, tintA: m.flash > 0 ? (m.isBoss ? 0.4 : 0.7) : 1 });
   if (frozen) { ctx.lineWidth = 3; ctx.strokeStyle = '#DDF3FF'; ctx.globalAlpha = 0.9; const hh = m.M.big ? 150 : 90; roundRect(ctx, m.x - m.r - 12, m.y - hh, (m.r + 12) * 2, hh + 4, 10); ctx.stroke(); ctx.globalAlpha = 1; }
   if (m.st.stun > 0) stars(ctx, m.x, m.y - (m.isBoss ? 220 : m.M.big ? 160 : 108), '#F2C230');

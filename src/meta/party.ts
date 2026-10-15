@@ -8,10 +8,15 @@ import { activeHero, roleOf, setActive, type Hero, type Profile } from './profil
 
 export interface Seat { role: RoleId; hero: Hero | null; bot: string | null }
 
-/** The three seats, tank first: yours holds your hero, the others hold a bot. */
+/** The three seats, tank first: yours holds your active hero, and the other two hold your own heroes of
+ *  those roles from your bunk room (falling back to a stand-in bot only when you have none). */
 export function seats(p: Profile): Seat[] {
   const h = activeHero(p), mine = h ? roleOf(h) : null;
-  return ORDER.map((role) => (role === mine ? { role, hero: h, bot: null } : { role, hero: null, bot: ROLES[role].name }));
+  return ORDER.map((role) => {
+    if (role === mine && h) return { role, hero: h, bot: null };
+    const mate = heroesFor(p, role)[0] || null;
+    return mate ? { role, hero: mate, bot: null } : { role, hero: null, bot: ROLES[role].name };
+  });
 }
 
 /** Your heroes who could take a seat, the one you played last first. */

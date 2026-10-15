@@ -86,8 +86,8 @@ export const healthPct = (l: Loadout): number => Math.round((hpMultiplier(l.powe
 export function itemShare(def: ItemDef): { power: number; health: number; ilvl: number } {
   const w = SLOTS.find((s) => s.id === def.slot)?.weight ?? 0;
   const sc = itemScore(def);
-  const power = (w * 0.45 * (sc - 10)) / 12;
-  return { power: Math.round(power * 1000) / 10, health: Math.round(power * 0.6 * 1000) / 10, ilvl: sc };
+  const power = (w * 0.72 * (sc - 10)) / 12;
+  return { power: Math.round(power * 1000) / 10, health: Math.round(power * 0.5 * 1000) / 10, ilvl: sc };
 }
 
 /** Something gear does beyond its numbers: a unique's effect, an Epic weapon's trait or a set bonus. */

@@ -7,9 +7,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, update } from '../src/dungeon/game.js';
 import { S } from '../src/dungeon/state.js';
-import { hurtHero, hurtMob, pickTarget } from '../src/dungeon/entities.js';
+import { exposeMob, hurtHero, hurtMob, pickTarget } from '../src/dungeon/entities.js';
 import { abCd, onPerfectBlock, useAbility } from '../src/dungeon/heroes.js';
-import { cutChain, makeCage, makeChain, mashCage, spawnMob } from '../src/dungeon/mobs.js';
+import { breakCage, cutChain, makeCage, makeChain, mashCage, spawnMob } from '../src/dungeon/mobs.js';
 import { HERO_FIT, heroFit } from '../src/dungeon/render.js';
 import { BARROW_ENGINE } from '../src/content/barrow/engine';
 import { allHeroArt } from '../src/content/folk';
@@ -290,5 +290,94 @@ test('rogue: +10% movement speed always, glass cannon stats, twin-dagger autos, 
   assert.ok(m.bleed.left >= 4.9, 'Fan of Blades refreshes Viper Blades duration');
 });
 
+test('barrow revamp: Crushing Blows on non-tanks, hazard Ward bleed-through, Exposed windows, 3-piece sets, moving Phase 3 ring, and Crypt Seals', () => {
+  const { s, tank, healer, dps } = game('tank');
 
+  // 1. Avoidable hazards pierce 60% of Ward shields (only 40% absorbed)
+  dps.absorb = 500;
+  dps.absorbT = 6;
+  const dpsHp0 = dps.hp;
+  hurtHero(dps, 100, s.packs[0].mobs[0], { hazard: true, dodge: false, block: false });
+  // 100 * 1.5 tune = 150 raw; Ward caps at 40% (60 absorbed), 90 bleeds through to HP
+  assert.equal(dpsHp0 - dps.hp, 90, 'Avoidable hazard pierces 60% of Ward shield');
+  assert.equal(dps.absorb, 440);
+  dps.hp = dps.maxHp;
+  dps.absorb = 0;
 
+  // 2. Boss Exposed (+35% damage taken) window, Soul Chain cut, Wisp banish backlash, and fast Bone Cage break
+  const m = s.packs[0].mobs[0];
+  m.hp = m.maxHp = 100000;
+  const hpBeforeNormal = m.hp;
+  hurtMob(m, 100, tank, { noCrit: true, quiet: true });
+  const normalHit = hpBeforeNormal - m.hp;
+  exposeMob(m, 3.5);
+  assert.ok(m.exposed >= 3.5, 'exposeMob sets exposed duration');
+  const hpBeforeExp = m.hp;
+  hurtMob(m, 100, tank, { noCrit: true, quiet: true });
+  const expHit = hpBeforeExp - m.hp;
+  assert.equal(expHit, Math.round(normalHit * 1.35), 'Exposed mob takes +35% damage');
+
+  const ch = makeChain(m, dps);
+  m.exposed = 0;
+  cutChain(ch, healer);
+  assert.ok(m.exposed >= 3.0, 'Cutting Soul Chain exposes the boss for 3s');
+
+  m.exposed = 0;
+  tank.cd.a2 = 5.0;
+  const cage = makeCage(tank, m);
+  breakCage(cage, true);
+  assert.ok(m.exposed > 0, 'Breaking Bone Cage quickly (<2.0s) exposes the boss');
+  assert.equal(tank.cd.a2, 0, 'Fast Bone Cage break resets Tank Charge cooldown');
+
+  // 3. 3-piece sets: barrowguard3, candlewake3, rimebone3
+  tank.bonuses.add('barrowguard3');
+  tank.cd.a3 = 0; tank.gcd = 0;
+  assert.ok(useAbility(tank, 'a3', null));
+  assert.equal(s.thralls.filter((tr: any) => tr.alive && tr.kind === 'bg').length, 2, 'Barrowguard 3pc spawns 2 skeletal thralls on Slam');
+  const tankHpBefore = tank.hp;
+  hurtHero(tank, 100, null, { pierce: true, dodge: false, block: false });
+  // 100 * 1.5 = 150 raw, reduced by 25% thrall soak = 113
+  assert.equal(tankHpBefore - tank.hp, Math.round(150 * 0.75), 'Barrowguard 3pc transfers 25% of damage to an active thrall');
+
+  healer.bonuses.add('candlewake3');
+  dps.hp = 50;
+  hurtHero(dps, 500, null, { pierce: true, dodge: false, block: false });
+  assert.ok(dps.alive && dps.ghostSaved && dps.st.ghost > 0, 'Candlewake 3pc saves dying ally as a ghost once per fight');
+  assert.equal(dps.hp, Math.round(dps.maxHp * 0.35), 'Ghost Save restores ally to 35% HP');
+
+  dps.bonuses.add('rimebone3');
+  dps.cd.a1 = 0; dps.gcd = 0;
+  assert.ok(useAbility(dps, 'a1', { x: m.x, y: m.y }));
+  assert.ok(s.thralls.some((tr: any) => tr.alive && tr.kind === 'frost'), 'Rimebone 3pc spawns a frost skeleton in Blizzard');
+
+  // 4. Phase 3 moving lantern circle follows the Gravekeeper and grants Lantern Zeal inside, plus Wisp banish backlash
+  s.boss = m;
+  m.isBoss = true;
+  const bossHpBeforeWisp = m.hp;
+  const wisp2 = spawnMob('wisp', healer.x + 15, healer.y, null);
+  hurtMob(wisp2, 50, healer);
+  assert.ok(m.hp < bossHpBeforeWisp, 'Banishing a wisp deals Soul Spark backlash damage to the boss');
+  m.x = 400; m.y = 480;
+  s.ring = { x: m.x, y: m.y, r: 265, target: 265, followBoss: true, tick: 0 };
+  m.x = 620; m.y = 540;
+  tank.x = 620; tank.y = 540;
+  step(0.5);
+  assert.ok(s.ring.x > 450, 'Phase 3 lantern ring tracks the moving Gravekeeper');
+  assert.ok(tank.st.zeal > 0, 'Standing inside the Phase 3 lantern circle grants Lantern Zeal');
+
+  // 5. Crypt Seal in Room 4 grants Crypt Surge (+25% speed, +20% damage) when all 3 pads are lit
+  for (const mob of s.mobs) { mob.alive = false; mob.state = 'dead'; }
+  s.boss = null;
+  s.ring = null;
+  const packD = s.packs.find((p: any) => p.def.id === 'D');
+  packD.cleared = true;
+  s.inCombat = false;
+  for (const pad of s.seal.pads) {
+    const hero = s.heroes.find((h: any) => h.role === pad.role);
+    hero.x = pad.x; hero.y = pad.y;
+    hero.intent.mx = 0; hero.intent.my = 0;
+  }
+  step(0.35);
+  assert.equal(s.seal.cleared, true, 'Standing on all 3 role rune pads shatters the Crypt Seal');
+  assert.ok(tank.st.surge > 10, 'Crypt Seal grants Crypt Surge to the party');
+});

@@ -7,28 +7,28 @@ export const BARROW_SETS: SetDef[] = [
     look: 'Bone-white plate, skull pauldrons, a coffin-lid shield',
     pieces: ['barrowguard.helm', 'barrowguard.shoulders', 'barrowguard.chest'],
     bonus2: { id: 'barrowguard2', desc: 'Perfect blocks give you a 150 bone shield.' },
-    bonus3: { id: 'barrowguard3', desc: 'Slam raises two skeleton thralls for 8 seconds. They fight beside you and soak hits.', ready: false },
+    bonus3: { id: 'barrowguard3', desc: 'Slam raises two skeleton thralls for 8 seconds. They fight beside you and soak hits.', ready: true },
   },
   {
     id: 'candlewake', name: 'Candlewake', role: 'healer', dungeon: 'barrow',
     look: 'Black robes, a crown of candles, a lantern',
     pieces: ['candlewake.helm', 'candlewake.shoulders', 'candlewake.chest'],
     bonus2: { id: 'candlewake2', desc: 'Mend leaves a candle that heals 40 more over 4 seconds.' },
-    bonus3: { id: 'candlewake3', desc: 'An ally who would die becomes a ghost for 6 seconds instead. Heal them to full to bring them back. Once per ally per fight.', ready: false },
+    bonus3: { id: 'candlewake3', desc: 'Prayer circle sears foes inside it, and an ally who would die becomes a ghost for 6 seconds instead. Heal them to bring them back. Once per ally per fight.', ready: true },
   },
   {
     id: 'rimebone', name: 'Rimebone', role: 'dps', dungeon: 'barrow',
     look: 'A frosted bone crown, icicle shoulders',
     pieces: ['rimebone.helm', 'rimebone.shoulders', 'rimebone.chest'],
     bonus2: { id: 'rimebone2', desc: 'Comet on a frozen mob gives back half its cooldown.' },
-    bonus3: { id: 'rimebone3', desc: 'Blizzard rains bone shards. Anything that dies in it rises as a frost skeleton that fights for you for 6 seconds.', ready: false },
+    bonus3: { id: 'rimebone3', desc: 'Blizzard rains bone shards and raises frost skeletons that fight for you for 6 seconds.', ready: true },
   },
   {
     id: 'shadeveil', name: 'Shadeveil', role: 'dps', cls: 'rogue', dungeon: 'barrow',
     look: 'A shadow-stitched mask, bone-bladed spaulders, and a silent leather jerkin',
     pieces: ['shadeveil.helm', 'shadeveil.shoulders', 'shadeveil.chest'],
     bonus2: { id: 'shadeveil2', desc: 'Critical hits with Shadowstrike or Viper Blades erupt in shadow for 55 damage.' },
-    bonus3: { id: 'shadeveil3', desc: 'Shadowstep leaves a shadow clone for 6 seconds that slashes your target with twin daggers.', ready: false },
+    bonus3: { id: 'shadeveil3', desc: 'Shadowstep leaves a shadow clone for 6 seconds that slashes your target with twin daggers.', ready: true },
   },
 ];
 

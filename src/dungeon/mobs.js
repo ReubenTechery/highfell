@@ -2,7 +2,7 @@
 import { angTo, dist, distXY, TAU } from '../core/math';
 import { pick, rand, rng } from '../core/rng';
 import { S, emit } from './state.js';
-import { addThreat, aggro, banner, bits, call, dots, fx, fxText, hurtHero, hurtMob, killMob, makeMob, pickTarget, sfx, shake } from './entities.js';
+import { addThreat, aggro, banner, bits, call, dots, exposeMob, fx, fxText, hurtHero, hurtMob, killMob, makeMob, pickTarget, sfx, shake } from './entities.js';
 import { canStand, moveEnt, roomIndexOf, walkTo } from './world.js';
 
 export function nearestHeroTo(x, y, preferNonTank) {
@@ -18,6 +18,7 @@ export function randomHero(nonTank, except) {
 
 export function mobTick(m, dt) {
   m.flash -= dt; m.lunge -= dt; m.moving -= dt;
+  m.exposed = Math.max(0, (m.exposed || 0) - dt);
   if (!m.alive) { m.deadT += dt; return; }
   if (m.bleed && m.bleed.left > 0) {
     m.bleed.left -= dt;
@@ -94,8 +95,11 @@ function meleeTick(m, dt) {
     m.wind -= dt; m.face = angTo(m, t); m.flip = Math.cos(m.face) < 0;
     if (m.wind <= 0) {
       if (d <= reach + 20) {
-        hurtHero(t, M.dmg * m.dmgMul * (m.wild ? 1.4 : 1), m, { heavy: M.heavy, block: true, perfectable: false });
-        fx({ type: 'slash', x: t.x, y: t.y - 36, a: angTo(m, t), r: M.big ? 58 : 38, dur: 0.16, col: '#F0E8D2' });
+        const crush = !!(M.boss || M.big) && t.role !== 'tank';
+        const mult = (m.wild ? 1.4 : 1) * (crush ? 1.85 : 1);
+        hurtHero(t, M.dmg * m.dmgMul * mult, m, { heavy: M.heavy || crush, block: true, perfectable: false, crush });
+        if (crush && t.isPlayer) call('Crushing blow! Let the tank hold him!', 'alarm', 1.6);
+        fx({ type: 'slash', x: t.x, y: t.y - 36, a: angTo(m, t), r: M.big ? 58 : 38, dur: 0.16, col: crush ? '#FF6B5E' : '#F0E8D2' });
         sfx(M.big ? 'thud' : 'hit', 0.7);
       }
       m.lunge = 0.18; m.lungeA = angTo(m, t);
@@ -200,7 +204,7 @@ function wispTick(m, dt) {
   m.x += Math.cos(a) * m.speed * dt; m.y += Math.sin(a) * m.speed * dt;
   m.flip = Math.cos(a) < 0; m.moving = 0.1; m.walkT += dt * 4;
   if (dist(m, t) < m.r + t.r + 6) {
-    const got = hurtHero(t, 115, m, { magic: true, block: false, hazard: true });
+    const got = hurtHero(t, 145, m, { magic: true, block: false, hazard: true });
     if (got > 0) { t.st.haunt = 3; if (t.isPlayer) fxText(t.x, t.y - 110, 'Haunted', '#C8F5E8', 16); }
     killMob(m, null);
   }
@@ -211,7 +215,7 @@ function wispTick(m, dt) {
    so the boss turns on someone else until he mashes out (or a mate breaks him out) and Slams it back. */
 export function makeCage(h, boss) {
   const c = makeMob('rattler', h.x, h.y, null);
-  Object.assign(c, { cage: true, hp: 10, maxHp: 10, name: 'Bone cage', r: 30, hero: h, life: 6, state: 'fight', ghostProps: true, born: S.t });
+  Object.assign(c, { cage: true, hp: 10, maxHp: 10, name: 'Bone cage', r: 30, hero: h, boss, life: 6, state: 'fight', ghostProps: true, born: S.t });
   h.st.caged = c; h.cast = null; h.blocking = false; h.dodgeT = 0; h.dash = null;
   for (const m of S.mobs) {
     if (m.threat.has(h.id)) m.threat.set(h.id, m.threat.get(h.id) * 0.5);
@@ -251,8 +255,14 @@ export function breakCage(c, freed, by) {
   if (freed) {
     fxText(c.x, c.y - 130, 'Free!', '#9BE15D', 24); sfx('cagebreak'); S.stats.cages++;
     const self = !!(c.hero && by === c.hero);
-    emit({ type: 'cage.broken', player: !!(by && by.isPlayer), self, secs: S.t - (c.born || S.t) });
+    const secs = S.t - (c.born || S.t);
+    emit({ type: 'cage.broken', player: !!(by && by.isPlayer), self, secs });
     const h = c.hero;
+    const boss = c.boss || S.boss;
+    if (secs < 2.0 && boss && boss.alive) {
+      exposeMob(boss, 2.5, 'Shattered! Exposed!');
+      if (h && h.cd) h.cd.a2 = 0;
+    }
     if (h && h.isPlayer && h.alive && S.boss && S.boss.alive && S.boss.target !== h) call('Out! Now Slam him back', 'alarm', 1.6);
   }
 }
@@ -283,6 +293,10 @@ export function cutChain(ch, byWho) {
     fxText(mx, my - 20, 'Cut!', '#F2C230', 26);
     dots(mx, my, '#C9D2DC', 10, 200);
     sfx('cut'); S.stats.cuts++;
+    if (ch.boss && ch.boss.alive) {
+      hurtMob(ch.boss, 160, byWho.kind === 'hero' ? byWho : null, { raw: true, col: '#FFE08A' });
+      exposeMob(ch.boss, 3.0, 'Chain Snapped! Exposed!');
+    }
     emit({ type: 'chain.cut', player: !!byWho.isPlayer });
   }
 }

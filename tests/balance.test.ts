@@ -23,11 +23,23 @@ test('balance: a Common party clears in about four minutes without wiping', () =
   }
 });
 
-test('balance: full Epic is clearly faster than Common', () => {
+test('balance: full Epic is clearly faster than Common, and full BiS melts the dungeon in about half the time', () => {
   const common = simRun({ role: 'dps', seed: 404 });
   const epic = simRun({ role: 'dps', seed: 404, loadouts: gear(3) });
   assert.equal(epic.over, 'victory');
   assert.ok(epic.clear! < common.clear! * 0.85, `Common ${common.clear}s, Epic ${epic.clear}s`);
+
+  const bis = simRun({
+    role: 'dps',
+    seed: 404,
+    loadouts: {
+      tank: { power: 1.96, traits: ['wide', 'ringing', 'headsman'], bonuses: ['barrowguard2', 'barrowguard3', 'bg_helm', 'bg_shoulders', 'bg_chest'], unique: 'gravedigger', weaponRar: 3 },
+      healer: { power: 1.96, traits: ['sunflare', 'quickhands', 'kindle'], bonuses: ['candlewake2', 'candlewake3', 'cw_helm', 'cw_shoulders', 'cw_chest'], unique: 'longnight', weaponRar: 3 },
+      dps: { power: 1.96, traits: ['shatterlance', 'splinter', 'quickfrost'], bonuses: ['rimebone2', 'rimebone3', 'rb_helm', 'rb_shoulders', 'rb_chest'], unique: 'gravefrost', weaponRar: 3 },
+    },
+  });
+  assert.equal(bis.over, 'victory');
+  assert.ok(bis.clear! < common.clear! * 0.62, `BiS (${bis.clear}s) should melt Barrow Crypt much faster than Common (${common.clear}s)`);
 });
 
 test('balance: the DPS alone does not get past Sir Rattlebones', () => {
@@ -38,9 +50,9 @@ test('balance: the DPS alone does not get past Sir Rattlebones', () => {
 
 test('balance: every trait, set bonus and unique effect runs in a real clear', () => {
   const all = {
-    tank: { power: 1.2, traits: ['wide', 'ringing', 'headsman'], bonuses: ['barrowguard2'], unique: 'gravedigger', weaponRar: 3 },
-    healer: { power: 1.2, traits: ['sunflare', 'quickhands', 'kindle'], bonuses: ['candlewake2'], unique: 'longnight', weaponRar: 3 },
-    dps: { power: 1.2, traits: ['shatterlance', 'splinter', 'quickfrost'], bonuses: ['rimebone2'], unique: 'gravefrost', weaponRar: 3 },
+    tank: { power: 1.2, traits: ['wide', 'ringing', 'headsman'], bonuses: ['barrowguard2', 'barrowguard3'], unique: 'gravedigger', weaponRar: 3 },
+    healer: { power: 1.2, traits: ['sunflare', 'quickhands', 'kindle'], bonuses: ['candlewake2', 'candlewake3'], unique: 'longnight', weaponRar: 3 },
+    dps: { power: 1.2, traits: ['shatterlance', 'splinter', 'quickfrost'], bonuses: ['rimebone2', 'rimebone3'], unique: 'gravefrost', weaponRar: 3 },
   };
   const r = simRun({ role: 'tank', seed: 606, loadouts: all });
   assert.equal(r.over, 'victory');
@@ -92,13 +104,12 @@ test('balance: rogue melts single-target bosses faster than mage and tank, clear
   assert.equal(soloRogue.over, 'lost');
   assert.ok(!soloRogue.packs.some((p) => p.id === 'K' && p.cleared != null));
 
-  // 4. All Rogue traits, Shadeveil 2pc, and The Cryptfangs unique run in a real clear
+  // 4. All Rogue traits, Shadeveil 2pc/3pc, and The Cryptfangs unique run in a real clear
   const rogueKit = {
     ...gear(2),
-    dps: { cls: 'rogue', sprite: 'rogue', power: 1.2, traits: ['twinvenom', 'arterial', 'nightstalker'], bonuses: ['shadeveil2', 'sv_helm', 'sv_shoulders', 'sv_chest'], unique: 'cryptfangs', weaponRar: 3 },
+    dps: { cls: 'rogue', sprite: 'rogue', power: 1.2, traits: ['twinvenom', 'arterial', 'nightstalker'], bonuses: ['shadeveil2', 'shadeveil3', 'sv_helm', 'sv_shoulders', 'sv_chest'], unique: 'cryptfangs', weaponRar: 3 },
   };
   const kitRun = simRun({ role: 'dps', seed: 606, loadouts: rogueKit });
   assert.equal(kitRun.over, 'victory');
   assert.equal(kitRun.wipes, 0);
 });
-
