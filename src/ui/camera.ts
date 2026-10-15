@@ -1,13 +1,16 @@
 /**
- * A camera over a big SVG drawing, like a map: drag to look around, pinch or scroll to zoom, and
- * smooth flights to a point. It only moves the view (the SVG's viewBox). What a tap does is up to the
- * scene, which asks `moved()` first so the click that ends a drag or a pinch never counts as a tap.
- * Pointers that start on the scene's buttons (anything inside `.no-cam`) are left alone.
+ * A camera over a big drawing, like a map: drag to look around, pinch or scroll to zoom, and smooth
+ * flights to a point. It never redraws the drawing to move: the drawing sits in a `layer` the browser moves
+ * and scales as a picture, and inside it a `world` holds everything in world units at the zoom it was last
+ * drawn sharp at (`base`). When the camera comes to rest at a new zoom, it rebases: the world is drawn
+ * sharp again at that zoom and the layer goes back to scale 1. What a tap does is up to the scene, which
+ * asks `moved()` first so the click that ends a drag or a pinch never counts as a tap. Pointers that start
+ * on the scene's buttons (anything inside `.no-cam`) are left alone.
  */
 import { reducedMotion } from './dom';
 
 export interface CameraOpts {
-  /** the furthest the view may go: left, top, right, bottom in world units */
+  /** the furthest the view may go: left, top, right, bottom in world units; the world's top left is the first two */
   bounds: [number, number, number, number];
   /** called after the view changes, at most once a frame */
   onChange: () => void;
@@ -17,6 +20,8 @@ type Pt = { x: number; y: number };
 const clamp = (v: number, a: number, b: number): number => Math.max(a, Math.min(b, v));
 const dist = (a: Pt, b: Pt): number => Math.hypot(a.x - b.x, a.y - b.y);
 const mid = (a: Pt, b: Pt): Pt => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+/** how long the camera must be still before the world is drawn sharp again */
+const REST_MS = 150;
 
 export class Camera {
   /** the world point at the middle of the screen, and the zoom in screen pixels per world unit */
@@ -29,9 +34,13 @@ export class Camera {
   private pinch: { d: number; z: number; m: Pt } | null = null;
   private quiet = 0;
   private flight = 0;
+  private flying = false;
   private raf = 0;
+  /** the zoom the world was last drawn at, and the timer that redraws it when the camera rests */
+  private base = 0;
+  private rest = 0;
 
-  constructor(private root: HTMLElement, private svg: () => SVGSVGElement | null, private o: CameraOpts) {
+  constructor(private root: HTMLElement, private layer: HTMLElement, private world: HTMLElement, private o: CameraOpts) {
     this.bind();
   }
 
@@ -42,9 +51,10 @@ export class Camera {
     this.h = Math.max(1, r.height);
   }
   set(cx: number, cy: number, z: number): void {
-    this.flight++;
+    this.stop();
     this.cx = cx; this.cy = cy; this.z = z;
     this.clamp();
+    if (!this.pts.size) this.rebase();
     this.write();
   }
   toWorld(px: number, py: number): [number, number] { return [this.cx + (px - this.w / 2) / this.z, this.cy + (py - this.h / 2) / this.z]; }
@@ -69,10 +79,12 @@ export class Camera {
   }
   /** A smooth move to a point and a zoom; with reduced motion, a jump. */
   flyTo(cx: number, cy: number, z: number, ms = 480): void {
-    const id = ++this.flight;
     const from = { cx: this.cx, cy: this.cy, z: this.z };
     const to = this.clamped(cx, cy, clamp(z, this.zMin, this.zMax));
-    if (reducedMotion()) { this.set(to.cx, to.cy, to.z); return; }
+    if (reducedMotion() || (Math.hypot(to.cx - from.cx, to.cy - from.cy) < 1 && Math.abs(to.z / from.z - 1) < 0.002)) { this.set(to.cx, to.cy, to.z); return; }
+    this.stop();
+    const id = this.flight;
+    this.flying = true;
     const t0 = performance.now();
     const step = (t: number) => {
       if (id !== this.flight) return;
@@ -81,12 +93,20 @@ export class Camera {
       this.z = from.z * Math.pow(to.z / from.z, e);
       this.cx = from.cx + (to.cx - from.cx) * e;
       this.cy = from.cy + (to.cy - from.cy) * e;
+      if (k < 1) { this.write(); requestAnimationFrame(step); return; }
+      // landed: sharp straight away
+      this.flying = false;
+      this.rebase();
       this.write();
-      if (k < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
   }
 
+  /** cancel any flight */
+  private stop(): void {
+    this.flight++;
+    this.flying = false;
+  }
   /** where the view would be after clamping, without moving it */
   private clamped(cx: number, cy: number, z: number): { cx: number; cy: number; z: number } {
     const [x0, y0, x1, y1] = this.o.bounds;
@@ -102,14 +122,30 @@ export class Camera {
     const c = this.clamped(this.cx, this.cy, this.z);
     this.cx = c.cx; this.cy = c.cy;
   }
-  /** write the view now */
-  private write(): void {
-    const s = this.svg();
-    const vw = this.w / this.z, vh = this.h / this.z;
-    if (s) s.setAttribute('viewBox', `${(this.cx - vw / 2).toFixed(1)} ${(this.cy - vh / 2).toFixed(1)} ${vw.toFixed(1)} ${vh.toFixed(1)}`);
-    this.o.onChange();
+  /** draw the world sharp at the zoom the camera is at now (a repaint, so only when it has changed) */
+  private rebase(): void {
+    if (this.base && Math.abs(this.z / this.base - 1) < 0.002) return;
+    this.base = this.z;
+    this.world.style.transform = `scale(${this.base})`;
   }
-  /** write the view on the next frame: many pointer moves, one redraw */
+  /** after the camera has been still a moment, with no finger down and no flight, draw it sharp */
+  private settle(): void {
+    if (this.pts.size || this.flying) return;
+    const was = this.base;
+    this.rebase();
+    if (this.base !== was) this.write();
+  }
+  /** write the view now: move and scale the layer, in whole device pixels so it stays crisp at rest */
+  private write(): void {
+    if (!this.base) this.rebase();
+    const [x0, y0] = this.o.bounds;
+    const dpr = window.devicePixelRatio || 1, snap = (v: number): number => Math.round(v * dpr) / dpr;
+    this.layer.style.transform = `translate(${snap(this.w / 2 - (this.cx - x0) * this.z)}px, ${snap(this.h / 2 - (this.cy - y0) * this.z)}px) scale(${(this.z / this.base).toFixed(5)})`;
+    this.o.onChange();
+    clearTimeout(this.rest);
+    this.rest = window.setTimeout(() => this.settle(), REST_MS);
+  }
+  /** write the view on the next frame: many pointer moves, one move of the layer */
   private apply(): void {
     if (this.raf) return;
     this.raf = requestAnimationFrame(() => { this.raf = 0; this.write(); });
@@ -122,7 +158,7 @@ export class Camera {
     el.addEventListener('pointerdown', (e) => {
       if (skip(e) || (e.pointerType === 'mouse' && e.button !== 0)) return;
       this.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      this.flight++;
+      this.stop();
       if (this.pts.size === 1) this.drag = { x: e.clientX, y: e.clientY, moved: false };
       if (this.pts.size === 2) {
         const [a, b] = [...this.pts.values()];
@@ -157,14 +193,19 @@ export class Camera {
       if (!this.pts.delete(e.pointerId)) return;
       if (this.pts.size < 2) this.pinch = null;
       if (this.pts.size === 1) { const [a] = [...this.pts.values()]; this.drag = { x: a.x, y: a.y, moved: true }; }
-      if (this.pts.size === 0) { this.drag = null; el.classList.remove('dragging'); }
+      if (this.pts.size === 0) {
+        this.drag = null;
+        el.classList.remove('dragging');
+        clearTimeout(this.rest);
+        this.rest = window.setTimeout(() => this.settle(), REST_MS);
+      }
     };
     el.addEventListener('pointerup', end);
     el.addEventListener('pointercancel', end);
     el.addEventListener('wheel', (e) => {
       if (skip(e)) return;
       e.preventDefault();
-      this.flight++;
+      this.stop();
       const at = local({ x: e.clientX, y: e.clientY });
       // a trackpad pinch arrives as a wheel with ctrl held, in small steps
       this.zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? 0.012 : 0.0016)), at.x, at.y);

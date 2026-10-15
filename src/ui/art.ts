@@ -71,6 +71,21 @@ export function placeSprite(name: string, x: number, y: number, o: { k?: number;
   const body = `<svg x="${(x + vx * k).toFixed(1)}" y="${(y + vy * k).toFixed(1)}" width="${(w * k).toFixed(1)}" height="${(h * k).toFixed(1)}" viewBox="${vx} ${vy} ${w} ${h}" overflow="visible">${o.flip ? `<g transform="scale(-1 1) translate(${-(2 * vx + w)} 0)">${innerOf(name)}</g>` : innerOf(name)}</svg>`;
   return `<g class="${o.cls || ''}" ${o.attrs || ''}>${body}</g>`;
 }
+/** Something in the house that moves (your hero breathing, a pet bobbing, the fire): drawn as its own small
+ *  picture, so the browser moves it without redrawing the whole house. Box and body are in world units. */
+export interface Bit { box: [number, number, number, number]; body: string; cls: string }
+/** A sprite as a bit, with its ground point at (x, y). */
+export function spriteBit(name: string, x: number, y: number, o: { k?: number; flip?: boolean; cls: string }): Bit | null {
+  const s = ART[name];
+  if (!s) return null;
+  const k = o.k ?? 1;
+  const [vx, vy, w, h] = s.vb;
+  return { box: [x + vx * k, y + vy * k, w * k, h * k], body: placeSprite(name, x, y, { k, flip: o.flip }), cls: o.cls };
+}
+/** Bits as markup, placed in a layer whose top left is the world point (x0, y0). */
+export function bitsHtml(bits: Bit[], x0: number, y0: number): string {
+  return bits.map(({ box: [x, y, w, h], body, cls }) => `<svg class="bit ${cls}" viewBox="${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" overflow="visible" style="left: ${(x - x0).toFixed(1)}px; top: ${(y - y0).toFixed(1)}px">${body}</svg>`).join('');
+}
 export const portrait = (role: RoleId): string => PORTRAIT[role] || '';
 
 /** A hero riding a mount, side on, for a parent SVG with the mount's feet at (x, y). The hero sits
