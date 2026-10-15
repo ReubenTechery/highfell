@@ -23,7 +23,7 @@ it has to be worth it: big moments, real loot, dramatic power creep that melts d
 **The shape is fixed: hearth → dungeon + collection log → heroic → next dungeon.** The hearth is home, where you show off what you found and gear up your Warband.
 Dungeons and their collection logs are the core loop of the whole game: four-minute runs you grind 100+ times to complete logs, feel steep power creep as your Warband gears up and melts packs, unlock Heroics, and move to the next dungeon. Raids are a later bonus activity, not the core loop. Between dungeons you can ride out to the Vale for a few cosy minutes (built as a test slice). Nothing else gets added to that shape without the owner saying so.
 
-**Social & Warband:** Normal dungeons can be played either with a group of friends OR solo alongside your own Warband heroes from your bunk room (wearing their real gear, sets, and weapons). Heroic dungeons are Group Finder / friends only once online multiplayer is live (playable with your Warband while offline). Teamwork between roles is the heart of the combat.
+**Social & Warband:** Normal dungeons can be played with your own Warband heroes from your bunk room (wearing their real gear, sets, and weapons) OR with a group if you want. Heroic dungeons are **Friends & Party Finder ONLY** (Warband companions are disabled on Heroic; solo Warband entry is blocked for loot on Heroic while Practice / Dev "Everything open" remains playable for testing). Teamwork between roles is the heart of the combat.
 
 ## Pillars: if a change fights one of these, the change is wrong
 
@@ -52,7 +52,7 @@ Dungeons and their collection logs are the core loop of the whole game: four-min
 | Steep power curve (`1.00` Common → `1.72` plain Epic → `1.96` full BiS) and all 4 Barrow 3-piece set bonuses active (`ready: true`) | Grinding 100+ runs feels awesome when your gear and 3-piece summons melt the dungeon in half the time |
 | Duplicates become 3 Marks; Marks swap weapon traits (unlocked at Rare, 5 Marks each) | Nothing that drops is ever wasted; weapon traits stay active alongside Unique weapons |
 | Heroes: race and class are for keeps, up to 6 alts | Alts, like WoW; the collection, kill counts and Marks are shared |
-| Your own Warband heroes fill the other two party seats on Normal; Heroic is Group Finder / friends only once online play is live | Gearing your alts directly speeds up your own Normal runs, while Heroics stay the true multiplayer pinnacle |
+| Normal dungeons allow Warband & Group; Heroic dungeons are Friends & Party Finder ONLY (Warband disabled) | Gearing your alts speeds up your Normal runs, while Heroics stay strictly Friends / Party Finder |
 | Shared gear floor per role, capped at Rare; Epic is earned on the hero | Alts never start cold, mains still mean something |
 | Gear is never put on for you: new pieces wait until you put them on in Gear | Putting it on yourself is the dopamine |
 | The tank earns threat: his hits make only a third more threat, Slam taunts and drags in, Charge grabs one; Bosses/Brutes deal 1.85× Crushing Blows to non-tanks | Tanking has a real job; a Rogue or Mage cannot facetank bosses |
@@ -116,7 +116,7 @@ The full systems design (abilities, sets, drop tables, achievements, balance rul
   bosses, the same tables with gilded ids at the same rates (gilded pieces wear exactly like the plain ones),
   its own kill counts, clears and log. It pays the normal dungeon's Marks and counts for its achievements. It
   opens after `HEROIC_AFTER` (10) clears of the normal one; the testing switch opens it.
-- **Groups & Warband (`src/meta/party.ts`):** a run has three seats, one per role. You take your hero's seat; your own Warband heroes from your bunk room (`heroesFor(p, role)[0]`) automatically fill the other two seats wearing their real equipped gear, sets, traits, unique weapons, and sprites (falling back to bots Brannoc, Maren, or Ivy only for roles you haven't created a hero for yet). Normal dungeons can be played with your Warband or a group; Heroic dungeons will be Group Finder / friends only once online play is live.
+- **Groups & Warband (`src/meta/party.ts`):** a run has three seats, one per role. On **Normal**, you take your hero's seat and your own Warband heroes from your bunk room (`seats(p, false)`) automatically fill the other two seats wearing their real equipped gear, sets, traits, unique weapons, and sprites (falling back to bots Brannoc, Maren, or Ivy only for roles you haven't created a hero for yet), or you can group with friends. **Heroic** dungeons are **Friends & Party Finder ONLY** (`seats(p, true)` disables Warband companions, and solo Warband entry is blocked on Heroic for loot while Practice / Dev "Everything open" remains playable for testing).
 - **Threat & Crushing Blows:** every hit adds threat (the tank's 1.3 times, Slam's double), heals add a little on everything in the fight,
   and a mob switches once someone beats its target by a tenth. Slam taunts and drags mobs in; Charge makes its
   target turn. Mobs off the tank for 3 seconds go wild, and Bosses or Brutes landing melee hits on a non-tank deal `1.85×` **Crushing Blows**. A caged tank can't be targeted and loses half his threat.

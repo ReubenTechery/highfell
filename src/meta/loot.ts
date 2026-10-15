@@ -190,6 +190,7 @@ export function resolveClear(p: Profile, dg: DungeonInfo, h: Hero, time: number,
   const spare = spareDrop(p, roleOf(h), rng);
   if (spare) out.drops.push(spare);
   dungeonRecord(p, marksOf(dg)).marks += out.marks;
+  if (p.vale?.satchel) p.vale.satchel.glowcap = (p.vale.satchel.glowcap || 0) + (rec.clears % 2 === 1 ? 1 : 2);
   return out;
 }
 

@@ -224,14 +224,14 @@ export function newHero(p: Profile, o: { name: string; race: RaceId; cls: ClassI
   return h;
 }
 
-export const REROLL_COST = 5;
-/** Spend marks to set the trait on a Rare+ regular weapon to the one you pick (the one in the bag, if that is the best one). */
+export const REROLL_COST = 0;
+/** Set the trait on a Rare+ regular weapon to the one you pick (the one in the bag, if that is the best one). Free once unlocked at Rare. */
 export function buyTrait(p: Profile, h: Hero, dungeon: string, trait: string): boolean {
   const gKey = gearKey({ role: roleOf(h), cls: h.cls });
   const reg = bestRegular(h, 'weapon');
   const rec = p.dungeons[dungeon];
-  if (reg.rar < 2 || !rec || rec.marks < REROLL_COST || reg.trait === trait || !TRAITS[gKey].some((t) => t.id === trait)) return false;
-  rec.marks -= REROLL_COST;
+  if (reg.rar < 2 || reg.trait === trait || !TRAITS[gKey].some((t) => t.id === trait)) return false;
+  if (rec && rec.marks >= REROLL_COST) rec.marks -= REROLL_COST;
   reg.trait = trait;
   return true;
 }

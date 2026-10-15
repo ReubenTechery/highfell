@@ -188,7 +188,7 @@ export class Reveal {
         const dp = Math.round((newS.power - nowS.power) * 10) / 10, dh = Math.round((newS.health - nowS.health) * 10) / 10;
         if (dp > 0) gains = `<span class="lc-gains"><b class="up">${GLYPH.rise}+${dp}% ${esc(ROLE_STAT[it.role].short)}</b><b class="up">${GLYPH.rise}+${dh}% hp</b></span>`;
       }
-      note = d.dupe ? `Duplicate: +${d.marks} ${esc(BARROW.marksName)}` : c ? (c.kind === 'pet' ? 'Waiting by the fire' : c.kind === 'mount' ? 'In the stall at home' : c.kind === 'cosmetic' ? 'A new look' : 'On the mantel') : it?.setId ? `${esc(it.name.split(' ')[0])} set piece · ilvl ${itemShare(it).ilvl}` : it?.effectDesc ? esc(it.effectDesc) : '';
+      note = d.dupe ? `Duplicate · Seen ${fmtN(this.app.p.collection[d.id]?.n || 2)}× in log` : c ? (c.kind === 'pet' ? 'Waiting by the fire' : c.kind === 'mount' ? 'In the stall at home' : c.kind === 'cosmetic' ? 'A new look' : 'On the mantel') : it?.setId ? `${esc(it.name.split(' ')[0])} set piece · ilvl ${itemShare(it).ilvl}` : it?.effectDesc ? esc(it.effectDesc) : '';
     }
     const stamp = intro ? '<span class="stamp ex">Example</span>' : table ? (d.dupe ? '<span class="stamp dupe">Dupe</span>' : '<span class="stamp">New</span>') : d.offerTrait ? '' : '<span class="stamp" style="background: var(--green)">Up</span>';
     return `<button type="button" class="lc ${cls}" data-act="flip" data-i="${i}" aria-label="Card ${i + 1}">
@@ -235,8 +235,8 @@ export class Reveal {
     const dg = DUNGEONS[loot.dungeon] || BARROW;
     const got = dg.collection.filter((id) => p.collection[id]).length;
     const newSlots = extra.intro ? 0 : loot.drops.filter((d) => d.source === 'table' && d.isNew).length;
-    // a heroic clear pays the Barrow's own Marks
-    const rec = p.dungeons[dg.heroicOf || dg.id];
+    const rec = p.dungeons[dg.id];
+    const spores = (rec ? rec.clears : 1) % 2 === 1 ? 1 : 2;
     const kc = Object.entries(loot.kc);
     const h = heroById(p, extra.hero);
     const sum = $('rv-sum', this.root);
@@ -245,7 +245,7 @@ export class Reveal {
       sum.innerHTML = `<h3>This run</h3><div class="rv-grid">
           <div class="kv"><span>Time</span><b>${fmtT(loot.time)}</b><small>${loot.newPb ? 'New best!' : loot.firstClear ? 'First clear!' : `Best ${fmtT(loot.pb)}`}</small></div>
           ${kc.map(([b, n]) => `<div class="kv"><span>${esc(dg.bosses.find((x) => x.id === b)?.name || b)}</span><b>KC ${fmtN(n)}</b></div>`).join('')}
-          <div class="kv"><span>${esc(dg.marksName)}</span><b>+${loot.marks}</b><small>${fmtN(rec ? rec.marks : 0)} total</small></div>
+          <div class="kv"><span>Cauldron spores</span><b>+${spores}</b><small>${fmtN(p.vale.satchel.glowcap || 0)} Glowcaps</small></div>
           <div class="kv"><span>Collection log</span><b>${got} / ${dg.collection.length}</b><small>${newSlots ? `+${newSlots} new` : ''}</small></div>
           <div class="kv"><span>Party deaths</span><b>${extra.deaths}</b></div>
         </div>`;

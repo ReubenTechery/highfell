@@ -12,6 +12,10 @@ import { abCd, onPerfectBlock, useAbility } from '../src/dungeon/heroes.js';
 import { breakCage, cutChain, makeCage, makeChain, mashCage, spawnMob } from '../src/dungeon/mobs.js';
 import { HERO_FIT, heroFit } from '../src/dungeon/render.js';
 import { BARROW_ENGINE } from '../src/content/barrow/engine';
+import { TEMPLATE_ENGINE } from '../src/content/_template/engine';
+import { TEMPLATE_DUNGEON } from '../src/content/_template';
+import { TEMPLATE_HEROIC } from '../src/content/_template/heroic';
+import { DUNGEON_THEMES } from '../src/dungeon/template.js';
 import { allHeroArt } from '../src/content/folk';
 import { heroSprite } from '../src/ui/art';
 import SPRITES from '../art/sprites.json';
@@ -381,3 +385,19 @@ test('barrow revamp: Crushing Blows on non-tanks, hazard Ward bleed-through, Exp
   assert.equal(s.seal.cleared, true, 'Standing on all 3 role rune pads shatters the Crypt Seal');
   assert.ok(tank.st.surge > 10, 'Crypt Seal grants Crypt Surge to the party');
 });
+
+test('dungeon template: starter _template dungeon builds map, packs, seal, themes, heroic gilded log, and runs in engine', () => {
+  assert.ok(DUNGEON_THEMES.barrow && DUNGEON_THEMES.thimblebriar && DUNGEON_THEMES.moonmere);
+  assert.equal(TEMPLATE_DUNGEON.collection.length, 20);
+  assert.equal(TEMPLATE_HEROIC.collection.length, 20);
+  assert.ok(TEMPLATE_HEROIC.collection.every((id: string) => id.endsWith('.gilded')));
+  newGame(TEMPLATE_ENGINE, { role: 'tank', seed: 123, start: 'entrance', auto: true, quiet: true, noEvents: true, loadouts: {} });
+  const s = S as any;
+  assert.equal(s.dg.id, 'template');
+  assert.equal(s.dg.theme.id, 'thimblebriar');
+  assert.equal(s.packs.length, 7);
+  assert.ok(s.seal && s.seal.pads.length === 3);
+  step(2.0);
+  assert.ok(s.heroes.every((h: any) => h.alive), 'template dungeon ticks cleanly with bots');
+});
+

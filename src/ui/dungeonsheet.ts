@@ -8,13 +8,12 @@
  * last; change to another or make one) and your brew, then loot or practice. Your own Warband heroes from
  * your bunk room fill the other seats in their own gear (or bots stand in until you make them).
  */
-import { COLLECTIBLES, DUNGEONS, TITLES, heroicVersion } from '../content';
+import { COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, TITLES, heroicVersion } from '../content';
 import { MAX_HEROES, RACES, type RaceId } from '../content/folk';
 import { LOOKS } from '../content/house';
 import { ORDER, ROLES } from '../content/roles';
 import type { AchievementDef, DropDef, DungeonInfo, RoleId } from '../content/types';
 import { RECIPES, RECIPE_ORDER } from '../content/vale';
-import { STARTS } from '../content/barrow/script.js';
 import { loadoutFor } from '../meta/gear';
 import { HEROIC_AFTER, heroicOpen, heroicProgress, lootFor } from '../meta/loot';
 import { logAchievement, logProgress } from '../meta/logs';
@@ -87,7 +86,7 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
       <section class="dgx-mode">
         ${seg('mode', pick.mode, [['loot', 'For loot'], ['practice', 'Practice']])}
         ${practice ? `<div class="box">
-            <div class="seg-row"><b>Start at</b> ${seg('start', pick.start, STARTS.map((s: { id: string; name: string }) => [s.id, s.name] as [string, string]))}</div>
+            <div class="seg-row"><b>Start at</b> ${seg('start', pick.start, (DUNGEON_ENGINES[base.id]?.starts || []).map((s: { id: string; name: string }) => [s.id, s.name] as [string, string]))}</div>
             <div class="seg-row"><b>Gear</b> ${seg('tgear', String(pick.gear), [['mine', 'Mine'], ['2', 'Try Rare'], ['3', 'Try Epic']])}</div>
             <p class="fine">No loot, kill counts or achievements.</p>
           </div>` : ''}

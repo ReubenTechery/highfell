@@ -6,9 +6,8 @@
 import { bus, type GameEvent } from '../core/events';
 import { makeRng } from '../core/rng';
 import { dist, clamp } from '../core/math';
-import { COLLECTIBLES, SETS } from '../content';
+import { COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, SETS, heroicVersion } from '../content';
 import { BARROW } from '../content/barrow';
-import { BARROW_HEROIC } from '../content/barrow/heroic';
 import type { DungeonInfo } from '../content/types';
 import { BARROW_ENGINE } from '../content/barrow/engine';
 import { AB, MEND, ROLES, abKey } from '../content/roles';
@@ -36,9 +35,9 @@ import { IN, aimPoint, bindInput, mashCage, playerIntent, resetInput, type Input
 import { SFX } from './sound';
 
 /** A run plays the hero you are playing. `role` is for testing: it picks one of your heroes in that seat,
- *  and if you have none the run is practice in plain gear. `heroic` plays the heroic Barrow: harder, its
+ *  and if you have none the run is practice in plain gear. `heroic` plays the heroic version: harder, its
  *  own kill counts and its gilded drops. */
-export interface RunOpts { start: string; testRar: Rar | null; role?: RoleId; heroic?: boolean }
+export interface RunOpts { start: string; testRar: Rar | null; role?: RoleId; heroic?: boolean; dungeon?: string }
 const STEP = 1 / 60;
 const KEY: Record<string, string> = { a1: '1', a2: '2', a3: '3', a4: '4', dodge: 'Space' };
 const ROLE_ICON: Record<string, string> = { tank: 'shield', healer: 'mend', dps: 'blizzard' };
@@ -275,7 +274,10 @@ export class RunScene implements InputUI {
     const looks = Object.keys(p.collection).filter((id) => COLLECTIBLES[id] && (COLLECTIBLES[id].kind === 'cosmetic') && !p.settings.looksOff.includes(id));
     const wornSet = !!h && Object.values(worn(p, h)).some((w) => w.def.setId && SETS[w.def.setId]);
     const ghostly = intro || (looks.includes('dye.ghostly') && wornSet && !test);
-    const dg = this.dg = o.heroic ? BARROW_HEROIC : BARROW;
+    const baseId = o.dungeon || 'barrow';
+    const baseDg = DUNGEONS[baseId] || BARROW;
+    const dg = this.dg = o.heroic ? (heroicVersion(baseDg.id) || baseDg) : baseDg;
+    const engine = DUNGEON_ENGINES[baseDg.id] || BARROW_ENGINE;
     const gilded = looks.includes('dye.ghostly.gilded') && wornSet && !test;
     if (!this.practice) { countRunStart(p, dg); app.store.save(); }
     if (!this.bound) { bindInput($('touch'), this); this.bound = true; }
@@ -289,7 +291,7 @@ export class RunScene implements InputUI {
       onChest: () => this.finish(),
       playerIntent,
     });
-    newGame(BARROW_ENGINE, { role, loadouts, start: o.start, seed: (Math.random() * 0x7fffffff) | 1, looks, ghostly, gilded, testGear: test, heroic: !!o.heroic });
+    newGame(engine, { role, loadouts, start: o.start, seed: (Math.random() * 0x7fffffff) | 1, looks, ghostly, gilded, testGear: test, heroic: !!o.heroic });
     S.startedAt = S.t;
     // a heroic run counts for the Barrow's own achievements
     this.ach = this.practice ? null : new Achiever(p, { dungeon: dg.heroicOf || dg.id, role, practice: false, testGear: false });

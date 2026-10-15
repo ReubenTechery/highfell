@@ -14,7 +14,7 @@ import { INGREDIENTS, INGREDIENT_ORDER, PLACES, RECIPES, RECIPE_ORDER, SKILLS } 
 import { rankProgress, recipeUnlocked } from '../meta/vale';
 import { activeHero, freshProfile, heroById, nameProblem, removeHero, renameHero, roleOf, setActive, type Hero } from '../meta/profile';
 import { pickRole } from '../meta/party';
-import { REROLL_COST, bestRegular, buyTrait, effectsOf, equip, healthPct, itemShare, loadoutFor, ownedFor, powerPct, putOn, seenSlot, waitingFor, worn, type Waiting, type Worn } from '../meta/gear';
+import { bestRegular, buyTrait, effectsOf, equip, healthPct, itemShare, loadoutFor, ownedFor, powerPct, putOn, seenSlot, waitingFor, worn, type Waiting, type Worn } from '../meta/gear';
 import { HEARTH_SPOTS, place, setLook, spotById, spotOf } from '../meta/hearth';
 import type { App } from './app';
 import { actions, cap, esc, fmtN, fmtRate, GLYPH } from './dom';
@@ -337,13 +337,12 @@ export class Sheets {
         <div class="setline ${n >= 3 ? 'on' : ''} ${set.bonus3.ready ? '' : 'later'}"><i>3</i><span>${esc(set.bonus3.desc)}${set.bonus3.ready ? '' : ' <em>(coming in a later update)</em>'}</span></div>
         <p class="fine">Epic set pieces drop from the Gravekeeper, 1 in 35 each. ${esc(set.look)}.</p></div>`;
     }).join('');
-    // weapon trait (unlocked at Rare)
-    const marks = p.dungeons.barrow?.marks || 0;
+    // weapon trait (unlocked at Rare, free to toggle)
     const regW = bestRegular(h, 'weapon');
-    const traitBox = regW.rar >= 2 ? `<div class="box"><h3 class="section-title">Weapon trait<small>${marks} Barrow Marks</small></h3>
-      <div class="offer">${TRAITS[gk].map((t) => `<button type="button" class="opt" data-act="trait" data-trait="${t.id}" aria-pressed="${regW.trait === t.id}" ${regW.trait === t.id || marks < REROLL_COST ? 'disabled' : ''}><b>${esc(t.name)}</b>${esc(t.desc)}${regW.trait === t.id ? '<span class="m">Active on your hero</span>' : `<span class="m">Swap for ${REROLL_COST} marks</span>`}</button>`).join('')}</div>
+    const traitBox = regW.rar >= 2 ? `<div class="box"><h3 class="section-title">Weapon trait<small>Unlocked at Rare · free to swap</small></h3>
+      <div class="offer">${TRAITS[gk].map((t) => `<button type="button" class="opt" data-act="trait" data-trait="${t.id}" aria-pressed="${regW.trait === t.id}" ${regW.trait === t.id ? 'disabled' : ''}><b>${esc(t.name)}</b>${esc(t.desc)}${regW.trait === t.id ? '<span class="m">Active on your hero</span>' : `<span class="m">Tap to activate</span>`}</button>`).join('')}</div>
       ${w.weapon.unique ? '<p class="fine">Your unlocked weapon trait stays active alongside your unique weapon.</p>' : ''}</div>`
-      : `<p class="fine">At Rare your weapon rolls a trait that changes how an ability works. Every clear moves your weakest piece up.</p>`;
+      : `<p class="fine">At Rare your weapon unlocks all three traits so you can swap how an ability works freely.</p>`;
     // title
     const titles = p.titles.filter((t) => TITLES[t]);
     const titleBox = `<div class="box"><h3 class="section-title">Title<small>shown with ${esc(h.name.split(' ')[0])}’s name</small></h3>${titles.length ? `<div class="titles" role="radiogroup">
