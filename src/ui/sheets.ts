@@ -14,7 +14,7 @@ import { INGREDIENTS, INGREDIENT_ORDER, PLACES, RECIPES, RECIPE_ORDER, SKILLS } 
 import { rankProgress, recipeUnlocked } from '../meta/vale';
 import { MAX_HERO_LEVEL, MAX_TALENT_RANK, activeHero, freshProfile, heroById, heroXpProgress, nameProblem, removeHero, renameHero, resetTalents, roleOf, setActive, spendTalent, talentPointsLeft, talentPointsSpent, type Hero } from '../meta/profile';
 import { pickRole } from '../meta/party';
-import { REROLL_COST, bestRegular, buyTrait, equip, healthPct, itemShare, loadoutFor, ownedFor, powerPct, putOn, seenSlot, waitingFor, worn, type Waiting, type Worn } from '../meta/gear';
+import { REROLL_COST, bestRegular, buyTrait, equip, healthPct, itemShare, loadoutFor, ownedFor, powerPct, putOn, seenSlot, waiting, waitingFor, worn, type Waiting, type Worn } from '../meta/gear';
 import { HEARTH_SPOTS, place, setLook, spotById, spotOf } from '../meta/hearth';
 import type { App } from './app';
 import { actions, cap, esc, fmtN, fmtRate, GLYPH } from './dom';
@@ -28,11 +28,13 @@ import { LOG_TABS, logsSheet, type LogTab } from './logsheet';
 import { looksSheet, pickedLook } from './lookssheet';
 import { settingsSheet } from './settingssheet';
 
+export type GearTab = 'armour' | 'abilities';
+
 export type SheetSpec =
   | { kind: 'dungeon' }
   | { kind: 'satchel' }
   | { kind: 'hero'; hero: string }
-  | { kind: 'gear'; hero: string; slot?: SlotId }
+  | { kind: 'gear'; hero: string; slot?: SlotId; tab?: GearTab }
   | { kind: 'logs'; tab: LogTab; entry?: string }
   | { kind: 'settings' }
   | { kind: 'picker'; spot: string }
@@ -46,7 +48,7 @@ export function normSpec(x: unknown): SheetSpec | null {
   switch (s.kind) {
     case 'dungeon': case 'settings': case 'satchel': case 'looks': return { kind: s.kind };
     case 'hero': return typeof s.hero === 'string' ? { kind: 'hero', hero: s.hero } : null;
-    case 'gear': return typeof s.hero === 'string' ? { kind: 'gear', hero: s.hero, ...(SLOT_IDS.includes(s.slot) ? { slot: s.slot } : {}) } : null;
+    case 'gear': return typeof s.hero === 'string' ? { kind: 'gear', hero: s.hero, ...(SLOT_IDS.includes(s.slot) ? { slot: s.slot } : {}), ...(s.tab === 'abilities' || s.tab === 'armour' ? { tab: s.tab } : {}) } : null;
     case 'logs': return { kind: 'logs', tab: LOG_TABS.includes(s.tab) ? s.tab : 'collection', ...(typeof s.entry === 'string' ? { entry: s.entry } : {}) };
     case 'picker': return typeof s.spot === 'string' && spotById(s.spot) ? { kind: 'picker', spot: s.spot } : null;
     case 'item': return typeof s.id === 'string' && thing(s.id) ? { kind: 'item', id: s.id, ...(s.back ? { back: normSpec(s.back) || undefined } : {}) } : null;
@@ -116,7 +118,8 @@ export class Sheets {
         const name = h.name;
         if (removeHero(p, h.id)) { SFX.play('ui'); this.close(); this.app.save(); this.app.toasts.text(`${name} has gone`, 'Their uniques stay in your collection.'); }
       },
-      slot: (el) => { const s = this.spec; if (!s || s.kind !== 'gear') return; SFX.play('ui'); this.open({ ...s, slot: el.dataset.slot as SlotId }); },
+      slot: (el) => { const s = this.spec; if (!s || s.kind !== 'gear') return; SFX.play('ui'); this.open({ ...s, tab: 'armour', slot: el.dataset.slot as SlotId }); },
+      geartab: (el) => { const s = this.spec; if (!s || s.kind !== 'gear') return; SFX.play('ui'); this.open({ ...s, tab: el.dataset.tab as GearTab }); },
       equip: (el) => {
         const h = this.gearHero(); if (!h) return;
         const slot = el.dataset.slot as SlotId, id = el.dataset.id || null;
@@ -134,7 +137,7 @@ export class Sheets {
       logdiff: (el) => { this.logHeroic = el.dataset.v === 'heroic'; SFX.play('ui'); this.open({ kind: 'logs', tab: 'collection' }); },
       entry: (el) => { SFX.play('ui'); this.open({ kind: 'logs', tab: 'collection', ...(el.dataset.id ? { entry: el.dataset.id } : {}) }); },
       item: (el) => { SFX.play('ui'); this.open({ kind: 'item', id: el.dataset.id!, back: this.spec || undefined }); },
-      gearat: (el) => { const h = heroById(this.app.p, el.dataset.hero || null); if (!h) return; SFX.play('ui'); this.open({ kind: 'gear', hero: h.id, slot: el.dataset.slot as SlotId }); },
+      gearat: (el) => { const h = heroById(this.app.p, el.dataset.hero || null); if (!h) return; SFX.play('ui'); this.open({ kind: 'gear', hero: h.id, tab: 'armour', slot: el.dataset.slot as SlotId }); },
       title: (el) => { const h = this.gearHero(); if (!h) return; h.title = el.dataset.id || null; SFX.play('ui'); this.app.save(); },
       place: (el) => { const s = this.spec; if (!s || s.kind !== 'picker') return; if (place(this.app.p, s.spot, el.dataset.id || null)) { SFX.play('place'); this.app.save(); this.close(); } },
       sound: () => { const p = this.app.p; p.settings.sound = !p.settings.sound; SFX.on = p.settings.sound; if (SFX.on) SFX.play('ui'); this.app.save(); },
@@ -231,7 +234,7 @@ export class Sheets {
       case 'gear': {
         const h = heroById(this.app.p, s.hero) || activeHero(this.app.p);
         if (!h) { this.close(); return; }
-        ({ head, body } = this.gear(h, s.slot || 'weapon'));
+        ({ head, tabs, body } = this.gear(h, s.slot || 'weapon', s.tab));
         break;
       }
       case 'logs': {
@@ -279,16 +282,89 @@ export class Sheets {
     else this.app.startRun({ start: 'entrance', testRar: null, heroic: pr.heroic });
   }
 
-  /* ---------------------------------------------------------------- gear: the doll */
-  private gear(h: Hero, sel: SlotId) {
+  /* ---------------------------------------------------------------- gear: the doll & ability tree (separate tabs) */
+  private gear(h: Hero, sel: SlotId, tab?: GearTab) {
     const p = this.app.p, role = roleOf(h);
     const race = RACES[h.race as RaceId], cls = CLASSES[h.cls as ClassId];
     const L = loadoutFor(p, h);
     const w = worn(p, h);
     const word = ROLE_STAT[role];
+    const xpProg = heroXpProgress(h);
+    const ptsLeft = talentPointsLeft(h), ptsSpent = talentPointsSpent(h);
+    const waitCount = waiting(p, h).length;
+    const activeTab: GearTab = tab || (waitCount === 0 && ptsLeft > 0 ? 'abilities' : 'armour');
+    const tabs = `<div class="tabs gear-tabs" role="tablist">
+      <button type="button" class="tab" role="tab" data-act="geartab" data-tab="armour" aria-selected="${activeTab === 'armour'}">${GLYPH.shield}<span>Armour</span>${waitCount > 0 ? `<i class="tab-pip">${waitCount}</i>` : ''}</button>
+      <button type="button" class="tab" role="tab" data-act="geartab" data-tab="abilities" aria-selected="${activeTab === 'abilities'}">${GLYPH.rise}<span>Abilities</span>${ptsLeft > 0 ? `<i class="tab-pip gold">${ptsLeft}</i>` : `<small class="tab-sub">${ptsSpent}/${MAX_HERO_LEVEL - 1}</small>`}</button>
+    </div>`;
+    const title = h.title && TITLES[h.title] ? TITLES[h.title].text : '';
+    const head = `<h2>${esc(h.name)}${title ? ` <em class="h-title">${esc(title)}</em>` : ''}</h2><p><i class="rdot ${role}" aria-hidden="true"></i>Level ${xpProg.level} ${esc(race?.name || h.race)} ${esc(cls?.name || h.cls)} · ${esc(cls?.roleName || ROLES[role].title)}${p.active === h.id ? ' · playing' : ''}</p>`;
+
+    if (activeTab === 'abilities') {
+      const keyNum: Record<AbilitySlot, string> = { a1: '1', a2: '2', a3: '3', a4: '4' };
+      const masteryBonus = Math.round(ptsSpent * 1.5 * 10) / 10;
+      const treeCards = SLOTS_AB.map((s) => {
+        const ab = AB[role][s], tals = TALENTS[role][s], rk = h.talents?.[s] || 0;
+        const canUp = ptsLeft > 0 && rk < MAX_TALENT_RANK;
+        const cdTxt = ab.hold ? 'Hold · Block' : `${ab.cd}s CD`;
+        const manaTxt = ab.mana ? ` · ${ab.mana} Mana` : '';
+        const shortDesc = ab.combo ? ab.desc.split('. ')[0].replace(/\.?$/, '.') : ab.desc;
+        const pips = `<span class="at-pips" aria-label="Rank ${rk} of ${MAX_TALENT_RANK}"><i class="${rk >= 1 ? 'on' : ''}"></i><i class="${rk >= 2 ? 'on' : ''}"></i></span>`;
+        return `<article class="at-card${rk >= MAX_TALENT_RANK ? ' max' : rk > 0 ? ' on' : ''}${canUp ? ' can-up' : ''}">
+          <div class="at-top">
+            <span class="at-ic"><span class="tile">${tile(ab.key)}</span><kbd>${keyNum[s]}</kbd></span>
+            <div class="at-info">
+              <div class="at-title-row">
+                <b>${esc(ab.name)}</b>
+                <span class="at-meta">${cdTxt}${manaTxt}</span>
+              </div>
+              <p>${esc(shortDesc)}</p>
+            </div>
+            <div class="at-status">
+              ${canUp ? `<button type="button" class="btn small gold at-up" data-act="talent" data-ab="${s}">+ Rank ${rk + 1}</button>` : `<div class="at-rk-box">${pips}<small>${rk >= MAX_TALENT_RANK ? 'MAX' : `${rk}/${MAX_TALENT_RANK}`}</small></div>`}
+            </div>
+          </div>
+          ${ab.combo ? `<div class="at-combo">${esc(ab.combo)}</div>` : ''}
+          <div class="at-track">
+            ${tals.map((node, i) => {
+              const got = rk > i, next = canUp && rk === i;
+              return `<button type="button" class="at-node${got ? ' got' : next ? ' next' : ''}" data-act="talent" data-ab="${s}" ${next ? '' : 'disabled'}>
+                <div class="at-node-top">
+                  <span class="at-node-badge">${got ? '✓' : `R${i + 1}`}</span>
+                  <b>${esc(node.name)}</b>
+                </div>
+                <span>${esc(node.desc)}</span>
+              </button>`;
+            }).join('<i class="at-link" aria-hidden="true"></i>')}
+          </div>
+        </article>`;
+      }).join('');
+      const body = `
+        <div class="at-banner${ptsLeft > 0 ? ' has-pts' : ''}">
+          <div class="at-ban-top">
+            <div class="at-lv">
+              <span class="at-lv-pill">Lv ${xpProg.level} / ${MAX_HERO_LEVEL}</span>
+              <div>
+                <b>Hero Mastery · +${masteryBonus}% ${esc(cap(word.short))}</b>
+                <small>+1 Ability Point &amp; +1.5% ${esc(word.short)} per level</small>
+              </div>
+            </div>
+            <div class="at-ban-acts">
+              ${ptsLeft > 0 ? `<span class="pts-badge">${ptsLeft} ${ptsLeft === 1 ? 'Point' : 'Points'} Ready!</span>` : `<span class="at-spent">${ptsSpent} / ${MAX_HERO_LEVEL - 1} Ranks</span>`}
+              ${ptsSpent > 0 ? `<button type="button" class="btn small" data-act="talentreset">Reset</button>` : ''}
+            </div>
+          </div>
+          <div class="xp-bar" title="${xpProg.max ? 'Max hero level reached' : `${xpProg.into} / ${xpProg.need} XP to Level ${xpProg.level + 1}`}">
+            <i style="width:${xpProg.pct}%"></i>
+            <span>${xpProg.max ? `Max Level (${MAX_HERO_LEVEL}) · All 8 Points Earned` : `${xpProg.into} / ${xpProg.need} XP to Level ${xpProg.level + 1} (+1 Point per clear)`}</span>
+          </div>
+        </div>
+        <div class="at-list">${treeCards}</div>`;
+      return { head, tabs, body };
+    }
+
     const j = this.justOn && this.justOn.hero === h.id && performance.now() - this.justOn.at < 1400 ? this.justOn : null;
     const card = (slot: SlotId) => this.slotCard(w[slot], role, L.sets, slot === sel, waitingFor(p, h, slot), j?.slot === slot);
-    const title = h.title && TITLES[h.title] ? TITLES[h.title].text : '';
     const doll = `<div class="doll${j ? ' just-on' : ''}" style="--light: ${race?.light || '#F4B942'}">
       <div class="doll-col l">${LEFT_SLOTS.map(card).join('')}</div>
       <div class="doll-fig"><span class="doll-glow" aria-hidden="true"></span>${heroImg(heroSprite(h, role, p), { cls: 'doll-img', alt: `${h.name}` })}<span class="doll-floor" aria-hidden="true"></span></div>
@@ -298,48 +374,12 @@ export class Sheets {
         <div class="doll-pw"><span>${esc(cap(word.short))}</span><b>+${powerPct(L)}%</b><span>Health</span><b>+${healthPct(L)}%</b></div>
       </div>
     </div>`;
-    const xpProg = heroXpProgress(h);
-    const ptsLeft = talentPointsLeft(h), ptsSpent = talentPointsSpent(h);
     const extras = `<span class="chip">Level <b>${xpProg.level}/${MAX_HERO_LEVEL}</b></span>`
       + (ptsSpent > 0 ? `<span class="chip">Mastery <b>+${Math.round(ptsSpent * 1.5 * 10) / 10}%</b></span>` : '')
       + Object.entries(L.sets).map(([id, n]) => SETS[id] ? `<span class="chip set">${esc(SETS[id].name)} set <b>${n}/3</b>${n >= 2 ? ' · bonus on' : ''}</span>` : '').join('')
       + L.traits.map((t) => `<span class="chip">Trait <b>${esc(traitDef(role, t)?.name || t)}</b></span>`).join('');
     const stats = `<div class="power">${extras}</div>`;
     const tip = this.tooltip(h, w[sel], L.sets, waitingFor(p, h, sel));
-    // Skill Tree Lite: 4 abilities, their combo chains, and 2 upgrade ranks each
-    const keyNum: Record<AbilitySlot, string> = { a1: '1', a2: '2', a3: '3', a4: '4' };
-    const treeRows = SLOTS_AB.map((s) => {
-      const ab = AB[role][s], tals = TALENTS[role][s], rk = h.talents?.[s] || 0;
-      const canUp = ptsLeft > 0 && rk < MAX_TALENT_RANK;
-      return `<div class="ab-row${rk >= MAX_TALENT_RANK ? ' max' : rk > 0 ? ' on' : ''}">
-        <div class="ab-row-head">
-          <span class="ab-ic"><span class="tile">${tile(ab.key)}</span><i>${keyNum[s]}</i></span>
-          <div class="ab-tx">
-            <b>${esc(ab.name)} <small>Rank ${rk}/${MAX_TALENT_RANK}</small></b>
-            <span>${esc(ab.desc)}</span>
-            ${ab.combo ? `<em class="ab-combo">${esc(ab.combo)}</em>` : ''}
-          </div>
-          ${canUp ? `<button type="button" class="btn small gold ab-up" data-act="talent" data-ab="${s}">${GLYPH.rise}Upgrade</button>` : `<span class="ab-rk-pill">${rk >= MAX_TALENT_RANK ? 'Maxed' : `${rk}/${MAX_TALENT_RANK}`}</span>`}
-        </div>
-        <div class="ab-nodes">
-          ${tals.map((node, i) => `<button type="button" class="ab-node${rk > i ? ' got' : canUp && rk === i ? ' next' : ''}" data-act="talent" data-ab="${s}" ${canUp && rk === i ? '' : 'disabled'}><i>${rk > i ? '✓' : i + 1}</i><div><b>${esc(node.name)}</b><span>${esc(node.desc)}</span></div></button>`).join('')}
-        </div>
-      </div>`;
-    }).join('');
-    const treeBox = `<div class="box treebox${ptsLeft > 0 ? ' has-pts' : ''}">
-      <div class="tree-head">
-        <div>
-          <h3 class="section-title">Ability tree &amp; combos<small>Level ${xpProg.level} · ${ptsSpent}/${MAX_HERO_LEVEL - 1} ranks unlocked</small></h3>
-          <p class="fine">Every boss and clear grants Hero XP (+1 Ability Point per level, +1.5% ${esc(word.short)} per point).</p>
-        </div>
-        <div class="tree-meta">
-          ${ptsLeft > 0 ? `<span class="pts-badge">${ptsLeft} ${ptsLeft === 1 ? 'point' : 'points'} ready!</span>` : ''}
-          ${ptsSpent > 0 ? `<button type="button" class="btn small" data-act="talentreset">Reset points</button>` : ''}
-        </div>
-      </div>
-      <div class="xp-bar" title="${xpProg.max ? 'Max hero level reached' : `${xpProg.into} / ${xpProg.need} XP to Level ${xpProg.level + 1}`}"><i style="width:${xpProg.pct}%"></i><span>${xpProg.max ? `Level ${xpProg.level} (Max Level)` : `Level ${xpProg.level} · ${xpProg.into} / ${xpProg.need} XP to next point`}</span></div>
-      <div class="ab-tree">${treeRows}</div>
-    </div>`;
     // the set for this role
     const setBoxes = Object.values(SETS).filter((s) => s.role === role).map((set) => {
       const n = L.sets[set.id] || 0;
@@ -364,7 +404,6 @@ export class Sheets {
       <button type="button" class="sg" role="radio" data-act="title" data-id="" aria-checked="${!h.title}">None</button>
       ${titles.map((t) => `<button type="button" class="sg" role="radio" data-act="title" data-id="${t}" aria-checked="${h.title === t}">${esc(TITLES[t].text)}</button>`).join('')}</div>` : '<p class="fine">Some achievements give a title. Every hero can wear the ones you earn.</p>'}</div>`;
     // looks
-    // each role's own glow, the trail and the Barrow's dyes for everyone, and Gilded Bones for the Risen
     const looks = ['cosmetic.glow_shield', 'cosmetic.glow_staff', 'cosmetic.crit_ice', 'cosmetic.trail_wisp', 'dye.ghostly', 'dye.ghostly.gilded', 'cosmetic.gilded_bones']
       .filter((id) => (id === 'cosmetic.glow_shield' ? role === 'tank' : id === 'cosmetic.glow_staff' ? role === 'healer' : id === 'cosmetic.crit_ice' ? role === 'dps' : id === 'cosmetic.gilded_bones' ? h.race === 'risen' : true));
     const looksBox = `<div class="box"><h3 class="section-title">Looks<small>never power</small></h3><div class="picks">${looks.map((id) => {
@@ -372,9 +411,8 @@ export class Sheets {
       return `<button type="button" class="pick" data-act="${own ? 'look' : 'item'}" data-id="${id}" aria-pressed="${on}"><span class="tile" aria-hidden="true" ${own ? '' : 'style="filter: grayscale(1) opacity(0.5)"'}>${tile(c.icon)}</span><span><b>${esc(c.name)}</b><span>${own ? (on ? 'On' : 'Off') : esc(c.source)}</span></span></button>`;
     }).join('')}</div></div>`;
     const play = p.active === h.id ? '' : `<div class="actions"><button type="button" class="btn small gold" data-act="playas">${GLYPH.play}Play as ${esc(h.name.split(' ')[0])}</button></div>`;
-    const body = `${doll}${tip}${stats}${play}${treeBox}${setBoxes}${traitBox}${titleBox}${looksBox}`;
-    const head = `<h2>${esc(h.name)}${title ? ` <em class="h-title">${esc(title)}</em>` : ''}</h2><p><i class="rdot ${role}" aria-hidden="true"></i>Level ${xpProg.level} ${esc(race?.name || h.race)} ${esc(cls?.name || h.cls)} · ${esc(cls?.roleName || ROLES[role].title)}${p.active === h.id ? ' · playing' : ''}</p>`;
-    return { head, body };
+    const body = `${doll}${tip}${stats}${play}${setBoxes}${traitBox}${titleBox}${looksBox}`;
+    return { head, tabs, body };
   }
 
   /** one slot on the doll: rarity frame, set count, unique star and what it adds. It glows while something better waits to go on. */
