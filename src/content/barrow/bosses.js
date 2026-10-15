@@ -145,7 +145,6 @@ export function keeperTick(m, dt) {
       w.state = 'fight'; w.seed = rand(0, 9); w.target = targets[i % targets.length] || null; w.life = 14;
     }
     sfx('wail');
-    if (!S.hints.wisp) { S.hints.wisp = 1; HOOKS.hint('wisp'); }
     m.act = { k: 'gesture', t: 0, dur: 0.6 };
     return true;
   }
@@ -192,7 +191,7 @@ function startSmash(m) {
       }
     } };
   S.hazards.push(z);
-  if (t.isPlayer && t.role === 'tank') { S.timers.push({ t: 0.7, fn: () => { if (m.act && m.act.k === 'smash') call('BLOCK!', 'alarm', 1.0); } }); if (!S.hints.block) { S.hints.block = 1; HOOKS.hint('block'); } }
+  if (t.isPlayer && t.role === 'tank') S.timers.push({ t: 0.7, fn: () => { if (m.act && m.act.k === 'smash') call('BLOCK!', 'alarm', 1.0); } });
   sfx('windup');
   return true;
 }
@@ -210,7 +209,6 @@ function startBurrow(m) {
       for (const h of S.heroes) if (h.alive && distXY(h.x, h.y, z.x, z.y) <= z.r + h.r) { const got = hurtHero(h, 320 * m.dmgMul, m, { block: false, hazard: true }); if (got > 0) h.st.air = 0.6; }
       S.rings.push({ x: z.x, y: z.y, r: 40, speed: 270, w: 26, max: 620, hit: new Set(), dmg: 130, src: m });
       S.timers.push({ t: 0.75, fn: () => { if (m.alive) S.rings.push({ x: z.x, y: z.y, r: 40, speed: 270, w: 26, max: 620, hit: new Set(), dmg: 130, src: m }); } });
-      if (!S.hints.rings) { S.hints.rings = 1; HOOKS.hint('rings'); }
     } });
   return true;
 }

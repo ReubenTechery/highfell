@@ -247,9 +247,9 @@ export class RunScene implements InputUI {
     const role: RoleId = intro ? 'tank' : h ? roleOf(h) : o.role || 'tank';
     this.heroId = h ? h.id : null;
     this.role = role;
-    const test = o.testRar !== null || !h;
+    const test = o.testRar != null || !h;
     this.practice = o.start !== 'entrance' || test;
-    const rar: Rar = intro ? 3 : o.testRar !== null ? o.testRar : h ? partyRar(p, h) : 0;
+    const rar: Rar = intro ? 3 : o.testRar != null ? o.testRar : h ? partyRar(p, h) : 0;
     const tierSuffix = rar <= 0 ? '_rags' : rar === 1 ? '_iron' : '';
     const loadouts: Record<string, unknown> = {};
     for (const r of ['tank', 'healer', 'dps'] as RoleId[]) {

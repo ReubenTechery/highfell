@@ -95,9 +95,9 @@ The full systems design (abilities, sets, drop tables, achievements, balance rul
   in the bunk room (tap one to play them, an empty bed makes a new hero). Each hero has its own
   male or female look (`sex`), ladder gear, title and clears. Shared by all heroes: the collection (a unique fits any hero of its role),
   kill counts, Marks, achievements, titles, the hearth, the Vale. A race and class combo is playable once it
-  has a ready class and art in `HERO_ART` (`HERO_ART_SEX` for male/female variants, keeping the same body and armour silhouette) and its race is open; the rest show as "Soon". A race marked
+  has a ready class and art in `HERO_ART` (`HERO_ART_SEX` for male/female variants, keeping the same body and armour silhouette) and its race is open; the rest show as "Soon". Gnomes, goblins, and the Risen are drawn across all four classes (`warrior`, `cleric`, `mage`, `rogue`), both sexes (`m`, `f`), and all three visual armour tiers (`_rags`, `_iron`, and full armour). A race marked
   `earned` (gnome, goblin, the Risen, orc) opens with the achievement that gives it (`reward.race`), and
-  stays locked until a dungeon does.
+  stays locked until a dungeon does (or the testing switch / Hero Maker `Unlock` preview button is used).
 - **Gear:** nothing goes on by itself. Heroes start in humble Common rags and bronze/wood weapons (`_0` icon tier), climb through Uncommon (`_1`) to Rare (`_2`) in eight clears, and earn Epic (`_3`) from dungeon sets (1/35) and boss weapons (1/50), which buff and transform core abilities. A ladder piece (and the shared floor) waits in the hero's bag; a new
   unique waits in their `fresh` list. Your hero's tag at the top of the house (and the armour stand) counts what's waiting; you put it
   on in the doll, which shows a side-by-side Old-vs-New comparison with exact item level, damage/healing, and health gains. A drop's sheet holds it up against what its role wears (`compareOn`): better is more item level
