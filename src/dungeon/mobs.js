@@ -1,7 +1,7 @@
 /* ---------- mobs: the behaviour library (melee, ranged, casters, brutes, wisps), cages and chains ---------- */
 import { angTo, dist, distXY, TAU } from '../core/math';
 import { pick, rand, rng } from '../core/rng';
-import { HOOKS, S, emit } from './state.js';
+import { S, emit } from './state.js';
 import { addThreat, aggro, banner, bits, call, dots, fx, fxText, hurtHero, killMob, makeMob, pickTarget, sfx, shake } from './entities.js';
 import { canStand, moveEnt, roomIndexOf, walkTo } from './world.js';
 
@@ -41,11 +41,7 @@ export function mobTick(m, dt) {
   }
   const prev = m.target;
   m.target = pickTarget(m);
-  if (prev && m.target && m.target !== prev) {
-    if (m.isBoss) bossTurned(m, prev, m.target);
-    // you out-did the tank and it came for you: once a run, say why
-    if (m.target.isPlayer && m.target.role !== 'tank' && prev.role === 'tank' && !S.hints.pulled) { S.hints.pulled = 1; HOOKS.hint('pulled'); }
-  }
+  if (prev && m.target && m.target !== prev && m.isBoss) bossTurned(m, prev, m.target);
   if (!m.target) {
     const n = nearestHeroTo(m.x, m.y);
     if (n && dist(m, n) < 700) { addThreat(m, n, 1); m.target = n; } else return;
@@ -54,7 +50,7 @@ export function mobTick(m, dt) {
     if (m.target.role === 'tank' || m.forcedT > 0) m.loose = 0; else m.loose = (m.loose || 0) + dt;
     const was = m.wild;
     m.wild = m.loose > 3;
-    if (m.wild && !was) { fxText(m.x, m.y - (m.M.big ? 150 : 100), 'Wild!', '#FF6B5E', 20, { dur: 1 }); if (!S.hints.wild) { S.hints.wild = 1; HOOKS.hint('wild'); } }
+    if (m.wild && !was) fxText(m.x, m.y - (m.M.big ? 150 : 100), 'Wild!', '#FF6B5E', 20, { dur: 1 });
   }
   if (m.M.ai && m.M.ai(m, dt)) return;
   // a boss's own move (a party-wide hit) can knock its target down mid-frame
@@ -155,7 +151,6 @@ function callerTick(m, dt) {
       }
       banner('He raised more skeletons. Hit or freeze him while he casts!', 'warn', 2.4);
     } });
-    if (!S.hints.raise) { S.hints.raise = 1; HOOKS.hint('kick'); }
     return true;
   }
   if (ab.rot <= 0) {
@@ -215,7 +210,7 @@ export function makeCage(h, boss) {
   S.mobs.push(c);
   bits(h.x, h.y - 30, 'shard_bone', 6, 160);
   sfx('cage');
-  if (h.isPlayer) { call('Tap to break free!', 'alarm', 1.6); HOOKS.hint('cageSelf'); } else if (!S.hints.cage) { S.hints.cage = 1; HOOKS.hint('cage'); }
+  if (h.isPlayer) call('Tap to break free!', 'alarm', 1.6);
   return c;
 }
 function cageTick(c, dt) {
@@ -256,7 +251,6 @@ export function makeChain(boss, h) {
   h.st.chained = ch;
   S.chains.push(ch);
   sfx('chain');
-  if (!S.hints.chain) { S.hints.chain = 1; HOOKS.hint('chain'); }
   call('Cut the chain!', 'alarm', 1.6);
   return ch;
 }
