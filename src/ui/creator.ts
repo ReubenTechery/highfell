@@ -38,7 +38,7 @@ export class Creator {
       sex: (el) => this.pickSex(el.dataset.v as SexId),
       lore: () => { this.showLore = !this.showLore; SFX.play('ui'); this.render(); },
       dice: () => { this.name = this.roll(); this.typed = false; this.err = ''; SFX.play('ui'); this.render(); },
-      devopen: () => { this.app.dev.allOpen = true; this.err = ''; SFX.play('equip'); this.render(); },
+      devopen: () => { this.app.setDev({ allOpen: true }); this.err = ''; SFX.play('equip'); this.render(); },
     });
     root.addEventListener('input', (e) => {
       const t = e.target as HTMLInputElement;
