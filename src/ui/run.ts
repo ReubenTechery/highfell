@@ -65,7 +65,7 @@ interface TutStep { slot: string; eyebrow: string; title: string; touch: string;
 const TUT_STEPS: Record<string, TutStep> = {
   introAb: {
     slot: 'a4',
-    eyebrow: 'Step 1 of 4',
+    eyebrow: 'Step 1 of 5',
     title: 'Smash Cleave!',
     touch: 'You swing on your own in range. Tap the glowing Cleave button to hit the whole pack!',
     desk: 'You swing on your own in range. Press the glowing Cleave button (or 4) to hit the whole pack!',
@@ -73,7 +73,7 @@ const TUT_STEPS: Record<string, TutStep> = {
   },
   slam: {
     slot: 'a1',
-    eyebrow: 'Step 2 of 4',
+    eyebrow: 'Step 2 of 5',
     title: 'Pull monsters off your party!',
     touch: 'A skeleton is running at Ivy! Tap the glowing Slam button to grab everything back onto you.',
     desk: 'A skeleton is running at Ivy! Press the glowing Slam button (or 1) to grab everything back onto you.',
@@ -81,19 +81,27 @@ const TUT_STEPS: Record<string, TutStep> = {
   },
   dodge: {
     slot: 'dodge',
-    eyebrow: 'Step 3 of 4',
-    title: 'Roll out of the red!',
-    touch: 'Sir Rattlebones is charging down that red line! Tap the glowing Dodge button to roll aside.',
-    desk: 'Sir Rattlebones is charging down that red line! Press the glowing Dodge button (or Space) to roll aside.',
+    eyebrow: 'Step 3 of 5',
+    title: 'Roll out of the red line!',
+    touch: 'Sir Rattlebones is charging down that red lane! Tap your round Roll button to dodge aside.',
+    desk: 'Sir Rattlebones is charging down that red lane! Press your round Roll button (or Space) to dodge aside.',
     btn: 'Dodge roll',
   },
   block: {
     slot: 'a2',
-    eyebrow: 'Step 4 of 4',
-    title: 'Block the big swing!',
-    touch: 'Tap the glowing Shield button right before he swings to block it, stun him and hit back!',
-    desk: 'Press the glowing Shield button (or 2) right before he swings to block it, stun him and hit back!',
+    eyebrow: 'Step 4 of 5',
+    title: 'Raise your shield to block!',
+    touch: 'Gold cones are heavy tank hits—don’t roll away! Tap Raise Shield right before he swings.',
+    desk: 'Gold cones are heavy tank hits—don’t roll away! Press Raise Shield (or 2) right before he swings.',
     btn: 'Raise shield',
+  },
+  stagger: {
+    slot: 'a3',
+    eyebrow: 'Step 5 of 5',
+    title: 'Perfect Block stagger!',
+    touch: 'Blocking right before impact takes zero damage, strikes back, and staggers the boss! Tap Charge to punish him.',
+    desk: 'Blocking right before impact takes zero damage, strikes back, and staggers the boss! Press Charge (or 3) to punish him.',
+    btn: 'Use Charge',
   },
 };
 
@@ -167,6 +175,7 @@ export class RunScene implements InputUI {
       <div class="tut-acts"><button type="button" class="btn gold" id="tut-act">${esc(step.btn)}</button></div>`;
     h.hidden = false;
     $('tut-act').addEventListener('click', (e) => { e.stopPropagation(); SFX.play('ui'); this.onTutInput('any'); });
+    updateCam(0, true);
     this.hudTick(0);
   }
 
@@ -190,19 +199,36 @@ export class RunScene implements InputUI {
     const p = S.player;
     if (step.slot === 'dodge') {
       const z = S.hazards.find((x: any) => x.shape === 'rect');
-      const a = z ? z.a + Math.PI / 2 : 0;
+      let a = z ? z.a + Math.PI / 2 : 0;
+      if (z && p.x + Math.cos(a) * 110 < 360) a = z.a - Math.PI / 2;
+      else if (z && p.x + Math.cos(a) * 110 > 640) a = z.a - Math.PI / 2;
       p.cd.dodge = 0;
       doDodge(p, Math.cos(a), Math.sin(a));
+      if (z) z.t = Math.max(z.t, 1.38);
+      if (S.boss && S.boss.act && S.boss.act.k === 'charge') S.boss.act.t = Math.max(S.boss.act.t, 1.38);
     } else if (step.slot === 'a2') {
+      const z = S.hazards.find((x: any) => x.shape === 'cone');
+      if (z && !inHaz(z, p.x, p.y, p.r)) {
+        p.x = z.x + Math.cos(z.a) * 90;
+        p.y = z.y + Math.sin(z.a) * 90;
+      }
+      if (S.boss) p.face = Math.atan2(S.boss.y - p.y, S.boss.x - p.x);
       IN.block = true;
       p.intent.block = true;
+      p.blocking = true;
+      p.blockT = 0;
       p.blockStart = S.t;
       this.holdBtn('a2', true);
-      setTimeout(() => { IN.block = false; this.holdBtn('a2', false); }, 650);
+      if (z) z.t = Math.max(z.t, 1.28);
+      if (S.boss && S.boss.act && S.boss.act.k === 'sweep') S.boss.act.t = Math.max(S.boss.act.t, 1.28);
+      setTimeout(() => { IN.block = false; p.intent.block = false; this.holdBtn('a2', false); }, 550);
     } else {
+      IN.block = false;
+      p.intent.block = false;
+      this.holdBtn('a2', false);
       p.cd[step.slot] = 0;
       p.gcd = 0;
-      useAbility(p, step.slot, null);
+      useAbility(p, step.slot, key === 'stagger' && S.boss ? S.boss : null);
     }
     return true;
   }
@@ -463,8 +489,9 @@ export class RunScene implements InputUI {
     $('frames').querySelectorAll<HTMLElement>('.fr').forEach((li) => li.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (S.player.role === 'healer') { mend(S.player, heroBy(li.dataset.role)); this.hintDone('heal'); } }));
     const btn = (slot: string) => {
       const def = slot === 'dodge' ? { key: 'dodge', name: 'Dodge', desc: 'Roll out of trouble.' } as { key: string; name: string; desc: string; mana?: number; hold?: boolean } : A[slot as 'a1'];
-      return `<button type="button" class="ab${def.hold ? ' hold' : ''}" data-slot="${slot}" aria-label="${esc(def.name)}" title="${esc(def.name + ': ' + def.desc)} (${KEY[slot]})">
-        <span class="face">${tile(def.key)}</span><span class="sweep"></span><span class="cdn"></span><kbd>${KEY[slot]}</kbd>${def.mana ? `<span class="cost">${def.mana}</span>` : ''}<span class="glow"></span></button>`;
+      const tag = slot === 'dodge' ? 'Roll' : def.hold ? 'Block' : '';
+      return `<button type="button" class="ab${def.hold ? ' hold' : ''}${slot === 'dodge' ? ' roll' : ''}" data-slot="${slot}" aria-label="${esc(def.name)}" title="${esc(def.name + ': ' + def.desc)} (${KEY[slot]})">
+        <span class="face">${tile(def.key)}</span><span class="sweep"></span><span class="cdn"></span><kbd>${KEY[slot]}</kbd>${def.mana ? `<span class="cost">${def.mana}</span>` : ''}${tag ? `<span class="ab-tag">${tag}</span>` : ''}<span class="glow"></span></button>`;
     };
     $('abar').innerHTML = ['a1', 'a2', 'a3', 'a4', 'dodge'].map(btn).join('');
     $('abar').querySelectorAll<HTMLElement>('.ab').forEach((b) => this.bindAbility(b, b.dataset.slot!));
@@ -532,7 +559,7 @@ export class RunScene implements InputUI {
     const bb = $('bossbar');
     const B = S.boss && S.boss.alive ? S.boss : null;
     if (B) {
-      if (bb.hidden) { bb.hidden = false; $('bb-name').textContent = B.name; this.trail = 1; }
+      if (bb.hidden) { bb.hidden = false; $('bb-name').textContent = B.name; this.trail = 1; if (this.intro) $('intro-tag').hidden = true; }
       const k = B.hp / B.maxHp;
       setW($('bb-fill'), k);
       this.trail = Math.max(k, this.trail - dt * 0.25);
@@ -573,7 +600,7 @@ export class RunScene implements InputUI {
       const sq = heroBy('dps') || heroBy('healer');
       if (loose && sq && loose.target === p) { loose.target = sq; loose.threat[sq.id] = (loose.threat[p.id] || 0) + 500; }
     }
-    if (!this.hintsDone.has('dodge') && S.hazards.some((z: any) => !z.noDmg && inHaz(z, p.x, p.y, p.r))) this.hint('dodge');
+    if (!this.intro && !this.hintsDone.has('dodge') && S.hazards.some((z: any) => !z.noDmg && inHaz(z, p.x, p.y, p.r))) this.hint('dodge');
     if (p.role === 'tank' && !this.hintsDone.has('slam') && S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && dist(m, p) < 190)) this.hint('slam');
     if (p.role === 'dps' && !this.hintsDone.has('aim') && S.inCombat && S.mobs.filter((m: any) => m.alive && m.state === 'fight').length >= 3) this.hint('aim');
     if (p.role === 'dps' && this.hintsDone.has('aim') && !this.hintsDone.has('shatter') && S.mobs.some((m: any) => m.alive && m.st && m.st.freeze > 0.5)) this.hint('shatter');

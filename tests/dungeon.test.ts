@@ -147,7 +147,7 @@ test('intro: starts in the Ossuary, protects the party from dying, and spawns th
   s.auto = true;
   for (let i = 0; i < 60 * 75 && s.over !== 'victory'; i++) update(1 / 60);
   assert.equal(byId('K').cleared, true, 'Sir Rattlebones is defeated');
-  assert.ok(s.hints.dodge && s.hints.block && s.hints.slam, 'dodge, block and slam tutorial moments all triggered before the boss fell');
+  assert.ok(s.hints.dodge && s.hints.block && s.hints.stagger && s.hints.slam, 'dodge, block, stagger and slam tutorial moments all triggered before the boss fell');
   assert.ok(s.walkout && s.walkout.tell === 'unique', 'the unique lantern walkout played');
   assert.ok(s.chest && s.chest.open, 'the chest spawned in the tomb and opened');
   assert.equal(s.over, 'victory');

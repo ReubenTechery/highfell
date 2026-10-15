@@ -145,8 +145,9 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
 - **Onboarding:** a fresh save with no heroes opens on a 60-second prologue run (`start: 'intro'`) as Brannoc in
   full Epic gear, the Barrowguard set and *The Gravedigger* alongside Maren and Ivy in the Ossuary and Sir
   Rattlebones's tomb. A Welcome card lets the player start the 1-minute tutorial or skip straight to the hero
-  maker. During the run, the game pauses at four key teaching moments (`Cleave`, `Slam` to peel for a party
-  mate, `Dodge` out of `Shield Charge`, and `Raise Shield` to perfect-block `Cleaving Sweep`) and spotlights the
+  maker. During the run, the game pauses at five key teaching moments (`Cleave`, `Slam` to peel for a party
+  mate, `Dodge` out of `Shield Charge`'s red lane, `Raise Shield` to perfect-block `Cleaving Sweep`'s gold cone,
+  and `Charge` to punish the boss during his Perfect Block stagger) and spotlights the
   exact glowing button to press; heroes cannot drop below 20% health, and `Skip intro` is always available.
   Killing Sir Rattlebones plays the gold `unique` walkout tell and opens an example chest reveal
   (`reveal.showIntro`) with four cards stamped `Example` (regular ladder piece, shared warband piece, 1/50 set

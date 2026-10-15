@@ -11,10 +11,10 @@ import { MAP } from './map.js';
 export function knightTick(m, dt) {
   const ab = m.ab;
   const intro = S.opts && S.opts.start === 'intro';
-  if (!ab.init) { ab.init = true; ab.t = 0; ab.sweep = intro ? 4.4 : 3.5; ab.charge = intro ? 1.6 : 7; }
+  if (!ab.init) { ab.init = true; ab.t = 0; ab.sweep = intro ? 5.2 : 3.5; ab.charge = intro ? 1.5 : 7; }
   ab.t += dt;
   if (!ab.enraged && ab.t > m.M.enrage) { ab.enraged = true; m.dmgMul = 2.5; m.speed *= 1.3; banner('Sir Rattlebones has had enough of you!', 'warn', 2.4); sfx('roar'); }
-  if (intro && m.phase === 1 && (!S.hints.dodge || !S.hints.block) && m.hp < m.maxHp * 0.52) m.hp = Math.ceil(m.maxHp * 0.52);
+  if (intro && m.phase === 1 && (!S.hints.dodge || !S.hints.block || !S.hints.stagger) && m.hp < m.maxHp * 0.52) m.hp = Math.ceil(m.maxHp * 0.52);
   if (m.phase === 1 && m.hp < m.maxHp * 0.5) {
     m.phase = 2; m.act = { k: 'rally', t: 0 }; m.wind = 0;
     banner('Phase 2: he calls up his guard. Grab them, then hit him!', 'warn', 2.6); sfx('roar'); shake(6);
@@ -29,7 +29,7 @@ export function knightTick(m, dt) {
     ab.charge = m.phase === 2 ? 9 : 11;
     const v = (intro && S.player && S.player.alive ? S.player : null) || randomHero(true) || m.target;
     if (v) {
-      const a = angTo(m, v), len = dist(m, v) + 150;
+      const a = angTo(m, v), len = intro ? Math.min(dist(m, v) + 90, 210) : dist(m, v) + 150;
       m.act = { k: 'charge', t: 0, phase: 'wind', a, len, hit: new Set(), went: 0 };
       m.face = a; m.flip = Math.cos(a) < 0;
       S.hazards.push({ shape: 'rect', x: m.x, y: m.y, a, len, w: 86, warn: 1.6, t: 0, noDmg: true, src: m });
@@ -37,14 +37,14 @@ export function knightTick(m, dt) {
       return true;
     }
   }
-  if (ab.sweep <= 0) {
+  if (ab.sweep <= 0 && (!intro || (S.hints.dodge && dist(m, m.target) <= 155))) {
     ab.sweep = m.phase === 2 ? 7 : 8.5;
     const a = angTo(m, m.target);
     m.act = { k: 'sweep', t: 0, dur: 1.55 };
     m.face = a; m.flip = Math.cos(a) < 0; m.pose = 'wind';
     S.hazards.push({ shape: 'cone', x: m.x, y: m.y, a, r: 210, arc: 2.27, warn: 1.4, t: 0, dmg: 190, heavy: true, block: true, src: m, tankBuster: true,
       onFire: () => { sfx('sweep'); shake(5); m.pose = null; m.lunge = 0.2; m.lungeA = a; fx({ type: 'slash', x: m.x, y: m.y - 60, a, r: 150, dur: 0.22, col: '#FFFFFF', wide: true }); } });
-    if (intro) call('BLOCK!', 'alarm', 1.0);
+    if (intro) call('Heavy swing! Block it', 'alarm', 1.2);
     return true;
   }
   return false;
@@ -94,7 +94,11 @@ function knightAct(m, dt) {
         shake(5); sfx('thud');
       }
     }
-    if (!ok || a.went >= a.len) { m.act = null; m.atkT = 1.0; shake(3); }
+    if (!ok || a.went >= a.len) {
+      m.act = null; m.atkT = intro ? 0.3 : 1.0;
+      if (intro && !S.hints.block) m.ab.sweep = Math.max(m.ab.sweep, 1.4);
+      shake(3);
+    }
     return true;
   }
   m.act = null;
