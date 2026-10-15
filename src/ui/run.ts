@@ -61,46 +61,51 @@ const HINTS: Record<string, [string, string, string, number?]> = {
   rings: ['Dodge-roll through the rings as they reach you.', 'Space through the rings as they reach you.', 'Rings', 6],
 };
 
-interface TutStep { slot: string; eyebrow: string; title: string; touch: string; desk: string; btn: string }
+interface TutStep { slot: string; icon: string; step: string; title: string; badge: string; text: string; btn: string }
 const TUT_STEPS: Record<string, TutStep> = {
   introAb: {
     slot: 'a1',
-    eyebrow: 'Step 1 of 5',
-    title: 'Smash Cleave!',
-    touch: 'You swing on your own in range. Tap the glowing Cleave button to hit the whole pack!',
-    desk: 'You swing on your own in range. Press the glowing Cleave button (or 1) to hit the whole pack!',
+    icon: 'cleave',
+    step: '1 / 5',
+    title: '1 · Cleave',
+    badge: 'Wide front sweep',
+    text: 'Tap glowing Cleave to smash the pack!',
     btn: 'Use Cleave',
   },
   slam: {
     slot: 'a3',
-    eyebrow: 'Step 2 of 5',
-    title: 'Pull monsters off your party!',
-    touch: 'A skeleton is running at Ivy! Tap the glowing Slam button to grab everything back onto you.',
-    desk: 'A skeleton is running at Ivy! Press the glowing Slam button (or 3) to grab everything back onto you.',
+    icon: 'slam',
+    step: '2 / 5',
+    title: '3 · Slam (Taunt)',
+    badge: 'Ivy has aggro! ➔ Pull pack in',
+    text: 'Tap Slam to yank mobs back onto you.',
     btn: 'Use Slam',
   },
   dodge: {
     slot: 'dodge',
-    eyebrow: 'Step 3 of 5',
-    title: 'Roll out of the red line!',
-    touch: 'Sir Rattlebones is charging down that red lane! Tap your round Roll button to dodge aside.',
-    desk: 'Sir Rattlebones is charging down that red lane! Press your round Roll button (or Space) to dodge aside.',
+    icon: 'dodge',
+    step: '3 / 5',
+    title: 'Roll Out of Red',
+    badge: 'Red lane ➔ Dodge aside',
+    text: 'Tap Roll to dodge his charge!',
     btn: 'Dodge roll',
   },
   block: {
     slot: 'a4',
-    eyebrow: 'Step 4 of 5',
-    title: 'Raise your shield to block!',
-    touch: 'Gold cones are heavy tank hits—don’t roll away! Tap Raise Shield right before he swings.',
-    desk: 'Gold cones are heavy tank hits—don’t roll away! Press Raise Shield (or 4) right before he swings.',
+    icon: 'shield',
+    step: '4 / 5',
+    title: '4 · Block Gold Hits',
+    badge: 'Gold cone ➔ Block right before hit',
+    text: 'Tap Block to parry the heavy swing!',
     btn: 'Raise shield',
   },
   stagger: {
     slot: 'a2',
-    eyebrow: 'Step 5 of 5',
-    title: 'Perfect Block stagger!',
-    touch: 'Blocking right before impact takes zero damage, strikes back, and staggers the boss! Tap Charge to punish him.',
-    desk: 'Blocking right before impact takes zero damage, strikes back, and staggers the boss! Press Charge (or 2) to punish him.',
+    icon: 'charge',
+    step: '5 / 5',
+    title: '2 · Boss Staggered!',
+    badge: 'Perfect Block = 0 dmg + Stun!',
+    text: 'Tap Charge to rush in and punish him!',
     btn: 'Use Charge',
   },
 };
@@ -169,9 +174,10 @@ export class RunScene implements InputUI {
     if (key === 'slam') $('frames').classList.add('tut-spot');
     const h = $('hint');
     h.className = 'hint glass tut-card';
-    h.innerHTML = `<span class="eyebrow">${esc(step.eyebrow)}</span>
+    h.innerHTML = `<div class="tut-row"><span class="tile tut-ic" aria-hidden="true">${tile(step.icon)}</span><div class="tut-tx">
+      <div class="tut-top"><span class="tut-step">${esc(step.step)}</span><span class="tut-badge">${esc(step.badge)}</span></div>
       <b>${esc(step.title)}</b>
-      <span>${esc(this.app.touch ? step.touch : step.desk)}</span>
+      <span>${esc(step.text)}</span></div></div>
       <div class="tut-acts"><button type="button" class="btn gold" id="tut-act">${esc(step.btn)}</button></div>`;
     h.hidden = false;
     $('tut-act').addEventListener('click', (e) => { e.stopPropagation(); SFX.play('ui'); this.onTutInput('any'); });

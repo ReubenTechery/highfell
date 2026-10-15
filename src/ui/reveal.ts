@@ -242,15 +242,9 @@ export class Reveal {
     const lvNow = h ? heroLevel(h) : (loot.levelAfter || 1);
     const lvUp = (loot.levelAfter || 1) > (loot.levelBefore || 1);
     const sum = $('rv-sum', this.root);
-    sum.hidden = false;
-    sum.innerHTML = extra.intro
-      ? `<h3>How every real clear pays out</h3><div class="rv-grid">
-          <div class="kv"><span>Run length</span><b>~4 min</b><small>Junk-food runs</small></div>
-          <div class="kv"><span>Gear ladder</span><b>Common → Epic</b><small>~10 clears to cap</small></div>
-          <div class="kv"><span>${esc(dg.marksName)}</span><b>+1 per clear</b><small>Dupes give +3</small></div>
-          <div class="kv"><span>Your collection log</span><b>${got} / ${dg.collection.length}</b><small>Waiting for you</small></div>
-        </div>`
-      : `<h3>This run</h3><div class="rv-grid">
+    sum.hidden = !!extra.intro;
+    if (!extra.intro) {
+      sum.innerHTML = `<h3>This run</h3><div class="rv-grid">
           <div class="kv"><span>Time</span><b>${fmtT(loot.time)}</b><small>${loot.newPb ? 'New best!' : loot.firstClear ? 'First clear!' : `Best ${fmtT(loot.pb)}`}</small></div>
           <div class="kv"><span>Hero level</span><b>Lv ${lvNow}</b><small>${lvUp ? 'Level up! +1 Ability Point' : loot.xpGained ? `+${loot.xpGained} XP` : 'Max level'}</small></div>
           ${kc.map(([b, n]) => `<div class="kv"><span>${esc(dg.bosses.find((x) => x.id === b)?.name || b)}</span><b>KC ${fmtN(n)}</b></div>`).join('')}
@@ -258,15 +252,16 @@ export class Reveal {
           <div class="kv"><span>Collection log</span><b>${got} / ${dg.collection.length}</b><small>${newSlots ? `+${newSlots} new` : ''}</small></div>
           <div class="kv"><span>Party deaths</span><b>${extra.deaths}</b></div>
         </div>`;
+    }
     this.renderOffer();
     if (extra.intro) {
       const el = $('rv-log', this.root);
       const ach = ACHIEVEMENTS['barrow.log'];
       const pct = (got / dg.collection.length * 100).toFixed(1);
       el.hidden = false;
-      el.innerHTML = `<h3>Your Barrow Crypt Collection Log</h3>
-        <p class="fine"><b>Those cards above are examples.</b> Your hero starts at 0 / 16. Fill all 16 slots to unlock these three prizes forever:</p>
-        <div class="dgx-logbar" style="pointer-events: none"><span>Your Barrow Crypt log</span><b>${got}/${dg.collection.length}</b><i aria-hidden="true"><i style="width: ${pct}%"></i></i><span class="dgx-prize" aria-hidden="true">${tile('c_risen')}</span></div>
+      el.innerHTML = `<h3>Collection Log · ${got} / ${dg.collection.length}</h3>
+        <p class="fine"><b>Cards above are examples.</b> Fill all 16 slots to unlock:</p>
+        <div class="dgx-logbar" style="pointer-events: none"><span>Barrow Crypt log</span><b>${got}/${dg.collection.length}</b><i aria-hidden="true"><i style="width: ${pct}%"></i></i><span class="dgx-prize" aria-hidden="true">${tile('c_risen')}</span></div>
         ${ach ? rewards(ach, false) : ''}`;
     }
     // what a filled log gave, with the way to it: make one of the new heroes, put the look up
