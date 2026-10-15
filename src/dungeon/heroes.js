@@ -145,6 +145,27 @@ function shoot(h, t, kind) {
   S.projs.push({ team: 'hero', kind, x: h.x + Math.cos(h.face) * 18, y: h.y + Math.sin(h.face) * 8, z: 52, sp: frost ? 'bolt_frost' : 'orb_holy', src: h, tgt: t, speed: frost ? 780 : 640, life: 2 });
   sfx(frost ? 'bolt' : 'holy', 0.6);
 }
+export const tal = (h, slot) => (h && h.talents && h.talents[slot]) || 0;
+export function abCd(h, slot) {
+  const def = AB[h.role][slot];
+  if (!def) return 0;
+  let cd = def.cd || 0;
+  if (tal(h, slot) >= 2) {
+    if (def.key === 'slam' || def.key === 'blizzard') cd -= 1.0;
+    else if (def.key === 'charge') cd -= 1.2;
+    else if (def.key === 'ward' || def.key === 'comet') cd -= 0.8;
+    else if (def.key === 'sunburst') cd -= 2.5;
+    else if (def.key === 'nova') cd -= 2.0;
+    else if (def.key === 'icicle') cd -= 0.4;
+  }
+  return Math.max(0.5, cd);
+}
+export function abMana(h, slot) {
+  const def = AB[h.role][slot];
+  if (!def || !def.mana) return 0;
+  return def.key === 'circle' && tal(h, 'a1') >= 2 ? Math.max(0, def.mana - 2) : def.mana;
+}
+
 export function projHit(p) {
   const h = p.src, t = p.tgt;
   if (p.kind === 'frost') {
@@ -154,14 +175,20 @@ export function projHit(p) {
     bits(t.x, t.y - 40, 'shard_ice', 2, 110);
   } else if (p.kind === 'icicle') {
     const frozen = t.st && t.st.freeze > 0;
-    hurtMob(t, 75, h, { shatter: 3, crit: 0.25, col: frozen ? '#8FD6FF' : '#DDF3FF' });
+    const rk = tal(h, 'a4');
+    hurtMob(t, rk >= 1 ? 90 : 75, h, { shatter: 3, crit: 0.25 + (frozen && rk >= 2 ? 0.15 : 0), col: frozen ? '#8FD6FF' : '#DDF3FF' });
     if (frozen && h.isPlayer) fxText(t.x, t.y - 130, 'Shatter', '#8FD6FF', 22, { dur: 0.9 });
     bits(t.x, t.y - 40, 'shard_ice', frozen ? 7 : 3, 180);
   } else if (p.kind === 'smite') {
-    const got = hurtMob(t, 70, h, { col: '#FFE08A', size: 20 });
+    const rk = tal(h, 'a4');
+    const got = hurtMob(t, rk >= 1 ? 88 : 70, h, { col: '#FFE08A', size: 20 });
     const low = mostHurt(h, null);
     if (got > 0 && low && low.hp < low.maxHp) { healHero(h, low, got, { size: 17, raw: true }); fx({ type: 'beam', x: t.x, y: t.y - 50, x2: low.x, y2: low.y - 40, col: '#FFE08A', dur: 0.22 }); }
-    h.mana = Math.min(h.maxMana, h.mana + 3);
+    for (const z of S.zones) if (z.kind === 'heal') {
+      fx({ type: 'ring', x: z.x, y: z.y, r0: 24, r1: z.r, col: '#FFE08A', dur: 0.28, w: 6, ground: true });
+      for (const a of S.heroes) if (a.alive && dist(a, z) <= z.r + a.r && a.hp < a.maxHp) healHero(h, a, rk >= 2 ? 48 : 32, { size: 15 });
+    }
+    h.mana = Math.min(h.maxMana, h.mana + (rk >= 2 ? 5 : 3));
     dots(t.x, t.y - 50, '#FFE08A', 6, 120);
   } else {
     hurtMob(t, 18, h, { col: '#FFE08A', size: 17 });
@@ -180,7 +207,8 @@ export function useAbility(h, slot, aim) {
   if (!def || !h.alive || S.over || def.hold) return false;
   if (h.st.stun > 0 || h.st.caged || h.st.air > 0 || h.dodgeT > 0 || h.dash) return false;
   if (h.cd[slot] > 0) { if (h.isPlayer) HOOKS.nope(slot); return false; }
-  if (def.mana && h.mana < def.mana) { if (h.isPlayer) { HOOKS.nope(slot); banner('Not enough mana', 'warn', 0.9); } return false; }
+  const mCost = abMana(h, slot);
+  if (mCost && h.mana < mCost) { if (h.isPlayer) { HOOKS.nope(slot); banner('Not enough mana', 'warn', 0.9); } return false; }
   if (h.cast) return false;
   let ok = false;
   switch (def.key) {
@@ -197,8 +225,8 @@ export function useAbility(h, slot, aim) {
     case 'comet': ok = abComet(h, aim); return ok;
   }
   if (ok) {
-    h.cd[slot] = def.cd;
-    if (def.mana) h.mana -= def.mana;
+    h.cd[slot] = abCd(h, slot);
+    if (mCost) h.mana -= mCost;
     if (h.isPlayer) HOOKS.fired(slot);
   } else if (h.isPlayer) HOOKS.nope(slot);
   return ok;
@@ -207,15 +235,16 @@ export function useAbility(h, slot, aim) {
 /* Slam: hit everything around you; everything hit turns on you and gets dragged in */
 function abSlam(h) {
   let n = 0;
+  const rk = tal(h, 'a1'), R = rk >= 1 ? 240 : 200;
   for (const m of S.mobs) {
-    if (!isFoe(m) || m.cage || m.M.wisp || dist(m, h) > 200 + m.r || Math.abs(m.y - h.y) > 600) continue;
+    if (!isFoe(m) || m.cage || m.M.wisp || dist(m, h) > R + m.r || Math.abs(m.y - h.y) > 600) continue;
     taunt(m, h, 4);
-    hurtMob(m, 55, h, { threat: 2 });
+    hurtMob(m, rk >= 1 ? 69 : 55, h, { threat: rk >= 2 ? 3 : 2 });
     if (m.alive && !m.isBoss) yank(m, h, m.M.big ? 0.45 : 1);
     n++;
   }
   say(h, n ? (rng() < 0.5 ? 'Oi!' : 'Over here!') : 'Oi?', 0.9);
-  fx({ type: 'ring', x: h.x, y: h.y, r0: 30, r1: 210, col: '#F2C230', dur: 0.38, w: 9, ground: true });
+  fx({ type: 'ring', x: h.x, y: h.y, r0: 30, r1: R + 10, col: '#F2C230', dur: 0.38, w: 9, ground: true });
   dots(h.x, h.y, '#C9B79A', 10, 200);
   if (n) shake(4);
   sfx('slam', 0.7); sfx('taunt');
@@ -232,16 +261,19 @@ function yank(m, h, k) {
   fx({ type: 'beam', x: m.x, y: m.y - 30, x2: h.x, y2: h.y - 30, col: '#F2C230', dur: 0.16 });
   dots(m.x, m.y, '#C9B79A', 4, 90, { size: 5 });
 }
-/* Cleave: a big swing through everything in front of you */
+/* Cleave: a big swing through everything in front of you; crushes stunned or clumped packs */
 function abCleave(h, aim) {
   const t = aim && aim.kind === 'mob' && isFoe(aim) ? aim : autoTarget(h);
   if (t && dist(h, t) < 200) h.face = angTo(h, t);
   const hits = foesNear(h.x, h.y, 115, false).filter((m) => !m.cage && Math.abs(angDiff(h.face, angTo(h, m))) < 1.22);
-  for (const m of hits) hurtMob(m, 105, h, { knock: 90, crit: 0.2 });
+  const crush = hits.length >= 3 || hits.some((m) => m.st && m.st.stun > 0);
+  const rk = tal(h, 'a4'), base = rk >= 1 ? 126 : 105, crushDmg = rk >= 2 ? 170 : rk >= 1 ? 150 : 125;
+  for (const m of hits) hurtMob(m, (crush || (m.st && m.st.stun > 0)) ? crushDmg : base, h, { knock: 90, crit: crush ? 0.28 : 0.2 });
+  if (crush && h.isPlayer) fxText(h.x + Math.cos(h.face) * 55, h.y + Math.sin(h.face) * 35 - 110, 'Crush!', '#FFE08A', 22, { dur: 0.85 });
   h.lunge = 0.2; h.lungeA = h.face; h.atkT = Math.max(h.atkT, 0.45); h.blocking = false;
-  fx({ type: 'slash', x: h.x, y: h.y - 30, a: h.face, r: 92, dur: 0.22, col: '#FFE08A', wide: true });
+  fx({ type: 'slash', x: h.x, y: h.y - 30, a: h.face, r: crush ? 102 : 92, dur: 0.22, col: crush ? '#F2C230' : '#FFE08A', wide: true });
   sfx('sweep', 0.8);
-  if (hits.length) { shake(hits.length > 2 ? 5 : 3); sfx('thud', 0.6); }
+  if (hits.length) { shake(crush || hits.length > 2 ? 5 : 3); sfx('thud', 0.6); }
   return true;
 }
 function abCharge(h, aim) {
@@ -276,29 +308,31 @@ function dashTick(h, dt) {
   if (!moveEnt(h, (dx / dd) * step, (dy / dd) * step)) { chargeImpact(h, d); h.dash = null; }
 }
 function chargeImpact(h, d) {
-  const ring = h.traits.has('ringing');
+  const ring = h.traits.has('ringing'), rk = tal(h, 'a3'), dmg = rk >= 1 ? 100 : 80, stunDur = rk >= 2 ? 1.4 : 1.0;
   const hits = foesNear(h.x, h.y, 86, false).filter((m) => !m.cage);
   for (const m of hits) {
     aggro(m, h, 0);
-    hurtMob(m, 80, h, { knock: 140 });
+    hurtMob(m, dmg, h, { knock: 140 });
     // the mob you charged turns on you; Ringing Charge makes everything you hit turn
-    if (ring) hurtMob(m, 80, h, { knock: 60 });
+    if (ring) hurtMob(m, dmg, h, { knock: 60 });
     if (ring || m === d.mob) taunt(m, h, 2.5);
     addThreat(m, h, 260);
-    if (!m.isBoss) { m.st.stun = Math.max(m.st.stun, 1.0); m.wind = 0; if (m.cast) interruptCast(m); }
+    if (!m.isBoss) { m.st.stun = Math.max(m.st.stun, stunDur); m.wind = 0; if (m.cast) interruptCast(m); }
   }
   if (d.mob) h.picked = d.mob.alive ? d.mob : null;
   fx({ type: 'ring', x: h.x, y: h.y, r0: 20, r1: 96, col: '#C9B79A', dur: 0.3, w: 8, ground: true });
   dots(h.x, h.y, '#C9B79A', 8, 160);
   if (hits.length) { shake(4); sfx('thud'); }
 }
-/* a perfect block hits back, and Barrowguard turns it into a bone shield */
+/* a perfect block hits back, and Barrowguard or Bulwark turns it into a shield */
 export function onPerfectBlock(h, src) {
+  const rk = tal(h, 'a2');
   if (src && src.kind === 'mob' && src.alive) {
-    hurtMob(src, 150, h, { col: '#F2C230', size: 26, noCrit: true });
+    hurtMob(src, rk >= 1 ? 195 : 150, h, { col: '#F2C230', size: 26, noCrit: true });
     fx({ type: 'slash', x: h.x + Math.cos(h.face) * 20, y: h.y - 34, a: h.face, r: 70, dur: 0.2, col: '#F2C230' });
   }
   if (h.bonuses.has('barrowguard2')) { h.absorb = Math.max(h.absorb, Math.round(150 * h.power)); h.absorbT = 6; if (h.isPlayer) fxText(h.x, h.y - 120, 'Bone shield', '#F0E8D2', 18); }
+  else if (rk >= 2) { h.absorb = Math.max(h.absorb, Math.round(90 * h.power)); h.absorbT = 5; if (h.isPlayer) fxText(h.x, h.y - 120, 'Bulwark', '#FFE08A', 17); }
 }
 
 export function clampRange(h, x, y, r) { const d = distXY(h.x, h.y, x, y); if (d <= r) return { x, y }; return { x: h.x + ((x - h.x) / d) * r, y: h.y + ((y - h.y) / d) * r }; }
@@ -306,7 +340,8 @@ function abCircle(h, aim) {
   let p;
   if (aim && aim.x !== undefined && !aim.kind) p = clampRange(h, aim.x, aim.y, 520);
   else { const t = heroBy('tank'); p = t && t.alive && dist(t, h) < 520 ? { x: t.x, y: t.y } : { x: h.x, y: h.y }; }
-  S.zones.push({ kind: 'heal', x: p.x, y: p.y, r: 110, t: 0, dur: 6, tick: 0.5, tickT: 0.2, src: h });
+  const rk = tal(h, 'a1');
+  S.zones.push({ kind: 'heal', x: p.x, y: p.y, r: rk >= 1 ? 126 : 110, t: 0, dur: rk >= 2 ? 7.5 : 6, tick: 0.5, tickT: 0.2, val: rk >= 1 ? 43 : 36, src: h });
   sfx('circle');
   return true;
 }
@@ -318,7 +353,8 @@ function abWard(h, aim) {
     t = low && low.hp / low.maxHp < 0.7 ? low : tank && tank.alive && dist(tank, h) < MEND.range ? tank : low;
   }
   if (!t || dist(t, h) > MEND.range + 40) return false;
-  t.absorb = Math.round(220 * h.power); t.absorbT = 8; t.wardBy = h;
+  const rk = tal(h, 'a2');
+  t.absorb = Math.round((rk >= 1 ? 275 : 220) * h.power); t.absorbT = 8; t.wardBy = h;
   fx({ type: 'ring', x: t.x, y: t.y - 40, r0: 10, r1: 52, col: '#DDF3FF', dur: 0.3, w: 5 });
   if (h.isPlayer || t.isPlayer) fxText(t.x, t.y - 96, 'Ward', '#DDF3FF', 18);
   fx({ type: 'beam', x: h.x, y: h.y - 50, x2: t.x, y2: t.y - 40, col: '#DDF3FF', dur: 0.25 });
@@ -326,9 +362,10 @@ function abWard(h, aim) {
   return true;
 }
 function abSunburst(h) {
+  const rk = tal(h, 'a3'), amt = rk >= 1 ? 250 : 200;
   for (const a of S.heroes) {
     if (!a.alive || dist(a, h) > 470) continue;
-    healHero(h, a, 200, { show: true });
+    healHero(h, a, amt, { show: true });
     a.st.root = 0; a.st.haunt = 0;
   }
   fx({ type: 'ring', x: h.x, y: h.y - 30, r0: 30, r1: 470, col: '#F2C230', dur: 0.5, w: 9 });
@@ -377,20 +414,21 @@ function abBlizzard(h, aim) {
   else { const c = bestCluster(h, 120, 560); if (c) p = { x: c.x, y: c.y }; else { const t = autoTarget(h); if (t) p = { x: t.x, y: t.y }; } }
   if (!p) { if (h.isPlayer) fxText(h.x, h.y - 100, 'Nothing to freeze', '#DDF3FF', 16); return false; }
   p = clampRange(h, p.x, p.y, 520);
-  S.zones.push({ kind: 'blizzard', x: p.x, y: p.y, r: 120, t: 0, dur: 5, tick: 0.5, tickT: 0.15, src: h, seed: Math.random() * 100 });
+  const rk = tal(h, 'a1');
+  S.zones.push({ kind: 'blizzard', x: p.x, y: p.y, r: rk >= 1 ? 138 : 120, t: 0, dur: rk >= 2 ? 6 : 5, tick: 0.5, tickT: 0.15, val: rk >= 1 ? 24 : 20, src: h, seed: Math.random() * 100 });
   h.face = Math.atan2(p.y - h.y, p.x - h.x); h.lunge = 0.14; h.lungeA = h.face;
   sfx('blizzard');
   return true;
 }
 function abNova(h) {
-  const R = 155;
+  const R = 155, rk = tal(h, 'a2');
   for (const m of S.mobs) {
     if (!isFoe(m) || m.cage || dist(m, h) > R + m.r) continue;
     aggro(m, h, 0);
-    hurtMob(m, 50, h, { col: '#DDF3FF' });
+    hurtMob(m, rk >= 1 ? 65 : 50, h, { col: '#DDF3FF' });
     if (!m.alive) continue;
     if (m.isBoss) { m.st.slow = 0.4; m.st.slowT = 3; }
-    else if (!m.M.wisp) { m.st.freeze = 3; m.wind = 0; if (m.cast) interruptCast(m); }
+    else if (!m.M.wisp) { m.st.freeze = rk >= 1 ? 3.5 : 3; m.wind = 0; if (m.cast) interruptCast(m); }
   }
   fx({ type: 'nova', x: h.x, y: h.y, r: R, dur: 0.45 });
   bits(h.x, h.y - 20, 'shard_ice', 12, 300);
@@ -408,7 +446,8 @@ function abComet(h, aim) {
 function finishCast(h) {
   const c = h.cast; h.cast = null;
   if (c.key !== 'comet') return;
-  h.cd.a3 = AB.dps.a3.cd;
+  const cd = abCd(h, 'a3'), rk = tal(h, 'a3');
+  h.cd.a3 = cd;
   if (h.isPlayer) HOOKS.fired('a3');
   const t = c.target;
   const tx = t.x, ty = t.y;
@@ -416,11 +455,11 @@ function finishCast(h) {
   sfx('whoosh');
   later(0.32, () => {
     const frozen = t.alive && t.st.freeze > 0;
-    if (t.alive) hurtMob(t, 320, h, { shatter: h.traits.has('shatterlance') ? 3 : 2, crit: 0.15, col: frozen ? '#8FD6FF' : '#DDF3FF' });
+    if (t.alive) hurtMob(t, rk >= 1 ? 384 : 320, h, { shatter: h.traits.has('shatterlance') ? 3 : 2, crit: 0.15 + (rk >= 2 ? 0.1 : 0), col: frozen ? '#8FD6FF' : '#DDF3FF' });
     if (frozen && h.isPlayer) fxText(tx, ty - 150, 'Shatter!', '#8FD6FF', 32, { dur: 1.2 });
-    if (frozen && h.bonuses.has('rimebone2')) h.cd.a3 = Math.min(h.cd.a3, AB.dps.a3.cd / 2);
+    if (frozen && h.bonuses.has('rimebone2')) h.cd.a3 = Math.min(h.cd.a3, cd / 2);
     const splash = foesNear(tx, ty, 90, false).filter((o) => o !== t && !o.cage);
-    for (const o of splash) hurtMob(o, 110, h, { size: 19 });
+    for (const o of splash) hurtMob(o, rk >= 1 ? 132 : 110, h, { size: 19 });
     if (h.unique === 'gravefrost') for (const o of [t, ...splash]) { if (!o.alive) continue; if (o.isBoss) { o.st.slow = Math.max(o.st.slow, 0.4); o.st.slowT = 2; } else if (!o.M.wisp) { o.st.freeze = Math.max(o.st.freeze, 2); o.wind = 0; } }
     fx({ type: 'ring', x: tx, y: ty, r0: 20, r1: 110, col: '#DDF3FF', dur: 0.3, w: 8, ground: true });
     bits(tx, ty - 20, 'shard_ice', 14, 320);

@@ -165,6 +165,41 @@ T['i_hood'] = tile(IB, HOOD)
 T['i_mantle'] = tile(IB, MANT)
 T['i_hat'] = tile(IB, HAT)
 
+# ---- 4-tier visual progression for regular gear (0: Rags/Wood/Bronze, 1: Iron/Leather, 2: Runed Steel/Silk, 3: Masterwork Epic)
+B0, B1, B2, B3 = '#3B322C', '#2B3B32', '#263850', '#3B2B54'
+RAG, RAG_D, ROPE, BRONZE = '#A68E74', '#7D6852', '#C9B08A', '#C88344'
+# Tier 0: Humble Rags, Rope & Bronze/Wood
+T['i_axe_0'] = tile(B0, inked('M18 54 L40 18', '#7D5532', 5) + F('M33 15 C43 10 54 17 50 30 L45 27 L47 23 L42 24 C37 22 35 19 33 15 Z', BRONZE, 3.2) + P('M32 22 L40 26 M34 18 L40 22', ROPE, 2.4))
+T['i_helm_0'] = tile(B0, F('M16 42 C16 20 48 20 48 42 C38 39 26 39 16 42 Z', RAG, 3.2) + F('M14 40 H50 L48 47 H16 Z', RAG_D, 3) + F('M32 23 L41 26 L39 34 L30 31 Z', RAG_D, 2.4) + P('M30 27 L33 25 M38 29 L41 27', ROPE, 2))
+T['i_pauldrons_0'] = tile(B0, F('M8 42 C6 26 20 18 28 28 C23 36 15 42 8 42 Z', RAG, 3.2) + F('M56 42 C58 26 44 18 36 28 C41 36 49 42 56 42 Z', RAG, 3.2) + P('M14 26 L22 36 M50 26 L42 36 M26 30 H38', ROPE, 2.6))
+T['i_plate_0'] = tile(B0, F('M20 16 C27 19 37 19 44 16 L50 26 L44 30 L45 52 L38 50 L32 53 L26 50 L19 52 L20 30 L14 26 Z', RAG, 3.2) + F('M33 26 H41 V35 H33 Z', RAG_D, 2.4) + P('M20 39 H44', ROPE, 3.2))
+T['i_sunstaff_0'] = tile(B0, inked('M18 56 C24 42 28 32 36 18 C40 12 46 14 44 20', '#7D5532', 4.8) + F('M38 14 C44 6 52 10 46 18 C42 18 39 16 38 14 Z', '#6EAE46', 2.6))
+T['i_hood_0'] = tile(B0, F('M14 52 C11 30 19 12 32 12 C45 12 53 30 50 52 C42 46 22 46 14 52 Z', RAG, 3.2) + F('M22 44 C21 31 25 23 32 23 C39 23 43 31 42 44 Z', '#2B231D', 3) + F('M35 16 L44 20 L41 28 L33 24 Z', RAG_D, 2.4))
+T['i_mantle_0'] = tile(B0, F('M8 42 C10 26 20 19 32 19 C44 19 54 26 56 42 L48 40 L40 44 L32 40 L24 44 L16 40 Z', RAG, 3.2) + F('M36 24 H45 V32 H36 Z', RAG_D, 2.2) + P('M26 28 L38 28', '#6B4528', 3.4))
+T['i_robe_0'] = tile(B0, F('M22 14 C28 18 36 18 42 14 L48 22 L43 28 L45 53 L37 50 L32 54 L27 50 L19 53 L21 28 L16 22 Z', RAG, 3.2) + F('M34 34 H42 V43 H34 Z', RAG_D, 2.4) + P('M21 31 H43', ROPE, 3.2))
+T['i_icestaff_0'] = tile(B0, inked('M18 56 L38 22', '#7D5532', 4.5) + C(41, 17, 6.5, '#8A9BA8', 2.8) + P('M35 23 L43 19 M37 19 L41 25', ROPE, 2.2))
+T['i_hat_0'] = tile(B0, F('M10 50 C22 45 42 45 54 50 C44 55 20 55 10 50 Z', '#68768A', 3) + F('M20 48 C21 34 27 22 42 18 C48 17 50 23 44 26 C41 32 42 40 44 48 Z', '#68768A', 3) + F('M25 34 L34 32 L35 40 L26 42 Z', RAG, 2.4))
+
+# Tier 1: Forged Iron, Studded Leather & Clean Cloth
+T['i_axe_1'] = tile(B1, inked('M20 54 L42 14', '#8C6239', 5) + F('M36 12 C47 5 59 13 55 28 C46 26 39 21 36 12 Z', '#9AA7B8', 3.2) + C(20, 54, 3.2, '#5C4028', 2))
+T['i_helm_1'] = tile(B1, F('M18 42 C18 18 46 18 46 42 Z', '#9AA7B8', 3.2) + F('M15 39 H49 V46 H15 Z', '#7D8FA3', 3) + F('M30 26 H34 V48 H30 Z', '#7D8FA3', 2.6))
+T['i_pauldrons_1'] = tile(B1, F('M7 40 C5 23 22 16 30 27 C24 36 14 41 7 40 Z', '#8C6239', 3.2) + F('M57 40 C59 23 42 16 34 27 C40 36 50 41 57 40 Z', '#8C6239', 3.2) + C(17, 30, 2.6, '#C9D2DC', 1.8) + C(47, 30, 2.6, '#C9D2DC', 1.8))
+T['i_plate_1'] = tile(B1, F('M18 16 C26 12 38 12 46 16 L50 28 L44 30 V52 H20 V30 L14 28 Z', '#7D8FA3', 3.2) + P('M20 38 H44', '#6B4528', 4) + C(32, 38, 3, '#C9D2DC', 2))
+T['i_sunstaff_1'] = tile(B1, inked('M18 58 L38 24', '#8C6239', 4.5) + C(40, 20, 9, '#D08A4E', 3.2) + C(40, 20, 4, '#FFE08A', 2))
+T['i_hood_1'] = tile(B1, F('M14 52 C10 30 18 10 32 10 C46 10 54 30 50 52 C42 46 22 46 14 52 Z', '#D9CEB8', 3.2) + F('M22 44 C20 30 24 22 32 22 C40 22 44 30 42 44 Z', '#3A2E40', 3))
+T['i_mantle_1'] = tile(B1, F('M6 42 C8 26 20 18 32 18 C44 18 56 26 58 42 C48 38 40 40 32 46 C24 40 16 38 6 42 Z', '#D9CEB8', 3.2) + C(32, 30, 3.8, '#D08A4E', 2.2))
+T['i_robe_1'] = tile(B1, F('M24 12 C28 16 36 16 40 12 L48 20 L44 26 L46 54 H18 L20 26 L16 20 Z', '#3E6B9C', 3.2) + F('M29 16 H35 V54 H29 Z', '#D9CEB8', 2.4))
+T['i_icestaff_1'] = tile(B1, inked('M18 58 L36 26', '#8C6239', 4.5) + F('M40 8 L46 19 L40 30 L34 19 Z', '#8FD6FF', 2.8))
+T['i_hat_1'] = tile(B1, F('M8 50 C20 44 44 44 56 50 C46 56 18 56 8 50 Z', '#3E6B9C', 3) + F('M20 48 C22 34 30 22 42 10 C41 24 42 36 44 48 Z', '#3E6B9C', 3) + F('M20 46 H44 V50 H20 Z', '#8C6239', 2.4))
+
+# Tier 2: Runed Steel, Horned/Crested & Gemmed (Rare)
+for _k in ['i_axe', 'i_helm', 'i_pauldrons', 'i_plate', 'i_sunstaff', 'i_hood', 'i_mantle', 'i_robe', 'i_icestaff', 'i_hat']:
+    T[_k + '_2'] = T[_k].replace(f'fill: {IB}', f'fill: {B2}')
+
+# Tier 3: Ornate Masterwork (Epic)
+for _k in ['i_axe', 'i_helm', 'i_pauldrons', 'i_plate', 'i_sunstaff', 'i_hood', 'i_mantle', 'i_robe', 'i_icestaff', 'i_hat']:
+    T[_k + '_3'] = gild(T[_k], tile=True).replace(f'fill: {IB}', f'fill: {B3}')
+
 # ---- Barrow set pieces: the slot shape on the set's colour, with the set's mark in the corner
 MARKS = {
     'barrowguard': ('#3F5A3A', C(52, 52, 8, '#F0E8D2', 2.6) + C(49.5, 51, 1.6, '#1E1A1A', 0) + C(54.5, 51, 1.6, '#1E1A1A', 0)),

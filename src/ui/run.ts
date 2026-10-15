@@ -16,7 +16,7 @@ import type { Rar, RoleId } from '../content/types';
 import { newGame, respawn, update } from '../dungeon/game.js';
 import { S, setHooks } from '../dungeon/state.js';
 import { banner } from '../dungeon/entities.js';
-import { bestCluster, doDodge, heroBy, isFoe, mend, useAbility } from '../dungeon/heroes.js';
+import { abCd, abMana, bestCluster, doDodge, heroBy, isFoe, mend, useAbility } from '../dungeon/heroes.js';
 import { inHaz } from '../dungeon/bots.js';
 import { render, resizeView, updateCam, VIEW } from '../dungeon/render.js';
 import { roomIndexOf } from '../dungeon/world.js';
@@ -302,9 +302,11 @@ export class RunScene implements InputUI {
       <span class="fb"><i class="hpf"></i><i class="abf"></i></span>${h.role === 'healer' ? '<span class="fb mp"><i class="mpf"></i></span>' : ''}</li>`).join('');
     $('frames').querySelectorAll<HTMLElement>('.fr').forEach((li) => li.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (S.player.role === 'healer') { mend(S.player, heroBy(li.dataset.role)); this.hintDone('heal'); } }));
     const btn = (slot: string) => {
-      const def = slot === 'dodge' ? { key: 'dodge', name: 'Dodge', desc: 'Roll out of trouble.' } as { key: string; name: string; desc: string; mana?: number; hold?: boolean } : A[slot as 'a1'];
-      return `<button type="button" class="ab${def.hold ? ' hold' : ''}" data-slot="${slot}" aria-label="${esc(def.name)}" title="${esc(def.name + ': ' + def.desc)} (${KEY[slot]})">
-        <span class="face">${tile(def.key)}</span><span class="sweep"></span><span class="cdn"></span><kbd>${KEY[slot]}</kbd>${def.mana ? `<span class="cost">${def.mana}</span>` : ''}<span class="glow"></span></button>`;
+      const def = slot === 'dodge' ? { key: 'dodge', name: 'Dodge', desc: 'Roll out of trouble.' } as { key: string; name: string; desc: string; mana?: number; hold?: boolean; combo?: string } : A[slot as 'a1'];
+      const mana = slot === 'dodge' ? 0 : abMana(p, slot);
+      const tip = def.combo ? `${def.name}: ${def.desc} (${def.combo})` : `${def.name}: ${def.desc}`;
+      return `<button type="button" class="ab${def.hold ? ' hold' : ''}" data-slot="${slot}" aria-label="${esc(def.name)}" title="${esc(tip)} (${KEY[slot]})">
+        <span class="face">${tile(def.key)}</span><span class="sweep"></span><span class="cdn"></span><kbd>${KEY[slot]}</kbd>${mana ? `<span class="cost">${mana}</span>` : ''}<span class="c-tag" aria-hidden="true"></span><span class="glow"></span></button>`;
     };
     $('abar').innerHTML = ['a1', 'a2', 'a3', 'a4', 'dodge'].map(btn).join('');
     $('abar').querySelectorAll<HTMLElement>('.ab').forEach((b) => this.bindAbility(b, b.dataset.slot!));
@@ -389,12 +391,14 @@ export class RunScene implements InputUI {
       const slot = b.dataset.slot!;
       let cd = 0, max = 1, usable = p.alive && !p.st.stun && !p.st.caged;
       if (slot === 'dodge') { cd = p.cd.dodge; max = 1.6; }
-      else { const def = A[slot as 'a1']; cd = p.cd[slot]; max = def.cd || 1; if (def.key === 'comet' && p.cast) cd = 0; if (def.mana && p.mana < def.mana) usable = false; }
+      else { const def = A[slot as 'a1'], mana = abMana(p, slot); cd = p.cd[slot]; max = abCd(p, slot) || 1; if (def.key === 'comet' && p.cast) cd = 0; if (mana && p.mana < mana) usable = false; }
       const pr = cd > 0 ? cd / max : 0;
       const sw = b.querySelector<HTMLElement>('.sweep')!; const v = pr.toFixed(3); if (sw.dataset.p !== v) { sw.style.setProperty('--p', v); sw.dataset.p = v; }
       const cdn = b.querySelector('.cdn')!; const txt = cd > 0.95 ? String(Math.ceil(cd)) : ''; if (cdn.textContent !== txt) cdn.textContent = txt;
+      const ctag = usable && cd <= 0 ? comboFor(p, slot) : '';
+      const tagEl = b.querySelector('.c-tag'); if (tagEl && tagEl.textContent !== ctag) tagEl.textContent = ctag;
       b.classList.toggle('dim', !usable);
-      b.classList.toggle('proc', usable && cd <= 0 && procFor(p, slot));
+      b.classList.toggle('proc', !!ctag);
     });
     const bn = $('banner');
     const btxt = S.banner ? S.banner.str : '';
@@ -416,24 +420,28 @@ export class RunScene implements InputUI {
 
 function setW(el: Element | null, k: number): void { if (!el) return; const v = (clamp(k, 0, 1) * 100).toFixed(1) + '%'; const s = (el as HTMLElement).style; if (s.width !== v) s.width = v; }
 
-/** a gold glow on a button when now is a good time to press it */
-function procFor(p: any, slot: string): boolean {
+/** a gold glow and combo prompt label on a button when a combo chain or reactive window is live */
+function comboFor(p: any, slot: string): string {
   const def = slot === 'dodge' ? null : AB[p.role as RoleId][slot as 'a1'];
-  if (!def) return S.hazards.some((z: any) => !z.noDmg && !(z.tankBuster && p.role === 'tank') && z.t > 0.2 && inHaz(z, p.x, p.y, p.r)) || S.rings.some((g: any) => !g.hit.has(p.id) && Math.abs(dist(p, g) - g.r) < 90);
+  if (!def) return S.hazards.some((z: any) => !z.noDmg && !(z.tankBuster && p.role === 'tank') && z.t > 0.2 && inHaz(z, p.x, p.y, p.r)) || S.rings.some((g: any) => !g.hit.has(p.id) && Math.abs(dist(p, g) - g.r) < 90) ? 'DODGE!' : '';
   const loose = () => S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && !m.cage && m.forcedT <= 0 && dist(m, p) < 220);
   switch (def.key) {
-    case 'slam': return loose() || S.mobs.filter((m: any) => isFoe(m) && !m.cage && m.state === 'fight' && dist(m, p) < 200 + m.r).length >= 3;
-    case 'shield': return S.hazards.some((z: any) => (z.tankBuster || (z.shape === 'rect' && z.src && z.src.type === 'knight')) && !z.fired && (z.followT === p || inHaz(z, p.x, p.y, p.r)) && z.warn - z.t < 0.9);
-    case 'charge': return S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && !m.cage && dist(m, p) > 200 && dist(m, p) < 420);
-    case 'cleave': return S.mobs.filter((m: any) => isFoe(m) && !m.cage && m.state === 'fight' && dist(m, p) < 115 + m.r).length >= 2;
-    case 'sunburst': return S.heroes.filter((a: any) => a.alive && a.hp < a.maxHp * 0.6).length >= 2;
-    case 'ward': { const t = heroBy('tank'); return !!(t && t.alive && t.absorb <= 0 && S.hazards.some((z: any) => z.tankBuster && !z.fired && (z.followT === t || inHaz(z, t.x, t.y, t.r)))); }
-    case 'smite': return S.inCombat && S.heroes.every((a: any) => !a.alive || a.hp > a.maxHp * 0.8) && !!(heroBy('tank')?.target);
-    case 'blizzard': { const c = bestCluster(p, 120, 560); return !!(c && c.score >= 3); }
-    case 'nova': return S.mobs.filter((m: any) => isFoe(m) && !m.isBoss && !m.cage && m.state === 'fight' && dist(m, p) < 150 + m.r).length >= 2 || S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 150 + m.r);
-    case 'comet': { const t = p.picked || p.target; return !!(t && t.alive && t.st && t.st.freeze > 0.6); }
-    case 'icicle': return S.mobs.some((m: any) => isFoe(m) && m.st && m.st.freeze > 0.3 && dist(m, p) < 500);
+    case 'slam': return loose() ? 'TAUNT!' : S.mobs.filter((m: any) => isFoe(m) && !m.cage && m.state === 'fight' && dist(m, p) < 200 + m.r).length >= 3 ? 'PULL!' : '';
+    case 'shield': return S.hazards.some((z: any) => (z.tankBuster || (z.shape === 'rect' && z.src && z.src.type === 'knight')) && !z.fired && (z.followT === p || inHaz(z, p.x, p.y, p.r)) && z.warn - z.t < 0.9) ? 'BLOCK!' : '';
+    case 'charge': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 420) ? 'KICK!' : S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && !m.cage && dist(m, p) > 200 && dist(m, p) < 420) ? 'PEEL!' : '';
+    case 'cleave': {
+      const near = S.mobs.filter((m: any) => isFoe(m) && !m.cage && m.state === 'fight' && dist(m, p) < 115 + m.r);
+      return near.some((m: any) => m.st && m.st.stun > 0) || near.length >= 3 ? 'CRUSH!' : near.length >= 2 ? 'CLEAVE!' : '';
+    }
+    case 'circle': return S.heroes.filter((a: any) => a.alive && a.hp < a.maxHp * 0.78).length >= 2 ? 'CIRCLE!' : '';
+    case 'sunburst': return S.heroes.some((a: any) => a.alive && (a.st.root > 0 || a.st.haunt > 0)) ? 'CLEANSE!' : S.heroes.filter((a: any) => a.alive && a.hp < a.maxHp * 0.6).length >= 2 ? 'BURST!' : '';
+    case 'ward': { const t = heroBy('tank'); return (t && t.alive && t.absorb <= 0 && S.hazards.some((z: any) => z.tankBuster && !z.fired && (z.followT === t || inHaz(z, t.x, t.y, t.r)))) ? 'SHIELD!' : ''; }
+    case 'smite': return S.inCombat && !!(heroBy('tank')?.target) && S.zones.some((z: any) => z.kind === 'heal') ? 'PULSE!' : S.inCombat && S.heroes.every((a: any) => !a.alive || a.hp > a.maxHp * 0.8) && !!(heroBy('tank')?.target) ? 'SMITE!' : '';
+    case 'blizzard': { const c = bestCluster(p, 120, 560); return (c && c.score >= 3) ? 'STORM!' : ''; }
+    case 'nova': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 150 + m.r) ? 'KICK!' : S.mobs.filter((m: any) => isFoe(m) && !m.isBoss && !m.cage && m.state === 'fight' && dist(m, p) < 150 + m.r).length >= 2 ? 'FREEZE!' : '';
+    case 'comet': { const t = p.picked || p.target; return (t && t.alive && t.st && t.st.freeze > 0.6) ? 'SHATTER 2×!' : ''; }
+    case 'icicle': return S.mobs.some((m: any) => isFoe(m) && m.st && m.st.freeze > 0.3 && dist(m, p) < 500) ? 'SHATTER 3×!' : '';
   }
-  return false;
+  return '';
 }
 

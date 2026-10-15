@@ -24,7 +24,7 @@ export const tile = (name: string): string => TILES[name] || TILES.mend || '';
 /** The icon for anything with an id: regular gear, set pieces, uniques, collectibles. */
 export function iconOf(id: string): string {
   const it = ITEMS[id];
-  if (it) return tile(it.kind === 'gear' ? ROLE_SLOTS[it.role][it.slot].icon : it.icon);
+  if (it) return tile(it.icon || ROLE_SLOTS[it.role][it.slot].icon);
   const c = COLLECTIBLES[id];
   if (c) return tile(c.icon);
   return tile('mend');

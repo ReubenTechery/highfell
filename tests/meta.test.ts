@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { makeRng } from '../src/core/rng';
 import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, SETS, checkContent, heroicVersion } from '../src/content';
 import { BARROW } from '../src/content/barrow';
-import { activeHero, createHero, dungeonRecord, freshProfile, migrate, nameProblem, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
+import { activeHero, createHero, dungeonRecord, freshProfile, heroLevel, migrate, nameProblem, PROFILE_VERSION, removeHero, renameHero, resetTalents, roleOf, setActive, spendTalent, talentPointsLeft, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
 import { DUPE_MARKS, heroicOpen, heroicProgress, resolveRun, rollTable } from '../src/meta/loot';
 import { bestRegular, buyTrait, compareFor, compareOn, equip, floorWorn, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, wearerOf, worn } from '../src/meta/gear';
 import { CLASSES, FOUNDERS, HERO_ART, MAX_HEROES, RACES, allHeroArt, canMake, cleanName, defaultSex, heroArt } from '../src/content/folk';
@@ -151,8 +151,8 @@ test('loot: each line rolls at its own rate and role locks hold', () => {
     const exp = N * rate, sd = Math.sqrt(N * rate * (1 - rate));
     assert.ok(Math.abs((hits[id] || 0) - exp) < 4 * sd + 2, `${id}: got ${hits[id] || 0}, expected about ${exp.toFixed(0)}`);
   };
-  near('barrowguard.helm', 1 / 50);
-  near('gravekeeper.tank', 1 / 100);
+  near('barrowguard.helm', 1 / 35);
+  near('gravekeeper.tank', 1 / 50);
   near('mount.gravehound', 1 / 1000);
   near('pet.pint_gravekeeper', 1 / 5000);
   assert.equal(hits['candlewake.helm'] || 0, 0);
@@ -177,7 +177,7 @@ test('loot: a clear counts kills, gives marks, a ladder piece and a spare piece'
   assert.ok(r.firstClear);
   assert.equal(r.pb, 290);
   const reg = r.drops.find((d) => d.source === 'regular')!;
-  assert.ok(reg && reg.rar! >= 1);
+  assert.ok(reg && reg.rar! === 1);
   assert.ok(reg.toEquip);
   assert.equal(h.regular[reg.slot!].rar, 0, 'the new piece is not put on for you');
   assert.equal(h.bag[reg.slot!]!.rar, reg.rar, 'it waits in the bag');
@@ -198,19 +198,17 @@ test('loot: practice runs give nothing', () => {
   assert.equal(p.bosses['barrow.keeper'], undefined);
 });
 
-test('loot: the ladder reaches full Epic in about ten clears, then offers traits', () => {
-  const runs: number[] = [];
-  for (let seed = 1; seed <= 200; seed++) {
+test('loot: the regular ladder reaches full Rare in eight clears, then offers traits while Epic comes from sets and weapons', () => {
+  for (let seed = 1; seed <= 40; seed++) {
     const { p, h } = withHero('tank');
     const rng = makeRng(seed);
     let n = 0;
-    while (SLOT_IDS.some((s) => bestRegular(h, s).rar < 3)) { resolveRun(p, BARROW, clear(h), rng); n++; if (seed % 2) for (const s of SLOT_IDS) putOn(p, h, s); }
-    runs.push(n);
+    while (SLOT_IDS.some((s) => bestRegular(h, s).rar < 2)) { resolveRun(p, BARROW, clear(h), rng); n++; if (seed % 2) for (const s of SLOT_IDS) putOn(p, h, s); }
+    assert.equal(n, 8, 'four slots stepping Common -> Uncommon -> Rare takes 8 clears');
+    assert.ok(bestRegular(h, 'weapon').trait, 'reaching Rare on the weapon rolls a trait');
     const r = resolveRun(p, BARROW, clear(h), rng);
     assert.ok(r.drops.find((d) => d.source === 'regular')!.offerTrait);
   }
-  const avg = runs.reduce((a, b) => a + b, 0) / runs.length;
-  assert.ok(avg > 8 && avg < 12, `average clears to full Epic: ${avg}`);
 });
 
 test('loot: shared gear lifts every hero of a role, now and later, up to Rare', () => {
@@ -222,7 +220,7 @@ test('loot: shared gear lifts every hero of a role, now and later, up to Rare', 
     assert.equal(p.warband.tank[s].rar, WARBAND_CAP, 'your own ladder raises your role\'s shared gear');
     assert.equal(bestRegular(alt, s).rar, WARBAND_CAP, 'and your alts of that role can put it on');
     assert.equal(alt.regular[s].rar, 0, 'but nobody puts it on for them');
-    assert.equal(bestRegular(h, s).rar, 3, 'Epic stays with the hero who earned it');
+    assert.equal(bestRegular(h, s).rar, WARBAND_CAP, 'regular gear caps at Rare; Epic is earned from sets and boss weapons');
     assert.equal(p.warband.healer[s].rar, WARBAND_CAP);
   }
   const later = newHero(p, { name: 'Edda Thatcher', race: 'human', cls: 'cleric' })!;
@@ -545,12 +543,12 @@ test('gear: a drop held up against what its role wears says plainly if it is bet
   c = compareFor(p, h, 'barrowguard.chest')!;
   assert.equal(c.verdict, 'same');
   assert.equal(c.power, 0);
-  // the unique axe against an Epic axe with a trait: its effect for the trait is a trade
-  h.regular.weapon = { rar: 3, trait: 'wide' };
+  // the unique axe keeps your unlocked weapon trait active, so it is a pure upgrade over a Rare/Epic regular axe
+  h.regular.weapon = { rar: 2, trait: 'wide' };
   c = compareFor(p, h, 'gravekeeper.tank')!;
-  assert.equal(c.verdict, 'mixed');
+  assert.equal(c.verdict, 'better');
   assert.deepEqual(c.gains.map((e) => e.id), ['gravedigger']);
-  assert.deepEqual(c.loses.map((e) => e.id), ['wide']);
+  assert.deepEqual(c.loses.map((e) => e.id), []);
   assert.equal(compareFor(p, h, 'rimebone.helm'), null, 'not for this hero');
   // another role's drop goes against your hero of that role, or what a new one would start in
   assert.equal(wearerOf(p, ITEMS['rimebone.helm']), null);
@@ -585,3 +583,25 @@ test('art: every icon and sprite the content names exists', async () => {
   for (const n of ['slam', 'cleave', 'smite', 'icicle', 'shield', 'charge', 'circle', 'ward', 'sunburst', 'blizzard', 'nova', 'comet', 'dodge', 'mend', 'marks']) if (!tiles[n]) missing.push('icon ' + n);
   assert.deepEqual(missing, []);
 });
+
+test('hero levels & ability tree: dungeon clears grant XP, unlock ability points, and each spent point adds mastery power', () => {
+  const { p, h } = withHero('tank');
+  assert.equal(heroLevel(h), 1);
+  assert.equal(talentPointsLeft(h), 0);
+  const basePower = loadoutFor(p, h).power;
+  const res = resolveRun(p, BARROW, clear(h), makeRng(1));
+  assert.equal(res.xpGained, 100, '35 XP from mini-boss + 65 XP from clear = 100 XP');
+  assert.equal(res.levelBefore, 1);
+  assert.equal(res.levelAfter, 2);
+  assert.equal(heroLevel(h), 2);
+  assert.equal(talentPointsLeft(h), 1);
+  assert.equal(spendTalent(h, 'a1'), true);
+  assert.equal(h.talents.a1, 1);
+  assert.equal(talentPointsLeft(h), 0);
+  assert.equal(spendTalent(h, 'a1'), false, 'no points left');
+  assert.ok(loadoutFor(p, h).power > basePower, 'spent talent point increases hero mastery power');
+  assert.equal(resetTalents(h), true);
+  assert.equal(h.talents.a1, 0);
+  assert.equal(talentPointsLeft(h), 1);
+});
+
