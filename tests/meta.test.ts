@@ -6,7 +6,7 @@ import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, SETS, checkContent, heroic
 import { BARROW } from '../src/content/barrow';
 import { activeHero, createHero, dungeonRecord, finishHearthTour, finishIntroRun, freshProfile, migrate, nameProblem, needsHearthTour, needsIntroRun, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, startHearthTour, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
 import { DUPE_MARKS, heroicOpen, heroicProgress, resolveRun, rollTable } from '../src/meta/loot';
-import { bestRegular, buyTrait, compareFor, compareOn, effectsOf, equip, floorWorn, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, wearerOf, worn } from '../src/meta/gear';
+import { bestRegular, buyTrait, compareFor, compareOn, effectsOf, equip, floorWorn, itemScore, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, wearerOf, worn } from '../src/meta/gear';
 import { CLASSES, FOUNDERS, HERO_ART, MAX_HEROES, RACES, allHeroArt, canMake, cleanName, defaultSex, heroArt } from '../src/content/folk';
 import { SLOT_IDS, gearId } from '../src/content/gear';
 import { INGREDIENTS, RECIPES } from '../src/content/vale';
@@ -705,3 +705,16 @@ test('gnomes and goblins: every class, sex, ladder armour tier, and Barrow Epic 
     }
   }
 });
+
+test('stepped dungeon tiers: Tier 1 is ilvl 26, Tier 2 is ilvl 34, and Tier 3 is ilvl 42', () => {
+  // Tier 1 Barrow Epic set piece & boss weapon -> ilvl 26
+  assert.equal(itemScore(ITEMS['barrowguard.helm']), 26);
+  assert.equal(itemScore(ITEMS['gravekeeper.tank']), 26);
+  // Tier 2 dungeon Epic -> ilvl 34
+  const tier2Helm = { ...ITEMS['barrowguard.helm'], id: 'thimble.helm', tier: 2 as const };
+  assert.equal(itemScore(tier2Helm), 34);
+  // Tier 3 dungeon Epic -> ilvl 42
+  const tier3Weapon = { ...ITEMS['gravekeeper.tank'], id: 'moonmere.tank', tier: 3 as const };
+  assert.equal(itemScore(tier3Weapon), 42);
+});
+

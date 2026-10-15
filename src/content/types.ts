@@ -37,6 +37,8 @@ export interface ItemDef {
   slot: SlotId;
   kind: ItemKind;
   rar: Rar;
+  /** Stepped Act 1 dungeon tier (1 = ilvl 26, 2 = ilvl 34, 3 = ilvl 42). Defaults to 1. */
+  tier?: 1 | 2 | 3;
   icon: string;
   setId?: string;
   effect?: string;
@@ -47,6 +49,7 @@ export interface ItemDef {
 
 export interface SetDef {
   id: string; name: string; role: RoleId; cls?: 'warrior' | 'cleric' | 'mage' | 'rogue'; dungeon: string; look: string;
+  tier?: 1 | 2 | 3;
   pieces: string[];
   bonus2: { id: string; desc: string };
   bonus3: { id: string; desc: string; ready: boolean };
@@ -166,6 +169,12 @@ export interface DungeonInfo {
   id: string;
   name: string;
   blurb: string;
+  /** Stepped progression tier (1 = Barrow, 2 = Thimblebriar, 3 = Moonmere). */
+  tier?: 1 | 2 | 3;
+  /** Recommended entry item level for this dungeon. */
+  recIlvl?: number;
+  /** Item level of this dungeon's Epic set pieces and boss weapons. */
+  dropsIlvl?: number;
   bosses: BossInfo[];
   /** the last boss: its death ends the run */
   finalBoss: string;

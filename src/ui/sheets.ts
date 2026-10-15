@@ -61,7 +61,7 @@ const LEFT_SLOTS: SlotId[] = ['helm', 'shoulders', 'chest'];
 export class Sheets {
   spec: SheetSpec | null = null;
   /** the dungeon picker remembers its choices while the page is open */
-  private pick: DungeonPick = { mode: 'loot', start: 'keeper', gear: 'mine', role: null, alts: false, log: false, heroic: false };
+  private pick: DungeonPick = { dungeon: 'barrow', mode: 'loot', start: 'keeper', gear: 'mine', role: null, alts: false, log: false, heroic: false };
   private resetArmed = false;
   /** the look picked in the looks sheet, while the page is open */
   private lookPick: string | null = null;
@@ -77,6 +77,14 @@ export class Sheets {
     actions(root, {
       close: () => this.close(),
       back: () => { const s = this.spec; if (s && s.kind === 'item' && s.back) this.open(s.back); else this.close(); },
+      dgpick: (el) => {
+        const id = el.dataset.id || 'barrow';
+        this.pick.dungeon = id;
+        this.pick.heroic = false;
+        this.pick.log = false;
+        SFX.play('ui');
+        this.refresh();
+      },
       mode: (el) => { this.pick.mode = el.dataset.v as 'loot' | 'practice'; SFX.play('ui'); this.refresh(); },
       start: (el) => { this.pick.start = el.dataset.v!; SFX.play('ui'); this.refresh(); },
       tgear: (el) => { const v = el.dataset.v!; this.pick.gear = v === 'mine' ? 'mine' : (+v as 2 | 3); SFX.play('ui'); this.refresh(); },
@@ -116,12 +124,27 @@ export class Sheets {
         const name = h.name;
         if (removeHero(p, h.id)) { SFX.play('ui'); this.close(); this.app.save(); this.app.toasts.text(`${name} has gone`, 'Their uniques stay in your collection.'); }
       },
-      slot: (el) => { const s = this.spec; if (!s || s.kind !== 'gear') return; SFX.play('ui'); this.open({ ...s, slot: el.dataset.slot as SlotId }); },
+      slot: (el) => {
+        const s = this.spec;
+        if (!s || s.kind !== 'gear') return;
+        const clicked = el.dataset.slot as SlotId | undefined;
+        SFX.play('ui');
+        this.open({ kind: 'gear', hero: s.hero, slot: clicked && s.slot !== clicked ? clicked : undefined });
+      },
       equip: (el) => {
         const h = this.gearHero(); if (!h) return;
         const slot = el.dataset.slot as SlotId, id = el.dataset.id || null;
         if (id && h.fresh.includes(id)) { this.putOn(h, slot); return; }
-        equip(this.app.p, h, slot, id); if (!id) seenSlot(h, slot); SFX.play('place'); this.app.save();
+        const p = this.app.p;
+        const from = +ilvl(loadoutFor(p, h).score);
+        equip(p, h, slot, id);
+        if (!id) seenSlot(h, slot);
+        this.justOn = { hero: h.id, slot, from, to: +ilvl(loadoutFor(p, h).score), at: performance.now() };
+        SFX.play('equip');
+        const s = this.spec;
+        if (s && s.kind === 'gear') this.spec = { ...s, slot };
+        this.app.save();
+        setTimeout(() => { if (this.justOn && performance.now() - this.justOn.at > 1500) this.justOn = null; }, 1600);
       },
       puton: (el) => { const h = this.gearHero(); if (h) this.putOn(h, el.dataset.slot as SlotId); },
       notnow: (el) => { const h = this.gearHero(); if (!h) return; seenSlot(h, el.dataset.slot as SlotId); SFX.play('ui'); this.app.save(); },
@@ -132,7 +155,14 @@ export class Sheets {
       logdiff: (el) => { this.logHeroic = el.dataset.v === 'heroic'; SFX.play('ui'); this.open({ kind: 'logs', tab: 'collection' }); },
       entry: (el) => { SFX.play('ui'); this.open({ kind: 'logs', tab: 'collection', ...(el.dataset.id ? { entry: el.dataset.id } : {}) }); },
       item: (el) => { SFX.play('ui'); this.open({ kind: 'item', id: el.dataset.id!, back: this.spec || undefined }); },
-      gearat: (el) => { const h = heroById(this.app.p, el.dataset.hero || null); if (!h) return; SFX.play('ui'); this.open({ kind: 'gear', hero: h.id, slot: el.dataset.slot as SlotId }); },
+      gearat: (el) => {
+        const h = heroById(this.app.p, el.dataset.hero || null);
+        if (!h) return;
+        const slot = el.dataset.slot as SlotId;
+        SFX.play('ui');
+        if (this.app.scene === 'reveal') this.app.showHearth();
+        this.open({ kind: 'gear', hero: h.id, slot });
+      },
       title: (el) => { const h = this.gearHero(); if (!h) return; h.title = el.dataset.id || null; SFX.play('ui'); this.app.save(); },
       place: (el) => { const s = this.spec; if (!s || s.kind !== 'picker') return; if (place(this.app.p, s.spot, el.dataset.id || null)) { SFX.play('place'); this.app.save(); this.close(); } },
       sound: () => { const p = this.app.p; p.settings.sound = !p.settings.sound; SFX.on = p.settings.sound; if (SFX.on) SFX.play('ui'); this.app.save(); },
@@ -229,7 +259,7 @@ export class Sheets {
       case 'gear': {
         const h = heroById(this.app.p, s.hero) || activeHero(this.app.p);
         if (!h) { this.close(); return; }
-        ({ head, body } = this.gear(h, s.slot || 'weapon'));
+        ({ head, body } = this.gear(h, s.slot || null));
         break;
       }
       case 'logs': {
@@ -272,15 +302,17 @@ export class Sheets {
   private go(): void {
     const pr = this.pick;
     const practice = pr.mode === 'practice';
-    if (!pickedDungeon(this.app.p, pr, this.app.dev.allOpen).open) { SFX.play('nope'); return; }
+    const { dg, open } = pickedDungeon(this.app.p, pr, this.app.dev.allOpen);
+    if (!open) { SFX.play('nope'); return; }
     if (pr.heroic && !practice && !this.app.dev.allOpen) { SFX.play('nope'); return; }
+    const baseId = dg.heroicOf || dg.id;
     SFX.play('ui');
-    if (practice) this.app.startRun({ start: pr.start, testRar: pr.gear === 'mine' ? null : (pr.gear as Rar), heroic: pr.heroic });
-    else this.app.startRun({ start: 'entrance', testRar: null, heroic: pr.heroic });
+    if (practice) this.app.startRun({ dungeon: baseId, start: pr.start, testRar: pr.gear === 'mine' ? null : (pr.gear as Rar), heroic: pr.heroic });
+    else this.app.startRun({ dungeon: baseId, start: 'entrance', testRar: null, heroic: pr.heroic });
   }
 
-  /* ---------------------------------------------------------------- gear: the doll, abilities & weapon buffs */
-  private gear(h: Hero, sel: SlotId) {
+  /* ---------------------------------------------------------------- gear: the doll, slot-first armoury & weapon buffs */
+  private gear(h: Hero, sel: SlotId | null) {
     const p = this.app.p, role = roleOf(h), gk = gearKey(h), ak = abKey(h);
     const race = RACES[h.race as RaceId], cls = CLASSES[h.cls as ClassId];
     const L = loadoutFor(p, h);
@@ -303,7 +335,28 @@ export class Sheets {
     const extras = Object.entries(L.sets).map(([id, n]) => SETS[id] ? `<span class="chip set">${esc(SETS[id].name)} set <b>${n}/3</b>${n >= 2 ? ' · bonus on' : ''}</span>` : '').join('')
       + L.traits.map((t) => `<span class="chip">Trait <b>${esc(traitDef(gk, t)?.name || t)}</b></span>`).join('');
     const stats = extras ? `<div class="power">${extras}</div>` : '';
-    const tip = this.tooltip(h, w[sel], L.sets, waitingFor(p, h, sel));
+
+    // Slot-first Armoury: only open a slot's upgrade & equipment drawer when the player clicks a slot on the doll!
+    const waitingSlots = SLOT_IDS.map((sl) => ({ slot: sl, wt: waitingFor(p, h, sl) })).filter((x): x is { slot: SlotId; wt: Waiting } => !!x.wt);
+    let slotPanel = '';
+    if (sel) {
+      slotPanel = this.tooltip(h, w[sel], L.sets, waitingFor(p, h, sel));
+    } else if (waitingSlots.length) {
+      const pills = waitingSlots.map(({ slot, wt }) => {
+        const sName = ROLE_SLOTS[gk][slot].name;
+        const d = ITEMS[wt.id];
+        const dp = Math.round((itemShare(d).power - itemShare(w[slot].def).power) * 10) / 10;
+        return `<button type="button" class="btn small gold" data-act="slot" data-slot="${slot}">${GLYPH.rise}${esc(sName)}: ${esc(d.name)}${dp > 0 ? ` (+${dp}%)` : ''}</button>`;
+      }).join('');
+      slotPanel = `<div class="armoury-bar has-up">
+        <div class="ab-txt"><b>${GLYPH.rise}${waitingSlots.length} slot${waitingSlots.length > 1 ? 's have' : ' has'} an upgrade waiting</b><span>Tap a glowing slot on your hero above (or below) to compare stats &amp; equip:</span></div>
+        <div class="ab-pills">${pills}</div>
+      </div>`;
+    } else {
+      slotPanel = `<div class="armoury-bar">
+        <div class="ab-txt"><b>Armoury</b><span>Tap any equipment slot on your hero above to inspect stats or swap owned gear.</span></div>
+      </div>`;
+    }
 
     // Abilities & active Gear/Weapon buffs
     const keyNum: Record<AbilitySlot, string> = { a1: '1', a2: '2', a3: '3', a4: '4' };
@@ -356,7 +409,7 @@ export class Sheets {
       return `<button type="button" class="pick" data-act="${own ? 'look' : 'item'}" data-id="${id}" aria-pressed="${on}"><span class="tile" aria-hidden="true" ${own ? '' : 'style="filter: grayscale(1) opacity(0.5)"'}>${tile(c.icon)}</span><span><b>${esc(c.name)}</b><span>${own ? (on ? 'On' : 'Off') : esc(c.source)}</span></span></button>`;
     }).join('')}</div></div>`;
     const play = p.active === h.id ? '' : `<div class="actions"><button type="button" class="btn small gold" data-act="playas">${GLYPH.play}Play as ${esc(h.name.split(' ')[0])}</button></div>`;
-    const body = `${doll}${tip}${stats}${play}${abBox}${setBoxes}${traitBox}${titleBox}${looksBox}`;
+    const body = `${doll}${slotPanel}${stats}${play}${abBox}${setBoxes}${traitBox}${titleBox}${looksBox}`;
     return { head, body };
   }
 
@@ -369,11 +422,11 @@ export class Sheets {
     const wShare = wait ? itemShare(ITEMS[wait.id]) : null;
     const dp = wShare ? Math.round((wShare.power - share.power) * 10) / 10 : 0;
     const badge = wait ? `<i class="sl-up" aria-hidden="true">${dp > 0 ? `+${dp}%` : wait.kind === 'unique' ? 'New' : 'Up'}</i>` : '';
-    return `<button type="button" class="slot r-${look.key}${wait ? ' up' : ''}${just ? ' just-on' : ''}" data-act="slot" data-slot="${it.slot}" aria-pressed="${on}" style="--rc: ${look.color}; --rl: ${look.light}" aria-label="${esc(slotName)}: ${esc(d.name)}, ${esc(look.name)}${set ? `, ${esc(set.name)} set` : ''}${wait ? '. Something better is waiting to go on' : ''}">
+    return `<button type="button" class="slot r-${look.key}${wait ? ' up' : ''}${just ? ' just-on' : ''}" data-act="slot" data-slot="${it.slot}" aria-pressed="${on}" style="--rc: ${look.color}; --rl: ${look.light}" aria-label="${esc(slotName)}: ${esc(d.name)}, ${esc(look.name)}${set ? `, ${esc(set.name)} set` : ''}${wait ? '. Upgrade ready — tap to view and equip' : '. Tap to view slot armoury'}">
       ${badge}${just ? '<span class="sl-burst" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' : ''}<span class="sl-tile"><span class="tile">${iconOf(d.id)}</span>${set ? `<i class="sl-set" title="${esc(set.name)} set">${sets[set.id] || 0}/3</i>` : ''}${d.kind === 'unique' ? `<i class="sl-star" title="Unique">${STAR}</i>` : ''}</span>
       <span class="sl-tx"><span class="sl-kind">${esc(slotName)}</span><b class="sl-name" style="color: ${look.ink}">${esc(d.name)}</b>
         <span class="sl-meta"><b style="color: ${look.ink}">${esc(look.name)}</b><span class="sl-il"> · ${share.ilvl}</span></span>
-        <span class="sl-stat">${share.power > 0 ? `+${share.power}% ${ROLE_STAT[role].short}` : 'Starter rags'}</span>${wait ? `<span class="sl-up-line">${GLYPH.rise}${dp > 0 ? `+${dp}% ${ROLE_STAT[role].short} waiting` : `${esc(ITEMS[wait.id].name)} waiting`}</span>` : set ? `<span class="sl-setname">${esc(set.name)} ${sets[set.id] || 0}/3</span>` : ''}</span>
+        <span class="sl-stat">${share.power > 0 ? `+${share.power}% ${ROLE_STAT[role].short}` : 'Starter rags'}</span>${wait ? `<span class="sl-up-line">${GLYPH.rise}${dp > 0 ? `Tap for +${dp}% ${ROLE_STAT[role].short}` : `Tap for ${esc(ITEMS[wait.id].name)}`}</span>` : set ? `<span class="sl-setname">${esc(set.name)} ${sets[set.id] || 0}/3</span>` : ''}</span>
     </button>`;
   }
 
@@ -391,7 +444,7 @@ export class Sheets {
     if (tr) extra += `<p class="tip-tr"><b>+ Weapon trait (${esc(tr.name)}):</b> ${esc(tr.desc)}</p>`;
     if (d.setId && SETS[d.setId]) { const st = SETS[d.setId], n = (sets[st.id] || 0) + 1; extra += `<p class="tip-tr"><b>+ ${esc(st.name)} set (${sets[st.id] || 0}/3 → ${n}/3):</b> ${n >= 2 ? esc(st.bonus2.desc) : `1 more piece activates: ${esc(st.bonus2.desc)}`}</p>`; }
     return `<div class="tip tip-wait" style="--rc: ${look.color}; --rl: ${look.light}">
-      <span class="tw-eye">${wt.kind === 'unique' ? 'New unique upgrade' : 'Upgrade waiting'} · tap below to equip</span>
+      <span class="tw-eye">${wt.kind === 'unique' ? 'New unique upgrade' : 'Upgrade ready for this slot'} · compare &amp; equip</span>
       <div class="tw-vs">
         <div class="tw-side old"><span class="tile" style="--c: ${oldLook.color}">${iconOf(wornDef.id)}</span><div><small>Wearing now</small><b style="color: ${oldLook.ink}">${esc(wornDef.name)}</b><span>${esc(oldLook.name)} · ilvl ${now.ilvl}</span></div></div>
         <i class="tw-arrow" aria-hidden="true">${GLYPH.right}</i>
@@ -403,11 +456,11 @@ export class Sheets {
         <div class="cmp-row"><span>Health <small>+${now.health}% → +${share.health}%</small></span>${delta(dh, '%')}</div>
       </div>
       ${extra}
-      <div class="tw-acts"><button type="button" class="btn gold big puton" data-act="puton" data-slot="${wt.slot}">${GLYPH.shield}Put on ${esc(d.name)}</button>${wt.kind === 'unique' ? `<button type="button" class="btn small ghost" data-act="notnow" data-slot="${wt.slot}">Not now</button>` : ''}</div>
+      <div class="tw-acts"><button type="button" class="btn gold big puton" data-act="puton" data-slot="${wt.slot}">${GLYPH.shield}Equip ${esc(d.name)}</button>${wt.kind === 'unique' ? `<button type="button" class="btn small ghost" data-act="notnow" data-slot="${wt.slot}">Dismiss badge</button>` : ''}</div>
     </div>`;
   }
 
-  /** the item in the picked slot, the way an RPG tooltip reads (with anything waiting to go on above it) */
+  /** the Slot Armoury Drawer for the clicked slot: shows upgrades waiting, all owned options to equip, and what is currently worn */
   private tooltip(h: Hero, it: Worn, sets: Record<string, number>, wt: Waiting | null): string {
     const p = this.app.p, role = roleOf(h), gk = gearKey(h), d = it.def, look = rarLook(d.id);
     const share = itemShare(d);
@@ -433,17 +486,57 @@ export class Sheets {
       const e = p.collection[d.id];
       if (e) src += ` You got it at kill count ${fmtN(e.kc)}.`;
     }
+
+    // Build full list of owned options in this slot's Armoury (regular piece + owned uniques/set pieces)
     const owned = ownedFor(p, h, it.slot);
-    const reg = h.regular[it.slot];
-    const regName = ITEMS[gearId(gk, it.slot, reg.rar)]?.name || 'Regular';
-    const swap = owned.length ? `<div class="tip-swap" role="radiogroup" aria-label="Wear in the ${esc(slotName.toLowerCase())} slot"><span>Wear</span>
-      <button type="button" class="sg" role="radio" data-act="equip" data-slot="${it.slot}" data-id="" aria-checked="${!it.unique}">${esc(regName)}</button>
-      ${owned.map((u) => `<button type="button" class="sg" role="radio" data-act="equip" data-slot="${it.slot}" data-id="${u.id}" aria-checked="${it.unique && d.id === u.id}">${esc(u.name)}</button>`).join('')}</div>` : '';
-    // a better regular piece in the bag while a unique is worn: say it is there for later
-    const bag = it.unique && h.bag[it.slot] ? `<p class="tip-src">A better ${esc(slotName.toLowerCase())} (${esc(ITEMS[gearId(gk, it.slot, bestRegular(h, it.slot).rar)]?.name || '')}) is in your bag for when you wear regular gear here.</p>` : '';
-    return `${wt ? this.waitCard(h, wt, d, sets) : ''}<div class="tip" style="--rc: ${look.color}; --rl: ${look.light}" aria-live="polite">
-      ${wt ? '<span class="tw-eye now">Wearing now</span>' : ''}<div class="tip-head"><span class="tile" aria-hidden="true">${iconOf(d.id)}</span><div><b class="tip-n">${esc(d.name)}</b><span class="tip-k">${esc(look.name)} ${esc(slotName.toLowerCase())} · Item level ${share.ilvl}</span></div></div>
-      <ul class="tip-stats">${lines.join('')}</ul>${extra}<p class="tip-src">${esc(src)}</p>${bag}${swap}</div>`;
+    const bestReg = bestRegular(h, it.slot);
+    const regDef = ITEMS[gearId(gk, it.slot, bestReg.rar)];
+    const renderOpt = (optDef: ItemDef, isReg: boolean) => {
+      const isWorn = isReg ? !it.unique && d.id === optDef.id : it.unique && d.id === optDef.id;
+      const oLook = rarLook(optDef.id);
+      const oShare = itemShare(optDef);
+      const dp = Math.round((oShare.power - share.power) * 10) / 10;
+      const dil = oShare.ilvl - share.ilvl;
+      const diffTxt = isWorn
+        ? 'Currently equipped'
+        : `${dil >= 0 ? `+${dil}` : dil} ilvl · ${dp >= 0 ? `+${dp}%` : `${dp}%`} ${ROLE_STAT[role].short}`;
+      const actBtn = isWorn
+        ? `<span class="armoury-on">${GLYPH.check}Equipped</span>`
+        : isReg && h.bag[it.slot]
+          ? `<button type="button" class="btn small gold" data-act="puton" data-slot="${it.slot}">Equip</button>`
+          : `<button type="button" class="btn small${dp > 0 || dil > 0 ? ' gold' : ''}" data-act="equip" data-slot="${it.slot}" data-id="${isReg ? '' : esc(optDef.id)}">Equip</button>`;
+      return `<div class="armoury-opt${isWorn ? ' on' : ''}" style="--rc: ${oLook.color}">
+        <button type="button" class="ao-main" data-act="item" data-id="${esc(optDef.id)}" title="Tap to inspect full stats">
+          <span class="tile" aria-hidden="true">${iconOf(optDef.id)}</span>
+          <span class="ao-tx">
+            <b style="color: ${oLook.ink}">${esc(optDef.name)}</b>
+            <small>${esc(oLook.name)} · ilvl ${oShare.ilvl} · ${esc(diffTxt)}</small>
+          </span>
+        </button>
+        ${actBtn}
+      </div>`;
+    };
+    const allOpts = [
+      ...(owned.map((u) => renderOpt(u, false))),
+      ...(regDef ? [renderOpt(regDef, true)] : []),
+    ];
+    const armouryList = allOpts.length > 1 || (owned.length > 0)
+      ? `<div class="armoury-list"><span class="al-head">Owned ${esc(slotName.toLowerCase())}s in your Armoury <small>tap an item to inspect or Equip</small></span>${allOpts.join('')}</div>`
+      : '';
+
+    return `<div class="slot-drawer">
+      <div class="sd-head">
+        <b>${esc(slotName)} Slot Armoury</b>
+        <button type="button" class="btn small ghost" data-act="slot" data-slot="${it.slot}">Close slot</button>
+      </div>
+      ${wt ? this.waitCard(h, wt, d, sets) : ''}
+      ${armouryList}
+      <div class="tip" style="--rc: ${look.color}; --rl: ${look.light}" aria-live="polite">
+        <span class="tw-eye now">Equipped in ${esc(slotName.toLowerCase())} slot</span>
+        <div class="tip-head"><span class="tile" aria-hidden="true">${iconOf(d.id)}</span><div><b class="tip-n">${esc(d.name)}</b><span class="tip-k">${esc(look.name)} ${esc(slotName.toLowerCase())} · Item level ${share.ilvl}</span></div></div>
+        <ul class="tip-stats">${lines.join('')}</ul>${extra}<p class="tip-src">${esc(src)}</p>
+      </div>
+    </div>`;
   }
 
   private markSeen(): void {

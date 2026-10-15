@@ -180,7 +180,8 @@ export class Reveal {
         if (d.trait) note += `${note ? ' · ' : ''}Trait: ${esc(traitDef(gk, d.trait)?.name || '')}`;
       }
     } else {
-      const boss = BARROW.bosses.find((b) => b.id === d.boss)?.name || '';
+      const dg = DUNGEONS[this.loot?.dungeon || 'barrow'] || BARROW;
+      const boss = dg.bosses.find((b) => b.id === d.boss)?.name || '';
       sub = `${fmtRate(d.rate)} · ${esc(boss)} KC ${fmtN(d.kc || 0)}`;
       if (it && !d.dupe) {
         const cur = h && roleOf(h) === it.role ? worn(this.app.p, h)[it.slot].def : ITEMS[gearId(gearKey(it), it.slot, 0)];
@@ -191,18 +192,26 @@ export class Reveal {
       note = d.dupe ? `Duplicate · Seen ${fmtN(this.app.p.collection[d.id]?.n || 2)}× in log` : c ? (c.kind === 'pet' ? 'Waiting by the fire' : c.kind === 'mount' ? 'In the stall at home' : c.kind === 'cosmetic' ? 'A new look' : 'On the mantel') : it?.setId ? `${esc(it.name.split(' ')[0])} set piece · ilvl ${itemShare(it).ilvl}` : it?.effectDesc ? esc(it.effectDesc) : '';
     }
     const stamp = intro ? '<span class="stamp ex">Example</span>' : table ? (d.dupe ? '<span class="stamp dupe">Dupe</span>' : '<span class="stamp">New</span>') : d.offerTrait ? '' : '<span class="stamp" style="background: var(--green)">Up</span>';
+    const tapHint = `<span class="lc-tap">${it ? 'Tap to compare stats' : 'Tap to inspect'}</span>`;
     return `<button type="button" class="lc ${cls}" data-act="flip" data-i="${i}" aria-label="Card ${i + 1}">
       <span class="in"><span class="fc back"></span>
-      <span class="fc front" style="--rc: ${colourOf(d.id)}">${stamp}<span class="tile" aria-hidden="true">${iconOf(d.id)}</span><b>${esc(nameOf(d.id))}</b><span class="sub">${sub}</span>${gains}${note ? `<em>${note}</em>` : ''}</span></span></button>`;
+      <span class="fc front" style="--rc: ${colourOf(d.id)}">${stamp}<span class="tile" aria-hidden="true">${iconOf(d.id)}</span><b>${esc(nameOf(d.id))}</b><span class="sub">${sub}</span>${gains}${note ? `<em>${note}</em>` : ''}${tapHint}</span></span></button>`;
   }
 
   private flip(i: number): void {
     const el = $('rv-cards', this.root)?.children[i] as HTMLElement | undefined;
-    if (!el || el.classList.contains('up')) return;
-    el.classList.add('up');
-    el.setAttribute('aria-label', nameOf(this.cards[i].id));
-    this.flipped++;
+    if (!el) return;
     const d = this.cards[i];
+    if (el.classList.contains('up')) {
+      if (d && (ITEMS[d.id] || COLLECTIBLES[d.id])) {
+        SFX.play('ui');
+        this.app.sheets.open({ kind: 'item', id: d.id });
+      }
+      return;
+    }
+    el.classList.add('up');
+    el.setAttribute('aria-label', `${nameOf(d.id)} — tap to compare stats`);
+    this.flipped++;
     const c = COLLECTIBLES[d.id];
     if (this.skipping) return;
     if (d.source === 'table') SFX.play(c && (c.kind === 'pet' || c.kind === 'mount') ? 'petfound' : d.dupe ? 'coin' : 'rare');

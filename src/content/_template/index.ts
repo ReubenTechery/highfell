@@ -26,6 +26,9 @@ export const TEMPLATE_DUNGEON: DungeonInfo = {
   id: 'template',
   name: 'Template Sanctum',
   blurb: 'Five packs, a mini-boss warden, a 3-seat floor trial, and the Sovereign in the final arena. About four minutes, all three seats needed.',
+  tier: 2,
+  recIlvl: 22,
+  dropsIlvl: 34,
   bosses: [
     { id: 'warden', name: 'Mini-Boss Warden', phases: 2, enrage: 180, room: 3 },
     { id: 'sovereign', name: 'The Sovereign', phases: 3, enrage: 300, room: 5 },
