@@ -388,7 +388,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 
 /* buttons: a thumb cluster on phones, a row on desktop */
 .controls { position: absolute; right: 10px; bottom: calc(var(--pad-b) + 12px); z-index: 4; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
-.abar { display: grid; grid-template-columns: repeat(3, 64px); grid-template-areas: "a4 a1 a3" ". dg a2"; gap: 9px; pointer-events: auto; }
+.abar { display: grid; grid-template-columns: repeat(3, 64px); grid-template-areas: "a1 a4 a3" ". dg a2"; gap: 9px; pointer-events: auto; }
 .ab[data-slot="a1"] { grid-area: a1; } .ab[data-slot="a2"] { grid-area: a2; } .ab[data-slot="a3"] { grid-area: a3; } .ab[data-slot="a4"] { grid-area: a4; } .ab[data-slot="dodge"] { grid-area: dg; }
 .ab { position: relative; width: 64px; height: 64px; border: 0; padding: 0; background: none; cursor: pointer; touch-action: none; transition: transform 0.06s; }
 .ab .face { position: absolute; inset: 0; border-radius: 14px; overflow: hidden; border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink); transition: filter 0.12s; }

@@ -14,7 +14,7 @@ import { openProgress, opened, unlockOf } from '../meta/logs';
 import { nameProblem, setActive } from '../meta/profile';
 import type { App } from './app';
 import { actions, esc, GLYPH } from './dom';
-import { heroImg, tile } from './art';
+import { heroImg, heroSprite, tile } from './art';
 import { SFX } from './sound';
 
 
@@ -149,7 +149,7 @@ export class Creator {
     const earned = this.open_(this.race);
     const ok = canMake(this.race, this.cls) && earned;
     const fallbackRace = this.racesFor(this.cls)[0];
-    const art = heroArt(this.race, this.cls, this.sex) || (fallbackRace ? heroArt(fallbackRace, this.cls, this.sex) : null) || ROLES[C.role].sprite;
+    const art = heroSprite({ race: canMake(this.race, this.cls) ? this.race : (fallbackRace || this.race), cls: this.cls, sex: this.sex, regular: this.app.p.warband[C.role] }, C.role, this.app.p);
 
     const raceMedallion = (r: RaceId): string => {
       const x = RACES[r], can = this.classesFor(r).length > 0, pr = openProgress(this.app.p, 'race', r), mine = this.open_(r);

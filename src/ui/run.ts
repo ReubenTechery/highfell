@@ -11,7 +11,7 @@ import { BARROW } from '../content/barrow';
 import { BARROW_HEROIC } from '../content/barrow/heroic';
 import type { DungeonInfo } from '../content/types';
 import { BARROW_ENGINE } from '../content/barrow/engine';
-import { AB, MEND } from '../content/roles';
+import { AB, MEND, ROLES } from '../content/roles';
 import type { Rar, RoleId } from '../content/types';
 import { newGame, respawn, update } from '../dungeon/game.js';
 import { S, setHooks } from '../dungeon/state.js';
@@ -30,7 +30,7 @@ import { RECIPES } from '../content/vale';
 import { drinkForRun } from '../meta/vale';
 import type { App } from './app';
 import { $, esc, flash, fmtT } from './dom';
-import { nameOf, tile } from './art';
+import { heroSprite, nameOf, tile } from './art';
 import { IN, aimPoint, bindInput, mashCage, playerIntent, resetInput, type InputUI } from './input';
 import { SFX } from './sound';
 
@@ -124,12 +124,19 @@ export class RunScene implements InputUI {
     const test = o.testRar !== null || !h;
     this.practice = o.start !== 'entrance' || test;
     const rar: Rar = o.testRar !== null ? o.testRar : h ? partyRar(p, h) : 0;
+    const tierSuffix = rar <= 0 ? '_rags' : rar === 1 ? '_iron' : '';
     const loadouts: Record<string, unknown> = {};
-    for (const r of ['tank', 'healer', 'dps'] as RoleId[]) loadouts[r] = r === role ? (test || !h ? plainLoadout(r, rar) : loadoutFor(p, h)) : plainLoadout(r, rar);
+    for (const r of ['tank', 'healer', 'dps'] as RoleId[]) {
+      const base = r === role ? (test || !h ? plainLoadout(r, rar) : loadoutFor(p, h)) : plainLoadout(r, rar);
+      loadouts[r] = { ...base, sprite: `${ROLES[r].sprite}${tierSuffix}` };
+    }
     // a brew from the Vale, drunk at the door: practice uses it but keeps the bottle
     const brew = h ? drinkForRun(p, !this.practice) : null;
     this.brew = brew;
-    if (h) loadouts[role] = { ...(loadouts[role] as object), name: h.name, sprite: heroArt(h.race, h.cls, h.sex) || undefined, ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) };
+    if (h) {
+      const spr = test ? `${heroArt(h.race, h.cls, h.sex) || ROLES[role].sprite}${tierSuffix}` : heroSprite(h, role, p);
+      loadouts[role] = { ...(loadouts[role] as object), name: h.name, sprite: spr, ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) };
+    }
     if (brew && this.practice) app.store.save();
     const looks = Object.keys(p.collection).filter((id) => COLLECTIBLES[id] && (COLLECTIBLES[id].kind === 'cosmetic') && !p.settings.looksOff.includes(id));
     const wornSet = !!h && Object.values(worn(p, h)).some((w) => w.def.setId && SETS[w.def.setId]);

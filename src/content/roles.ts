@@ -6,7 +6,7 @@ export const SLOTS_AB: AbilitySlot[] = ['a1', 'a2', 'a3', 'a4'];
 
 export const ROLES: Record<RoleId, RoleDef> = {
   tank: { id: 'tank', name: 'Brannoc', title: 'Tank', hp: 1250, armor: 0.55, speed: 176, r: 18, threat: 1.3, color: '#4F6FA8', sprite: 'tank',
-    blurb: 'Slam to grab the pack, Charge whatever runs at your mates, block the big hits.' },
+    blurb: 'Cleave through packs, Slam to yank foes into a whirlwind, Charge stragglers, block big hits.' },
   healer: { id: 'healer', name: 'Maren', title: 'Healer', hp: 820, armor: 0.2, speed: 182, r: 16, threat: 1, color: '#E7B53C', sprite: 'healer',
     blurb: 'Tap a frame to heal. Smite when everyone is topped up.' },
   dps: { id: 'dps', name: 'Ivy', title: 'DPS', hp: 720, armor: 0.15, speed: 186, r: 16, threat: 1, color: '#3D7FC1', sprite: 'dps',
@@ -15,10 +15,10 @@ export const ROLES: Record<RoleId, RoleDef> = {
 
 export const AB: Record<RoleId, Record<AbilitySlot, AbilityDef>> = {
   tank: {
-    a1: { key: 'slam', name: 'Slam', cd: 6, desc: 'Hit everything around you. It all turns on you and gets dragged in.', combo: '① Slam clumped pack ➔ ② Cleave crushes for +25%' },
-    a2: { key: 'shield', name: 'Shield', cd: 0, hold: true, desc: 'Hold to block from the front. Block right before a big hit to stun it and hit back.', combo: '① Perfect block stuns ➔ ② Cleave crushes for +25%' },
-    a3: { key: 'charge', name: 'Charge', cd: 7, desc: 'Dash to a mob and smash it. It turns on you, and what is around it is stunned.', combo: '① Charge stuns pack ➔ ② Cleave crushes for +25%' },
-    a4: { key: 'cleave', name: 'Cleave', cd: 3.5, desc: 'A big swing through everything in front of you. +25% damage on stunned or 3+ clumped foes.', combo: '② Finisher: +25% Crush damage on stunned or clumped foes' },
+    a1: { key: 'cleave', name: 'Cleave', cd: 2.2, desc: 'Fast, wide axe sweep through foes in front of you. Crushes stunned or clumped packs for heavy bonus damage.', combo: '② Spammable finisher: Crush! bonus damage on stunned or 2+ clumped foes' },
+    a2: { key: 'shield', name: 'Shield', cd: 0, hold: true, desc: 'Hold to block from the front. Block right before a big hit to stun it and counter-strike.', combo: '① Perfect block stuns ➔ ② Cleave crushes for bonus damage' },
+    a3: { key: 'charge', name: 'Charge', cd: 6.5, desc: 'Rush a mob and shoulder-slam it. Stuns nearby foes and readies Cleave.', combo: '① Charge stuns pack & readies Cleave ➔ ② Cleave crushes' },
+    a4: { key: 'slam', name: 'Slam', cd: 6, desc: 'Drag every nearby foe in, force them onto you, and spin a 360° whirlwind through the pack.', combo: '① Drag pack in + Whirlwind ➔ ② Cleave crushes the clump' },
   },
   healer: {
     a1: { key: 'circle', name: 'Prayer circle', cd: 5, mana: 14, aim: true, range: 520, desc: 'Allies standing in it heal fast.', combo: '① Drop Circle ➔ ② Smite pulses bonus healing inside it' },
@@ -39,20 +39,20 @@ export const AB: Record<RoleId, Record<AbilitySlot, AbilityDef>> = {
 export const TALENTS: Record<RoleId, Record<AbilitySlot, [TalentRankDef, TalentRankDef]>> = {
   tank: {
     a1: [
-      { name: 'Thunderclap', desc: '+25% Slam damage and +20% pull radius.' },
-      { name: 'Iron Grip', desc: '−1.0s Slam cooldown and +50% threat.' },
+      { name: 'Heavy Edge', desc: '+20% Cleave damage and +15% wider arc.' },
+      { name: 'Executioner', desc: '−0.4s Cleave cooldown and +35% Crush damage on stunned or clumped foes.' },
     ],
     a2: [
-      { name: 'Spiked Buckler', desc: '+30% Perfect Block counter damage.' },
-      { name: 'Bulwark', desc: 'Perfect Block grants a 90 HP absorb shield.' },
+      { name: 'Spiked Buckler', desc: '+30% Perfect Block counter damage and stuns foes in front.' },
+      { name: 'Bulwark', desc: 'Perfect Block grants +90 HP shield (stacks with Barrowguard) and resets Cleave.' },
     ],
     a3: [
-      { name: 'Battering Ram', desc: '+25% Charge impact damage.' },
-      { name: 'Relentless', desc: '−1.2s Charge cooldown and +0.4s stun.' },
+      { name: 'Battering Ram', desc: '+25% Charge impact damage and shaves 1.5s off Cleave.' },
+      { name: 'Relentless', desc: '−1.2s Charge cooldown, +0.4s stun, and resets Cleave.' },
     ],
     a4: [
-      { name: 'Heavy Edge', desc: '+20% Cleave base damage.' },
-      { name: 'Executioner', desc: '+35% Crush damage on stunned or clumped foes.' },
+      { name: 'Whirlwind Pull', desc: '+25% Slam & Whirlwind damage and +20% pull radius.' },
+      { name: 'Iron Cyclone', desc: '−1.0s Slam cooldown, +50% threat, and an extra Whirlwind spin.' },
     ],
   },
   healer: {
@@ -61,16 +61,16 @@ export const TALENTS: Record<RoleId, Record<AbilitySlot, [TalentRankDef, TalentR
       { name: 'Lingering Grace', desc: '+1.5s Circle duration and −2 mana cost.' },
     ],
     a2: [
-      { name: 'Aegis', desc: '+25% Ward shield strength.' },
-      { name: 'Swift Ward', desc: '−0.8s Ward cooldown.' },
+      { name: 'Aegis', desc: '+25% Ward shield strength (stacks with Lantern).' },
+      { name: 'Blessed Ward', desc: '−0.8s Ward cooldown and heals 60 HP over 3s.' },
     ],
     a3: [
       { name: 'Dawnlight', desc: '+25% Sunburst party healing.' },
-      { name: 'Solar Renewal', desc: '−2.5s Sunburst cooldown.' },
+      { name: 'Solar Renewal', desc: '−2.5s Sunburst cooldown and sears nearby foes for 85 holy damage.' },
     ],
     a4: [
       { name: 'Searing Light', desc: '+25% Smite damage and smart-heal.' },
-      { name: 'Radiant Surge', desc: '+2 extra mana restored and +50% Circle pulse.' },
+      { name: 'Radiant Surge', desc: '−0.4s Smite cooldown, +2 mana restored, and +50% Circle pulse.' },
     ],
   },
   dps: {
@@ -80,15 +80,15 @@ export const TALENTS: Record<RoleId, Record<AbilitySlot, [TalentRankDef, TalentR
     ],
     a2: [
       { name: 'Flash Freeze', desc: '+30% Rime burst damage and +0.5s freeze.' },
-      { name: 'Cold Snap', desc: '−2.0s Rime burst cooldown.' },
+      { name: 'Cold Snap', desc: '−2.0s Rime burst cooldown and resets Icicle.' },
     ],
     a3: [
       { name: 'Falling Star', desc: '+20% Comet and splash damage.' },
       { name: 'Cataclysm', desc: '−0.8s Comet cooldown and +10% crit chance.' },
     ],
     a4: [
-      { name: 'Razor Ice', desc: '+20% Icicle damage.' },
-      { name: 'Heartpiercer', desc: '−0.4s Icicle cooldown and +15% Shatter crit.' },
+      { name: 'Razor Ice', desc: '+20% Icicle damage and splashes 40% to a nearby foe.' },
+      { name: 'Heartpiercer', desc: '−0.4s Icicle cooldown, +15% Shatter crit, and −0.5s Comet cd on Shatter.' },
     ],
   },
 };
