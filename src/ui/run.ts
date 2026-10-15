@@ -28,7 +28,8 @@ import { heroesFor } from '../meta/party';
 import { activeHero, finishIntroRun, heroById, roleOf, type Hero } from '../meta/profile';
 import { heroArt } from '../content/folk';
 import { RECIPES } from '../content/vale';
-import { drinkForRun } from '../meta/vale';
+import { broughtBrew, spendBottle } from '../meta/vale';
+import { pourFor } from '../meta/party';
 import type { App } from './app';
 import { $, esc, flash, fmtT } from './dom';
 import { heroImg, heroSprite, nameOf, tile } from './art';
@@ -264,14 +265,15 @@ export class RunScene implements InputUI {
       }
     }
     if (intro) loadouts.tank = { ...(loadouts.tank as object), unique: 'gravedigger', bonuses: ['barrowguard2'], name: 'Brannoc', sprite: 'tank' };
-    // a brew from the Vale, drunk at the door: practice uses it but keeps the bottle
-    const brew = h ? drinkForRun(p, !this.practice) : null;
+    // one bottle poured at the door for the whole party: only the poured one is spent (practice keeps it)
+    const poured = h && !intro ? pourFor([{ role, leader: true, brew: broughtBrew(p) }]) : null;
+    const brew = poured?.brew || null;
     this.brew = brew;
+    if (brew && !this.practice) spendBottle(p, brew);
     if (h) {
       const spr = test ? `${heroArt(h.race, h.cls, h.sex) || ROLES[role].sprite}${tierSuffix}` : heroSprite(h, role, p);
-      loadouts[role] = { ...(loadouts[role] as object), cls: h.cls, name: h.name, sprite: spr, ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) };
+      loadouts[role] = { ...(loadouts[role] as object), cls: h.cls, name: h.name, sprite: spr };
     }
-    if (brew && this.practice) app.store.save();
     const looks = Object.keys(p.collection).filter((id) => COLLECTIBLES[id] && (COLLECTIBLES[id].kind === 'cosmetic') && !p.settings.looksOff.includes(id));
     const wornSet = !!h && Object.values(worn(p, h)).some((w) => w.def.setId && SETS[w.def.setId]);
     const ghostly = intro || (looks.includes('dye.ghostly') && wornSet && !test);
@@ -289,7 +291,7 @@ export class RunScene implements InputUI {
       onChest: () => this.finish(),
       playerIntent,
     });
-    newGame(BARROW_ENGINE, { role, loadouts, start: o.start, seed: (Math.random() * 0x7fffffff) | 1, looks, ghostly, gilded, testGear: test, heroic: !!o.heroic });
+    newGame(BARROW_ENGINE, { role, loadouts, start: o.start, seed: (Math.random() * 0x7fffffff) | 1, looks, ghostly, gilded, testGear: test, heroic: !!o.heroic, ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) });
     S.startedAt = S.t;
     // a heroic run counts for the Barrow's own achievements
     this.ach = this.practice ? null : new Achiever(p, { dungeon: dg.heroicOf || dg.id, role, practice: false, testGear: false });

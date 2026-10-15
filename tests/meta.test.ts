@@ -374,7 +374,7 @@ test('house: the hearth’s first eight spots keep their ids, and every id is un
 });
 
 test('house: every thing does something, everything is in a room, and the Barrow door is there', () => {
-  const actions = ['dungeons', 'ride', 'gear', 'logs', 'brew', 'satchel'];
+  const actions = ['dungeons', 'garden', 'gear', 'logs', 'brew', 'satchel'];
   for (const t of THINGS) {
     assert.ok(actions.includes(t.action), t.id);
     assert.ok(ROOMS.some((r) => r.id === t.room), t.id);
@@ -617,7 +617,8 @@ test('art: every icon and sprite the content names exists', async () => {
   for (const art of allHeroArt()) for (const v of ['_f', '_b', ...(art.startsWith('risen') ? ['_gilded_f', '_gilded_b'] : [])]) if (!sprites[art + v]) missing.push('sprite ' + art + v);
   for (const r of Object.values(RACES)) if (!tiles[r.icon]) missing.push('icon ' + r.icon + ' for race ' + r.id);
   for (const c of Object.values(CLASSES)) if (!tiles[c.icon]) missing.push('icon ' + c.icon + ' for class ' + c.id);
-  for (const n of ['npc_gnome', 'cauldron', 'burrow', 'burrow_red', 'windmill', 'windmill_sails', 'fence', 'cabbages', 'node_moonpetal', 'node_moonpetal_shim', 'node_glowcap', 'node_bramble', 'goggles', 'crow', 'spark', 'kettle_walk', 'pet_rootling_calm', 'goat']) if (!sprites[n]) missing.push('sprite ' + n);
+  for (const n of ['npc_gnome', 'cauldron', 'bed', 'bed_sprout', 'bed_grow', 'node_moonpetal', 'node_moonpetal_shim', 'node_glowcap', 'node_bramble', 'pet_rootling_calm']) if (!sprites[n]) missing.push('sprite ' + n);
+  for (const n of ['g_seed_glowcap', 'g_seed_moonpetal', 'g_seed_bramble']) if (!tiles[n]) missing.push('icon ' + n);
   for (const x of [...Object.values(INGREDIENTS), ...Object.values(RECIPES)]) if (!tiles[x.icon]) missing.push('icon ' + x.icon + ' for ' + x.id);
   for (const n of ['s_gather', 's_brew']) if (!tiles[n]) missing.push('icon ' + n);
   for (const c of Object.values(COLLECTIBLES)) if (c.kind === 'mount' && !c.saddle) missing.push('saddle for ' + c.id);

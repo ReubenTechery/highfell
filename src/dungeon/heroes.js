@@ -3,7 +3,7 @@ import { angDiff, angTo, dist, distXY, norm } from '../core/math';
 import { rng } from '../core/rng';
 import { AB, MEND, abKey } from '../content/roles';
 import { HOOKS, S, emit } from './state.js';
-import { addThreat, aggro, banner, bits, dots, fx, fxText, healHero, hitstop, hurtMob, say, sfx, shake, taunt } from './entities.js';
+import { addThreat, aggro, banner, bits, brewFx, dots, fx, fxText, healHero, hitstop, hurtMob, say, sfx, shake, taunt } from './entities.js';
 import { interruptCast } from './mobs.js';
 import { canStand, moveEnt } from './world.js';
 
@@ -46,6 +46,8 @@ export function isFoe(m) { return m && m.alive && !m.untargetable && !m.hidden &
 export function engaged(m) { return m.state === 'fight' || m.cage || m.M.wisp; }
 export function foesNear(x, y, r, fightOnly) {
   const out = [];
+  // the party's brew can make area hits reach wider (Glowcap Draught, Starlight Elixir)
+  r *= S.brewArea || 1;
   for (const m of S.mobs) { if (!isFoe(m) || m.cage) continue; if (fightOnly && !engaged(m)) continue; if (distXY(x, y, m.x, m.y) <= r + m.r) out.push(m); }
   return out;
 }
@@ -83,7 +85,8 @@ export function autoTarget(h) {
 
 export function heroTick(h, dt) {
   const st = h.st;
-  const cdRate = st && st.zeal > 0 ? 1.15 : 1;
+  // Bramble Fizz and Lantern Zeal: every cooldown, the dodge's too, comes back sooner
+  const cdRate = (st && st.zeal > 0 ? 1.15 : 1) * (brewFx(h.brew).cd || 1);
   for (const k in h.cd) if (h.cd[k] > 0) h.cd[k] = Math.max(0, h.cd[k] - dt * cdRate);
   h.gcd -= dt; h.iframe -= dt; h.flash -= dt; h.hurtT -= dt; h.lunge -= dt; h.sayT -= dt; h.moving -= dt;
   if (h.frenzyT > 0) h.frenzyT = Math.max(0, h.frenzyT - dt);
@@ -708,11 +711,12 @@ export function doDodge(h, dx, dy) {
   if (!h.alive || S.over || h.cd.dodge > 0 || h.st.stun > 0 || h.st.caged || h.st.root > 0 || h.st.air > 0 || h.dash) return false;
   let v = norm(dx, dy);
   if (!dx && !dy) v = { x: Math.cos(h.face), y: Math.sin(h.face) };
-  // Bramble Fizz: the dodge comes back a third sooner. Moonpetal Tonic: every dodge heals a little.
-  h.dodgeT = 0.3; h.iframe = 0.38; h.dodgeX = v.x; h.dodgeY = v.y; h.cd.dodge = h.brew === 'fizz' ? 1.07 : 1.6; h.cast = null; h.blocking = false;
+  // Moonpetal Tonic: every dodge heals (Bramble Fizz brings it back sooner, see heroTick)
+  h.dodgeT = 0.3; h.iframe = 0.38; h.dodgeX = v.x; h.dodgeY = v.y; h.cd.dodge = 1.6; h.cast = null; h.blocking = false;
   if (Math.abs(v.x) > 0.2) h.flip = v.x < 0;
   dots(h.x, h.y, '#C9B79A', 6, 90, { size: 6 });
-  if (h.brew === 'tonic') { healHero(null, h, h.maxHp * 0.05, { raw: true, size: 16 }); dots(h.x, h.y - 40, '#8FD6FF', 5, 70, { size: 5 }); }
+  const heal = brewFx(h.brew).dodgeHeal;
+  if (heal) { healHero(null, h, h.maxHp * heal, { raw: true, size: 16 }); dots(h.x, h.y - 40, '#8FD6FF', 5, 70, { size: 5 }); }
   sfx('dodge');
   emit({ type: 'dodge', player: !!h.isPlayer });
   return true;

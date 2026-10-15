@@ -13,6 +13,8 @@ export const BARROW: DungeonInfo = {
   ],
   finalBoss: 'keeper',
   loot: BARROW_LOOT,
+  // the Barrow's seed for the garden: Glowcap, for the Glowcap Draught
+  seeds: [{ boss: 'keeper', seed: 'glowcap', rate: 1 / 5 }],
   marksName: 'Barrow Marks',
   collection: [
     'barrowguard.helm', 'barrowguard.shoulders', 'barrowguard.chest',

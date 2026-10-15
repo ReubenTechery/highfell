@@ -8,7 +8,7 @@ import { DUNGEONS, SETS, thing } from '../content';
 import { ROLES } from '../content/roles';
 import { ROLE_SLOTS, gearKey } from '../content/gear';
 import type { CollectibleKind, ItemDef, RoleId } from '../content/types';
-import { PLACES } from '../content/vale';
+import { GARDEN_TABLE } from '../content/vale';
 import { compareFor, compareOn, floorWorn, itemShare, wearerOf, type Compare, type Effect, type Verdict } from '../meta/gear';
 import { spotById, spotOf } from '../meta/hearth';
 import type { Profile } from '../meta/profile';
@@ -23,14 +23,10 @@ export const ROLE_STAT: Record<RoleId, { main: string; short: string }> = {
   dps: { main: 'damage', short: 'damage' },
 };
 
-/** where a Vale rare comes from: its table, and the counter that is its kill count */
+/** where a garden rare comes from: its line on the harvest table, and the counter that is its kill count */
 function valeSource(id: string): { rate: number; key: string; word: string } | null {
-  for (const pl of Object.values(PLACES)) {
-    for (const n of pl.nodes) { const d = n.table.find((x) => x.id === id); if (d) return { rate: d.rate, key: `vale.${pl.id}.${n.id}`, word: `harvested the ${n.name.toLowerCase()}` }; }
-    const d = pl.errandTable.find((x) => x.id === id);
-    if (d) return { rate: d.rate, key: `vale.${pl.id}.errands`, word: `done ${pl.villager.name.split(' ')[0]}’s errands` };
-  }
-  return null;
+  const d = GARDEN_TABLE.find((x) => x.id === id);
+  return d ? { rate: d.rate, key: 'vale.harvests', word: 'harvested the garden' } : null;
 }
 
 export function itemSheet(p: Profile, id: string, hasBack: boolean): { head: string; body: string } {

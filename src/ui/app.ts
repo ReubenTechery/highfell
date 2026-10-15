@@ -1,7 +1,7 @@
 /**
  * The app: one save, six scenes (the hearth, which is your house, where your heroes live; the hero
- * maker; the Vale you ride out to; the cauldron; a run; the reveal) and sheets that slide over them
- * (the dungeon picker, a hero, gear, logs, the satchel, settings). Every change to the profile goes through
+ * maker; the cauldron; a run; the reveal), the garden's beds and close-ups over the house, and sheets
+ * that slide over them (the dungeon picker, a hero, gear, logs, the satchel, settings). Every change to the profile goes through
  * `save()`, which writes it and redraws whatever is on screen. With no heroes yet, the game opens on
  * the hero maker.
  */
@@ -22,11 +22,11 @@ import { Sheets, normSpec } from './sheets';
 import { RunScene, type RunOpts } from './run';
 import { Reveal, type RevealExtra } from './reveal';
 import { Creator } from './creator';
-import { Vale } from './vale';
+import { Garden } from './garden';
 import { Brewing } from './brew';
 
-export type SceneId = 'hearth' | 'create' | 'vale' | 'brew' | 'run' | 'reveal';
-const SCENES: SceneId[] = ['hearth', 'create', 'vale', 'brew', 'run', 'reveal'];
+export type SceneId = 'hearth' | 'create' | 'brew' | 'run' | 'reveal';
+const SCENES: SceneId[] = ['hearth', 'create', 'brew', 'run', 'reveal'];
 /** what an update of the page carries over */
 export interface Carry { sheet?: unknown; scene?: SceneId }
 
@@ -43,7 +43,7 @@ export class App {
   readonly run: RunScene;
   readonly reveal: Reveal;
   readonly creator: Creator;
-  readonly vale: Vale;
+  readonly garden: Garden;
   readonly brew: Brewing;
   scene: SceneId = 'hearth';
   touch = false;
@@ -60,7 +60,7 @@ export class App {
     this.run = new RunScene(this, $('sc-run'));
     this.reveal = new Reveal(this, $('sc-reveal'));
     this.creator = new Creator(this, $('sc-create'));
-    this.vale = new Vale(this, $('sc-vale'));
+    this.garden = new Garden(this, $('garden'));
     this.brew = new Brewing(this, $('sc-brew'));
     try { this.dev = { ...this.dev, ...JSON.parse(localStorage.getItem(DEV_KEY) || '{}') }; } catch { /* defaults */ }
   }
@@ -69,7 +69,7 @@ export class App {
 
   /** what an update of the page should carry over: the open panel and the scene. A run in progress cannot be carried. */
   snapshot(): Carry {
-    const keep: SceneId[] = ['vale', 'brew'];
+    const keep: SceneId[] = ['brew'];
     return { sheet: this.scene === 'hearth' ? this.sheets.spec : null, scene: keep.includes(this.scene) ? this.scene : 'hearth' };
   }
 
@@ -90,8 +90,7 @@ export class App {
       if (why === 'remote') { SFX.on = this.p.settings.sound; this.refresh(); }
       else this.hearth.syncState();
     });
-    if (carry.scene === 'vale' && activeHero(this.p)) void this.showVale();
-    else if (carry.scene === 'brew' && activeHero(this.p)) this.showBrew();
+    if (carry.scene === 'brew' && activeHero(this.p)) this.showBrew();
     else this.showHearth();
     const sheet = normSpec(carry.sheet);
     if (sheet && this.p.roster.length) this.sheets.open(sheet);
@@ -102,7 +101,6 @@ export class App {
   private onResize(): void {
     if (this.scene === 'run') resizeView();
     if (this.scene === 'hearth') this.hearth.layout();
-    if (this.scene === 'vale') this.vale.layout();
   }
 
   private frame(ts: number): void {
@@ -131,13 +129,6 @@ export class App {
     if (room) this.hearth.aim(room);
     this.show('hearth');
   }
-  /** ride out: the map of the Vale */
-  async showVale(): Promise<void> {
-    if (!activeHero(this.p)) { this.showCreate(); return; }
-    this.sheets.close();
-    this.show('vale');
-    await this.vale.enter();
-  }
   /** the cauldron at home */
   showBrew(): void {
     if (!activeHero(this.p)) { this.showCreate(); return; }
@@ -165,7 +156,7 @@ export class App {
       return;
     }
     if (this.scene === 'hearth') this.hearth.render();
-    if (this.scene === 'vale') this.vale.update();
+    this.garden.update();
     if (this.scene === 'brew') this.brew.update();
     // a hero made on another device while the maker was open on its first screen: offer the way back
     if (this.scene === 'create' && this.p.roster.length) this.creator.open(false);
@@ -201,7 +192,7 @@ export class App {
 const SHELL = `
 <div class="scene hearth" id="sc-hearth"></div>
 <div class="scene create" id="sc-create" hidden></div>
-<div class="scene vale" id="sc-vale" hidden></div>
+<div class="garden-layer" id="garden" hidden></div>
 <div class="scene brew" id="sc-brew" hidden></div>
 <div class="scene run" id="sc-run" hidden>
   <canvas id="cv" aria-label="The dungeon"></canvas>

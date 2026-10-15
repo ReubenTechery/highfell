@@ -9,8 +9,8 @@ import { BARROW_ITEMS, BARROW_SETS } from './barrow/items';
 import { BARROW_COLLECTIBLES, BARROW_TITLES } from './barrow/collectibles';
 import { BARROW_ACHIEVEMENTS } from './barrow/achievements';
 import { BARROW_HEROIC, HEROIC_ACHIEVEMENTS, HEROIC_COLLECTIBLES, HEROIC_ITEMS, HEROIC_TITLES } from './barrow/heroic';
-import { BRAMBLEWICK_ACHIEVEMENTS, BRAMBLEWICK_COLLECTIBLES, BRAMBLEWICK_TITLES } from './vale/bramblewick';
-import { INGREDIENTS, PLACES, RECIPES } from './vale';
+import { GARDEN_ACHIEVEMENTS, GARDEN_COLLECTIBLES, GARDEN_TITLES } from './vale/garden';
+import { FIRST_HARVEST_GIFT, GARDEN_TABLE, INGREDIENTS, PLANTS, RECIPES } from './vale';
 import { LOOKS } from './house';
 import { RACES } from './folk';
 
@@ -27,10 +27,10 @@ const byId = <T extends { id: string }>(list: T[]): Record<string, T> => {
 export const DUNGEONS: Record<string, DungeonInfo> = byId([BARROW, BARROW_HEROIC]);
 export const ITEMS: Record<string, ItemDef> = byId([...regularItems(), ...BARROW_ITEMS, ...HEROIC_ITEMS]);
 export const SETS: Record<string, SetDef> = byId([...BARROW_SETS]);
-export const COLLECTIBLES: Record<string, CollectibleDef> = byId([...BARROW_COLLECTIBLES, ...HEROIC_COLLECTIBLES, ...BRAMBLEWICK_COLLECTIBLES]);
-export const TITLES: Record<string, TitleDef> = byId([...BARROW_TITLES, ...HEROIC_TITLES, ...BRAMBLEWICK_TITLES]);
-export const ACHIEVEMENTS: Record<string, AchievementDef> = byId([...BARROW_ACHIEVEMENTS, ...HEROIC_ACHIEVEMENTS, ...BRAMBLEWICK_ACHIEVEMENTS]);
-export const ACHIEVEMENT_LIST: AchievementDef[] = [...BARROW_ACHIEVEMENTS, ...HEROIC_ACHIEVEMENTS, ...BRAMBLEWICK_ACHIEVEMENTS];
+export const COLLECTIBLES: Record<string, CollectibleDef> = byId([...BARROW_COLLECTIBLES, ...HEROIC_COLLECTIBLES, ...GARDEN_COLLECTIBLES]);
+export const TITLES: Record<string, TitleDef> = byId([...BARROW_TITLES, ...HEROIC_TITLES, ...GARDEN_TITLES]);
+export const ACHIEVEMENTS: Record<string, AchievementDef> = byId([...BARROW_ACHIEVEMENTS, ...HEROIC_ACHIEVEMENTS, ...GARDEN_ACHIEVEMENTS]);
+export const ACHIEVEMENT_LIST: AchievementDef[] = [...BARROW_ACHIEVEMENTS, ...HEROIC_ACHIEVEMENTS, ...GARDEN_ACHIEVEMENTS];
 /** The heroic version of a dungeon, if it has one. */
 export const heroicVersion = (id: string): DungeonInfo | undefined => Object.values(DUNGEONS).find((d) => d.heroicOf === id);
 
@@ -52,15 +52,13 @@ export function checkContent(): string[] {
     if (d.heroicOf && !DUNGEONS[d.heroicOf]) bad.push(`${d.id} heroic of ${d.heroicOf}`);
   }
   for (const s of Object.values(SETS)) for (const id of s.pieces) if (!ITEMS[id] || ITEMS[id].setId !== s.id) bad.push(`set ${s.id} piece ${id}`);
-  for (const pl of Object.values(PLACES)) {
-    for (const n of pl.nodes) {
-      if (!INGREDIENTS[n.gives]) bad.push(`${pl.id} node ${n.id} gives ${n.gives}`);
-      for (const dr of n.table) if (!thing(dr.id)) bad.push(`${pl.id} node ${n.id} drop ${dr.id}`);
-    }
-    for (const dr of pl.errandTable) if (!thing(dr.id)) bad.push(`${pl.id} errand drop ${dr.id}`);
-    for (const er of pl.errands) for (const k of Object.keys(er.needs || {})) if (!INGREDIENTS[k]) bad.push(`${pl.id} errand ${er.id} needs ${k}`);
-    for (const er of pl.errands) if (er.gives && !COLLECTIBLES[er.gives]) bad.push(`${pl.id} errand ${er.id} gives ${er.gives}`);
+  for (const d of Object.values(DUNGEONS)) for (const sd of d.seeds || []) {
+    if (!PLANTS[sd.seed]) bad.push(`${d.id} seed ${sd.seed}`);
+    if (!d.bosses.some((b) => b.id === sd.boss)) bad.push(`${d.id} seed boss ${sd.boss}`);
   }
+  for (const n of Object.values(PLANTS)) if (!INGREDIENTS[n.gives]) bad.push(`plant ${n.id} gives ${n.gives}`);
+  for (const dr of GARDEN_TABLE) if (!thing(dr.id)) bad.push(`garden drop ${dr.id}`);
+  if (!COLLECTIBLES[FIRST_HARVEST_GIFT]) bad.push(`garden gift ${FIRST_HARVEST_GIFT}`);
   for (const r of Object.values(RECIPES)) for (const k of Object.keys(r.needs)) if (!INGREDIENTS[k]) bad.push(`recipe ${r.id} needs ${k}`);
   for (const a of ACHIEVEMENT_LIST) {
     if (a.reward.title && !TITLES[a.reward.title]) bad.push(`${a.id} title ${a.reward.title}`);

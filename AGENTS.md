@@ -59,13 +59,13 @@ Dungeons and their collection logs are the core loop of the whole game: four-min
 | Barrow Crypt hits 1.5 times as hard as its numbers, ordinary mobs have 1.3 times the health (`tune`), and unblocked hazards pierce 60% of Ward shields | So tanking, healing, dodging, and blocking genuinely matter in beginner gear |
 | Only the tank is caged; inside, the boss turns on someone else | The party feels the tank's absence |
 | You see only your own numbers (your hits, your heals, what hits you); mates' spell effects stay | Less noise, your numbers mean more |
-| No free mount: you start on foot, Dottle's first errand (herding goats) gives the Hill Goat | A mount is earned; it makes rides quicker, nothing else |
+| The first garden harvest gives the Hill Goat | Earned from your first harvest; sits in the Hearth's stall |
 | No trading or selling between players, ever | The collection log has to mean "I did this" |
 | A DPS alone dies before the mini boss (a test checks it) | All three roles are needed |
-| The Vale stays small: one place per race's hometown, about 5 minutes a trip | A cosy break, not a second game |
-| Brews are one-run twists, never power a raid needs | Fun, not a tax |
+| The Hearth yard has 3 planter beds (`bed.0..2`); seeds drop from dungeon bosses and grow in 3 clears (`GROW_CLEARS = 3`) | Feeds directly into the dungeon loop with no real-time timers or chores |
+| Brews are strong party-wide buffs (1 bottle poured at the door buffs all 3 seats for faster clears), never required to clear | Rewards farming seeds and brewing without wasting duplicate bottles |
 | Home is a tall house cut open: zoom out to see it all, tap things in the rooms to use them | A play test: side things belong in the house, not in buttons |
-| The house has one big button, always: Dungeons. Ride out is the signpost in the yard | Nobody should mistake a side trip for the main thing |
+| The house has one big button, always: Dungeons. The yard holds the 3 garden planter beds | Nobody should mistake a side trip for the main thing |
 | Your other heroes wait by their beds in the house; there is no camp | One place, one less screen |
 | Looks for a room or the whole house: the tavern, and each dungeon's look (and its heroic, gilded one) from finishing that dungeon's collection log. Looks only | The house shows what you've done, and a look can't be faked |
 | Finishing a dungeon's whole collection log (every drop, every role) gives a house look, a title and one big prize, for keeps and never power. The Barrow's big prize is the Risen, a race | The long chase that makes the log mean something |
@@ -81,8 +81,8 @@ The full systems design (abilities, sets, drop tables, achievements, balance rul
 ## Rules of the game's systems (as built)
 
 - **Loot** rolls when a boss dies (`resolveKill`): every line of its table rolls on its own, per player, and
-  kill counts are per boss. Every clear also gives a Mark, a ladder piece (Common to Rare in eight clears)
-  and a spare piece for another role. Practice runs give nothing.
+  kill counts are per boss. Bosses can also roll seed drops (`seeds` on `BossDef`: The Gravekeeper drops `glowcap` seeds at 1/5 on Normal and 1/3 on Heroic). Every clear also gives a Mark, a ladder piece (Common to Rare in eight clears),
+  a spare piece for another role, and advances planted garden beds by 1 clear (`growBeds`). Practice runs give nothing.
 - **The walkout:** the final boss's drops decide the lantern's tell. Normal: it gutters out. Unique: it
   flares gold and the chest knocks twice. Pet: every light dies, the sound cuts, the lantern lifts and the
   pet walks out. The first second is identical for all three on purpose.
@@ -90,7 +90,7 @@ The full systems design (abilities, sets, drop tables, achievements, balance rul
   renamed once. The active hero is the one by the fire in the house and the one a run plays; the others wait by their beds
   in the bunk room (tap one to play them, an empty bed makes a new hero). Each hero has its own
   male or female look (`sex`), ladder gear, title and clears. Shared by all heroes: the collection (a unique fits any hero of its role),
-  kill counts, Marks, achievements, titles, the hearth, the Vale. A race and class combo is playable once it
+  kill counts, Marks, achievements, titles, the hearth, the garden & cauldron (`p.vale`). A race and class combo is playable once it
   has a ready class and art in `HERO_ART` (`HERO_ART_SEX` for male/female variants, keeping the same body and armour silhouette) and its race is open; the rest show as "Soon". Gnomes, goblins, and the Risen are drawn across all four classes (`warrior`, `cleric`, `mage`, `rogue`), both sexes (`m`, `f`), and all three visual armour tiers (`_rags`, `_iron`, and full armour). A race marked
   `earned` (gnome, goblin, the Risen, orc) opens with the achievement that gives it (`reward.race`), and
   stays locked until a dungeon does (or the testing switch / Hero Maker `Unlock` preview button is used).
@@ -130,15 +130,17 @@ The full systems design (abilities, sets, drop tables, achievements, balance rul
 - **Balance targets** (guarded by `tests/balance.test.ts`): a Common bot clear in about 4:00 with no wipes, the Gravekeeper about two minutes, full Epic clearly faster, full BiS melting the dungeon in roughly half the time (`< 62%` of Common clear time), and the DPS alone dies before Sir Rattlebones. Heroic: full Epic clears in about four minutes with no wipes, Common gets buried.
 - **Save versions:** v2 to v3 turned one hero per role into the roster; v3 to v4 added the Vale (`p.vale`);
   v4 to v5 gave every hero an empty bag and fresh list (gear stopped going on by itself); v5 to v6 added house
-  looks (`p.hearth.looks`, every room the tavern); v6 to v7 gave every hero a male or female look (`sex`).
-- **The Vale:** a place regrows 2 harvests a day and banks 6; errands come 1 a day and bank 3. A harvest is
-  rolled when its close-up starts (like a kill) and Perfects add on at the end. Every cut pays Gathering XP as
-  it lands and every lap of the stir pays Brewing XP. A duplicate rare becomes 2 Starlight Dew. Every errand
-  gives the next page of that place's story. You start on foot; the first errand (the goats) gives a Hill Goat,
-  and a mount only makes rides quicker (5 s on foot, 3 on the goat, 2 on the hare or the hound).
-- **Brews:** the ingredients go in when the stir starts (leaving still bottles it). One bottle a run, drunk
-  at the door; practice uses the brew but keeps the bottle. Effects live in the engine under the recipe id
-  (`tonic`, `fizz`, `glow`, `elixir`).
+  looks (`p.hearth.looks`, every room the tavern); v6 to v7 gave every hero a male or female look (`sex`); v7 to v8
+  added `seeds` and the 3 yard planter `beds` (`p.vale.seeds`, `p.vale.beds`) with 1 starter `glowcap` seed.
+- **The Garden:** the Hearth yard has 3 planter beds (`bed.0`, `bed.1`, `bed.2`). Seeds drop from dungeon bosses
+  and grow over `GROW_CLEARS` (3) dungeon clears (never on a real-time timer). Harvesting a ready bed uses the close-up
+  toy (`snip` or `pluck`), yielding `8–10` herbs plus Perfects (up to 3) and Gathering rank bonuses (`0–3`). Every cut pays
+  Gathering XP as it lands and every lap of the stir pays Brewing XP. Your first harvest grants the Hill Goat (`mount.goat`),
+  and every harvest rolls `GARDEN_TABLE` for rares (a duplicate rare becomes 2 Starlight Dew).
+- **Brews:** the ingredients go in when the stir starts (leaving still bottles it). One bottle is poured at the dungeon
+  door (`pourFor`: your hero's brew first, then Tank → Healer → DPS) and buffs the entire 3-hero party; only the poured
+  bottle is spent (`spendBottle`), and practice uses the brew but keeps the bottle. Effects live in `BREW_FX` in
+  `src/dungeon/entities.js` (`tonic`, `fizz`, `glow`, `elixir`).
 - **Onboarding:** a fresh save with no heroes opens on a 60-second prologue run (`start: 'intro'`) as Brannoc in
   full Epic gear, the Barrowguard set and *The Gravedigger* alongside Maren and Ivy in the Ossuary and Sir
   Rattlebones's tomb. A Welcome card lets the player start the 1-minute tutorial or skip straight to the hero
@@ -150,7 +152,7 @@ The full systems design (abilities, sets, drop tables, achievements, balance rul
   (`reveal.showIntro`) with four cards stamped `Example` (regular ladder piece, shared warband piece, 1/50 set
   piece, 1/50 hearth trophy) alongside the player's real `0 / 16` Barrow Crypt Collection Log and its three
   completion prizes, then leads into the hero maker. Creating your first hero starts a 3-step guided camera
-  tour of the Hearth (`hall` → `yard` signpost → `cellar` Barrow door). Both can be replayed from Settings.
+  tour of the Hearth (`hall` → `yard` garden → `cellar` Barrow door). Both can be replayed from Settings.
 - The game's name isn't final: it lives in one constant, `GAME_NAME` in `src/content/index.ts`.
 
 ## Map of the code
@@ -159,17 +161,17 @@ The full systems design (abilities, sets, drop tables, achievements, balance rul
 - `src/content`: data only. Roles and abilities, gear and traits, `folk.ts` (the races, which are earned, the
   four classes, which race and class combos have art in `HERO_ART`, name lists), one folder per dungeon
   (`barrow/`: map, mobs, bosses, script, items, loot tables, collectibles, achievements, and `heroic.ts`, its
-  heroic version and gilded drops), and `vale/` (ingredients, recipes,
-  the map, ranks, one file per place). `house.ts` is the house's plan. Register new content in `src/content/index.ts`; `checkContent()`
+  heroic version and gilded drops), and `vale/` (ingredients, recipes, ranks, and `garden.ts`).
+  `house.ts` is the house's plan. Register new content in `src/content/index.ts`; `checkContent()`
   and the tests catch broken ids.
 - `src/dungeon`: the engine, plain JS with no DOM: state `S`, entities, heroes, mobs, bots, the loop,
   rendering to a canvas, and `walkout.js` (the lantern tells). It reaches the screen only through `HOOKS`
   and `emit`.
 - `src/meta`: TypeScript rules for everything that lasts: the profile and its migrations (heroes live here),
   loot (and when heroic opens), gear, achievements, what the collection log gives (`logs.ts`), the hearth,
-  the party's seats (`party.ts`), and `vale.ts` (regrowth, harvests, errands, ranks, brewing).
+  the party's seats (`party.ts`), and `vale.ts` (seeds, planter beds, harvests, ranks, brewing).
 - `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, its drawing
-  `houseart.ts`, every room in each look), the hero maker, the Vale (`vale.ts`, `valeart.ts`, `toys.ts` for the
+  `houseart.ts`, every room in each look), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
   close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons
   (`dungeonsheet.ts`), a hero (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
   (`lookssheet.ts`), the logs (`logsheet.ts`), settings (`settingssheet.ts`), the gear doll, satchel and spot
