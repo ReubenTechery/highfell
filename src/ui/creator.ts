@@ -7,7 +7,7 @@
  */
 import { DUNGEONS } from '../content';
 import { CLASSES, CLASS_ORDER, MAX_HEROES, RACES, RACE_ORDER, canMake, defaultSex, heroArt, type ClassId, type RaceId, type SexId } from '../content/folk';
-import { AB, ROLES } from '../content/roles';
+import { AB, abKey } from '../content/roles';
 import type { RoleId } from '../content/types';
 import { newHero } from '../meta/gear';
 import { openProgress, opened, unlockOf } from '../meta/logs';
@@ -190,7 +190,7 @@ export class Creator {
       : `<div class="cr-unlock"><div class="cr-unlock-head"><i class="cr-unlock-ic">${GLYPH.lock}</i><div><b>Coming Soon</b><span>${esc(R.name)} ${esc(C.name.toLowerCase())}s are still on the drawing board</span></div></div></div>`;
 
     const sigs = C.signature.map((slot) => {
-      const ab = AB[C.role][slot];
+      const ab = AB[abKey({ role: C.role, cls: this.cls })][slot];
       const shortDesc = ab.desc.split('.')[0] + '.';
       return `<div class="cr-ab"><span class="cr-ab-ic">${tile(ab.key)}</span><div class="cr-ab-tx"><b>${esc(ab.name)}</b><span>${esc(shortDesc)}</span></div></div>`;
     }).join('');

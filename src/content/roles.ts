@@ -1,8 +1,12 @@
 /** The three seats in every party, and what each one can press. Four buttons each, plus the swipe dodge. */
-import type { AbilityDef, AbilitySlot, RoleDef, RoleId, TalentRankDef } from './types';
+import type { AbilityDef, AbilitySlot, GearKey, RoleDef, RoleId, TalentRankDef } from './types';
+import { CLASSES, type ClassId } from './folk';
 
 export const ORDER: RoleId[] = ['tank', 'healer', 'dps'];
 export const SLOTS_AB: AbilitySlot[] = ['a1', 'a2', 'a3', 'a4'];
+
+export const abKey = (h: RoleId | GearKey | { role?: RoleId; cls?: string }): GearKey =>
+  typeof h === 'string' ? h : h.cls === 'rogue' ? 'rogue' : (h.role ?? CLASSES[(h.cls as ClassId) || 'warrior']?.role ?? 'dps');
 
 export const ROLES: Record<RoleId, RoleDef> = {
   tank: { id: 'tank', name: 'Brannoc', title: 'Tank', hp: 1250, armor: 0.55, speed: 176, r: 18, threat: 1.3, color: '#4F6FA8', sprite: 'tank',
@@ -13,7 +17,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     blurb: 'Stand still to cast. Freeze them, then shatter them.' },
 };
 
-export const AB: Record<RoleId, Record<AbilitySlot, AbilityDef>> = {
+export const AB: Record<GearKey, Record<AbilitySlot, AbilityDef>> = {
   tank: {
     a1: { key: 'cleave', name: 'Cleave', cd: 2.2, desc: 'Fast, wide axe sweep through foes in front of you. Crushes heavy foes, stunned targets, or clumped packs for bonus damage.', combo: '② Spammable finisher: Crush! bonus damage on heavy foes, stunned targets, or 2+ packs' },
     a2: { key: 'charge', name: 'Charge', cd: 6.5, desc: 'Rush a mob and shoulder-slam it. Stuns nearby foes and readies Cleave.', combo: '① Charge stuns pack & readies Cleave ➔ ② Cleave crushes' },
@@ -32,11 +36,17 @@ export const AB: Record<RoleId, Record<AbilitySlot, AbilityDef>> = {
     a3: { key: 'comet', name: 'Comet', cd: 5.5, cast: 0.9, desc: 'Big hit with splash damage. Double damage on frozen targets.', combo: '② Finisher: 2× Shatter damage on frozen targets' },
     a4: { key: 'icicle', name: 'Icicle', cd: 2.5, desc: 'Instant ice shard. Triple damage on frozen targets.', combo: '② Finisher: 3× Shatter damage on frozen targets' },
   },
+  rogue: {
+    a1: { key: 'viper', name: 'Viper Blades', cd: 2.4, desc: 'Slash a single foe with twin venom-coated daggers and open a deep Venomous Bleed for 5 seconds.', combo: '① Open Venomous Bleed on boss ➔ ② Heartstrike always crits!' },
+    a2: { key: 'ambush', name: 'Heartstrike', cd: 3.6, desc: 'Drive both daggers into a single target’s vitals. Always crits and deals 55% bonus damage on bleeding targets.', combo: '② Execution finisher: guaranteed crit + 1.55× damage on bleeding foes' },
+    a3: { key: 'flurry', name: 'Fan of Blades', cd: 6.5, desc: 'Whirl and fling throwing knives in a circle around you, interrupting enemy casts and slicing nearby foes.', combo: '① Interrupt enemy casts & chip packs (weaker than Mage/Tank AoE)' },
+    a4: { key: 'shadowstep', name: 'Shadowstep', cd: 5.8, desc: 'Blink through shadow behind your target, strike it, interrupt casts, and gain +35% attack speed for 3.5s.', combo: '① Blink behind boss + shaves 2.0s off Heartstrike ➔ ② Heartstrike' },
+  },
 };
 
 /** Skill Tree Lite: two upgrade ranks per ability (8 talent points total from Level 1 to Level 9).
  *  Each point upgrades how one of your 4 buttons works and adds +1.5% Hero Mastery power. */
-export const TALENTS: Record<RoleId, Record<AbilitySlot, [TalentRankDef, TalentRankDef]>> = {
+export const TALENTS: Record<GearKey, Record<AbilitySlot, [TalentRankDef, TalentRankDef]>> = {
   tank: {
     a1: [
       { name: 'Heavy Edge', desc: '+20% Cleave damage and +15% wider arc.' },
@@ -89,6 +99,24 @@ export const TALENTS: Record<RoleId, Record<AbilitySlot, [TalentRankDef, TalentR
     a4: [
       { name: 'Razor Ice', desc: '+20% Icicle damage and splashes 40% to a nearby foe.' },
       { name: 'Heartpiercer', desc: '−0.4s Icicle cooldown, +15% Shatter crit, and −0.5s Comet cd on Shatter.' },
+    ],
+  },
+  rogue: {
+    a1: [
+      { name: 'Serrated Fangs', desc: '+20% Viper Blades slash and bleed damage.' },
+      { name: 'Festering Venom', desc: '−0.4s Viper Blades cooldown and +1.5s bleed duration.' },
+    ],
+    a2: [
+      { name: 'Find the Gap', desc: '+25% Heartstrike damage and +20% bonus damage on bleeding targets.' },
+      { name: 'Coup de Grace', desc: '−0.6s Heartstrike cooldown and refreshes Venomous Bleed on hit.' },
+    ],
+    a3: [
+      { name: 'Whirling Shivs', desc: '+20% Fan of Blades damage, +15% radius, and refreshes active bleed.' },
+      { name: 'Poisoned Tips', desc: '−1.2s Fan of Blades cooldown and applies 3s of Venomous Bleed.' },
+    ],
+    a4: [
+      { name: 'Unseen Strike', desc: '+30% Shadowstep strike damage and +1.0s attack speed buff.' },
+      { name: 'Duskwalker', desc: '−1.0s Shadowstep cooldown and resets Heartstrike.' },
     ],
   },
 };

@@ -20,17 +20,20 @@ const later = (t, fn) => S.timers.push({ t, fn });
 export function makeHero(role, isPlayer, loadout) {
   const R = ROLES[role];
   const L = loadout || {};
+  const cls = L.cls || (role === 'tank' ? 'warrior' : role === 'healer' ? 'cleric' : 'mage');
+  const isRogue = cls === 'rogue';
   const power = L.power || 1;
   const maxHp = Math.round(R.hp * hpMultiplier(power));
   return {
-    id: 'h_' + role, kind: 'hero', role, name: L.name || R.name, sprite: L.sprite || R.sprite, isPlayer, x: 0, y: 0, r: R.r,
+    id: 'h_' + role, kind: 'hero', role, cls, name: L.name || R.name, sprite: L.sprite || (isRogue ? 'rogue' : R.sprite), isPlayer, x: 0, y: 0, r: R.r,
     face: -Math.PI / 2, back: true, flip: false, hp: maxHp, maxHp, armor: R.armor, power,
     traits: new Set(L.traits || []), bonuses: new Set(L.bonuses || []), unique: L.unique || null,
     talents: Object.assign({ a1: 0, a2: 0, a3: 0, a4: 0 }, L.talents || {}),
-    weaponRar: L.weaponRar || 0, threatMod: R.threat, speed: R.speed * (L.brew === 'fizz' ? 1.12 : 1), alive: true,
+    weaponRar: L.weaponRar || 0, threatMod: R.threat, speed: R.speed * (isRogue ? 1.1 : 1) * (L.brew === 'fizz' ? 1.12 : 1), alive: true,
     // a brew from the Vale, drunk at the door: tonic, fizz, glow or elixir (see doDodge, hurtMob, hurtHero)
     brew: L.brew || null, brewCol: L.brewCol || null, brewUsed: false,
     mana: 100, maxMana: 100, cd: { a1: 0, a2: 0, a3: 0, a4: 0, dodge: 0 }, gcd: 0, atkT: 0.4,
+    frenzyT: 0, nightstalkerT: 0,
     target: null, picked: null, stillT: 1, dodgeT: 0, dodgeX: 0, dodgeY: -1, iframe: 0,
     blocking: false, blockT: 9, dash: null, cast: null,
     st: { stun: 0, root: 0, haunt: 0, air: 0, kx: 0, ky: 0, chained: null, caged: null },

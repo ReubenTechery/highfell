@@ -134,10 +134,10 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     job: 'Freezes enemies solid & shatters them with heavy spells.',
     signature: ['a2', 'a3'],
     blurb: 'Hits the hardest and freezes the rest. Stands still to cast and would like everyone to stop shouting.' },
-  rogue: { id: 'rogue', name: 'Rogue', role: 'dps', roleName: 'DPS', icon: 'i_dagger', ready: false,
-    job: 'Interrupts enemy casts & strikes fast from the shadows.',
-    signature: [],
-    blurb: 'The only one who can interrupt a spell, and the first to the chest.' },
+  rogue: { id: 'rogue', name: 'Rogue', role: 'dps', roleName: 'DPS', icon: 'i_dagger', ready: true,
+    job: 'Melts single bosses with twin daggers, bleed & crits (+10% move speed).',
+    signature: ['a1', 'a2'],
+    blurb: 'Darts in with twin daggers, stacks a wicked bleed, and carves up single targets faster than anyone.' },
 };
 export const CLASS_ORDER: ClassId[] = ['warrior', 'cleric', 'mage', 'rogue'];
 
@@ -146,9 +146,12 @@ export const HERO_ART: Partial<Record<`${RaceId}.${ClassId}`, string>> = {
   'dwarf.warrior': 'tank',
   'human.cleric': 'healer',
   'elf.mage': 'dps',
+  'human.rogue': 'rogue',
+  'elf.rogue': 'rogue',
   'risen.warrior': 'risen_tank',
   'risen.cleric': 'risen_healer',
   'risen.mage': 'risen_dps',
+  'risen.rogue': 'risen_rogue',
 };
 export const HERO_ART_SEX: Partial<Record<`${RaceId}.${ClassId}.${SexId}`, string>> = {
   'dwarf.warrior.m': 'tank',
@@ -157,14 +160,20 @@ export const HERO_ART_SEX: Partial<Record<`${RaceId}.${ClassId}.${SexId}`, strin
   'human.cleric.m': 'healer_m',
   'elf.mage.f': 'dps',
   'elf.mage.m': 'dps_m',
+  'human.rogue.f': 'rogue',
+  'human.rogue.m': 'rogue_m',
+  'elf.rogue.f': 'rogue',
+  'elf.rogue.m': 'rogue_m',
   'risen.warrior.m': 'risen_tank',
   'risen.warrior.f': 'risen_tank_w',
   'risen.cleric.f': 'risen_healer',
   'risen.cleric.m': 'risen_healer_m',
   'risen.mage.f': 'risen_dps',
   'risen.mage.m': 'risen_dps_m',
+  'risen.rogue.f': 'risen_rogue',
+  'risen.rogue.m': 'risen_rogue_m',
 };
-export const defaultSex = (_race: string, cls: string): SexId => (cls === 'cleric' || cls === 'mage' ? 'f' : 'm');
+export const defaultSex = (_race: string, cls: string): SexId => (cls === 'cleric' || cls === 'mage' || cls === 'rogue' ? 'f' : 'm');
 export const heroArt = (race: string, cls: string, sex?: string): string | null => {
   const s: SexId = sex === 'm' || sex === 'f' ? sex : defaultSex(race, cls);
   return HERO_ART_SEX[`${race}.${cls}.${s}` as `${RaceId}.${ClassId}.${SexId}`] || HERO_ART[`${race}.${cls}` as `${RaceId}.${ClassId}`] || null;

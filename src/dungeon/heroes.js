@@ -1,11 +1,11 @@
 /* ---------- heroes: moving, auto attacks, abilities, dodge, block ---------- */
 import { angDiff, angTo, dist, distXY, norm } from '../core/math';
 import { rng } from '../core/rng';
-import { AB, MEND } from '../content/roles';
+import { AB, MEND, abKey } from '../content/roles';
 import { HOOKS, S, emit } from './state.js';
 import { addThreat, aggro, banner, bits, dots, fx, fxText, healHero, hitstop, hurtMob, say, sfx, shake, taunt } from './entities.js';
 import { interruptCast } from './mobs.js';
-import { moveEnt } from './world.js';
+import { canStand, moveEnt } from './world.js';
 
 export const heroBy = (role) => S.heroes.find((h) => h.role === role) || null;
 export const aliveHeroes = () => S.heroes.filter((h) => h.alive);
@@ -53,6 +53,8 @@ export function autoTarget(h) {
 export function heroTick(h, dt) {
   for (const k in h.cd) if (h.cd[k] > 0) h.cd[k] = Math.max(0, h.cd[k] - dt);
   h.gcd -= dt; h.iframe -= dt; h.flash -= dt; h.hurtT -= dt; h.lunge -= dt; h.sayT -= dt; h.moving -= dt;
+  if (h.frenzyT > 0) h.frenzyT = Math.max(0, h.frenzyT - dt);
+  if (h.nightstalkerT > 0) h.nightstalkerT = Math.max(0, h.nightstalkerT - dt);
   if (h.swingT > 0) h.swingT = Math.max(0, h.swingT - dt);
   if (h.whirlT > 0) h.whirlT = Math.max(0, h.whirlT - dt);
   if (!h.alive) { h.deadT += dt; return; }
@@ -110,6 +112,16 @@ function tickHots(h, dt) {
   }
 }
 
+export function applyBleed(h, m, durOverride) {
+  if (!m || !m.alive || m.cage || m.M.wisp) return;
+  const rk = tal(h, 'a1');
+  const chestMul = h.bonuses && h.bonuses.has('sv_chest') ? 1.3 : 1;
+  const per = Math.round((rk >= 1 ? 34 : 28) * chestMul);
+  const fullDur = (rk >= 2 ? 6.5 : 5.0) + (h.bonuses && h.bonuses.has('sv_chest') ? 1.0 : 0);
+  const dur = durOverride ? Math.max(m.bleed ? m.bleed.left : 0, durOverride) : fullDur;
+  m.bleed = { src: h, per, left: dur, next: m.bleed && m.bleed.left > 0 ? m.bleed.next : 0.5 };
+}
+
 function heroAuto(h, dt) {
   h.atkT -= dt;
   if (h.dodgeT > 0 || h.cast || h.dash) return;
@@ -131,6 +143,21 @@ function heroAuto(h, dt) {
     }
   } else if (h.role === 'healer') {
     if (d <= 440 && h.atkT <= 0 && h.gcd <= 0) { h.atkT = 1.4; h.face = angTo(h, t); h.lunge = 0.1; h.lungeA = h.face; shoot(h, t, 'holy'); }
+  } else if (h.cls === 'rogue') {
+    if (d <= h.r + t.r + 34 && h.atkT <= 0) {
+      h.atkT = h.frenzyT > 0 ? 0.37 : 0.5;
+      h.face = angTo(h, t); h.lunge = 0.13; h.lungeA = h.face;
+      h.swings = (h.swings || 0) + 1;
+      const bleedHit = t.bleed && t.bleed.left > 0 ? 35 : 28;
+      hurtMob(t, bleedHit, h, { crit: 0.2, col: '#D7DEE6' });
+      if (t.alive && h.traits.has('twinvenom') && t.bleed && t.bleed.left > 0) t.bleed.left = Math.min(7.5, t.bleed.left + 1.5);
+      if (h.unique === 'cryptfangs' && h.swings % 4 === 0 && t.alive) {
+        hurtMob(t, 32, h, { crit: 0.25, col: '#7CF06A', size: 19 });
+        if (t.alive) applyBleed(h, t);
+      }
+      fx({ type: 'slash', x: h.x, y: h.y - 30, a: h.face + (h.swings % 2 ? 0.28 : -0.28), r: 46, dur: 0.14, col: '#7CF06A' });
+      sfx('swing', 0.65);
+    }
   } else {
     if (h.stillT >= 0.12 && d <= 480 && h.atkT <= 0) { h.atkT = 0.72; h.face = angTo(h, t); h.lunge = 0.1; h.lungeA = h.face; shoot(h, t, 'frost'); }
   }
@@ -149,13 +176,14 @@ function shoot(h, t, kind) {
 }
 export const tal = (h, slot) => (h && h.talents && h.talents[slot]) || 0;
 export function abCd(h, slot) {
-  const def = AB[h.role][slot];
+  const def = AB[abKey(h)][slot];
   if (!def) return 0;
   let cd = def.cd || 0;
   if (tal(h, slot) >= 2) {
-    if (def.key === 'cleave' || def.key === 'smite' || def.key === 'icicle') cd -= 0.4;
-    else if (def.key === 'slam' || def.key === 'blizzard') cd -= 1.0;
-    else if (def.key === 'charge') cd -= 1.2;
+    if (def.key === 'cleave' || def.key === 'smite' || def.key === 'icicle' || def.key === 'viper') cd -= 0.4;
+    else if (def.key === 'ambush') cd -= 0.6;
+    else if (def.key === 'slam' || def.key === 'blizzard' || def.key === 'shadowstep') cd -= 1.0;
+    else if (def.key === 'charge' || def.key === 'flurry') cd -= 1.2;
     else if (def.key === 'ward' || def.key === 'comet') cd -= 0.8;
     else if (def.key === 'sunburst') cd -= 2.5;
     else if (def.key === 'nova') cd -= 2.0;
@@ -163,7 +191,7 @@ export function abCd(h, slot) {
   return Math.max(0.5, cd);
 }
 export function abMana(h, slot) {
-  const def = AB[h.role][slot];
+  const def = AB[abKey(h)][slot];
   if (!def || !def.mana) return 0;
   let m = def.mana;
   if (def.key === 'circle') {
@@ -217,7 +245,7 @@ export function mostHurt(h, except) {
 
 /* ---------- abilities ---------- */
 export function useAbility(h, slot, aim) {
-  const def = AB[h.role][slot];
+  const def = AB[abKey(h)][slot];
   if (!def || !h.alive || S.over || def.hold) return false;
   if (h.st.stun > 0 || h.st.caged || h.st.air > 0 || h.dodgeT > 0 || h.dash) return false;
   if (h.cd[slot] > 0) { if (h.isPlayer) HOOKS.nope(slot); return false; }
@@ -237,6 +265,10 @@ export function useAbility(h, slot, aim) {
     case 'nova': ok = abNova(h); break;
     case 'icicle': ok = abShot(h, aim, 'icicle'); break;
     case 'comet': ok = abComet(h, aim); return ok;
+    case 'viper': ok = abViper(h, aim); break;
+    case 'ambush': ok = abAmbush(h, aim); break;
+    case 'flurry': ok = abFlurry(h); break;
+    case 'shadowstep': ok = abShadowstep(h, aim); break;
   }
   if (ok) {
     h.cd[slot] = abCd(h, slot);
@@ -554,6 +586,107 @@ function finishCast(h) {
     shake(frozen ? 7 : 4); sfx('comet');
     if (frozen && h.isPlayer) hitstop(0.08);
   });
+}
+
+/* ---------- rogue abilities: Viper Blades, Heartstrike, Fan of Blades, Shadowstep ---------- */
+function rogueMeleeTarget(h, aim, maxRange) {
+  let t = aim && aim.kind === 'mob' && isFoe(aim) ? aim : autoTarget(h);
+  if (!t || dist(h, t) > h.r + t.r + maxRange) t = nearestFoe(h, maxRange, false);
+  return t && dist(h, t) <= h.r + t.r + maxRange ? t : null;
+}
+
+/* Viper Blades (a1): fast twin-dagger slash on a single foe that opens Venomous Bleed */
+function abViper(h, aim) {
+  const t = rogueMeleeTarget(h, aim, 78);
+  if (!t) { if (h.isPlayer) fxText(h.x, h.y - 100, 'Too far', '#7CF06A', 16); return false; }
+  const rk = tal(h, 'a1');
+  h.face = angTo(h, t); h.lunge = 0.18; h.lungeA = h.face; h.swingT = 0.2;
+  const base = rk >= 1 ? 66 : 55;
+  const dmg = hurtMob(t, base, h, { crit: 0.22, col: '#7CF06A' });
+  if (t.alive) applyBleed(h, t);
+  if (h.bonuses.has('shadeveil2') && dmg >= Math.round(base * h.power * 1.6) && t.alive) {
+    hurtMob(t, 55, h, { col: '#B79CFF', size: 19, noCrit: true });
+  }
+  fx({ type: 'cleave', x: h.x, y: h.y - 30, a: h.face, r: 68, dur: 0.2, col: '#7CF06A' });
+  dots(t.x, t.y - 40, '#7CF06A', 6, 130);
+  sfx('sweep', 0.75);
+  return true;
+}
+
+/* Heartstrike (a2): single-target execution thrust; guaranteed crit + bonus damage on bleeding targets */
+function abAmbush(h, aim) {
+  const t = rogueMeleeTarget(h, aim, 84);
+  if (!t) { if (h.isPlayer) fxText(h.x, h.y - 100, 'Too far', '#FF6B6B', 16); return false; }
+  const rk = tal(h, 'a2');
+  const bleeding = !!(t.bleed && t.bleed.left > 0);
+  h.face = angTo(h, t); h.lunge = 0.22; h.lungeA = h.face; h.swingT = 0.24;
+  const helmMul = h.bonuses.has('sv_helm') ? 1.25 : 1;
+  const nsMul = h.nightstalkerT > 0 ? 1.3 : 1;
+  h.nightstalkerT = 0;
+  const bleedMul = bleeding ? (rk >= 1 ? 1.75 : 1.55) : 1;
+  const base = (rk >= 1 ? 116 : 94) * helmMul * nsMul * bleedMul;
+  const critChance = bleeding ? 1.0 : 0.35;
+  const dmg = hurtMob(t, base, h, { crit: critChance, col: bleeding ? '#FF6B6B' : '#FFE08A' });
+  const didCrit = bleeding || dmg >= Math.round(base * h.power * 1.6);
+  if (bleeding && h.isPlayer) fxText(t.x, t.y - 135, 'Heartstrike!', '#FF6B6B', 24, { dur: 0.9 });
+  if (bleeding && rk >= 2 && t.alive) applyBleed(h, t);
+  if (bleeding && h.traits.has('arterial')) later(0, () => { h.cd.a2 = Math.max(0, h.cd.a2 - 1.2); });
+  if (didCrit && h.bonuses.has('sv_helm')) healHero(h, h, 25, { size: 16 });
+  if (didCrit && h.bonuses.has('shadeveil2') && t.alive) hurtMob(t, 55, h, { col: '#B79CFF', size: 19, noCrit: true });
+  fx({ type: 'cleave', x: h.x, y: h.y - 30, a: h.face, r: 78, dur: 0.22, col: '#FF6B6B', crush: bleeding });
+  dots(t.x, t.y - 44, '#FF6B6B', 8, 160);
+  sfx('thud', 0.8);
+  if (bleeding) shake(4);
+  return true;
+}
+
+/* Fan of Blades (a3): modest AoE spin that interrupts enemy casts */
+function abFlurry(h) {
+  const rk = tal(h, 'a3'), R = rk >= 1 ? 155 : 135;
+  h.whirlDur = 0.28; h.whirlT = 0.28;
+  for (const m of S.mobs) {
+    if (!isFoe(m) || m.cage || dist(m, h) > R + m.r) continue;
+    aggro(m, h, 0);
+    if (m.cast) interruptCast(m);
+    hurtMob(m, rk >= 1 ? 58 : 48, h, { col: '#D7DEE6', size: 18 });
+    if (rk >= 1 && m.alive && m.bleed && m.bleed.left > 0) applyBleed(h, m);
+    else if (rk >= 2 && m.alive) applyBleed(h, m, 3.0);
+  }
+  fx({ type: 'whirl', h, x: h.x, y: h.y, r: R, dur: 0.28, col: '#B79CFF' });
+  fx({ type: 'ring', x: h.x, y: h.y - 26, r0: 18, r1: R, col: '#D7DEE6', dur: 0.24, w: 5 });
+  sfx('sweep', 0.8);
+  return true;
+}
+
+/* Shadowstep (a4): blink through shadow behind target, interrupt casts, and gain +35% attack speed */
+function abShadowstep(h, aim) {
+  let t = aim && aim.kind === 'mob' && isFoe(aim) ? aim : autoTarget(h);
+  if (!t || dist(h, t) > 380) t = nearestFoe(h, 380, false);
+  if (!t || dist(h, t) > 380) { if (h.isPlayer) fxText(h.x, h.y - 100, 'No target', '#B79CFF', 16); return false; }
+  const rk = tal(h, 'a4');
+  const ox = h.x, oy = h.y;
+  const backA = (t.face || 0) + Math.PI;
+  const reach = t.r + h.r + 8;
+  let nx = t.x + Math.cos(backA) * reach, ny = t.y + Math.sin(backA) * reach;
+  if (!canStand(nx, ny, h.r)) {
+    const a2 = angTo(t, h);
+    nx = t.x + Math.cos(a2) * reach; ny = t.y + Math.sin(a2) * reach;
+  }
+  if (canStand(nx, ny, h.r)) { h.x = nx; h.y = ny; }
+  h.face = angTo(h, t); h.lunge = 0.16; h.lungeA = h.face;
+  dots(ox, oy - 30, '#B79CFF', 8, 120);
+  fx({ type: 'swipe', x: ox, y: oy - 30, x2: h.x, y2: h.y - 30, col: '#B79CFF', dur: 0.22 });
+  dots(h.x, h.y - 30, '#7CF06A', 8, 140);
+  if (t.cast) interruptCast(t);
+  const shMul = h.bonuses.has('sv_shoulders') ? 1.35 : 1;
+  hurtMob(t, (rk >= 1 ? 85 : 65) * shMul, h, { crit: 0.25, col: '#B79CFF' });
+  h.frenzyT = rk >= 1 ? 4.5 : 3.5;
+  if (h.traits.has('nightstalker')) h.nightstalkerT = 3.5;
+  if (rk >= 2) h.cd.a2 = 0;
+  else h.cd.a2 = Math.max(0, h.cd.a2 - 2.0 - (h.bonuses.has('sv_shoulders') ? 1.5 : 0));
+  h.picked = t.alive ? t : null;
+  sfx('dodge', 0.8); sfx('swing', 0.7);
+  return true;
 }
 
 export function doDodge(h, dx, dy) {

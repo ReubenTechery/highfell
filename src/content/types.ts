@@ -9,6 +9,7 @@ export type { RoleId, GameEvent, RunSummary };
 export type Rar = 0 | 1 | 2 | 3; // Common, Uncommon, Rare, Epic (the cap)
 export type SlotId = 'weapon' | 'helm' | 'shoulders' | 'chest';
 export type AbilitySlot = 'a1' | 'a2' | 'a3' | 'a4';
+export type GearKey = RoleId | 'rogue';
 
 export interface RoleDef {
   id: RoleId; name: string; title: string;
@@ -34,6 +35,7 @@ export interface ItemDef {
   id: string;
   name: string;
   role: RoleId;
+  cls?: 'warrior' | 'cleric' | 'mage' | 'rogue';
   slot: SlotId;
   kind: ItemKind;
   rar: Rar;
@@ -46,7 +48,7 @@ export interface ItemDef {
 }
 
 export interface SetDef {
-  id: string; name: string; role: RoleId; dungeon: string; look: string;
+  id: string; name: string; role: RoleId; cls?: 'warrior' | 'cleric' | 'mage' | 'rogue'; dungeon: string; look: string;
   pieces: string[];
   bonus2: { id: string; desc: string };
   bonus3: { id: string; desc: string; ready: boolean };
@@ -131,7 +133,7 @@ export interface RecipeDef {
 export interface TitleDef { id: string; text: string }
 
 /** One line of a drop table. `id` names an item or a collectible. */
-export interface DropDef { id: string; rate: number; role?: RoleId }
+export interface DropDef { id: string; rate: number; role?: RoleId; cls?: 'warrior' | 'cleric' | 'mage' | 'rogue' }
 export interface BossLootDef { boss: string; drops: DropDef[] }
 
 export type Tier = 'bronze' | 'silver' | 'gold' | 'meta' | 'hidden' | 'log';

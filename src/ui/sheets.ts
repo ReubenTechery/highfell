@@ -6,10 +6,10 @@
  * their buttons; most of them draw in a file of their own.
  */
 import { COLLECTIBLES, DUNGEONS, ITEMS, SETS, TITLES, thing } from '../content';
-import { AB, ROLES, SLOTS_AB, TALENTS } from '../content/roles';
-import { ROLE_SLOTS, SLOT_IDS, TRAITS, gearId, traitDef } from '../content/gear';
+import { AB, ROLES, SLOTS_AB, TALENTS, abKey } from '../content/roles';
+import { ROLE_SLOTS, SLOT_IDS, TRAITS, gearId, gearKey, traitDef } from '../content/gear';
 import { CLASSES, RACES, type ClassId, type RaceId } from '../content/folk';
-import type { AbilitySlot, ItemDef, Rar, RoleId, SlotId } from '../content/types';
+import type { AbilitySlot, GearKey, ItemDef, Rar, RoleId, SlotId } from '../content/types';
 import { INGREDIENTS, INGREDIENT_ORDER, PLACES, RECIPES, RECIPE_ORDER, SKILLS } from '../content/vale';
 import { rankProgress, recipeUnlocked } from '../meta/vale';
 import { MAX_HERO_LEVEL, MAX_TALENT_RANK, activeHero, freshProfile, heroById, heroXpProgress, nameProblem, removeHero, renameHero, resetTalents, roleOf, setActive, spendTalent, talentPointsLeft, talentPointsSpent, type Hero } from '../meta/profile';
@@ -284,7 +284,7 @@ export class Sheets {
 
   /* ---------------------------------------------------------------- gear: the doll & ability tree (separate tabs) */
   private gear(h: Hero, sel: SlotId, tab?: GearTab) {
-    const p = this.app.p, role = roleOf(h);
+    const p = this.app.p, role = roleOf(h), gk = gearKey(h), ak = abKey(h);
     const race = RACES[h.race as RaceId], cls = CLASSES[h.cls as ClassId];
     const L = loadoutFor(p, h);
     const w = worn(p, h);
@@ -304,7 +304,7 @@ export class Sheets {
       const keyNum: Record<AbilitySlot, string> = { a1: '1', a2: '2', a3: '3', a4: '4' };
       const masteryBonus = Math.round(ptsSpent * 1.5 * 10) / 10;
       const treeCards = SLOTS_AB.map((s) => {
-        const ab = AB[role][s], tals = TALENTS[role][s], rk = h.talents?.[s] || 0;
+        const ab = AB[ak][s], tals = TALENTS[ak][s], rk = h.talents?.[s] || 0;
         const canUp = ptsLeft > 0 && rk < MAX_TALENT_RANK;
         const cdTxt = ab.hold ? 'Hold · Block' : `${ab.cd}s CD`;
         const manaTxt = ab.mana ? ` · ${ab.mana} Mana` : '';
@@ -364,7 +364,7 @@ export class Sheets {
     }
 
     const j = this.justOn && this.justOn.hero === h.id && performance.now() - this.justOn.at < 1400 ? this.justOn : null;
-    const card = (slot: SlotId) => this.slotCard(w[slot], role, L.sets, slot === sel, waitingFor(p, h, slot), j?.slot === slot);
+    const card = (slot: SlotId) => this.slotCard(w[slot], role, gk, L.sets, slot === sel, waitingFor(p, h, slot), j?.slot === slot);
     const doll = `<div class="doll${j ? ' just-on' : ''}" style="--light: ${race?.light || '#F4B942'}">
       <div class="doll-col l">${LEFT_SLOTS.map(card).join('')}</div>
       <div class="doll-fig"><span class="doll-glow" aria-hidden="true"></span>${heroImg(heroSprite(h, role, p), { cls: 'doll-img', alt: `${h.name}` })}<span class="doll-floor" aria-hidden="true"></span></div>
@@ -377,11 +377,11 @@ export class Sheets {
     const extras = `<span class="chip">Level <b>${xpProg.level}/${MAX_HERO_LEVEL}</b></span>`
       + (ptsSpent > 0 ? `<span class="chip">Mastery <b>+${Math.round(ptsSpent * 1.5 * 10) / 10}%</b></span>` : '')
       + Object.entries(L.sets).map(([id, n]) => SETS[id] ? `<span class="chip set">${esc(SETS[id].name)} set <b>${n}/3</b>${n >= 2 ? ' · bonus on' : ''}</span>` : '').join('')
-      + L.traits.map((t) => `<span class="chip">Trait <b>${esc(traitDef(role, t)?.name || t)}</b></span>`).join('');
+      + L.traits.map((t) => `<span class="chip">Trait <b>${esc(traitDef(gk, t)?.name || t)}</b></span>`).join('');
     const stats = `<div class="power">${extras}</div>`;
     const tip = this.tooltip(h, w[sel], L.sets, waitingFor(p, h, sel));
-    // the set for this role
-    const setBoxes = Object.values(SETS).filter((s) => s.role === role).map((set) => {
+    // the set for this role and class
+    const setBoxes = Object.values(SETS).filter((s) => s.role === role && (!s.cls || s.cls === h.cls) && (h.cls !== 'rogue' || s.cls === 'rogue')).map((set) => {
       const n = L.sets[set.id] || 0;
       const have = set.pieces.filter((id) => p.collection[id]).length;
       return `<div class="box setbox">
@@ -395,7 +395,7 @@ export class Sheets {
     const marks = p.dungeons.barrow?.marks || 0;
     const regW = bestRegular(h, 'weapon');
     const traitBox = regW.rar >= 2 ? `<div class="box"><h3 class="section-title">Weapon trait<small>${marks} Barrow Marks</small></h3>
-      <div class="offer">${TRAITS[role].map((t) => `<button type="button" class="opt" data-act="trait" data-trait="${t.id}" aria-pressed="${regW.trait === t.id}" ${regW.trait === t.id || marks < REROLL_COST ? 'disabled' : ''}><b>${esc(t.name)}</b>${esc(t.desc)}${regW.trait === t.id ? '<span class="m">Active on your hero</span>' : `<span class="m">Swap for ${REROLL_COST} marks</span>`}</button>`).join('')}</div>
+      <div class="offer">${TRAITS[gk].map((t) => `<button type="button" class="opt" data-act="trait" data-trait="${t.id}" aria-pressed="${regW.trait === t.id}" ${regW.trait === t.id || marks < REROLL_COST ? 'disabled' : ''}><b>${esc(t.name)}</b>${esc(t.desc)}${regW.trait === t.id ? '<span class="m">Active on your hero</span>' : `<span class="m">Swap for ${REROLL_COST} marks</span>`}</button>`).join('')}</div>
       ${w.weapon.unique ? '<p class="fine">Your unlocked weapon trait stays active alongside your unique weapon.</p>' : ''}</div>`
       : `<p class="fine">At Rare your weapon rolls a trait that changes how an ability works. Every clear moves your weakest piece up.</p>`;
     // title
@@ -416,11 +416,11 @@ export class Sheets {
   }
 
   /** one slot on the doll: rarity frame, set count, unique star and what it adds. It glows while something better waits to go on. */
-  private slotCard(it: Worn, role: RoleId, sets: Record<string, number>, on: boolean, wait: Waiting | null, just: boolean): string {
+  private slotCard(it: Worn, role: RoleId, gk: GearKey, sets: Record<string, number>, on: boolean, wait: Waiting | null, just: boolean): string {
     const d = it.def, look = rarLook(d.id);
     const share = itemShare(d);
     const set = d.setId ? SETS[d.setId] : null;
-    const slotName = ROLE_SLOTS[role][it.slot].name;
+    const slotName = ROLE_SLOTS[gk][it.slot].name;
     const wShare = wait ? itemShare(ITEMS[wait.id]) : null;
     const dp = wShare ? Math.round((wShare.power - share.power) * 10) / 10 : 0;
     const badge = wait ? `<i class="sl-up" aria-hidden="true">${dp > 0 ? `+${dp}%` : wait.kind === 'unique' ? 'New' : 'Up'}</i>` : '';
@@ -434,15 +434,15 @@ export class Sheets {
 
   /** something waiting to go on: side-by-side Old -> New comparison, exact stat gains, and the button */
   private waitCard(h: Hero, wt: Waiting, wornDef: ItemDef, sets: Record<string, number>): string {
-    const role = roleOf(h), d = ITEMS[wt.id], look = rarLook(d.id), oldLook = rarLook(wornDef.id);
+    const role = roleOf(h), gk = gearKey(h), d = ITEMS[wt.id], look = rarLook(d.id), oldLook = rarLook(wornDef.id);
     const share = itemShare(d), now = itemShare(wornDef);
-    const slotName = ROLE_SLOTS[role][wt.slot].name;
+    const slotName = ROLE_SLOTS[gk][wt.slot].name;
     const dp = Math.round((share.power - now.power) * 10) / 10, dh = Math.round((share.health - now.health) * 10) / 10, dil = share.ilvl - now.ilvl;
     const delta = (v: number, u = '') => v > 0 ? `<b class="cmp-d up">${GLYPH.rise}+${v}${u}</b>` : v < 0 ? `<b class="cmp-d down">${GLYPH.fall}−${Math.abs(v)}${u}</b>` : `<b class="cmp-d">Same</b>`;
     let extra = '';
     if (d.effectDesc) extra += `<p class="tip-eq"><b>+ ${d.kind === 'set' ? 'Piece perk' : 'Unique effect'}:</b> ${esc(d.effectDesc)}</p>`;
     const trait = wt.kind === 'regular' ? wt.piece.trait : undefined;
-    const tr = trait ? traitDef(role, trait) : undefined;
+    const tr = trait ? traitDef(gk, trait) : undefined;
     if (tr) extra += `<p class="tip-tr"><b>+ Weapon trait (${esc(tr.name)}):</b> ${esc(tr.desc)}</p>`;
     if (d.setId && SETS[d.setId]) { const st = SETS[d.setId], n = (sets[st.id] || 0) + 1; extra += `<p class="tip-tr"><b>+ ${esc(st.name)} set (${sets[st.id] || 0}/3 → ${n}/3):</b> ${n >= 2 ? esc(st.bonus2.desc) : `1 more piece activates: ${esc(st.bonus2.desc)}`}</p>`; }
     return `<div class="tip tip-wait" style="--rc: ${look.color}; --rl: ${look.light}">
@@ -464,15 +464,15 @@ export class Sheets {
 
   /** the item in the picked slot, the way an RPG tooltip reads (with anything waiting to go on above it) */
   private tooltip(h: Hero, it: Worn, sets: Record<string, number>, wt: Waiting | null): string {
-    const p = this.app.p, role = roleOf(h), d = it.def, look = rarLook(d.id);
+    const p = this.app.p, role = roleOf(h), gk = gearKey(h), d = it.def, look = rarLook(d.id);
     const share = itemShare(d);
-    const slotName = ROLE_SLOTS[role][it.slot].name;
+    const slotName = ROLE_SLOTS[gk][it.slot].name;
     const lines: string[] = [];
     if (share.power > 0) lines.push(`<li>+${share.power}% ${esc(ROLE_STAT[role].main)}</li><li>+${share.health}% health</li>`);
     else lines.push(`<li class="dim">Starter gear: no bonus yet</li>`);
     let extra = '';
     if (d.effectDesc) extra += `<p class="tip-eq"><b>When worn:</b> ${esc(d.effectDesc)}</p>`;
-    const tr = it.trait ? traitDef(role, it.trait) : undefined;
+    const tr = it.trait ? traitDef(gk, it.trait) : undefined;
     if (tr) extra += `<p class="tip-tr"><b>Trait: ${esc(tr.name)}.</b> ${esc(tr.desc)}</p>`;
     if (d.setId && SETS[d.setId]) {
       const s = SETS[d.setId], n = sets[s.id] || 0;
@@ -490,12 +490,12 @@ export class Sheets {
     }
     const owned = ownedFor(p, h, it.slot);
     const reg = h.regular[it.slot];
-    const regName = ITEMS[gearId(role, it.slot, reg.rar)]?.name || 'Regular';
+    const regName = ITEMS[gearId(gk, it.slot, reg.rar)]?.name || 'Regular';
     const swap = owned.length ? `<div class="tip-swap" role="radiogroup" aria-label="Wear in the ${esc(slotName.toLowerCase())} slot"><span>Wear</span>
       <button type="button" class="sg" role="radio" data-act="equip" data-slot="${it.slot}" data-id="" aria-checked="${!it.unique}">${esc(regName)}</button>
       ${owned.map((u) => `<button type="button" class="sg" role="radio" data-act="equip" data-slot="${it.slot}" data-id="${u.id}" aria-checked="${it.unique && d.id === u.id}">${esc(u.name)}</button>`).join('')}</div>` : '';
     // a better regular piece in the bag while a unique is worn: say it is there for later
-    const bag = it.unique && h.bag[it.slot] ? `<p class="tip-src">A better ${esc(slotName.toLowerCase())} (${esc(ITEMS[gearId(role, it.slot, bestRegular(h, it.slot).rar)]?.name || '')}) is in your bag for when you wear regular gear here.</p>` : '';
+    const bag = it.unique && h.bag[it.slot] ? `<p class="tip-src">A better ${esc(slotName.toLowerCase())} (${esc(ITEMS[gearId(gk, it.slot, bestRegular(h, it.slot).rar)]?.name || '')}) is in your bag for when you wear regular gear here.</p>` : '';
     return `${wt ? this.waitCard(h, wt, d, sets) : ''}<div class="tip" style="--rc: ${look.color}; --rl: ${look.light}" aria-live="polite">
       ${wt ? '<span class="tw-eye now">Wearing now</span>' : ''}<div class="tip-head"><span class="tile" aria-hidden="true">${iconOf(d.id)}</span><div><b class="tip-n">${esc(d.name)}</b><span class="tip-k">${esc(look.name)} ${esc(slotName.toLowerCase())} · Item level ${share.ilvl}</span></div></div>
       <ul class="tip-stats">${lines.join('')}</ul>${extra}<p class="tip-src">${esc(src)}</p>${bag}${swap}</div>`;

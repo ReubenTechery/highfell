@@ -74,7 +74,7 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
       </div>
       <section class="dgx-log">
         <button type="button" class="dgx-logbar${done ? ' done' : ''}" data-act="logx" aria-expanded="${pick.log}"><span>Collection log</span><b>${got}/${all}</b><i aria-hidden="true"><i style="width: ${((got / all) * 100).toFixed(1)}%"></i></i>${main ? `<span class="dgx-prize${done ? ' got' : ''}" title="${esc(main.name)}" aria-hidden="true">${tile(main.icon)}</span>` : ''}<span class="dgx-more">${pick.log ? 'Hide' : 'Loot'}${pick.log ? GLYPH.up : GLYPH.down}</span></button>
-        ${pick.log ? `<div class="dgx-loot">${ach ? rewards(ach, done) : ''}${ORDER.map((r) => lootRow(p, ROLES[r].title, r, lootFor(dg, r).mine, r === role)).join('')}${lootRow(p, 'Anyone', null, lootFor(dg, role).shared, false)}
+        ${pick.log ? `<div class="dgx-loot">${ach ? rewards(ach, done) : ''}${ORDER.flatMap((r) => r === 'dps' ? [lootRow(p, 'Mage', 'dps', lootFor(dg, 'dps', 'mage').mine, role === 'dps' && h?.cls !== 'rogue'), lootRow(p, 'Rogue', 'dps', lootFor(dg, 'dps', 'rogue').mine, role === 'dps' && h?.cls === 'rogue')] : [lootRow(p, ROLES[r].title, r, lootFor(dg, r).mine, r === role)]).join('')}${lootRow(p, 'Anyone', null, lootFor(dg, role).shared, false)}
           <button type="button" class="btn small" data-act="entry" data-id="${dg.id}.${dg.finalBoss}">${GLYPH.book}Open the collection log</button></div>` : ''}
       </section>
     </div>

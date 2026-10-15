@@ -2,7 +2,7 @@
 import { angTo, dist, distXY, TAU } from '../core/math';
 import { pick, rand, rng } from '../core/rng';
 import { HOOKS, S, emit } from './state.js';
-import { addThreat, aggro, banner, bits, call, dots, fx, fxText, hurtHero, killMob, makeMob, pickTarget, sfx, shake } from './entities.js';
+import { addThreat, aggro, banner, bits, call, dots, fx, fxText, hurtHero, hurtMob, killMob, makeMob, pickTarget, sfx, shake } from './entities.js';
 import { canStand, moveEnt, roomIndexOf, walkTo } from './world.js';
 
 export function nearestHeroTo(x, y, preferNonTank) {
@@ -19,6 +19,16 @@ export function randomHero(nonTank, except) {
 export function mobTick(m, dt) {
   m.flash -= dt; m.lunge -= dt; m.moving -= dt;
   if (!m.alive) { m.deadT += dt; return; }
+  if (m.bleed && m.bleed.left > 0) {
+    m.bleed.left -= dt;
+    m.bleed.next -= dt;
+    if (m.bleed.next <= 0) {
+      m.bleed.next += 0.5;
+      hurtMob(m, m.bleed.per, m.bleed.src, { col: '#7CF06A', size: 16, noCrit: true });
+      dots(m.x, m.y - 38, '#7CF06A', 2, 70, { size: 4 });
+      if (!m.alive) return;
+    }
+  }
   const st = m.st;
   st.stun = Math.max(0, st.stun - dt); st.freeze = Math.max(0, st.freeze - dt);
   if (st.slowT > 0) { st.slowT -= dt; if (st.slowT <= 0) st.slow = 0; }

@@ -23,10 +23,17 @@ export const BARROW_SETS: SetDef[] = [
     bonus2: { id: 'rimebone2', desc: 'Comet on a frozen mob gives back half its cooldown.' },
     bonus3: { id: 'rimebone3', desc: 'Blizzard rains bone shards. Anything that dies in it rises as a frost skeleton that fights for you for 6 seconds.', ready: false },
   },
+  {
+    id: 'shadeveil', name: 'Shadeveil', role: 'dps', cls: 'rogue', dungeon: 'barrow',
+    look: 'A shadow-stitched mask, bone-bladed spaulders, and a silent leather jerkin',
+    pieces: ['shadeveil.helm', 'shadeveil.shoulders', 'shadeveil.chest'],
+    bonus2: { id: 'shadeveil2', desc: 'Critical hits with Heartstrike or Viper Blades erupt in shadow for 55 damage.' },
+    bonus3: { id: 'shadeveil3', desc: 'Shadowstep leaves a shadow clone for 6 seconds that slashes your target with twin daggers.', ready: false },
+  },
 ];
 
-const piece = (id: string, name: string, role: ItemDef['role'], slot: ItemDef['slot'], setId: string, icon: string, effect: string, effectDesc: string, flavor: string): ItemDef =>
-  ({ id, name, role, slot, kind: 'set', rar: 3, icon, setId, dungeon: 'barrow', effect, effectDesc, flavor });
+const piece = (id: string, name: string, role: ItemDef['role'], slot: ItemDef['slot'], setId: string, icon: string, effect: string, effectDesc: string, flavor: string, cls?: ItemDef['cls']): ItemDef =>
+  ({ id, name, role, ...(cls ? { cls } : {}), slot, kind: 'set', rar: 3, icon, setId, dungeon: 'barrow', effect, effectDesc, flavor });
 
 export const BARROW_ITEMS: ItemDef[] = [
   piece('barrowguard.helm', 'Barrowguard Helm', 'tank', 'helm', 'barrowguard', 's_barrowguard_helm',
@@ -56,10 +63,21 @@ export const BARROW_ITEMS: ItemDef[] = [
   piece('rimebone.chest', 'Rimebone Robe', 'dps', 'chest', 'rimebone', 's_rimebone_chest',
     'rb_chest', 'Blizzard ticks 25% harder and lasts 1 second longer.',
     'Lined with something that used to be a wolf.'),
+  piece('shadeveil.helm', 'Shadeveil Mask', 'dps', 'helm', 'shadeveil', 's_shadeveil_helm',
+    'sv_helm', 'Heartstrike hits 25% harder and heals you for 25 on a critical hit.',
+    'Stitched from crypt velvet. Even your breathing goes quiet.', 'rogue'),
+  piece('shadeveil.shoulders', 'Shadeveil Spaulders', 'dps', 'shoulders', 'shadeveil', 's_shadeveil_shoulders',
+    'sv_shoulders', 'Shadowstep strikes 35% harder and shaves 1.5s off Heartstrike.',
+    'Carved bone blades on the shoulders. Don’t shrug near friends.', 'rogue'),
+  piece('shadeveil.chest', 'Shadeveil Jerkin', 'dps', 'chest', 'shadeveil', 's_shadeveil_chest',
+    'sv_chest', 'Viper Blades bleed ticks 30% harder and lasts 1 second longer.',
+    'Oiled leather that drinks the lantern light.', 'rogue'),
   { id: 'gravekeeper.tank', name: 'The Gravedigger', role: 'tank', slot: 'weapon', kind: 'unique', rar: 3, icon: 'u_gravedigger', dungeon: 'barrow',
     effect: 'gravedigger', effectDesc: 'Every fifth swing digs in: a burst that stuns nearby mobs for 1 second.', flavor: 'Half axe, half shovel, all argument.' },
   { id: 'gravekeeper.healer', name: 'Lantern of the Long Night', role: 'healer', slot: 'weapon', kind: 'unique', rar: 3, icon: 'u_longnight', dungeon: 'barrow',
     effect: 'longnight', effectDesc: 'Mend also wards its target for 60.', flavor: 'The Gravekeeper’s own light. It still knows the way home.' },
   { id: 'gravekeeper.dps', name: 'Gravefrost Staff', role: 'dps', slot: 'weapon', kind: 'unique', rar: 3, icon: 'u_gravefrost', dungeon: 'barrow',
     effect: 'gravefrost', effectDesc: 'Comet freezes everything it hits for 2 seconds.', flavor: 'Cold enough to keep the dead where you put them.' },
+  { id: 'gravekeeper.rogue', name: 'The Cryptfangs', role: 'dps', cls: 'rogue', slot: 'weapon', kind: 'unique', rar: 3, icon: 'u_cryptfangs', dungeon: 'barrow',
+    effect: 'cryptfangs', effectDesc: 'Every fourth twin-dagger slash strikes twice and refreshes Venomous Bleed.', flavor: 'Twin fangs pried from something older than the crypt. Always found as a pair.' },
 ];

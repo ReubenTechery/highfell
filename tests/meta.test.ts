@@ -20,9 +20,9 @@ import type { GameEvent, RunSummary } from '../src/content/types';
 
 test('content: every id a table, log, set or reward points at exists', () => {
   assert.deepEqual(checkContent(), []);
-  assert.ok(Object.keys(ITEMS).length >= 48 + 12);
+  assert.ok(Object.keys(ITEMS).length >= 64 + 16);
   for (const s of Object.values(SETS)) assert.equal(s.pieces.length, 3);
-  assert.equal(BARROW.collection.length, 16);
+  assert.equal(BARROW.collection.length, 20);
   assert.ok(DUNGEONS.barrow);
 });
 
@@ -83,18 +83,22 @@ test('profile: a v2 save becomes one hero, named for the founder of the role you
 });
 
 test('heroes: race and class are fixed, male or female look is saved, names are yours, up to six, the last one stays', () => {
-  assert.ok(canMake('dwarf', 'warrior') && canMake('human', 'cleric') && canMake('elf', 'mage'));
+  assert.ok(canMake('dwarf', 'warrior') && canMake('human', 'cleric') && canMake('elf', 'mage') && canMake('human', 'rogue') && canMake('elf', 'rogue'));
   assert.ok(!canMake('gnome', 'warrior'), 'not drawn yet');
-  assert.ok(!canMake('elf', 'rogue'), 'no kit yet');
   assert.equal(defaultSex('dwarf', 'warrior'), 'm');
   assert.equal(defaultSex('human', 'cleric'), 'f');
   assert.equal(defaultSex('elf', 'mage'), 'f');
+  assert.equal(defaultSex('human', 'rogue'), 'f');
   assert.equal(heroArt('dwarf', 'warrior', 'm'), 'tank');
   assert.equal(heroArt('dwarf', 'warrior', 'f'), 'tank_w');
   assert.equal(heroArt('human', 'cleric', 'f'), 'healer');
   assert.equal(heroArt('human', 'cleric', 'm'), 'healer_m');
   assert.equal(heroArt('elf', 'mage', 'f'), 'dps');
   assert.equal(heroArt('elf', 'mage', 'm'), 'dps_m');
+  assert.equal(heroArt('human', 'rogue', 'f'), 'rogue');
+  assert.equal(heroArt('human', 'rogue', 'm'), 'rogue_m');
+  assert.equal(heroArt('risen', 'rogue', 'f'), 'risen_rogue');
+  assert.equal(heroArt('risen', 'rogue', 'm'), 'risen_rogue_m');
   assert.equal(cleanName('  Wren   Copperkettle '), 'Wren Copperkettle');
   assert.equal(cleanName('x'), null);
   assert.equal(cleanName('<b>Bob</b>'), null);
@@ -379,7 +383,7 @@ test('house: spots a save has never had fill with what is not on show, once; emp
 test('house looks: a room shows the look you put on it once you have earned it, and the tavern is always yours', () => {
   const { p } = withHero('tank');
   assert.equal(lookOf(p, 'hall'), 'tavern');
-  assert.deepEqual(lookProgress(p, 'barrow'), { have: 0, need: 16 });
+  assert.deepEqual(lookProgress(p, 'barrow'), { have: 0, need: 20 });
   assert.equal(setLook(p, 'hall', 'barrow'), false, 'not earned yet');
   assert.equal(setLook(p, 'hall', 'nope'), false);
   p.achievements['barrow.log'] = { at: 1 };
@@ -416,7 +420,7 @@ test('profile: a v5 save gets the tavern in every room, and what is in the house
 test('collection log: filling the Barrow’s whole log opens Barrow Hall, a title and the Risen, for keeps', () => {
   const { p } = withHero('tank');
   const ach = new Achiever(p, { dungeon: 'barrow', role: 'tank', practice: false, testGear: false });
-  assert.deepEqual(logProgress(p, 'barrow'), { have: 0, need: 16 });
+  assert.deepEqual(logProgress(p, 'barrow'), { have: 0, need: 20 });
   assert.equal(lookOpen(p, 'barrow'), false);
   assert.equal(opened(p, 'race', 'risen'), false);
   assert.ok(['dwarf', 'elf', 'human'].every((r) => opened(p, 'race', r)), 'dwarves, elves and humans are open from the start');
@@ -425,14 +429,14 @@ test('collection log: filling the Barrow’s whole log opens Barrow Hall, a titl
   // every slot but the last: the log isn't done
   const last = 'barrowguard.helm';
   for (const id of BARROW.collection.filter((x) => x !== last)) { p.collection[id] = { n: 1, kc: 1, at: 1 }; assert.ok(!ach.collected(id).includes('barrow.log')); }
-  assert.deepEqual(progress(p, ACHIEVEMENTS['barrow.log']), { have: 15, need: 16 });
-  assert.deepEqual(lookProgress(p, 'barrow'), { have: 15, need: 16 });
+  assert.deepEqual(progress(p, ACHIEVEMENTS['barrow.log']), { have: 19, need: 20 });
+  assert.deepEqual(lookProgress(p, 'barrow'), { have: 19, need: 20 });
   p.collection[last] = { n: 1, kc: 1, at: 1 };
   assert.deepEqual(ach.collected(last), ['barrow.log']);
   assert.ok(p.titles.includes('title.gravewarden'));
   assert.ok(lookOpen(p, 'barrow'));
   assert.ok(opened(p, 'race', 'risen'));
-  assert.ok(createHero(p, { name: 'Morrow Gravesend', race: 'risen', cls: 'cleric' }), 'now you can make one, any of the three classes');
+  assert.ok(createHero(p, { name: 'Morrow Gravesend', race: 'risen', cls: 'cleric' }), 'now you can make one, any of the four classes');
   // the heroic log is its own: its rewards stay locked
   assert.equal(lookOpen(p, 'barrow-gilded'), false);
   assert.equal(p.collection['cosmetic.gilded_bones'], undefined);
@@ -511,10 +515,12 @@ test('party: picking a role switches to your hero of that role you played last, 
 test('loot: each role sees its own set and weapon, with what anyone can get, and every rate is the real one', () => {
   for (const role of ['tank', 'healer', 'dps'] as const) {
     const l = lootFor(BARROW, role);
-    assert.equal(l.mine.length, 4, `${role}: three set pieces and a weapon`);
+    assert.equal(l.mine.length, role === 'dps' ? 8 : 4, `${role}: three set pieces and a weapon per class`);
     assert.ok(l.mine.every((d) => d.role === role && ITEMS[d.id]?.role === role), role);
     assert.deepEqual(l.shared.map((d) => d.id), ['trophy.rattlebones_plume', 'dye.ghostly', 'mount.gravehound', 'pet.pint_gravekeeper']);
   }
+  assert.equal(lootFor(BARROW, 'dps', 'mage').mine.length, 4);
+  assert.equal(lootFor(BARROW, 'dps', 'rogue').mine.length, 4);
   const table = BARROW.loot.flatMap((t) => t.drops);
   for (const d of [...lootFor(BARROW, 'healer').mine, ...lootFor(BARROW, 'healer').shared]) assert.equal(d.rate, table.find((x) => x.id === d.id)!.rate);
 });
@@ -556,6 +562,13 @@ test('gear: a drop held up against what its role wears says plainly if it is bet
   const mage = newHero(p, { name: 'Sorrel Mistvale', race: 'elf', cls: 'mage' })!;
   assert.equal(wearerOf(p, ITEMS['rimebone.helm'])?.id, mage.id);
   assert.equal(wearerOf(p, ITEMS['barrowguard.helm'])?.id, h.id);
+  // rogue set pieces and twin daggers fit rogues and not mages
+  const rogue = newHero(p, { name: 'Vex Duskveil', race: 'elf', cls: 'rogue' })!;
+  assert.equal(wearerOf(p, ITEMS['shadeveil.helm'])?.id, rogue.id);
+  assert.equal(compareFor(p, mage, 'shadeveil.helm'), null, 'rogue set does not fit mage');
+  assert.equal(compareFor(p, rogue, 'rimebone.helm'), null, 'mage set does not fit rogue');
+  assert.equal(compareFor(p, rogue, 'shadeveil.helm')?.verdict, 'better');
+  assert.equal(compareFor(p, rogue, 'gravekeeper.rogue')?.verdict, 'better');
 });
 
 test('art: every icon and sprite the content names exists', async () => {
@@ -580,7 +593,7 @@ test('art: every icon and sprite the content names exists', async () => {
   for (const x of [...Object.values(INGREDIENTS), ...Object.values(RECIPES)]) if (!tiles[x.icon]) missing.push('icon ' + x.icon + ' for ' + x.id);
   for (const n of ['s_gather', 's_brew']) if (!tiles[n]) missing.push('icon ' + n);
   for (const c of Object.values(COLLECTIBLES)) if (c.kind === 'mount' && !c.saddle) missing.push('saddle for ' + c.id);
-  for (const n of ['slam', 'cleave', 'smite', 'icicle', 'shield', 'charge', 'circle', 'ward', 'sunburst', 'blizzard', 'nova', 'comet', 'dodge', 'mend', 'marks']) if (!tiles[n]) missing.push('icon ' + n);
+  for (const n of ['slam', 'cleave', 'smite', 'icicle', 'shield', 'charge', 'circle', 'ward', 'sunburst', 'blizzard', 'nova', 'comet', 'viper', 'ambush', 'flurry', 'shadowstep', 'dodge', 'mend', 'marks']) if (!tiles[n]) missing.push('icon ' + n);
   assert.deepEqual(missing, []);
 });
 

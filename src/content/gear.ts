@@ -2,7 +2,11 @@
  * Gear. Power climbs Common to Epic and stops there. The weapon carries 40% of it, so a new weapon
  * is the upgrade you feel. After Epic, gear goes sideways: weapon traits, set bonuses and looks.
  */
-import type { RarityDef, RoleId, RoleSlotDef, SlotDef, SlotId, TraitDef, ItemDef, Rar } from './types';
+import type { GearKey, RarityDef, RoleId, RoleSlotDef, SlotDef, SlotId, TraitDef, ItemDef, Rar } from './types';
+import { CLASSES, type ClassId } from './folk';
+
+export const gearKey = (h: RoleId | GearKey | { role?: RoleId; cls?: string }): GearKey =>
+  typeof h === 'string' ? h : h.cls === 'rogue' ? 'rogue' : (h.role ?? CLASSES[(h.cls as ClassId) || 'warrior']?.role ?? 'dps');
 
 export const RARITY: RarityDef[] = [
   { key: 'common', name: 'Common', score: 10, color: '#8E8A84', ink: '#5E5A55' },
@@ -20,13 +24,14 @@ export const SLOTS: SlotDef[] = [
 ];
 export const SLOT_IDS: SlotId[] = SLOTS.map((s) => s.id);
 
-export const ROLE_SLOTS: Record<RoleId, Record<SlotId, RoleSlotDef>> = {
+export const ROLE_SLOTS: Record<GearKey, Record<SlotId, RoleSlotDef>> = {
   tank: { weapon: { name: 'Axe', icon: 'i_axe' }, helm: { name: 'Helm', icon: 'i_helm' }, shoulders: { name: 'Pauldrons', icon: 'i_pauldrons' }, chest: { name: 'Plate', icon: 'i_plate' } },
   healer: { weapon: { name: 'Staff', icon: 'i_sunstaff' }, helm: { name: 'Hood', icon: 'i_hood' }, shoulders: { name: 'Mantle', icon: 'i_mantle' }, chest: { name: 'Robe', icon: 'i_robe' } },
   dps: { weapon: { name: 'Staff', icon: 'i_icestaff' }, helm: { name: 'Hat', icon: 'i_hat' }, shoulders: { name: 'Mantle', icon: 'i_mantle' }, chest: { name: 'Robe', icon: 'i_robe' } },
+  rogue: { weapon: { name: 'Twin Daggers', icon: 'i_dagger' }, helm: { name: 'Mask', icon: 'i_mask' }, shoulders: { name: 'Spaulders', icon: 'i_spaulders' }, chest: { name: 'Jerkin', icon: 'i_jerkin' } },
 };
 
-const NAMES: Record<RoleId, Record<SlotId, [string, string, string, string]>> = {
+const NAMES: Record<GearKey, Record<SlotId, [string, string, string, string]>> = {
   tank: {
     weapon: ['Chipped Bronze Hatchet', 'Iron War Axe', 'Barrow Cleaver', 'Gravebreaker'],
     helm: ['Tattered Rag Cap', 'Iron Pot Helm', 'Crypt Warden Helm', 'Helm of the Long Watch'],
@@ -45,10 +50,16 @@ const NAMES: Record<RoleId, Record<SlotId, [string, string, string, string]>> = 
     shoulders: ['Frayed Cloth Wrap', 'Snowweave Mantle', 'Frostfur Mantle', 'Mantle of the Glacier'],
     chest: ['Patched Apprentice Rags', 'Snowweave Robe', 'Robe of the Long Night', 'Robe of the Glacier'],
   },
+  rogue: {
+    weapon: ['Chipped Bronze Shivs', 'Iron Twin Daggers', 'Shadowsteel Stilettos', 'Nightfang Blades'],
+    helm: ['Tattered Rag Mask', 'Cutthroat Leather Mask', 'Mask of the Silent Step', 'Nightstalker Visage'],
+    shoulders: ['Stitched Leather Pads', 'Cutthroat Spaulders', 'Spaulders of the Silent Step', 'Nightstalker Spaulders'],
+    chest: ['Scuffed Leather Vest', 'Cutthroat Brigandine', 'Jerkin of the Silent Step', 'Nightstalker Cuirass'],
+  },
 };
 
 /** Epic weapons roll one of these. They change how a button works, not how hard you hit. */
-export const TRAITS: Record<RoleId, TraitDef[]> = {
+export const TRAITS: Record<GearKey, TraitDef[]> = {
   tank: [
     { id: 'wide', name: 'Wide Swings', desc: 'Your swings hit everything in front of you at full damage.' },
     { id: 'ringing', name: 'Ringing Blow', desc: 'Charge hits twice, and everything it hits turns on you.' },
@@ -64,16 +75,27 @@ export const TRAITS: Record<RoleId, TraitDef[]> = {
     { id: 'splinter', name: 'Splinter', desc: 'Frostbolts split to a second enemy.' },
     { id: 'quickfrost', name: 'Quickfrost', desc: 'Comet casts twice as fast.' },
   ],
+  rogue: [
+    { id: 'twinvenom', name: 'Twin Venom', desc: 'Your twin-dagger swings extend Venomous Bleed by 1.5s.' },
+    { id: 'arterial', name: 'Arterial Cut', desc: 'Heartstrike on a bleeding foe refunds 1.2s of its cooldown.' },
+    { id: 'nightstalker', name: 'Nightstalker', desc: 'Shadowstep makes your next Heartstrike deal 30% bonus damage.' },
+  ],
 };
-export const traitDef = (role: RoleId, id: string | undefined): TraitDef | undefined => TRAITS[role].find((t) => t.id === id);
+export const traitDef = (role: GearKey, id: string | undefined): TraitDef | undefined =>
+  TRAITS[role]?.find((t) => t.id === id) || Object.values(TRAITS).flat().find((t) => t.id === id);
 
-/** Regular gear: the Common to Epic ladder. Ids look like gear.tank.helm.2 */
-export const gearId = (role: RoleId, slot: SlotId, rar: Rar): string => `gear.${role}.${slot}.${rar}`;
+/** Regular gear: the Common to Epic ladder. Ids look like gear.tank.helm.2 or gear.rogue.weapon.2 */
+export const gearId = (role: GearKey, slot: SlotId, rar: Rar): string => `gear.${role}.${slot}.${rar}`;
 export function regularItems(): ItemDef[] {
   const out: ItemDef[] = [];
-  for (const role of Object.keys(NAMES) as RoleId[]) {
+  for (const key of Object.keys(NAMES) as GearKey[]) {
+    const role: RoleId = key === 'rogue' ? 'dps' : key;
+    const cls = key === 'rogue' ? 'rogue' : undefined;
     for (const slot of SLOT_IDS) {
-      NAMES[role][slot].forEach((name, rar) => out.push({ id: gearId(role, slot, rar as Rar), name, role, slot, kind: 'gear', rar: rar as Rar, icon: `${ROLE_SLOTS[role][slot].icon}_${rar}` }));
+      NAMES[key][slot].forEach((name, rar) => out.push({
+        id: gearId(key, slot, rar as Rar), name, role, ...(cls ? { cls } : {}),
+        slot, kind: 'gear', rar: rar as Rar, icon: `${ROLE_SLOTS[key][slot].icon}_${rar}`,
+      }));
     }
   }
   return out;

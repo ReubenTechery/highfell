@@ -43,6 +43,12 @@ export function okHere(h) {
   if (boss && inFrontOf(boss, h.x, h.y)) return false;
   if (S.ring && dist(h, S.dg.map.arena) > S.ring.r - h.r - 40) return false;
   if (smashBubble(h.x, h.y, h)) return false;
+  if (h.cls === 'rogue') {
+    const t = h.picked || h.target;
+    if (!t || !t.alive) return false;
+    const d = dist(h, t);
+    return d <= 90 + t.r && (!boss || !inFrontOf(boss, h.x, h.y));
+  }
   if (boss && dist(boss, h) < boss.r + h.r + 110) return false;
   if (h.role === 'dps') {
     const t = h.picked || h.target;
@@ -184,6 +190,20 @@ export function combatGoal(h) {
     return ringClamp(standNear(h, t, 6), h);
   }
   const cage = S.mobs.find((m) => m.alive && m.cage && m.hero !== h);
+  if (h.cls === 'rogue') {
+    if (cage) return ringClamp(standNear(h, cage, 6), h);
+    const foes = fightingFoes();
+    if (!foes.length) return idleGoal(h);
+    const tankReady = !tank || !tank.alive || foes.some((m) => engagedByTank(m) || (m.isBoss && m.fightT > 0.8));
+    if (!tankReady && tank && tank.alive) return ringClamp({ x: tank.x + 42, y: tank.y + 48, tol: 28 }, h);
+    const t = (h.picked && isFoe(h.picked) ? h.picked : null) || (tank && tank.alive && tank.target && isFoe(tank.target) ? tank.target : foes[0]);
+    if (!t) return idleGoal(h);
+    if (t.isBoss) {
+      const p = backSpot(h, t, t.r + h.r + 10, -1);
+      return ringClamp({ x: p.x, y: p.y, tol: 18 }, h);
+    }
+    return ringClamp(standNear(h, t, 8), h);
+  }
   const want = h.role === 'dps' ? 290 : 240;
   if (boss && boss.state === 'fight') {
     const p = backSpot(h, boss, want, h.role === 'dps' ? -1 : 1);
@@ -299,7 +319,40 @@ export function healerActions(h) {
   // nobody needs anything: Smite the tank's target (it heals and gives mana back)
   if (h.cd.a4 <= 0 && pct(low[0]) > 0.5) { const t = tank_or_target(h); if (t && !t.cage && useAbility(h, 'a4', t)) return; }
 }
+export function rogueActions(h) {
+  const tank = heroBy('tank');
+  let tgt = null;
+  const cage = S.mobs.find((m) => m.alive && m.cage && m.hero !== h && dist(m, h) < 540);
+  if (cage) tgt = cage;
+  const foes = fightingFoes();
+  if (!tgt) { const caster = foes.find((m) => m.cast && m.cast.kick && dist(m, h) < 340); if (caster) tgt = caster; }
+  if (!tgt) {
+    const onUs = foes.filter((m) => m.target && m.target.role !== 'tank' && dist(m, h) < 380);
+    if (onUs.length) tgt = onUs.sort((a, b) => dist(a, h) - dist(b, h))[0];
+  }
+  if (!tgt && tank && tank.alive && tank.target && isFoe(tank.target) && (engagedByTank(tank.target) || (tank.target.isBoss && tank.target.fightT > 0.8))) tgt = tank.target;
+  if (!tgt && (!tank || !tank.alive)) tgt = foes.sort((a, b) => dist(a, h) - dist(b, h))[0] || null;
+  h.picked = tgt;
+  h.holdFire = !tgt;
+  if (h.st.stun > 0 || h.st.caged || !tgt) return;
+  const d = dist(h, tgt);
+  const close = foes.filter((m) => !m.cage && dist(m, h) <= 135 + m.r);
+  const caster = foes.find((m) => m.cast && m.cast.kick && dist(m, h) <= 135 + m.r);
+  if (h.cd.a3 <= 0 && (caster || close.length >= 2)) { useAbility(h, 'a3'); return; }
+  if (h.cd.a4 <= 0 && !dangerAt(h, tgt.x, tgt.y, 1.0)) {
+    const needGap = d > 95 + tgt.r && d <= 340 + tgt.r;
+    const wantSteroid = d <= 95 + tgt.r && !tgt.cage && tgt.bleed && tgt.bleed.t > 0 && h.frenzyT <= 0;
+    if (needGap || wantSteroid) { useAbility(h, 'a4', tgt); return; }
+  }
+  if (d <= 95 + tgt.r) {
+    if (!tgt.cage && h.cd.a1 <= 0 && (!tgt.bleed || tgt.bleed.t < 1.8)) { useAbility(h, 'a1', tgt); return; }
+    if (h.cd.a2 <= 0 && (tgt.cage || (tgt.bleed && tgt.bleed.t > 0) || tgt.hp < 220)) { useAbility(h, 'a2', tgt); return; }
+    if (h.cd.a1 <= 0) { useAbility(h, 'a1', tgt); return; }
+    if (h.cd.a3 <= 0 && (h.talents?.a3 || 0) >= 1 && tgt.bleed && tgt.bleed.t > 0) { useAbility(h, 'a3'); return; }
+  }
+}
 export function dpsActions(h) {
+  if (h.cls === 'rogue') { rogueActions(h); return; }
   const tank = heroBy('tank');
   let tgt = null;
   const cage = S.mobs.find((m) => m.alive && m.cage && m.hero !== h && dist(m, h) < 540);
