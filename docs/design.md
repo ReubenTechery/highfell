@@ -4,158 +4,93 @@
 > true: when a system changes, change it here in the same pull request. Where it and the code disagree about
 > what's built, the code wins; for what's planned, this doc wins.
 
-Dungeons stay junk food: four-minute runs, four buttons and a swipe, with the depth going sideways into talents, dungeon sets and achievements. Power climbs from Common to Epic in about ten runs, then stops. Loot follows OSRS rules: fixed drop rates, a 1-in-5,000 pet and a hidden walkout tell. Most of this is now in the live game; Ults, combos, talents and 3-piece set bonuses are still design.
+Dungeons and their collection logs are the core loop of the whole game: OSRS endgame PvE style grind-loot-RNG runs (~4 minutes in starter gear, ~2 minutes when melted in full BiS) with four buttons and a swipe, where you grind a dungeon 100+ times to fill its collection log, feel steep power creep as your Warband gears up, unlock Heroic mode, and move on to the next dungeon (where future dungeons also drop OSRS-style upgrade attachments that awaken older dungeon gear). Raids are a later bonus activity, not the core loop.
 
 ## In the live game
 
-What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 14 Oct, and what is still only on this page.
+What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 16 Oct, and what is still only on this page.
 
 | Part | Built | Still design |
 | --- | --- | --- |
-| Heroes | Race, class and male or female look picked once, for keeps (same body and armour silhouette, distinct heads/hair/beard vs braids); visual hero maker with race medallions, locked-race log progress, class crests and role purpose + two signature abilities; up to 6 heroes; beds in the house to switch, rename once or let one go; your hero by the fire. Dwarf, Elf and Human from the start; the Risen (undead) earned from the Barrow's collection log, as any class | Gnomes, goblins and orcs, each earned in a dungeon of its own; the other race and class combos; the Rogue's kit; racial tricks |
-| Abilities | Four buttons per role plus the dodge; a perfect block stuns and hits back | Ults, Openings, team combos |
-| Talents | Epic weapon traits, swappable for 5 Barrow Marks | The three paths and four rows per role, hero levels |
-| Gear and sets | 4 slots on a gear doll that shows rarity, set count and what each piece adds; Common to Epic in about ten clears, Barrow sets with their 2-piece bonuses, the three Gravekeeper weapons. Nothing goes on by itself: new pieces glow on the doll until you put them on | 3-piece bonuses (they need summons), the wardrobe, gear drawn on your hero |
-| Threat and difficulty | The tank earns threat (Slam taunts and drags mobs in, Charge grabs one), loose mobs go wild on the squishies, a caged tank loses the boss; Barrow hits 1.5 times as hard and its packs have more health; you see only your own numbers | Ults, Openings |
+| Heroes & Warband | Race, class and male or female look picked once, for keeps; up to 6 heroes in the bunk room; your own Warband heroes automatically fill the other two party seats on Normal wearing their real gear, sets, traits, and Boss Weapons (bots stand in only for empty roles); Heroic is built for Group Finder / friends once online play is live. Dwarf, Elf and Human from the start; the Risen (undead) earned from the Barrow's collection log; Gnomes and Goblins drawn as pint-sized heroes across all 4 classes (`Warrior`, `Cleric`, `Mage`, `Rogue`), both sexes, and all 3 visual gear tiers (`_rags`, `_iron`, and full armour) | Gnomes', goblins' and orcs' own dungeons; the remaining starter race/class combos; racial tricks |
+| Abilities | Four buttons per role plus the dodge; a perfect block stuns, counter-strikes, resets Cleave and opens a Boss `Exposed` window (+35% damage taken) | Ults |
+| Gear, Power Creep & Sets | 4 slots on a gear doll; steep power curve (`1.00` Common → `1.24` Uncommon → `1.48` Rare → `1.72` plain Epic → `1.96` full BiS with 3-piece set + Boss Weapon, plus up to `+14%` crit chance and `+48%` HP) so full BiS melts runs in roughly half the time; all four Barrow sets (*Barrowguard*, *Candlewake*, *Rimebone*, *Shadeveil*) with their per-piece perks, 2-piece bonuses, and **active 3-piece summon/ghost bonuses** (`S.thralls`); all four Gravekeeper Boss Weapons. Nothing goes on by itself | The wardrobe |
+| Threat, Difficulty & Boss Mechanics | The tank earns threat (Slam taunts and drags mobs in, Charge grabs one); Bosses and Brutes deal `1.85×` **Crushing Blows** to non-tanks in melee; unblocked telegraphs bypass passive armor and pierce 60% of `Ward` shields; Boss `Exposed` windows (+35% damage taken on Perfect Block, dodged Shield Charge wall-crash, last rally guard kill, Soul Chain cut, and `< 2.0s` Bone Cage break); Gravekeeper Phase 3 **moving green lantern circle** (`S.ring.followBoss`) with `Grave Stride` repositioning and **Lantern Zeal** (`+15%` cooldown recovery, `+10%` crit) inside; Room 4 **Crypt Seals** (10 3-seat rune patterns granting **Crypt Surge**: `+25%` speed, `+20%` damage for 18s); mid-run `MELTED!` and `New Personal Best!` banners |  |
 | Loot | Every line rolls on its own, kill counts, duplicates to Marks, the walkout and the chest reveal |  |
-| Heroic | Heroic Barrow: open after 10 clears, made for full Epic (enemies hit twice as hard, more health); the same drops gilded at the same rates and power, its own kill counts and log, Barrow Marks | A heroic version of every new dungeon |
+| Heroic | Heroic Barrow: open after 10 clears, made for full Epic (`hit: 3.2, trashHp: 1.95, bossHp: 1.63`); the same drops gilded at the same rates and power, its own kill counts and log, Barrow Marks. Group Finder / friends only once online play is live | A heroic version of every new dungeon |
 | Collection log rewards | Each dungeon's whole log (every drop, every role) gives a house look, a title and one big prize: the Barrow's are Barrow Hall, the Gravewarden and the Risen; its heroic log's Gilded Barrow Hall, the Undying and Gilded Bones. The prize waits at the end of the log's bar | One per new dungeon: a race, a race and class combo, or something else |
 | Achievements | All 12, the meta and the 3 hidden ones, with titles, trophies, looks and the Lantern Ghost |  |
 | Home | The Hearth, a tall house cut open: zoom out to see every room, tap things to use them (the Barrow door, the 3 garden planter beds in the yard, the armour stand, the big book of the collection log, the cauldron, the larder); about 30 spots for pets, mounts, trophies and banners; Decorate; looks for a room or the whole house (the tavern; Barrow Hall from the Barrow's collection log, Gilded Barrow Hall from its heroic one); one big Dungeons button | Rooms that come with new dungeons, inviting people over |
-| Dungeon picker | Dungeons: the dungeon's picture with Normal or Heroic, its collection log line with the prize at the end (inside: what finishing it gives and the loot per role; tap a drop to hold it up against what that role wears), then your role, hero and brew, loot or practice; bots at your gear level in the other seats | Friends in the seats (needs online play), more dungeons |
+| Dungeon picker | Dungeons: the dungeon's picture with Normal or Heroic, its collection log line with the prize at the end (inside: what finishing it gives and the loot per role; tap a drop to hold it up against what that role wears), then your role, hero and brew, loot or practice; your own Warband companions shown with their item levels (or bots for empty seats) | Online Group Finder for Heroics and friends in seats, more dungeons |
 | Logs | Collection log by boss and garden, OSRS style: drops, kill count, fastest kill, wipes; Normal or Heroic; each dungeon's whole log with what finishing it gives; achievements; stats |  |
 | The Garden | 3 planter beds (`bed.0`, `bed.1`, `bed.2`) in the Hearth's outdoor yard; seeds drop from dungeon bosses (Gravekeeper drops Glowcap seeds at 1/5 Normal, 1/3 Heroic) and grow over 3 dungeon clears (`GROW_CLEARS = 3`); harvesting uses the `snip`/`pluck` close-up toys and yields 8–10+ herbs plus Gathering XP; first harvest gives the Hill Goat; every harvest rolls `GARDEN_TABLE` for trophies, kettle, bunting, hare and pets | New seeds from future dungeons |
 | Brews | The cauldron by your fire, 4 party-wide brews, 1 bottle poured at the dungeon door (`pourFor`) buffs all 3 seats for faster clears | More recipes as new dungeon seeds open |
 | Onboarding | First-time prologue run as Brannoc in full Epic gear + Barrowguard set + *The Gravedigger* with Maren and Ivy against the Ossuary and Sir Rattlebones (teaches abilities, dodge-rolling, blocking, and peeling); gold walkout + showcase chest reveal explaining the gear ladder, fixed drop rates, Collection Log rewards and hearth; hero creation followed by a 3-step guided tour of the Hearth (`hall` → `yard` Garden → `cellar` Dungeons) |  |
 
-## At a glance
+## Core Loop & Dungeon Rules
 
-(A diagram on claude.ai: the gear ladder up to Epic, then the build loop.)
+1. **Dungeons + Collection Logs are the core loop.** A run takes about 4 minutes in Common gear and melts down toward ~2 minutes in full BiS Epic gear, needs all three roles, and drops loot every time.
+2. **Four buttons plus the swipe dodge, never more.** Sets, weapon traits, and boss weapons transform what buttons do; they never add one.
+3. **Dramatic power creep, long collection chase.** Regular gear climbs Common → Rare in 8 clears, while Epic 3-piece sets (1/35 per piece) and Boss Weapons (1/50) push power up to `1.96×` (plus crit and summons) so grinding 100+ runs feels noticeably faster and more explosive as you gear up your Warband.
+4. **Warband on Normal, Group on Heroic.** Normal dungeons can be run with your 3-hero Warband (so gearing your alts directly speeds up your runs) or with friends; Heroic dungeons are Group Finder / friends only once online multiplayer is live.
+5. **No drinking for mana and no waiting around:** mana refills between pulls.
 
-The first hour of runs climbs the gear ladder to Epic; from then on, each run's loot, build and achievements feed the next one.
+## Combat, Difficulty & Boss Mechanics
 
-## Junk-food rules
-
-Anything that breaks one of these six rules belongs in a raid, not a dungeon.
-
-- A run takes about 4 minutes, needs all three roles, and drops loot every time.
-- Four buttons plus the swipe dodge, never more. Talents and sets change what buttons do; they never add one.
-- Power climbs Common → Epic, then stops. After Epic, every upgrade is sideways: talents, sets, weapon traits, looks.
-- Skill earns looks, titles and pets, never power. Someone with three hours on a Friday night is never behind.
-- No drinking for mana and no waiting around: mana refills between pulls.
-- If a mechanic needs a guide to understand, it's a raid mechanic.
-
-## Abilities v2
-
-Every role gets three core buttons, one Ult and the swipe dodge, and each role's buttons now set up a teammate's. The Ult fills from doing your job well: roughly one per pack, two or three per boss.
-
-**Built so far:** four buttons per role plus the dodge, cooldowns about 20% shorter than v1. Taunt is folded into Slam, and the tank now does about a third of the party's damage (it was a quarter). Ults, Openings and the combos below are still to build.
-
-**Threat (built 14 Oct):** holding mobs is the tank's job, not a given. The tank's hits make a third more threat than anyone else's (it was 3.6 times as much, so mobs just clung to him); the DPS out-damages him, and heals pull a little on everything in the fight. A mob switches once someone beats its target by a tenth.
+**Threat & Crushing Blows:** holding mobs is the tank's job, not a given. The tank's hits make a third more threat than anyone else's; the DPS out-damages him, and heals pull a little on everything in the fight. A mob switches once someone beats its target by a tenth.
 
 - **Slam** taunts everything around you for 4 seconds and drags it in to arm's reach (big mobs half as far, bosses not at all).
 - **Charge** makes the mob you hit turn on you; Ringing Blow makes everything it hits turn.
-- A mob that isn't on the tank for 3 seconds goes **wild**: it hits harder and faster. A DPS or healer who pulls one gets told to let the tank hit first.
-- In the Gravekeeper's last phase **only the tank is caged**. Inside, nothing can target him and every mob forgets half his threat, so the boss turns on someone else until he mashes out (or a mate breaks him out) and Slams it back. The bars pop and the game says so.
-- **Chains** have no button any more: the game calls "Cut the chain!" and you swipe across it (drag the mouse on desktop). A touch on a chain, a wisp or a cage counts even in the move-stick corner.
+- A mob that isn't on the tank for 3 seconds goes **wild**: it hits harder and faster.
+- **Crushing Blows (`1.85×`):** Bosses and Brutes (`m.isBoss || m.M.big`) landing a melee hit on a non-tank (`role !== 'tank'`) deal **1.85× Crushing Blow** damage with an alarm callout (`"Crushing blow! Let the tank hold him!"`), so a Rogue or Mage cannot facetank bosses.
+- In the Gravekeeper's last phase **only the tank is caged**. Inside, nothing can target him and every mob forgets half his threat, so the boss turns on someone else until he mashes out (or a mate breaks him out) and Slams it back. Breaking a cage in under `2.0s` exposes the boss and resets the Tank's `Charge` cooldown.
+- **Chains and Wisps (Healer role mechanic):** only the **Healer** can swipe across chains to sever them (exposing the boss for 3s) or swipe/smite Wisps to banish them (triggering a `Soul Spark` backlash bolt on the boss and restoring +5 mana).
 - **Numbers:** you see only your own (your hits, your heals, what hits you). Your mates' spell effects still show.
 
-**Difficulty (built 14 Oct):** a dungeon has a `tune`. Barrow Crypt's: everything that hurts a hero hits 1.5 times as hard as written, and every mob but the bosses has 1.3 times the health. With no healing at all a party now wipes; with a tank who never Slams or Charges, the DPS takes about six times the damage. Clears went from 3:57 to about 4:10.
+**Difficulty & Avoidable Telegraphs:** Barrow Crypt's `tune` scales all hero damage taken by `1.5×` and trash HP by `1.3×` (`heroic`: `hit: 3.2, trashHp: 1.95, bossHp: 1.63`). Ground hazards and boss telegraphs (`hazard: true`) bypass passive armor unless actively blocked AND **pierce 60% of `Ward` shields**, so standing in `Shield Charge`, `Cleaving Sweep`, `Burrow Erupt`, `Grasping Hands`, or `Shockwave Ring` in beginner gear will nearly kill you even through a shield.
 
-| Role | 1 | 2 | 3 | 4 (new) |
+**Boss `Exposed` Windows (`+35%` damage taken):**
+- Perfect-blocking a heavy boss attack stuns the boss, resets `Cleave`, and exposes the boss for `3.5s`.
+- Dodging Sir Rattlebones's `Shield Charge` so he misses every hero makes him crash into the tomb wall (`Wall Crash! Exposed!` for `3.0s`).
+- Killing Sir Rattlebones's Phase 2 rallied guards lashes him for 4% max HP each, and killing the last guard cracks his rally armour and exposes him for `3.0s`.
+- Cutting the Gravekeeper's `Soul Chain` exposes him for `3.0s`, and breaking `Bone Cage` in `< 2.0s` exposes him for `2.5s` while resetting the Tank's `Charge`.
+
+**Gravekeeper Phase 3 Moving Green Circle & Grave Strides:**
+- At `< 35%` HP, the green lantern safe circle (`S.ring.followBoss = true`) anchors to the Gravekeeper instead of the room center.
+- Every `8.5s`, the Gravekeeper performs **Grave Stride** (`stride`), marching to a new graveyard waypoint and carrying the green safe zone with him while firing overlapping telegraphs.
+- Heroes standing inside the green circle gain **Lantern Zeal** (`+15%` cooldown recovery speed and `+10%` crit chance); standing outside in the dark burns with green fire (`34` damage/tick).
+
+**Crypt Seals (Room 4 Speed Trials):**
+- After clearing Pack D in the Catacombs, a randomized 3-seat rune formation (`SEAL_PATTERNS`, 10 patterns) lights up on the floor before the Coffin Ambush.
+- Bots automatically step onto their role pads out of combat; lighting all 3 pads shatters the seal and grants **Crypt Surge** (`+25%` movement speed and `+20%` damage for 18s) to melt the Coffin Ambush. Auto-fades after 6.5s if ignored so it never slows or blocks a run.
+
+| Role / Class | 1 | 2 | 3 | 4 |
 | --- | --- | --- | --- | --- |
-| Tank | Slam: hits everything around you, taunts it and drags it in, 6s | Shield (hold): a perfect block stuns and hits back for 150 | Charge: dash, hit for 80, it turns on you, stun around, 7s | Cleave: a big swing through everything in front, 3.5s |
-| Healer | Prayer circle, 5s | Ward, 4s | Sunburst, 14s | Smite: heals your most hurt ally for the damage dealt and gives mana back, 2.5s |
-| DPS | Blizzard, 7.5s | Rime burst, 11s | Comet: 0.9s cast, 5.5s | Icicle: instant, triple damage on frozen mobs, 2.5s |
+| Tank (Warrior) | Cleave: fast front sweep, Crush bonus on heavy/stunned/clumped foes, 2.2s | Charge: dash, hit, taunt and stun nearby foes, readies Cleave, 6.5s | Slam: drag nearby foes in, taunt for 4s, spin a 360° whirlwind, 6s | Shield (hold): a perfect block stuns, counter-strikes, exposes the attacker and resets Cleave |
+| Healer (Cleric) | Prayer circle, 5s | Ward, 3.8s | Sunburst, 13s | Smite: heals your most hurt ally for the damage dealt, pulses Prayer circles and gives mana back, 2.4s |
+| DPS (Mage) | Blizzard, 7.8s | Rime burst, 11.5s | Comet: 0.9s cast, 5.6s | Icicle: instant, triple damage on frozen mobs, 2.6s |
+| DPS (Rogue) | Viper Blades: single-target twin-dagger slash + 5.5s Viper Venom, 2.3s | Shadowstrike: single-target execution thrust, guaranteed crit + 35% bonus damage on poisoned targets, 3.4s | Fan of Blades: modest 360° throwing-knife spin + enemy cast interrupt + refreshes active venom, 6.0s | Shadowstep: blink through shadow behind target, interrupt casts, +35% attack speed for 3.8s, shaves 2s off Shadowstrike, 5.5s |
 
-**What's off now** (my read from the sims; tell me if something else felt off in play)
+## Talents (retired in favor of Gear, Set & Boss Weapon Ability Buffs)
 
-- Nobody's buttons talk to each other, so teamwork isn't rewarded.
-- There's no big moment: nothing you save up and smash.
-- The healer has nothing to do when everyone's topped up.
-- Frost nova is a panic button, and Comet is the DPS's only payoff.
+Skill trees and hero levels are omitted so that **Gear alone drives damage, healing, health, and ability fantasy**. Every class's 4 buttons are balanced out of the box, and Dungeon / Heroic Boss Weapons and 3-piece sets transform and buff how those 4 buttons work:
+- **The Gravedigger** (Tank): Every fifth swing digs in with a stunning tremor, and `Charge` resets `Cleave`’s cooldown.
+- **Lantern of the Long Night** (Healer): `Mend` wards its target for 60, and `Sunburst` sears nearby foes for 90 holy damage and wards the party for 75.
+- **Gravefrost Staff** (Mage): `Comet` freezes everything it hits for 2 seconds, and `Rime burst` resets `Icicle` and leaves a 3s frost storm.
+- **The Cryptfangs** (Rogue): Every fourth twin-dagger slash strikes twice and refreshes Viper Venom, and `Shadowstep` resets `Shadowstrike`.
 
-### Tank — Brannoc
-
-- **Shield** (hold): blocks from the front. A perfect block on a big hit stuns it and starts an **Opening**.
-- **Taunt**: every mob nearby turns on you. Unchanged.
-- **Charge**: dash and stun. Charge into **frozen** mobs to **Shatter** them.
-- **Ult: Earthbreaker**: leap and slam, stunning everything around you for 2s and taking all threat. Fills from blocks, perfect blocks and hits taken.
-
-### Healer — Maren
-
-- **Mend**: tap a friend, as now. It's a tap, not a button.
-- **Ward**: shields the most hurt ally. A warded tank's perfect block heals the whole party.
-- **Prayer circle**: aimed heal zone. Friends inside hit 15% harder.
-- **Smite** (new): light thrown at the tank's target. It heals the most hurt ally for the damage dealt and gives mana back.
-- **Ult: Dawn** (was Sunburst): big party heal, cleanse, and half damage taken for 3s. Fills from healing; clutch saves fill it faster.
-
-### DPS — Ivy
-
-- **Blizzard**: aimed ice storm. Unchanged.
-- **Rime burst** (was Frost nova): freezes everything close to you. Frozen mobs set up the tank's Shatter and double your Comet.
-- **Comet**: big cast, double damage on frozen mobs. During an **Opening** it's instant and always crits.
-- **Ult: Avalanche**: a huge cone of ice that freezes everything it hits; kills burst into shards. Fills from damage; crits and kicks fill it faster.
-
-### Team combos
-
-| Starter | Finisher | Result |
-| --- | --- | --- |
-| Tank perfect block → **Opening** (3s, the mob takes 50% more) | DPS Comet | Instant cast, guaranteed crit |
-| Tank perfect block → **Opening** | Healer Smite | Heals the whole party |
-| DPS Rime burst → **Frozen** | Tank Charge | **Shatter**: a big blast across the pack |
-| Healer Ward on the tank | Tank perfect block | The block heals the party |
-| Healer Prayer circle | Anyone standing in it | 15% more damage |
-
-Crits get bigger numbers, a screen shake and a sound. A better weapon means bigger crits, and every Epic weapon has its own crit effect.
-
-**Open call:** when all three Ults land within 5 seconds, fire a screen-wide team finisher? My pick is yes: it's the one big shared moment a dungeon gets.
-
-## Talents
-
-Each role has three paths and four rows: you pick one talent per row, from any path, and respec free on the start screen. Rows open at hero level 2, 4, 6 and 8, about a level per run, so the whole tree is open within roughly eight runs. Row 4 is each path's keystone (★); hybrids are allowed, and some will be the best builds.
-
-### Tank: Bulwark · Brawler · Warden
-
-| Row | Bulwark: block god | Brawler: hit hard, heal off hits | Warden: protect the team |
-| --- | --- | --- | --- |
-| 1 | **Steady Hands**: perfect-block window 50% longer | **Bloodied Axe**: heal for 10% of damage dealt | **Rally**: Taunt also shields allies for 120 |
-| 2 | **Spiked Rim**: blocked hits deal 60 back, perfect blocks 250 | **Reckless Charge**: Charge every 6s, reset on a kill | **Guardian's Charge**: Charge goes for whatever is hitting your mates |
-| 3 | **Unmoved**: full speed while blocking | **Whirling Axe**: every 4th swing hits all around you | **Hold the Line**: allies near you take 10% less |
-| 4 ★ | **Mirror Wall**: perfect blocks bounce projectiles back; Openings last 2s longer | **Red Mist**: the lower your health, the harder you hit and heal, up to 40% | **Martyr**: 20% of the damage your allies take comes to you instead |
-
-### Healer: Dawn · Aegis · Zealot
-
-| Row | Dawn: big heals | Aegis: shields first | Zealot: heal by fighting |
-| --- | --- | --- | --- |
-| 1 | **Bright Mend**: 20% chance Mend heals double | **Thick Ward**: Ward absorbs 40% more | **Sun-scorch**: Smite hits 30% harder |
-| 2 | **Sunrise**: Dawn fills 30% faster | **Bouncing Ward**: a broken Ward jumps to the next hurt ally at half strength | **Burning Ground**: Prayer circle burns enemies inside it |
-| 3 | **Rescue**: heals on allies under 30% are 50% stronger | **Sanctuary**: allies in Prayer circle take 15% less | **Zeal**: each Smite takes 1s off Ward |
-| 4 ★ | **Second Sunrise**: once per fight, a killing blow on an ally is stopped and they're healed to half | **Overflow**: overhealing becomes a shield, up to 300 | **Sun Lance**: every 5th Smite is a beam through a whole line that heals everyone |
-
-### DPS: Shatter · Comet · Whiteout
-
-| Row | Shatter: freeze and crit | Comet: big hits | Whiteout: hit everything |
-| --- | --- | --- | --- |
-| 1 | **Brittle**: frozen or slowed mobs take 20% more from you | **Heavy Comet**: Comet hits 30% harder | **Wide Storm**: Blizzard is 35% bigger |
-| 2 | **Hard Freeze**: Rime burst freezes 1.5s longer and slows bosses | **Twin Comets**: Comet holds 2 charges | **Drifting Storm**: Blizzard follows its target |
-| 3 | **Ice Shards**: frozen mobs burst into shards when they die | **Crater**: Comet leaves ice that slows mobs and makes them take 15% more | **Deep Chill**: mobs in Blizzard for 3s freeze for 1s |
-| 4 ★ | **Shatterstorm**: crits on frozen mobs explode for half damage around them | **Third Star**: every 3rd Comet is instant and three times the size | **Endless Winter**: two Blizzards at once |
-
-Levels unlock choices and looks, never stats.
-
-## Heroes and alts
+## Heroes, Warband and Alts
 
 A hero is one race and one class, picked when you make them and fixed after. You can have six, and the one you play stands by the fire on the Hearth.
 
-- **The bunk room:** every hero you aren't playing waits by their bed in the house. Tap one to play them, check their gear, rename them (once) or let one go (the last one stays); an empty bed makes a new hero.
-- **Each hero keeps:** their regular gear (the Common to Epic ladder), their title and their clears.
+- **The bunk room & Warband party seats:** every hero you aren't playing waits by their bed in the house. Tap one to play them, check their gear, rename them (once) or let one go (the last one stays); an empty bed makes a new hero. When you enter a **Normal** dungeon, your own heroes from your bunk room (`seats(p)` in `src/meta/party.ts`) automatically fill the other two role seats wearing their real equipped gear, sets, traits, unique weapons, and sprites! Bots (Brannoc, Maren, Ivy) only stand in for roles you haven't created a hero for yet. **Heroic** dungeons will require Group Finder / friends once online multiplayer is live.
+- **Each hero keeps:** their regular gear (the Common to Rare ladder), their equipped uniques, their title and their clears.
 - **Every hero shares:** the collection (a unique fits any hero of its role), kill counts, Marks, achievements, titles and the Hearth.
 - **Shared gear:** a floor per role, up to Rare. Spare pieces and your own ladder raise it, and every hero of that role can put it on, including heroes made later (a new hero starts wearing it). Epic is earned on the hero.
 - **Nothing goes on by itself.** A new piece waits in the hero's bag and glows on the gear doll with "Up" (a better regular piece) or "New" (a unique). Your hero's tag at the top of the house counts what's waiting; tap the slot, compare, and Put it on: the slot bursts, the item level counts up. The chest reveal says "Put it on in Gear".
 - **Races:** Dwarf, Elf and Human from the start. Gnome, Goblin, the Risen (undead) and Orc are earned, each in its own dungeon: the Risen from filling Barrow Crypt's whole collection log, the others with dungeons to come. The hero maker shows how close you are to each.
-- **Classes:** Warrior (tank), Cleric (healer), Mage (DPS) and Rogue (DPS, its kit still to come). That's all four.
-- **Drawn today:** Dwarf Warrior (tank), Human Cleric (healer), Elf Mage (DPS), and the Risen as all three: skeletons in their class's own outfit, with green light in their eyes (gold bones with Gilded Bones). The rest show in the hero maker as Soon.
+- **Classes:** Warrior (tank), Cleric (healer), Mage (ranged AoE/Shatter DPS) and Rogue (fast melee single-target venom/crit DPS with permanent +10% movement speed and twin daggers as a single pair item). That's all four.
+- **Drawn today:** Dwarf Warrior (tank), Human Cleric (healer), Elf Mage (DPS), Human/Elf Rogue (DPS), and Gnome, Goblin and the Risen as all four classes. The rest show in the hero maker as Soon.
 - **Old saves:** became one hero, named for the role you last played, with a one-time rename.
 
 ## Home: the house
@@ -166,7 +101,7 @@ Home is a tall house on the hill, cut open like a doll's house. Built 14 Oct aft
 - **One big button: Dungeons.** Everything else is a thing in the house: the Barrow door in the cellar, the 3 garden planter beds in the yard, the armour stand (gear), the big book in the trophy loft (the collection log), the cauldron and the larder (the satchel). Your hero's tag at the top opens gear too.
 - **Rooms:** the trophy loft, the bunk room (your other heroes), the armory, the hall (your hero, the fire, the mantel), the stable, the brewing room, the cellar with the Barrow door and two bricked arches for dungeons to come, and the yard (with the 3 planter beds).
 - **Trophies everywhere:** about 30 spots: the mantel, the loft's shelves, banners on the walls and the roof's flagpoles, pets by the fire, on the rug, on the table and in the loft, the stall and the yard. Decorate shows the empty ones; the rest of the time they're hidden.
-- **Dungeons** (the big button or the Barrow door): the dungeon's picture, with one small collection log line under it that opens to show what each role can get. Then you: pick a role and you play your hero of that role you played last (Change picks another or makes one), your brew, and loot or practice. Brannoc, Maren or Ivy take the other seats as bots at your gear level. Friends take seats once there is online play.
+- **Dungeons** (the big button or the Barrow door): the dungeon's picture, with one small collection log line under it that opens to show what each role can get. Then you: pick a role and you play your hero of that role you played last (Change picks another or makes one), your brew, and loot or practice. Your own Warband heroes from your bunk room take the other seats in their own gear (or bots stand in until you make them).
 - **Looks:** Decorate, then Looks: pick a look and put it on a room or the whole house. Looks only; everything you placed stays where it is.
   - **Tavern:** the default. Wood, plaster, lamplight and a crackling fire.
   - **Barrow Hall:** opens when you fill the Barrow's whole collection log, and shows how close you are until then. The Barrow's own brick and flagstones, burial niches with skulls, green lanterns, the Gravekeeper's green fire in the hall, a coffin in the armory, a gravestone in the stable, wisps in the cellar. Put it on the whole house and the beams and outer walls turn to stone and the roof to slate.
@@ -213,43 +148,42 @@ Achievements here: Green Fingers, Steady Hands, Something Brewing, Green-Thumbed
 
 ## Gear and sets
 
-The weapon is the upgrade you feel; Helm, Shoulders and Chest are the set. Power caps at Epic in about ten runs, and after that you choose builds, not bigger numbers.
+The weapon is the upgrade you feel; Helm, Shoulders and Chest are the set. Power climbs steeply from `1.00` at Common (score 10) to `1.72` at plain Epic (score 22) and `1.96` in full BiS (score 26: 3-piece set + Boss Weapon), plus up to `+14%` bonus crit chance and `+48%` health.
 
 ### The ladder
 
-- 4 slots: Weapon, Helm, Shoulders, Chest (up from 3).
-- Rarity climbs Common → Uncommon → Rare → Epic, the cap. Target: Rare in about 3 runs, full Epic in about 10 (roughly an hour).
-- The weapon carries about 40% of your power, so a new one means bigger hits, bigger crits and its own glow.
+- 4 slots: Weapon, Helm, Shoulders, Chest.
+- Rarity climbs Common → Uncommon → Rare (8 clears) → Epic (from dungeon 3-piece sets and Boss Weapons).
+- The weapon carries 40% of your power (`WEIGHT.weapon = 4` of `10`), so a Boss Weapon (`rar: 4`, `+38.4%` damage/healing and `+19.2%` health) is a massive power spike.
 - Every clear drops a regular item better than the best you have in your weakest slot. No dead drops. It waits until you put it on. It also drops a shared piece for another role, up to Rare, so a new alt never starts cold.
-- Everything shows on your hero. Every set you earn goes in your wardrobe, to wear over any gear.
 - Tap any drop (in the collection log or the Dungeons sheet) to hold it up against what that role wears now: Upgrade, Downgrade, Same power or A trade, then what changes (item level, power, health, set count) and any effect it adds or takes away.
-- **Barrow Marks**: 1 per clear, 3 per duplicate. Spend 5 to swap your Epic weapon's trait; never on uniques.
+- **Barrow Marks**: 1 per clear, 3 per duplicate. Spend 5 to swap your weapon's trait.
 
-**Epic weapon traits** (each Epic weapon rolls 1 of 3)
+**Weapon traits** (unlocked at Rare, swappable for 5 Barrow Marks, and stay active alongside Unique weapons)
 
-| Role | Trait | Trait | Trait |
+| Role / Class | Trait | Trait | Trait |
 | --- | --- | --- | --- |
-| Tank | **Wide Swings**: swings hit everything in front at full damage | **Ringing Blow**: Charge hits twice and everything it hits turns on you | **Headsman**: hits on stunned mobs always crit |
-| Healer | **Sunflare**: Mend splashes half to the next hurt ally | **Quick Hands**: Mend recasts faster | **Kindle**: a Ward that breaks heals for 80 |
-| DPS | **Shatterlance**: Comet on frozen mobs hits 3× | **Splinter**: frostbolts split to a second mob | **Quickfrost**: Comet casts twice as fast |
-
-Most of today's other traits fold into talents. Four of them carry straight WoW spell names (Icy Veins, Cold Snap, Deep Freeze, Last Stand), so v2 drops those names, along with Frost nova.
+| Tank (Warrior) | **Wide Swings**: swings hit everything in front at full damage | **Ringing Blow**: Charge hits twice and everything it hits turns on you | **Headsman**: hits on stunned mobs always crit |
+| Healer (Cleric) | **Sunflare**: Mend splashes half to the next hurt ally | **Quick Hands**: Mend recasts faster | **Kindle**: a Ward that breaks heals for 80 |
+| DPS (Mage) | **Shatterlance**: Comet on frozen mobs hits 3× | **Splinter**: frostbolts split to a second mob | **Quickfrost**: Comet casts twice as fast |
+| DPS (Rogue) | **Twin Venom**: twin-dagger auto-attacks extend Viper Venom by 1.5s | **Venomrush**: Shadowstrike on a poisoned foe refunds 1.2s of its cooldown | **Nightstalker**: Shadowstep makes your next Shadowstrike deal +30% damage |
 
 ### How sets work
 
-- Each dungeon drops three sets, one per role, in the Helm, Shoulders and Chest slots.
-- Set pieces are uniques from the drop table below, always at Epic power.
-- **2 pieces**: a perk that leans into one talent path.
-- **3 pieces**: changes how one button works, a new way to play. Switched on in a later update, once summons exist.
-- One set at a time: swap sets to swap builds. Raid tier sets come later, with 4 pieces and 2 + 2 mixing.
+- Each dungeon drops sets per class/role in the Helm, Shoulders and Chest slots.
+- Set pieces are uniques from the drop table below at Epic Item Level 26 (`+19.2%` damage/healing and `+9.6%` health per piece), and each piece has its own immediate When-Worn ability perk even at 1 of 3 pieces.
+- **1 piece (per-piece perk)**: each Helm, Shoulders and Chest piece immediately buffs one of your core abilities when worn.
+- **2 pieces**: a set bonus that leans into your role's signature mechanic.
+- **3 pieces (`ready: true`)**: changes how one button works with spectral/skeletal summons (`S.thralls`) or ghost saves.
 
 ### Barrow Crypt sets: raise the dead
 
-| Set | Look | 2 pieces | 3 pieces |
+| Set | Look | 2 pieces | 3 pieces (Active) |
 | --- | --- | --- | --- |
-| **Barrowguard** (tank) | Bone-white plate, skull shoulders, coffin-lid shield | Perfect blocks give you a 150 bone shield | Slam raises 2 skeleton thralls for 8s; they fight beside you and soak hits |
-| **Candlewake** (healer) | Black robes, candle crown, a lantern | Mend leaves a candle that heals 40 more over 4s | An ally who would die becomes a ghost for 6s, still fighting, and you heal them back to life. Once per ally per fight |
-| **Rimebone** (DPS) | Frosted bone crown, icicle shoulders | Comet on a frozen mob refunds half its cooldown | Blizzard rains bone shards; anything that dies in it rises as a frost skeleton that fights for you for 6s |
+| **Barrowguard** (tank) | Bone-white plate, skull shoulders, coffin-lid shield | Perfect blocks give you a 150 bone shield | `Slam` raises 2 skeleton thralls for 8s that slash nearby foes for 28 damage and soak 25% of hits on the tank |
+| **Candlewake** (healer) | Black robes, candle crown, a lantern | Mend leaves a candle that heals 40 more over 4s | Once per fight per ally, fatal damage turns them into a fighting ghost at 35% HP (+25% damage) for 6s; `Prayer circle` also sears enemies inside for 32 holy damage per tick |
+| **Rimebone** (Mage DPS) | Frosted bone crown, icicle shoulders | Comet on a frozen mob refunds half its cooldown | `Blizzard` rains bone shards (+30% damage) and raises a frost skeleton (on boss casts or mob kills inside) that slashes for 32 frost damage and slows for 6s |
+| **Shadeveil** (Rogue DPS) | Shadow-stitched mask, bone-bladed spaulders, silent leather jerkin | Critical hits with Shadowstrike or Viper Blades erupt in shadow for 55 damage | `Shadowstep` leaves a shadow twin for 6s that slashes your target with twin daggers (34 damage every 0.55s) and refreshes Viper Venom |
 
 ### Sets by dungeon
 
@@ -257,17 +191,10 @@ Dungeons 2 to 4 are placeholder themes; their names come with the races pass.
 
 | Dungeon | Set family | Tank, 3 pieces | Healer, 3 pieces | DPS, 3 pieces |
 | --- | --- | --- | --- | --- |
-| 1. Barrow Crypt | Raise the dead | Slam raises thralls | Dying allies become ghosts | Blizzard raises frost skeletons |
+| 1. Barrow Crypt | Raise the dead | Slam raises thralls | Dying allies become ghosts | Blizzard raises frost skeletons / Shadowstep spawns shadow twin |
 | 2. Goblin dungeon | Bombs and gold | Perfect blocks drop a lit bomb | Ward becomes a patch-up turret | Comet splits into 4 frost bombs |
 | 3. Fungal hollow | Spores and spread | Taking hits puffs out healing spores | Mend plants a bloom that bursts to heal the group | Kills in Blizzard spread the frost to neighbours |
 | 4. Storm peak | Chains and speed | Charge chains to 3 more mobs | Mend bounces to 3 allies | Frostbolts chain to 3 targets |
-
-By dungeon 4 that's 4 sets × 3 talent paths × 3 weapon traits: 36 core builds per role before hybrids, all sim-tested. A few it makes:
-
-- **Necro-mage**: Rimebone + Whiteout. Blizzard everything and raise an army.
-- **Bomb wall**: goblin tank set + Bulwark. Every perfect block explodes.
-- **Nobody dies**: Candlewake + Dawn. Ghosts first, then Second Sunrise, then Dawn.
-- **Thrall king**: Barrowguard + Warden. Skeletons hold the adds while you hold the boss.
 
 **Decided and built: 4 slots**, so the weapon chase stays separate from the set chase.
 
@@ -280,11 +207,11 @@ Loot runs on OSRS rules: every unique has its own drop rate, rare means properly
 | Drop | Rate | Average time (4-minute clears) | Notes |
 | --- | --- | --- | --- |
 | Regular gear | Every clear | Every clear | The Common → Rare ladder (8 clears), plus a piece for one of your other roles |
-| Set helm for your role | 1/35 | About 2 hours 20 | Barrowguard, Candlewake or Rimebone (Epic) |
+| Set helm for your role | 1/35 | About 2 hours 20 | Barrowguard, Candlewake, Rimebone or Shadeveil (Epic) |
 | Set shoulders | 1/35 | About 2 hours 20 |  |
 | Set chest | 1/35 | About 2 hours 20 |  |
 | Sir Rattlebones' Plume | 1/50 | About 3 hours 20 | From the mini boss; a trophy for the mantel |
-| Gravekeeper's weapon for your role | 1/50 | About 3 hours 20 | The Gravedigger, Lantern of the Long Night or Gravefrost Staff, each with its own effect |
+| Gravekeeper's weapon for your role | 1/50 | About 3 hours 20 | The Gravedigger, Lantern of the Long Night, Gravefrost Staff or The Cryptfangs, each with its own effect |
 | Gravehound (mount) | 1/1,000 | About 67 hours | Waits in the Hearth's stall |
 | Ghostly Dye | 1/1,000 | About 67 hours | Your Barrow set goes pale and see-through. Looks only |
 | Pint-sized Gravekeeper (pet) | 1/5,000 | About 333 hours | Sits by the fire at home |
@@ -307,14 +234,13 @@ The final chest has a tell before the loot shows, and the game never explains it
 - Tells never lie and never fake out, so learning them always pays.
 - Every dungeon gets its own tell, so each new dungeon is something new to learn.
 
-**Open call:** add Boots and Gloves to the sets? More to chase, about 2 more hours per full set. My pick: save them for raid sets and keep dungeon one at 3 pieces.
-
 ## Heroic
 
 Every dungeon has a harder version, its Heroic, for after the gear cap. It never gives more power.
 
 - **Opens** after 10 clears of the dungeon, about when your gear tops out. The Dungeons sheet switches between Normal and Heroic on the dungeon's picture; until it opens, it shows how close you are.
-- **Harder:** the same dungeon and mechanics, made for full Epic. In the Barrow, everything hits twice as hard as on Normal, ordinary mobs have 60% more health and the bosses 40%. Bots in full Epic clear it in about four minutes without wiping; in Rare they wipe once or twice; in Common they get buried.
+- **Group Finder / Friends Only (online):** Normal dungeons can be played either with a group or solo alongside your Warband heroes; Heroic dungeons are built for real 3-player groups via Group Finder or friends once online play is live (kept playable with your Warband while offline).
+- **Harder:** the same dungeon and mechanics, made for full Epic (`hit: 3.2, trashHp: 1.95, bossHp: 1.63`). Bots in full Epic clear it in about four minutes without wiping; in Common they get buried.
 - **Gilded drops:** every drop is the normal one gilded, at the same rate and the same power: a gilded set piece counts for the same set, a gilded weapon has the same effect. Heroic is a collection of its own, with its own kill counts and its own collection log.
 - **Marks and achievements:** a heroic clear pays the dungeon's own Marks and counts for its achievements.
 
@@ -357,19 +283,29 @@ Each dungeon has 12 achievements that pop mid-run and pay out in looks, titles, 
 
 Hidden: **Bravely Stupid** (go in solo as DPS and die to the first pack), **Last One Standing** (win a boss fight as the only one alive), **Lucky Dig** (get the boss pet).
 
-### More dopamine, cheap to build
-
-- **Collection log** per dungeon, OSRS style: every piece, look, title and pet is a slot that lights up.
-- **Boss pet**: a pint-sized Gravekeeper, 1 in 5,000 from the final chest, with its own walkout. It sits by the fire in your Hearth; following you into dungeons comes later.
-- **Run report**: built as the chest reveal. Cards come out face down and flip rarest last, then kill counts, time and best, Marks, the collection log and achievements. XP and levels come with talents.
-
 ## Making it fair
 
-Every talent path, every set and the main hybrids get 20 seeded bot clears each, and no build may land more than 5% off the rest.
+Today's baseline (`tests/balance.test.ts`): bots clear Barrow Crypt in about 4:00 on Common gear with no wipes, full Epic is clearly faster, and a full BiS party (`power: 1.96` with 3-piece sets and Boss Weapons) melts the dungeon in roughly half the time (`~2:05`). The repo's `npm run sim` prints the full table.
 
-- Clear time within ±5% of the baseline, with the same number of deaths.
-- Each role's own number within ±5%: damage for the DPS, healing for the healer, damage soaked and threat held for the tank.
-- No trap picks: a talent that no strong build takes gets buffed or replaced.
-- After each pass you get a one-page balance table.
+## Content Scope, Release Tiers & Unified Warband Marks
 
-Today's baseline, after the threat and difficulty pass (14 Oct): bots clear Barrow Crypt in about 4:10 on Common gear and 3:05 on Epic with no wipes, and the Gravekeeper takes about two minutes. The repo's npm run sim prints the full table.
+See `docs/dungeons.md` for the full Dungeon Template guide (`src/dungeon/template.js` and `src/content/_template/`).
+
+### Release Tiers & Pricing Targets
+
+| Tier | Content Volume | Collection Log & Loot Scope | Player Playtime | Purpose |
+| --- | --- | --- | --- | --- |
+| **1. Free Trial (Act 1)** | **3 Normal Dungeons** (*Barrow Crypt*, *Thimblebriar Hollow*, *Moonmere Sanctum*) | **~50 Log Slots** (16–18 per dungeon). Full `Common` → `Rare` warband floor, 3 full Epic Set families (12 class sets), 12 Boss Weapons, 3 Pets, 3 House Looks, plus **The Risen** & **Gnome** playable races unlocked from logs! Normal Mode only. | **3 – 6 hours** | Hook players with three radically different worlds, let them unlock **Gnomes** and **The Risen** for free, feel full 3-piece build spikes and cross-dungeon kits/seeds, then prompt upgrading right as **Heroic Mode** (at 10 clears) and Act 2 open up. |
+| **2. Full Base Game ($5.99–$6.99)** | **+5 Dungeons + 2 Capstone Raids + Heroic Mode** (8 Dungeons × Normal/Heroic = 16 Logs + 2 Capstone Raids) | **~130–160 Log Slots.** Unlocks **Heroic Mode** (`heroic.ts`) for all 8 dungeons (including Act 1), remaining earned races (**Goblin**, **Orc**), Cross-Dungeon OSRS Upgrade Attachments, Warband Marks Quartermaster, and full Vale/Brewing tiers (`brew.ts`). | **20 – 45+ hours** | Instant-buy value for $6.99. Heroic Mode doubles the endgame chase of every dungeon built; Capstone Raids and cross-dungeon attachments tie all 8 dungeons into one endgame loop. |
+| **3. Expansion Pack ($3.99–$4.99)** | **3 to 4 Dungeons + 1 Multi-Boss Raid** (New Region, e.g., *Sunken Karst* or *Skyforge Peaks*) | **~45–60 Log Slots.** 1 new Class (`roles.ts`) or Race/Class mastery, 3–4 new Dungeon Set families, new Vale seeds/brews, +1 Raid-exclusive attachment chase item. | **8 – 15 hours** | Scoped to ship in a couple of months off the Dungeon Template; meaty enough for players to instant-buy. |
+
+### The Act 1 Free-Trial Trio
+1. **Barrow Crypt (`barrow`):** Gothic undead crypt & graveyard (slate/purple stone, green necrotic lantern fire, crypt seals, coffin ambush). Sets: *Barrowguard / Candlewake / Rimebone / Shadeveil*. Log prize: **The Risen** (Undead race), *Barrow Hall* look, *the Gravewarden* title.
+2. **Thimblebriar Hollow (`thimblebriar`):** Whimsical gnome fairytale mushroom & brass-clockwork burrow (warm amber roots, glowing giant toadstools, ticking brass gears, spore-bounce pads, bursting spore-pods). Sets: *Clockwork & Alchemy Sparks*. Log prize: **Gnome** (playable race unlocked right in the Free Trial!), *Toadstool Workshop* look, *the Clockwork Knight* title.
+3. **Moonmere Sanctum (`moonmere`):** Woodland elf twilight glade & sunken moon-ruins (emerald moss flagstones, silver moon-pools, starlight conduits, living briar ambushes, eclipse rings). Sets: *Starlight & Living Wilds*. Log prize: *Silverstag Crown*, *Moonmere Glade* look, *the Starcaller* title.
+- **Cross-Dungeon Intertwining:** Bosses across the three dungeons drop **Vale Seeds/Spores** (for run-twist brews) and **OSRS-Style Upgrade Attachment Kits** (*Grave-Iron Hilt*, *Brass Mainspring*, *Moon-Silver Filigree*) that fuse onto gear from sister dungeons.
+
+### Unified Currency: `Warband Marks`
+Instead of separate currencies per dungeon (`Barrow Marks`, etc.), all dungeons award **Warband Marks** into one shared Warband pool:
+- **+1 Warband Mark** per boss kill and **+1 Warband Mark** per clear (Normal or Heroic), plus **+3 Warband Marks** per duplicate unique drop.
+- Spend **Warband Marks** on weapon trait reforging (5 Marks) and at the Hearth Quartermaster for cosmetic trophies, banners, armor trims, and Vale seed catalysts.

@@ -7,7 +7,7 @@
  */
 import { DUNGEONS } from '../content';
 import { CLASSES, CLASS_ORDER, MAX_HEROES, RACES, RACE_ORDER, canMake, defaultSex, heroArt, type ClassId, type RaceId, type SexId } from '../content/folk';
-import { AB, ROLES } from '../content/roles';
+import { AB, abKey } from '../content/roles';
 import type { RoleId } from '../content/types';
 import { newHero } from '../meta/gear';
 import { openProgress, opened, unlockOf } from '../meta/logs';
@@ -38,6 +38,7 @@ export class Creator {
       sex: (el) => this.pickSex(el.dataset.v as SexId),
       lore: () => { this.showLore = !this.showLore; SFX.play('ui'); this.render(); },
       dice: () => { this.name = this.roll(); this.typed = false; this.err = ''; SFX.play('ui'); this.render(); },
+      devopen: () => { this.app.setDev({ allOpen: true }); this.err = ''; SFX.play('equip'); this.render(); },
     });
     root.addEventListener('input', (e) => {
       const t = e.target as HTMLInputElement;
@@ -113,10 +114,13 @@ export class Creator {
   private why(): string | null {
     if (this.app.p.roster.length >= MAX_HEROES) return `You have ${MAX_HEROES} heroes. Let one go in the bunk room to make another.`;
     const R = RACES[this.race];
-    if (R.earned && !this.earnedIn(this.race)) return `${R.plural} will be earned in a dungeon of their own.`;
     if (!CLASSES[this.cls].ready) return `${CLASSES[this.cls].name}s are coming in the classes pass.`;
     if (!canMake(this.race, this.cls)) return this.classesFor(this.race).length ? `${RACES[this.race].name} ${CLASSES[this.cls].name.toLowerCase()}s aren’t drawn yet.` : `${RACES[this.race].plural} arrive in the races pass.`;
-    if (!this.open_(this.race)) { const pr = openProgress(this.app.p, 'race', this.race); return `The ${R.plural} come from filling ${this.earnedIn(this.race)}’s collection log (${pr.have}/${pr.need}).`; }
+    if (!this.open_(this.race)) {
+      if (!this.earnedIn(this.race)) return `${R.plural} will be earned in a dungeon of their own.`;
+      const pr = openProgress(this.app.p, 'race', this.race);
+      return `The ${R.plural} come from filling ${this.earnedIn(this.race)}’s collection log (${pr.have}/${pr.need}).`;
+    }
     return nameProblem(this.app.p, this.name);
   }
   private syncGo(): void {
@@ -150,9 +154,10 @@ export class Creator {
   render(): void {
     const R = RACES[this.race], C = CLASSES[this.cls];
     const earned = this.open_(this.race);
-    const ok = canMake(this.race, this.cls) && earned;
+    const drawn = canMake(this.race, this.cls);
+    const ok = drawn && earned;
     const fallbackRace = this.racesFor(this.cls)[0];
-    const art = heroSprite({ race: canMake(this.race, this.cls) ? this.race : (fallbackRace || this.race), cls: this.cls, sex: this.sex, regular: this.app.p.warband[C.role] }, C.role, this.app.p);
+    const art = heroSprite({ race: drawn ? this.race : (fallbackRace || this.race), cls: this.cls, sex: this.sex, regular: this.app.p.warband[C.role] }, C.role, this.app.p);
 
     const raceMedallion = (r: RaceId): string => {
       const x = RACES[r], can = this.classesFor(r).length > 0, pr = openProgress(this.app.p, 'race', r), mine = this.open_(r);
@@ -186,11 +191,11 @@ export class Creator {
             <div class="cr-unlock-head"><i class="cr-unlock-ic">${GLYPH.lock}</i><div><b>Locked · ${esc(dng)}</b><span>Complete the collection log to awaken the ${esc(R.plural)}</span></div></div>
             <div class="cr-bar"><i style="width:${pct}%"></i><span>${pr.have} / ${pr.need} log slots</span></div>
           </div>`
-        : `<div class="cr-unlock"><div class="cr-unlock-head"><i class="cr-unlock-ic">${GLYPH.lock}</i><div><b>Locked · Future Dungeon</b><span>${esc(R.plural)} are earned in a dungeon to come</span></div></div></div>`
+        : `<div class="cr-unlock"><div class="cr-unlock-head"><i class="cr-unlock-ic">${GLYPH.lock}</i><div><b>Locked · Future Dungeon</b><span>${esc(R.plural)} are earned in a dungeon to come</span></div><button type="button" class="btn small" data-act="devopen">Unlock</button></div></div>`
       : `<div class="cr-unlock"><div class="cr-unlock-head"><i class="cr-unlock-ic">${GLYPH.lock}</i><div><b>Coming Soon</b><span>${esc(R.name)} ${esc(C.name.toLowerCase())}s are still on the drawing board</span></div></div></div>`;
 
     const sigs = C.signature.map((slot) => {
-      const ab = AB[C.role][slot];
+      const ab = AB[abKey({ role: C.role, cls: this.cls })][slot];
       const shortDesc = ab.desc.split('.')[0] + '.';
       return `<div class="cr-ab"><span class="cr-ab-ic">${tile(ab.key)}</span><div class="cr-ab-tx"><b>${esc(ab.name)}</b><span>${esc(shortDesc)}</span></div></div>`;
     }).join('');
@@ -211,7 +216,7 @@ export class Creator {
         <button type="button" class="icon-btn cr-lore-btn" data-act="lore" aria-pressed="${this.showLore}" aria-label="Hero lore" title="Lore">${GLYPH.book}</button>
       </div>
       <div class="cr-main">
-        <div class="cr-model ${ok ? '' : 'shadow'}">
+        <div class="cr-model ${drawn ? '' : 'shadow'}">
           <span class="cr-rays" aria-hidden="true"></span>
           <span class="cr-light" aria-hidden="true"></span>
           <div class="cr-stage-top">
@@ -221,7 +226,7 @@ export class Creator {
               <button type="button" class="cr-sex-btn" data-act="sex" data-v="f" aria-pressed="${this.sex === 'f'}" aria-label="Female" title="Female">${GLYPH.female}</button>
             </div>
           </div>
-          <div class="cr-fig">${heroImg(art, { cls: 'cr-img', alt: ok ? `${R.name} ${C.name}` : '' })}<span class="cr-floor" aria-hidden="true"></span></div>
+          <div class="cr-fig">${heroImg(art, { cls: 'cr-img', alt: drawn ? `${R.name} ${C.name}` : '' })}<span class="cr-floor" aria-hidden="true"></span></div>
           ${unlockCard}
           ${lorePopover}
         </div>

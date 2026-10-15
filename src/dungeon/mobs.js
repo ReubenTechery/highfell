@@ -1,8 +1,8 @@
 /* ---------- mobs: the behaviour library (melee, ranged, casters, brutes, wisps), cages and chains ---------- */
 import { angTo, dist, distXY, TAU } from '../core/math';
 import { pick, rand, rng } from '../core/rng';
-import { HOOKS, S, emit } from './state.js';
-import { addThreat, aggro, banner, bits, call, dots, fx, fxText, hurtHero, killMob, makeMob, pickTarget, sfx, shake } from './entities.js';
+import { S, emit } from './state.js';
+import { addThreat, aggro, banner, bits, call, dots, exposeMob, fx, fxText, hurtHero, hurtMob, killMob, makeMob, pickTarget, sfx, shake } from './entities.js';
 import { canStand, moveEnt, roomIndexOf, walkTo } from './world.js';
 
 export function nearestHeroTo(x, y, preferNonTank) {
@@ -18,7 +18,18 @@ export function randomHero(nonTank, except) {
 
 export function mobTick(m, dt) {
   m.flash -= dt; m.lunge -= dt; m.moving -= dt;
+  m.exposed = Math.max(0, (m.exposed || 0) - dt);
   if (!m.alive) { m.deadT += dt; return; }
+  if (m.bleed && m.bleed.left > 0) {
+    m.bleed.left -= dt;
+    m.bleed.next -= dt;
+    if (m.bleed.next <= 0) {
+      m.bleed.next += 0.5;
+      hurtMob(m, m.bleed.per, m.bleed.src, { col: '#7CF06A', size: 16, noCrit: true });
+      dots(m.x, m.y - 38, '#7CF06A', 2, 70, { size: 4 });
+      if (!m.alive) return;
+    }
+  }
   const st = m.st;
   st.stun = Math.max(0, st.stun - dt); st.freeze = Math.max(0, st.freeze - dt);
   if (st.slowT > 0) { st.slowT -= dt; if (st.slowT <= 0) st.slow = 0; }
@@ -41,11 +52,7 @@ export function mobTick(m, dt) {
   }
   const prev = m.target;
   m.target = pickTarget(m);
-  if (prev && m.target && m.target !== prev) {
-    if (m.isBoss) bossTurned(m, prev, m.target);
-    // you out-did the tank and it came for you: once a run, say why
-    if (m.target.isPlayer && m.target.role !== 'tank' && prev.role === 'tank' && !S.hints.pulled) { S.hints.pulled = 1; HOOKS.hint('pulled'); }
-  }
+  if (prev && m.target && m.target !== prev && m.isBoss) bossTurned(m, prev, m.target);
   if (!m.target) {
     const n = nearestHeroTo(m.x, m.y);
     if (n && dist(m, n) < 700) { addThreat(m, n, 1); m.target = n; } else return;
@@ -54,7 +61,7 @@ export function mobTick(m, dt) {
     if (m.target.role === 'tank' || m.forcedT > 0) m.loose = 0; else m.loose = (m.loose || 0) + dt;
     const was = m.wild;
     m.wild = m.loose > 3;
-    if (m.wild && !was) { fxText(m.x, m.y - (m.M.big ? 150 : 100), 'Wild!', '#FF6B5E', 20, { dur: 1 }); if (!S.hints.wild) { S.hints.wild = 1; HOOKS.hint('wild'); } }
+    if (m.wild && !was) fxText(m.x, m.y - (m.M.big ? 150 : 100), 'Wild!', '#FF6B5E', 20, { dur: 1 });
   }
   if (m.M.ai && m.M.ai(m, dt)) return;
   // a boss's own move (a party-wide hit) can knock its target down mid-frame
@@ -88,8 +95,11 @@ function meleeTick(m, dt) {
     m.wind -= dt; m.face = angTo(m, t); m.flip = Math.cos(m.face) < 0;
     if (m.wind <= 0) {
       if (d <= reach + 20) {
-        hurtHero(t, M.dmg * m.dmgMul * (m.wild ? 1.4 : 1), m, { heavy: M.heavy, block: true, perfectable: false });
-        fx({ type: 'slash', x: t.x, y: t.y - 36, a: angTo(m, t), r: M.big ? 58 : 38, dur: 0.16, col: '#F0E8D2' });
+        const crush = !!(M.boss || M.big) && t.role !== 'tank';
+        const mult = (m.wild ? 1.4 : 1) * (crush ? 1.85 : 1);
+        hurtHero(t, M.dmg * m.dmgMul * mult, m, { heavy: M.heavy || crush, block: true, perfectable: false, crush });
+        if (crush && t.isPlayer) call('Crushing blow! Let the tank hold him!', 'alarm', 1.6);
+        fx({ type: 'slash', x: t.x, y: t.y - 36, a: angTo(m, t), r: M.big ? 58 : 38, dur: 0.16, col: crush ? '#FF6B5E' : '#F0E8D2' });
         sfx(M.big ? 'thud' : 'hit', 0.7);
       }
       m.lunge = 0.18; m.lungeA = angTo(m, t);
@@ -155,13 +165,12 @@ function callerTick(m, dt) {
       }
       banner('He raised more skeletons. Hit or freeze him while he casts!', 'warn', 2.4);
     } });
-    if (!S.hints.raise) { S.hints.raise = 1; HOOKS.hint('kick'); }
     return true;
   }
   if (ab.rot <= 0) {
-    ab.rot = 7.5;
+    ab.rot = 7.0;
     const v = randomHero(false);
-    if (v) { S.hazards.push({ shape: 'circle', x: v.x, y: v.y, r: 85, warn: 1.0, live: 6, tick: 0.5, dmg: 20, magic: true, pool: 'rot', t: 0, src: m }); sfx('rot', 0.6); }
+    if (v) { S.hazards.push({ shape: 'circle', x: v.x, y: v.y, r: 88, warn: 1.0, live: 6, tick: 0.5, dmg: 46, magic: true, pool: 'rot', t: 0, src: m }); sfx('rot', 0.6); }
   }
   const t = m.target, d = dist(m, t);
   if (d < m.r + t.r + 26) return false;
@@ -173,12 +182,12 @@ function callerTick(m, dt) {
 
 function bruteTick(m, dt) {
   const ab = m.ab;
-  if (ab.slam === undefined) ab.slam = 4;
+  if (ab.slam === undefined) ab.slam = 2.8;
   if (m.busy > 0) { m.busy -= dt; if (m.busy <= 0) m.pose = null; return true; }
   ab.slam -= dt;
   if (ab.slam <= 0) {
-    ab.slam = 9; m.busy = 1.7; m.pose = 'wind'; m.wind = 0;
-    S.hazards.push({ shape: 'circle', x: m.x, y: m.y, r: 150, warn: 1.5, t: 0, src: m, dmg: 110, knock: 300, follow: m,
+    ab.slam = 7.5; m.busy = 1.6; m.pose = 'wind'; m.wind = 0;
+    S.hazards.push({ shape: 'circle', x: m.x, y: m.y, r: 150, warn: 1.45, t: 0, src: m, dmg: 230, knock: 300, stun: 0.6, follow: m,
       onFire: (z) => { shake(8); sfx('slam'); fx({ type: 'ring', x: z.x, y: z.y, r0: 30, r1: 160, col: '#C9B79A', dur: 0.35, w: 10, ground: true }); dots(z.x, z.y, '#C9B79A', 14, 260); m.lunge = 0.2; m.lungeA = Math.PI / 2; } });
     return true;
   }
@@ -195,7 +204,7 @@ function wispTick(m, dt) {
   m.x += Math.cos(a) * m.speed * dt; m.y += Math.sin(a) * m.speed * dt;
   m.flip = Math.cos(a) < 0; m.moving = 0.1; m.walkT += dt * 4;
   if (dist(m, t) < m.r + t.r + 6) {
-    const got = hurtHero(t, 85, m, { magic: true, block: false });
+    const got = hurtHero(t, 145, m, { magic: true, block: false, hazard: true });
     if (got > 0) { t.st.haunt = 3; if (t.isPlayer) fxText(t.x, t.y - 110, 'Haunted', '#C8F5E8', 16); }
     killMob(m, null);
   }
@@ -206,7 +215,7 @@ function wispTick(m, dt) {
    so the boss turns on someone else until he mashes out (or a mate breaks him out) and Slams it back. */
 export function makeCage(h, boss) {
   const c = makeMob('rattler', h.x, h.y, null);
-  Object.assign(c, { cage: true, hp: 10, maxHp: 10, name: 'Bone cage', r: 30, hero: h, life: 6, state: 'fight', ghostProps: true, born: S.t });
+  Object.assign(c, { cage: true, hp: 10, maxHp: 10, name: 'Bone cage', r: 30, hero: h, boss, life: 6, state: 'fight', ghostProps: true, born: S.t });
   h.st.caged = c; h.cast = null; h.blocking = false; h.dodgeT = 0; h.dash = null;
   for (const m of S.mobs) {
     if (m.threat.has(h.id)) m.threat.set(h.id, m.threat.get(h.id) * 0.5);
@@ -215,7 +224,7 @@ export function makeCage(h, boss) {
   S.mobs.push(c);
   bits(h.x, h.y - 30, 'shard_bone', 6, 160);
   sfx('cage');
-  if (h.isPlayer) { call('Tap to break free!', 'alarm', 1.6); HOOKS.hint('cageSelf'); } else if (!S.hints.cage) { S.hints.cage = 1; HOOKS.hint('cage'); }
+  if (h.isPlayer) call('Tap to break free!', 'alarm', 1.6);
   return c;
 }
 function cageTick(c, dt) {
@@ -246,8 +255,14 @@ export function breakCage(c, freed, by) {
   if (freed) {
     fxText(c.x, c.y - 130, 'Free!', '#9BE15D', 24); sfx('cagebreak'); S.stats.cages++;
     const self = !!(c.hero && by === c.hero);
-    emit({ type: 'cage.broken', player: !!(by && by.isPlayer), self, secs: S.t - (c.born || S.t) });
+    const secs = S.t - (c.born || S.t);
+    emit({ type: 'cage.broken', player: !!(by && by.isPlayer), self, secs });
     const h = c.hero;
+    const boss = c.boss || S.boss;
+    if (secs < 2.0 && boss && boss.alive) {
+      exposeMob(boss, 2.5, 'Shattered! Exposed!');
+      if (h && h.cd) h.cd.a2 = 0;
+    }
     if (h && h.isPlayer && h.alive && S.boss && S.boss.alive && S.boss.target !== h) call('Out! Now Slam him back', 'alarm', 1.6);
   }
 }
@@ -256,8 +271,7 @@ export function makeChain(boss, h) {
   h.st.chained = ch;
   S.chains.push(ch);
   sfx('chain');
-  if (!S.hints.chain) { S.hints.chain = 1; HOOKS.hint('chain'); }
-  call('Cut the chain!', 'alarm', 1.6);
+  call(S.player && S.player.role === 'healer' ? 'Swipe the chain!' : 'Chained! Healer, cut it!', 'alarm', 1.6);
   return ch;
 }
 export function chainEnds(ch) { const b = ch.boss, h = ch.hero; return { ax: b.x + 70, ay: b.y - 120, bx: h.x, by: h.y - 44 }; }
@@ -265,10 +279,11 @@ export function chainTick(ch, dt) {
   const h = ch.hero;
   ch.t += dt; ch.tick -= dt;
   if (!h.alive || !ch.boss.alive || ch.t >= ch.max) { cutChain(ch, false); return; }
-  if (ch.tick <= 0) { ch.tick = 0.5; hurtHero(h, 18, ch.boss, { magic: true, pierce: true, block: false, dodge: false, numCol: '#C8F5E8', numSize: 15, numDur: 0.6 }); }
+  if (ch.tick <= 0) { ch.tick = 0.5; hurtHero(h, 24, ch.boss, { magic: true, pierce: true, block: false, dodge: false, numCol: '#C8F5E8', numSize: 15, numDur: 0.6 }); }
 }
 export function cutChain(ch, byWho) {
   if (ch.dead) return;
+  if (byWho && byWho.kind === 'hero' && byWho.role !== 'healer') return;
   ch.dead = true;
   if (ch.hero.st.chained === ch) ch.hero.st.chained = null;
   S.chains = S.chains.filter((c) => c !== ch);
@@ -278,6 +293,10 @@ export function cutChain(ch, byWho) {
     fxText(mx, my - 20, 'Cut!', '#F2C230', 26);
     dots(mx, my, '#C9D2DC', 10, 200);
     sfx('cut'); S.stats.cuts++;
+    if (ch.boss && ch.boss.alive) {
+      hurtMob(ch.boss, 160, byWho.kind === 'hero' ? byWho : null, { raw: true, col: '#FFE08A' });
+      exposeMob(ch.boss, 3.0, 'Chain Snapped! Exposed!');
+    }
     emit({ type: 'chain.cut', player: !!byWho.isPlayer });
   }
 }

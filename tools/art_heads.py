@@ -3,12 +3,16 @@
 # it so a scaled head keeps the one ink weight. The elf returns two parts: the long hair that falls behind
 # the body, then the head itself.
 import re
-from art_sprites import K, s, ln, c, e, both, halo, f, BONE, BONE_D, GRN, GRN_L, GOLD
+from art_sprites import K, s, ln, c, e, both, halo, f, BONE, BONE_D, GRN, GRN_L, GOLD, FROST
 
 # skin, hair and eyes
 DSKIN, DSKIN_D, BEARD, BEARD_D = '#F2B48C', '#E0956C', '#E2733A', '#B8552A'
 HSKIN, HSKIN_D, HAIR, HAIR_L = '#A86F4C', '#8E5A3B', '#3E2A1E', '#684936'
 ESKIN, ESKIN_D, EHAIR, EHAIR_D, ELF_BROW = '#F3D7C4', '#E3B9A2', '#EEF2F6', '#C9D4E0', '#8D93B2'
+GSKIN, GSKIN_D, GBLUSH = '#F5C4A2', '#E29874', '#F29B9B'
+GHAIR_M, GHAIR_MD, GHAIR_F, GHAIR_FD, GHAIR_FL = '#F2A63B', '#BA7218', '#E66048', '#AC3B26', '#F89882'
+GBSKIN, GBSKIN_D = '#78C242', '#4E8C24'
+GBHAIR_M, GBHAIR_F, GBHAIR_FD = '#2D2438', '#A8284E', '#6B1630'
 HBLUE = '#4F86C6'
 
 TOK = re.compile(r'[A-Za-z]|-?\d*\.?\d+')
@@ -233,3 +237,114 @@ def risen_back(k=1.0):
     o.append(s('M0 -17 C9.5 -17 13.5 -11 13.5 -3 C13.5 3 10.5 8 5.5 11.5 H-5.5 C-10.5 8 -13.5 3 -13.5 -3 C-13.5 -11 -9.5 -17 0 -17 Z', BONE, W(3.2)))
     o.append(ln('M-4 -16.4 L-2.2 -10 L-5 -6 L-3.4 -1 M5.5 -15.4 L7 -11 L5.2 -8', K, W(1.6)))
     return o
+
+
+GNOME_EAR = 'M-13.5 -2 C-23 -8 -29 -2 -27 6 C-24 11 -17 11 -13 6 Z'
+GOBLIN_EAR = 'M-12.5 -3 C-22 -10 -34 -14 -39 -8 C-35 -1 -30 3 -26 3 L-29 6.5 C-23 9.5 -16 8 -12 4.5 Z'
+
+
+def gnome_goggles(W, y=-12.2):
+    """chunky brass tinker goggles with bright cyan-frost lenses perched on the forehead"""
+    o = [s(f'M-15.5 {f(y - 1.8)} H15.5 V{f(y + 2.2)} H-15.5 Z', '#6B4528', W(2.6))]
+    for sx in (-1, 1):
+        gx = 6.6 * sx
+        o.append(c(gx, y, 5.6, GOLD, W(2.6)) + c(gx, y, 3.5, FROST, W(1.8)))
+        o.append(c(gx - 1.2, y - 1.2, 1.2, '#FFFFFF', 0))
+    return ''.join(o)
+
+
+def gnome_head(k=1.0, fem=False, goggles=True):
+    """Cute WoW-style pint-sized gnome head: big round sail ears, huge glossy eyes, button turnip nose,
+    twin high space-buns (female) or perky tuft + handlebar moustache & goatee (male)."""
+    W = lambda w: w / k
+    o = []
+    o.append(both(GNOME_EAR, GSKIN, W(3.0)))
+    o.append(ln('M-16.5 -0.5 C-22 -3 -23.5 3.5 -17.5 5 M16.5 -0.5 C22 -3 23.5 3.5 17.5 5', GSKIN_D, W(2.0)))
+    if fem:
+        for sx in (-1, 1):
+            bx = 15.5 * sx
+            o.append(c(bx, -14.5, 7.8, GHAIR_F, W(3.2)))
+            o.append(ln(f'M{f(bx - 3 * sx)} -18 C{f(bx + 2 * sx)} -19 {f(bx + 4.5 * sx)} -15 {f(bx + 2 * sx)} -11', GHAIR_FL, W(2.0)))
+            o.append(s(f'M{f(bx - 4.8)} -10 H{f(bx + 4.8)} V-6.8 H{f(bx - 4.8)} Z', GOLD, W(2.2)))
+    o.append(s('M-15.2 -1 C-15.8 -16 15.8 -16 15.2 -1 C15.6 9 10 15.2 0 15.5 C-10 15.2 -15.6 9 -15.2 -1 Z', GSKIN, W(3.3)))
+    o.append(e(-9.5, 4.8, 3.5, 2.2, GBLUSH, 0) + e(9.5, 4.8, 3.5, 2.2, GBLUSH, 0))
+    for mx in (1, -1):
+        o.append(eye(6.0 * mx, 0.4, 4.5, 5.0, (0.45 * mx, 0.35), w=W(2.2)))
+        if fem:
+            o.append(ln(tp('M9.4 -2.0 L12.2 -4.0', mx=mx), K, W(2.4)))
+            o.append(ln(tp('M2.2 -6.4 C5.4 -8.0 9.4 -7.8 11.8 -5.8', mx=mx), GHAIR_FD, W(2.5)))
+        else:
+            o.append(ln(tp('M1.8 -6.2 C5.2 -8.2 9.8 -7.8 12.2 -5.4', mx=mx), GHAIR_MD, W(3.2)))
+    o.append(c(0, 4.0, 3.6, GSKIN_D, W(2.5)) + c(-1.0, 3.0, 1.2, '#FFE4D0', 0))
+    if fem:
+        o.append(ln('M-4.5 9.5 C-1.8 12.0 1.8 12.0 4.5 9.5', K, W(2.4)))
+        o.append(s('M-15.5 -4.0 C-16.2 -15.5 -7.5 -17.8 0 -12.8 C7.5 -17.8 16.2 -15.5 15.5 -4.0 C12 -9.5 5.8 -11.2 0 -9.6 C-5.8 -11.2 -12 -9.5 -15.5 -4.0 Z', GHAIR_F, W(3.1)))
+    else:
+        o.append(s('M-13.8 8.8 C-9.4 5.2 -3.4 6.4 0 8.6 C3.4 6.4 9.4 5.2 13.8 8.8 C10.4 12.6 4.5 12.2 0 10.8 C-4.5 12.2 -10.4 12.6 -13.8 8.8 Z', GHAIR_M, W(2.7)))
+        o.append(s('M-4.8 10.8 L0 17.5 L4.8 10.8 Z', GHAIR_M, W(2.6)))
+        o.append(s('M-15.5 -4.0 C-16.5 -15.5 -8.5 -18.5 0 -17.2 L4.5 -20.5 L6.5 -16.2 C12.5 -15.5 16.2 -11.5 15.5 -4.0 C11.5 -9.5 5.2 -10.8 0 -10.0 C-5.2 -10.8 -11.5 -9.5 -15.5 -4.0 Z', GHAIR_M, W(3.1)))
+    if goggles:
+        o.append(gnome_goggles(W, -12.2))
+    return o
+
+
+def gnome_back(k=1.0, fem=False):
+    W = lambda w: w / k
+    col, dark = (GHAIR_F, GHAIR_FD) if fem else (GHAIR_M, GHAIR_MD)
+    o = [both(GNOME_EAR, GSKIN, W(3.0))]
+    if fem:
+        for sx in (-1, 1):
+            o.append(c(15.5 * sx, -14.5, 7.8, col, W(3.2)))
+    o.append(s('M-15.2 0 C-15.8 -16 15.8 -16 15.2 0 C15.2 9.5 9.5 15 0 15 C-9.5 15 -15.2 9.5 -15.2 0 Z', col, W(3.3)))
+    o.append(ln('M-6.5 -8 C-8.5 -1 -8.5 6 -5.5 11.5 M6.5 -8 C8.5 -1 8.5 6 5.5 11.5', dark, W(2.2)))
+    o.append(ln('M-15.2 -8.5 H15.2', '#6B4528', W(3.0)))
+    return o
+
+
+def goblin_head(k=1.0, fem=False):
+    """Cute & cool WoW-style goblin head: wide notched bat-wing ears with gold rings, big gleaming amber-gold eyes,
+    perky pointed nose, cheeky grin with a cute little white fang, and spiky plum/crimson hair."""
+    W = lambda w: w / k
+    o = []
+    o.append(both(GOBLIN_EAR, GBSKIN, W(3.1)))
+    o.append(ln('M-14.5 -1 C-22 -4.5 -29 -6 -34 -4.5 M14.5 -1 C22 -4.5 29 -6 34 -4.5', GBSKIN_D, W(2.0)))
+    o.append(c(-28.5, 5.2, 3.2, GOLD, W(2.2)))
+    if fem:
+        o.append(c(28.5, 5.2, 3.2, GOLD, W(2.2)))
+        o.append(s('M-5.5 -13.5 C-10 -24.5 -4.5 -31 3.5 -28.5 L1.2 -22 L10 -26.5 C13 -21 10 -14.5 5.5 -12.5 Z', GBHAIR_F, W(3.0)))
+    o.append(s('M-14.8 -2 C-15.4 -15.8 15.4 -15.8 14.8 -2 C15.2 7.2 9.5 14.8 0 16.0 C-9.5 14.8 -15.2 7.2 -14.8 -2 Z', GBSKIN, W(3.3)))
+    if fem:
+        o.append(e(-9.2, 4.6, 3.3, 2.0, '#E07A8A', 0) + e(9.2, 4.6, 3.3, 2.0, '#E07A8A', 0))
+    for mx in (1, -1):
+        ex, ey = 5.8 * mx, 0.2
+        o.append(e(ex, ey, 4.5, 4.3, '#FFE066', W(2.2)))
+        o.append(c(ex + 0.45 * mx, ey + 0.2, 2.1, K, 0) + c(ex - 0.35 * mx, ey - 0.85, 0.95, '#FFFFFF', 0))
+        if fem:
+            o.append(ln(tp('M9.4 -2.0 L12.4 -4.0', mx=mx), K, W(2.5)))
+            o.append(ln(tp('M1.8 -6.0 C5.2 -7.8 9.2 -7.6 11.8 -5.4', mx=mx), K, W(2.6)))
+        else:
+            o.append(ln(tp('M1.5 -5.0 L11.4 -7.4', mx=mx), K, W(3.2)))
+    o.append(s('M-2.5 2.5 L0 7.4 L3.0 4.6', GBSKIN_D, W(2.3)))
+    o.append(ln('M-5.8 10.4 C-2.0 12.8 2.4 12.8 6.2 10.0', K, W(2.5)))
+    o.append(s('M-4.6 11.0 L-2.8 7.2 L-1.0 11.3 Z', BONE, W(1.9)))
+    if fem:
+        o.append(s('M-15.0 -4.0 C-15.8 -15.5 -6.5 -17.8 0 -13.5 C6.5 -17.8 15.8 -15.5 15.0 -4.0 C11 -9.5 4.8 -11.2 -1 -9.6 C-6.5 -11.2 -11.5 -9.5 -15.0 -4.0 Z', GBHAIR_F, W(3.0)))
+    else:
+        o.append(s('M-15.0 -4.2 C-15.8 -15.8 -6.5 -18.2 0 -16.2 L-2 -20.5 L4.5 -17.2 L8.5 -20 L9.5 -15.2 C13.8 -13.5 15.5 -9.5 15.0 -4.2 C10.5 -9.5 4.2 -10.8 0 -10.2 C-5.2 -10.8 -11 -9.5 -15.0 -4.2 Z', GBHAIR_M, W(3.0)))
+    return o
+
+
+def goblin_back(k=1.0, fem=False):
+    W = lambda w: w / k
+    col, dark = (GBHAIR_F, GBHAIR_FD) if fem else (GBHAIR_M, K)
+    o = [both(GOBLIN_EAR, GBSKIN, W(3.1))]
+    o.append(c(-28.5, 5.2, 3.2, GOLD, W(2.2)))
+    if fem:
+        o.append(c(28.5, 5.2, 3.2, GOLD, W(2.2)))
+    o.append(s('M-14.5 -1 C-15.2 -15.8 15.2 -15.8 14.5 -1 C14.5 8.5 9 14.8 0 14.8 C-9 14.8 -14.5 8.5 -14.5 -1 Z', col, W(3.3)))
+    if fem:
+        o.append(s('M-5.5 -10 C-9.5 -23 -3.5 -29 4.5 -26 C9.5 -21 8.5 -8 4.5 4.5 C0 6.5 -4.5 2 -5.5 -10 Z', GBHAIR_F, W(3.0)))
+    else:
+        o.append(ln('M-5.5 -8 L-3.5 6.5 M5.5 -8 L3.5 6.5', dark, W(2.2)))
+    return o
+

@@ -11,7 +11,7 @@ import { BARROW } from '../content/barrow';
 import { BARROW_HEROIC } from '../content/barrow/heroic';
 import type { DungeonInfo } from '../content/types';
 import { BARROW_ENGINE } from '../content/barrow/engine';
-import { AB, MEND, ROLES } from '../content/roles';
+import { AB, MEND, ROLES, abKey } from '../content/roles';
 import type { Rar, RoleId } from '../content/types';
 import { newGame, respawn, update } from '../dungeon/game.js';
 import { S, setHooks } from '../dungeon/state.js';
@@ -24,6 +24,7 @@ import { lootGlint, startWalkout } from '../dungeon/walkout.js';
 import { Achiever } from '../meta/achievements';
 import { loadoutFor, partyRar, plainLoadout, worn } from '../meta/gear';
 import { countBossWipe, countRunStart, resolveClear, resolveKill, runLoot, tellOf, type ClearLoot, type KillLoot } from '../meta/loot';
+import { heroesFor } from '../meta/party';
 import { activeHero, finishIntroRun, heroById, roleOf, type Hero } from '../meta/profile';
 import { heroArt } from '../content/folk';
 import { RECIPES } from '../content/vale';
@@ -43,23 +44,8 @@ const STEP = 1 / 60;
 const KEY: Record<string, string> = { a1: '1', a2: '2', a3: '3', a4: '4', dodge: 'Space' };
 const ROLE_ICON: Record<string, string> = { tank: 'shield', healer: 'mend', dps: 'blizzard' };
 const HINTS: Record<string, [string, string, string, number?]> = {
-  move: ['Drag on the left side of the screen to move.', 'WASD or the arrow keys to move.', 'Move', 8],
   introMove: ['Drag on the left to walk up into the skeletons.', 'Use WASD or the arrow keys to walk up into the skeletons.', 'Walk into the pack', 12],
   introChest: ['The lantern flared gold and the chest knocked twice: a unique is inside! Walk to the chest to open it.', 'The lantern flared gold and the chest knocked twice: a unique is inside! Walk to the chest to open it.', 'The walkout', 8],
-  dodge: ['Swipe anywhere to dodge-roll out of the red.', 'Space to dodge-roll out of the red.', 'Dodge', 6],
-  block: ['Hold the shield button. Block right before it lands to stun him and hit back.', 'Hold 4 to block. Block right before it lands to stun him and hit back.', 'Block it', 6],
-  slam: ['Slam grabs everything near you. Use it when mobs run at your mates.', 'Slam (3) grabs everything near you. Use it when mobs run at your mates.', 'Slam', 6],
-  heal: ['Tap a name, or tap a hero, to heal them. Smite when everyone is fine.', 'Click a name, or press Z, X or C, to heal. Smite (4) when everyone is fine.', 'Heal', 7],
-  aim: ['Drag Blizzard to aim it. A quick tap aims it for you.', 'Blizzard (1) lands where your mouse is.', 'Aim', 6],
-  shatter: ['Frozen? Icicle (4) and Comet hit frozen mobs much harder.', 'Frozen? Icicle (4) and Comet hit frozen mobs much harder.', 'Shatter', 6],
-  kick: ['He is casting. Hit him hard, Charge him or Rime burst him to stop it.', 'He is casting. Hit him hard, Charge him or Rime burst him to stop it.', 'Interrupt', 6],
-  wisp: ['Swipe through the wisps before they reach anyone.', 'Click and drag through the wisps before they reach anyone.', 'Wisps', 6],
-  chain: ['Swipe across the chain to cut it.', 'Drag the mouse across the chain to cut it.', 'Chain', 6],
-  cage: ['The tank is caged and the boss is loose. Tap the cage to break him out.', 'The tank is caged and the boss is loose. Click the cage to break him out.', 'Cage', 7],
-  cageSelf: ['Tap fast to break out, then Slam him back!', 'Mash Space to break out, then Slam him back!', 'Caged', 5],
-  wild: ['Mobs that aren’t on the tank go wild after a few seconds. Tanks, grab them.', 'Mobs that aren’t on the tank go wild after a few seconds. Tanks, grab them.', 'Wild', 7],
-  pulled: ['You pulled one off the tank. Let the tank hit first, then go.', 'You pulled one off the tank. Let the tank hit first, then go.', 'Aggro', 6],
-  rings: ['Dodge-roll through the rings as they reach you.', 'Space through the rings as they reach you.', 'Rings', 6],
 };
 
 interface TutStep { slot: string; icon: string; step: string; title: string; badge: string; text: string; btn: string }
@@ -153,7 +139,7 @@ export class RunScene implements InputUI {
     el.style.left = s.ox + 'px'; el.style.top = s.oy + 'px';
     const dx = s.x - s.ox, dy = s.y - s.oy, l = Math.hypot(dx, dy), m = Math.min(l, 56);
     (el.firstElementChild as HTMLElement).style.transform = `translate(${(dx / (l || 1)) * m}px, ${(dy / (l || 1)) * m}px)`;
-    this.hintDone('move'); this.hintDone('introMove');
+    this.hintDone('introMove');
   }
   hintDone(key: string): void { this.hintsDone.add(key); if (this.hintKey === key) { $('hint').hidden = true; this.hintKey = null; } }
   holdBtn(slot: string, on: boolean): void { this.root.querySelector(`.ab[data-slot="${slot}"]`)?.classList.toggle('held', on); }
@@ -241,8 +227,8 @@ export class RunScene implements InputUI {
   }
 
   private hint(key: string): void {
-    if (!S || S.quiet || S.auto || this.hintsDone.has(key)) return;
-    if (this.intro && TUT_STEPS[key]) { this.showTut(key); return; }
+    if (!this.intro || !S || S.quiet || S.auto || this.hintsDone.has(key)) return;
+    if (TUT_STEPS[key]) { this.showTut(key); return; }
     const t = HINTS[key];
     if (!t) return;
     const h = $('hint');
@@ -263,14 +249,20 @@ export class RunScene implements InputUI {
     const role: RoleId = intro ? 'tank' : h ? roleOf(h) : o.role || 'tank';
     this.heroId = h ? h.id : null;
     this.role = role;
-    const test = o.testRar !== null || !h;
+    const test = o.testRar != null || !h;
     this.practice = o.start !== 'entrance' || test;
-    const rar: Rar = intro ? 3 : o.testRar !== null ? o.testRar : h ? partyRar(p, h) : 0;
+    const rar: Rar = intro ? 3 : o.testRar != null ? o.testRar : h ? partyRar(p, h) : 0;
     const tierSuffix = rar <= 0 ? '_rags' : rar === 1 ? '_iron' : '';
     const loadouts: Record<string, unknown> = {};
     for (const r of ['tank', 'healer', 'dps'] as RoleId[]) {
-      const base = r === role ? (test || !h ? plainLoadout(r, rar) : loadoutFor(p, h)) : plainLoadout(r, rar);
-      loadouts[r] = { ...base, sprite: `${ROLES[r].sprite}${tierSuffix}` };
+      const mate = r === role ? null : (!test && !intro && !o.heroic ? heroesFor(p, r)[0] || null : null);
+      if (mate) {
+        const base = loadoutFor(p, mate);
+        loadouts[r] = { ...base, cls: mate.cls, name: mate.name, sprite: heroSprite(mate, r, p) };
+      } else {
+        const base = r === role ? (test || !h ? plainLoadout(r, rar, h?.cls) : loadoutFor(p, h)) : plainLoadout(r, rar);
+        loadouts[r] = { ...base, sprite: `${ROLES[r].sprite}${tierSuffix}` };
+      }
     }
     if (intro) loadouts.tank = { ...(loadouts.tank as object), unique: 'gravedigger', bonuses: ['barrowguard2'], name: 'Brannoc', sprite: 'tank' };
     // one bottle poured at the door for the whole party: only the poured one is spent (practice keeps it)
@@ -280,7 +272,7 @@ export class RunScene implements InputUI {
     if (brew && !this.practice) spendBottle(p, brew);
     if (h) {
       const spr = test ? `${heroArt(h.race, h.cls, h.sex) || ROLES[role].sprite}${tierSuffix}` : heroSprite(h, role, p);
-      loadouts[role] = { ...(loadouts[role] as object), name: h.name, sprite: spr };
+      loadouts[role] = { ...(loadouts[role] as object), cls: h.cls, name: h.name, sprite: spr };
     }
     const looks = Object.keys(p.collection).filter((id) => COLLECTIBLES[id] && (COLLECTIBLES[id].kind === 'cosmetic') && !p.settings.looksOff.includes(id));
     const wornSet = !!h && Object.values(worn(p, h)).some((w) => w.def.setId && SETS[w.def.setId]);
@@ -322,12 +314,7 @@ export class RunScene implements InputUI {
     updateCam(0, true);
     this.lastRoom = -1;
     this.live = true; this.acc = 0;
-    if (intro) {
-      this.showWelcome();
-    } else {
-      setTimeout(() => this.hint('move'), 500);
-      if (role === 'healer') setTimeout(() => this.hint('heal'), 9000);
-    }
+    if (intro) this.showWelcome();
   }
   stop(): void {
     this.live = false;
@@ -406,8 +393,12 @@ export class RunScene implements InputUI {
       const x = e.x ?? S.player.x, y = e.y ?? S.player.y;
       const last = e.boss === this.dg.finalBoss;
       if (!this.practice && hero) {
+        const prevBest = p.bosses[`${this.dg.id}.${e.boss}`]?.pb ?? null;
         const kl = resolveKill(p, this.dg, e.boss, hero, e.time, this.lootRng);
         this.kills.push(kl);
+        if (prevBest !== null && e.time < prevBest) {
+          banner(`New Personal Best! ${fmtT(e.time)} (-${Math.max(1, Math.round(prevBest - e.time))}s)`, 'good', 2.8);
+        }
         for (const d of kl.drops) if (d.isNew && this.ach) for (const id of this.ach.collected(d.id)) this.unlockedNow(id);
         if (last) {
           this.clear = resolveClear(p, this.dg, hero, S.t - S.startedAt, this.lootRng);
@@ -532,17 +523,17 @@ export class RunScene implements InputUI {
 
   /* ---------------------------------------------------------------- HUD */
   private buildHud(): void {
-    const p = S.player, A = AB[p.role as RoleId];
+    const p = S.player, A = AB[abKey(p)];
     $('frames').innerHTML = S.heroes.map((h: any) => `<li class="fr${h.isPlayer ? ' me' : ''}" data-heal="${h.role}" data-role="${h.role}">
-      <span class="fr-top"><span class="fi">${tile(ROLE_ICON[h.role])}</span><span class="fr-n">${h.isPlayer ? 'You' : h.name}</span><i class="ag" aria-hidden="true"></i></span>
+      <span class="fr-top"><span class="fi">${tile(h.cls === 'rogue' ? 'viper' : ROLE_ICON[h.role])}</span><span class="fr-n">${h.isPlayer ? 'You' : h.name}</span><i class="ag" aria-hidden="true"></i></span>
       <span class="fb"><i class="hpf"></i><i class="abf"></i></span>${h.role === 'healer' ? '<span class="fb mp"><i class="mpf"></i></span>' : ''}</li>`).join('');
-    $('frames').querySelectorAll<HTMLElement>('.fr').forEach((li) => li.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (S.player.role === 'healer') { mend(S.player, heroBy(li.dataset.role)); this.hintDone('heal'); } }));
+    $('frames').querySelectorAll<HTMLElement>('.fr').forEach((li) => li.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (S.player.role === 'healer') mend(S.player, heroBy(li.dataset.role)); }));
     const btn = (slot: string) => {
       const def = slot === 'dodge' ? { key: 'dodge', name: 'Dodge', desc: 'Roll out of trouble.' } as { key: string; name: string; desc: string; mana?: number; hold?: boolean; combo?: string } : A[slot as 'a1'];
       const mana = slot === 'dodge' ? 0 : abMana(p, slot);
       const tip = def.combo ? `${def.name}: ${def.desc} (${def.combo})` : `${def.name}: ${def.desc}`;
       const tag = slot === 'dodge' ? 'Roll' : def.hold ? 'Block' : '';
-      const kind = slot === 'dodge' ? ' roll' : def.hold ? ' hold' : slot === 'a1' && p.role === 'tank' ? ' main' : '';
+      const kind = slot === 'dodge' ? ' roll' : def.hold ? ' hold' : slot === 'a1' && (p.role === 'tank' || p.cls === 'rogue') ? ' main' : '';
       return `<button type="button" class="ab${kind}" data-slot="${slot}" aria-label="${esc(def.name)}" title="${esc(tip)} (${KEY[slot]})">
         <span class="face">${tile(def.key)}</span><span class="sweep"></span><span class="cdn"></span><kbd>${KEY[slot]}</kbd>${mana ? `<span class="cost">${mana}</span>` : ''}${tag ? `<span class="ab-tag">${tag}</span>` : ''}<span class="c-tag" aria-hidden="true"></span><span class="glow"></span></button>`;
     };
@@ -552,7 +543,7 @@ export class RunScene implements InputUI {
     if (p.role === 'healer') {
       pad.hidden = false;
       pad.innerHTML = S.heroes.map((h: any) => `<button type="button" class="pd" data-heal="${h.role}" data-role="${h.role}" aria-label="Heal ${h.isPlayer ? 'yourself' : h.name}"><span class="pd-n">${h.isPlayer ? 'You' : h.name}</span><span class="fb"><i class="hpf"></i><i class="abf"></i></span></button>`).join('');
-      pad.querySelectorAll<HTMLElement>('.pd').forEach((b) => b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); mend(S.player, heroBy(b.dataset.role)); this.hintDone('heal'); }));
+      pad.querySelectorAll<HTMLElement>('.pd').forEach((b) => b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); mend(S.player, heroBy(b.dataset.role)); }));
     } else { pad.hidden = true; pad.innerHTML = ''; }
     this.root.dataset.role = p.role;
     $('bossbar').hidden = true;
@@ -565,10 +556,10 @@ export class RunScene implements InputUI {
       if (S.paused) return;
       const p = S.player;
       if (p.st.caged) { mashCage(p, this); return; }
-      if (slot === 'dodge') { doDodge(p, p.intent.mx, p.intent.my); this.hintDone('dodge'); return; }
-      const def = AB[p.role as RoleId][slot as 'a1'];
+      if (slot === 'dodge') { doDodge(p, p.intent.mx, p.intent.my); return; }
+      const def = AB[abKey(p)][slot as 'a1'];
       if (def.hold) {
-        IN.block = true; b.classList.add('held'); this.hintDone('block');
+        IN.block = true; b.classList.add('held');
         try { b.setPointerCapture(e.pointerId); } catch { /* fine */ }
         const up = () => { IN.block = false; b.classList.remove('held'); b.removeEventListener('pointerup', up); b.removeEventListener('pointercancel', up); };
         b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up);
@@ -585,7 +576,6 @@ export class RunScene implements InputUI {
           if (!a || ev.type === 'pointercancel') return;
           const moved = Math.hypot(a.cx - a.sx, a.cy - a.sy) >= 14;
           useAbility(S.player, slot, moved ? aimPoint(a) : null);
-          if (moved) this.hintDone('aim');
         };
         b.addEventListener('pointermove', move); b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up);
         return;
@@ -623,10 +613,12 @@ export class RunScene implements InputUI {
       const enr = M.enrage || 0;
       const left = enr - ((B.ab && B.ab.t) || 0);
       const act = B.act && M.acts && M.acts[B.act.k];
-      $('bb-sub').textContent = (act ? act + ' · ' : '') + (enr ? (left > 0 ? 'Enrage in ' + fmtT(left) : 'Enraged') : '');
-      $('bb-sub').classList.toggle('hot', !!act || (enr > 0 && left <= 30));
+      const exp = B.exposed > 0 ? 'EXPOSED! (+35% DMG)' : '';
+      const head = exp || act || '';
+      $('bb-sub').textContent = (head ? head + ' · ' : '') + (enr ? (left > 0 ? 'Enrage in ' + fmtT(left) : 'Enraged') : '');
+      $('bb-sub').classList.toggle('hot', !!head || (enr > 0 && left <= 30));
     } else if (!bb.hidden) bb.hidden = true;
-    const A = AB[p.role as RoleId];
+    const A = AB[abKey(p)];
     this.root.querySelectorAll<HTMLElement>('.ab').forEach((b) => {
       const slot = b.dataset.slot!;
       let cd = 0, max = 1, usable = p.alive && !p.st.stun && !p.st.caged;
@@ -649,16 +641,15 @@ export class RunScene implements InputUI {
     $('hurt').style.opacity = String(clamp(S.hurtFlash, 0, 0.9));
     if (this.hintKey && !this.tutKey) { this.hintT -= dt; if (this.hintT <= 0) { $('hint').hidden = true; this.hintsDone.add(this.hintKey); this.hintKey = null; } }
     if (!this.live || S.paused) return;
-    if (this.intro && S.inCombat && !this.hintsDone.has('introAb') && S.mobs.some((m: any) => m.alive && m.state === 'fight' && dist(m, p) < 120)) { this.hintDone('introMove'); this.hint('introAb'); }
-    if (this.intro && this.hintsDone.has('introAb') && !this.hintsDone.has('slam')) {
-      const loose = S.mobs.find((m: any) => m.alive && m.state === 'fight' && m.pack === 'C' && dist(m, p) < 160);
-      const sq = heroBy('dps') || heroBy('healer');
-      if (loose && sq && loose.target === p) { loose.target = sq; loose.threat[sq.id] = (loose.threat[p.id] || 0) + 500; }
+    if (this.intro) {
+      if (S.inCombat && !this.hintsDone.has('introAb') && S.mobs.some((m: any) => m.alive && m.state === 'fight' && dist(m, p) < 120)) { this.hintDone('introMove'); this.hint('introAb'); }
+      if (this.hintsDone.has('introAb') && !this.hintsDone.has('slam')) {
+        const loose = S.mobs.find((m: any) => m.alive && m.state === 'fight' && m.pack === 'C' && dist(m, p) < 160);
+        const sq = heroBy('dps') || heroBy('healer');
+        if (loose && sq && loose.target === p) { loose.target = sq; loose.threat[sq.id] = (loose.threat[p.id] || 0) + 500; }
+        if (S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && dist(m, p) < 190)) this.hint('slam');
+      }
     }
-    if (!this.intro && !this.hintsDone.has('dodge') && S.hazards.some((z: any) => !z.noDmg && inHaz(z, p.x, p.y, p.r))) this.hint('dodge');
-    if (p.role === 'tank' && !this.hintsDone.has('slam') && S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && dist(m, p) < 190)) this.hint('slam');
-    if (p.role === 'dps' && !this.hintsDone.has('aim') && S.inCombat && S.mobs.filter((m: any) => m.alive && m.state === 'fight').length >= 3) this.hint('aim');
-    if (p.role === 'dps' && this.hintsDone.has('aim') && !this.hintsDone.has('shatter') && S.mobs.some((m: any) => m.alive && m.st && m.st.freeze > 0.5)) this.hint('shatter');
     const ri = roomIndexOf(p.x, p.y);
     if (ri >= 0 && ri !== this.lastRoom) { if (this.lastRoom !== -1 && ri > this.lastRoom && !S.boss) banner(S.dg.map.rooms[ri].name, 'room', 1.8); this.lastRoom = ri; }
   }
@@ -668,7 +659,7 @@ function setW(el: Element | null, k: number): void { if (!el) return; const v = 
 
 /** a gold glow and combo prompt label on a button when a combo chain or reactive window is live */
 function comboFor(p: any, slot: string): string {
-  const def = slot === 'dodge' ? null : AB[p.role as RoleId][slot as 'a1'];
+  const def = slot === 'dodge' ? null : AB[abKey(p)][slot as 'a1'];
   if (!def) return S.hazards.some((z: any) => !z.noDmg && !(z.tankBuster && p.role === 'tank') && z.t > 0.2 && inHaz(z, p.x, p.y, p.r)) || S.rings.some((g: any) => !g.hit.has(p.id) && Math.abs(dist(p, g) - g.r) < 90) ? 'DODGE!' : '';
   const loose = () => S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && !m.cage && m.forcedT <= 0 && dist(m, p) < 220);
   switch (def.key) {
@@ -687,7 +678,10 @@ function comboFor(p: any, slot: string): string {
     case 'nova': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 150 + m.r) ? 'KICK!' : S.mobs.filter((m: any) => isFoe(m) && !m.isBoss && !m.cage && m.state === 'fight' && dist(m, p) < 150 + m.r).length >= 2 ? 'FREEZE!' : '';
     case 'comet': { const t = p.picked || p.target; return (t && t.alive && t.st && t.st.freeze > 0.6) ? 'SHATTER 2×!' : ''; }
     case 'icicle': return S.mobs.some((m: any) => isFoe(m) && m.st && m.st.freeze > 0.3 && dist(m, p) < 500) ? 'SHATTER 3×!' : '';
+    case 'viper': { const t = p.picked || p.target; return (t && t.alive && !t.cage && (!t.bleed || t.bleed.left < 1.8) && dist(t, p) < 110 + t.r) ? 'VENOM!' : ''; }
+    case 'ambush': { const t = p.picked || p.target; return (t && t.alive && t.bleed && t.bleed.left > 0 && dist(t, p) < 110 + t.r) ? 'CRIT!' : ''; }
+    case 'flurry': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 135 + m.r) ? 'KICK!' : S.mobs.filter((m: any) => isFoe(m) && !m.cage && m.state === 'fight' && dist(m, p) < 135 + m.r).length >= 2 ? 'FLURRY!' : '';
+    case 'shadowstep': { const t = p.picked || p.target; return (t && t.alive && dist(t, p) > 105 + t.r && dist(t, p) <= 340 + t.r) ? 'BLINK!' : ''; }
   }
   return '';
 }
-

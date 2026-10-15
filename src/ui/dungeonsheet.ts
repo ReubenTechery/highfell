@@ -5,8 +5,8 @@
  * at the end of the bar (the Barrow's: a new kind of hero, the Risen). It opens to show those rewards and
  * what each role can get (what you have lit up, every drop rate; tap one to hold it up against what you
  * wear). Then the main thing: your role, your hero (picking a role picks the hero of that role you played
- * last; change to another or make one) and your brew, then loot or practice. Bots take the other seats at
- * your gear level. The sheets wire up its buttons.
+ * last; change to another or make one) and your brew, then loot or practice. Your own Warband heroes from
+ * your bunk room fill the other seats in their own gear (or bots stand in until you make them).
  */
 import { COLLECTIBLES, DUNGEONS, TITLES, heroicVersion } from '../content';
 import { MAX_HEROES, RACES, type RaceId } from '../content/folk';
@@ -74,7 +74,7 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
       </div>
       <section class="dgx-log">
         <button type="button" class="dgx-logbar${done ? ' done' : ''}" data-act="logx" aria-expanded="${pick.log}"><span>Collection log</span><b>${got}/${all}</b><i aria-hidden="true"><i style="width: ${((got / all) * 100).toFixed(1)}%"></i></i>${main ? `<span class="dgx-prize${done ? ' got' : ''}" title="${esc(main.name)}" aria-hidden="true">${tile(main.icon)}</span>` : ''}<span class="dgx-more">${pick.log ? 'Hide' : 'Loot'}${pick.log ? GLYPH.up : GLYPH.down}</span></button>
-        ${pick.log ? `<div class="dgx-loot">${ach ? rewards(ach, done) : ''}${ORDER.map((r) => lootRow(p, ROLES[r].title, r, lootFor(dg, r).mine, r === role)).join('')}${lootRow(p, 'Anyone', null, lootFor(dg, role).shared, false)}
+        ${pick.log ? `<div class="dgx-loot">${ach ? rewards(ach, done) : ''}${ORDER.flatMap((r) => r === 'dps' ? [lootRow(p, 'Mage', 'dps', lootFor(dg, 'dps', 'mage').mine, role === 'dps' && h?.cls !== 'rogue'), lootRow(p, 'Rogue', 'dps', lootFor(dg, 'dps', 'rogue').mine, role === 'dps' && h?.cls === 'rogue')] : [lootRow(p, ROLES[r].title, r, lootFor(dg, r).mine, r === role)]).join('')}${lootRow(p, 'Anyone', null, lootFor(dg, role).shared, false)}
           <button type="button" class="btn small" data-act="entry" data-id="${dg.id}.${dg.finalBoss}">${GLYPH.book}Open the collection log</button></div>` : ''}
       </section>
     </div>
@@ -96,9 +96,10 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
   </div>`;
   let foot: string;
   if (!open) foot = `<p class="fine dgx-shut">${GLYPH.lock}Heroic opens after ${HEROIC_AFTER} clears of the ${esc(base.name.split(' ')[0])}. You have ${hp.have}.</p>`;
-  else if (playing) foot = `<button type="button" class="btn gold big${pick.heroic ? ' heroic' : ''}" data-act="go">${practice ? 'Start practice' : pick.heroic ? 'Enter Heroic' : `Enter the ${esc(base.name.split(' ')[0])}`}</button>`;
-  else if (p.roster.length < MAX_HEROES) foot = `<button type="button" class="btn gold big" data-act="newseat" data-role="${role}">${GLYPH.plus}Make a ${esc(word(role))}</button>`;
-  else foot = `<p class="fine">Your bunk room is full. Let a hero go to make a ${esc(word(role))}.</p>`;
+  else if (!playing && p.roster.length < MAX_HEROES) foot = `<button type="button" class="btn gold big" data-act="newseat" data-role="${role}">${GLYPH.plus}Make a ${esc(word(role))}</button>`;
+  else if (!playing) foot = `<p class="fine">Your bunk room is full. Let a hero go to make a ${esc(word(role))}.</p>`;
+  else if (pick.heroic && !practice && !allOpen) foot = `<p class="fine dgx-shut">${GLYPH.lock}Heroic is Friends &amp; Party Finder only (Warband disabled). Switch to Practice or enable "Everything open" in Settings to test solo.</p>`;
+  else foot = `<button type="button" class="btn gold big${pick.heroic ? ' heroic' : ''}" data-act="go">${practice ? 'Start practice' : pick.heroic ? 'Enter Heroic' : `Enter the ${esc(base.name.split(' ')[0])}`}</button>`;
   return { head: '<h2>Dungeons</h2>', body, foot };
 }
 
@@ -134,22 +135,27 @@ function item(p: Profile, d: DropDef): string {
     <span class="tile" aria-hidden="true">${iconOf(d.id)}</span><small>${have ? GLYPH.check : fmtRate(d.rate)}</small></button>`;
 }
 
-/** who plays the role: your hero, a way to change to another of yours, and who the bots are */
+/** who plays the role: your hero, a way to change to another of yours, and party rules (Normal: Warband & Group; Heroic: Friends & Party Finder only) */
 function me(p: Profile, role: RoleId, pick: DungeonPick): string {
   const h = activeHero(p);
   if (!h || roleOf(h) !== role) return `<div class="dgx-me none r-${role}"><b>No ${esc(word(role))} yet</b><span class="fine">Make one to play this seat.</span></div>`;
   const others = heroesFor(p, role).filter((x) => x.id !== h.id);
   const room = p.roster.length < MAX_HEROES;
-  const bots = seats(p).filter((s) => s.bot).map((s) => s.bot);
+  const mates = seats(p, false)
+    .filter((s) => s.role !== role)
+    .map((s) => (s.hero ? `${s.hero.name} (ilvl ${ilvl(loadoutFor(p, s.hero).score)})` : `${s.bot} (bot)`));
   const list = pick.alts
     ? `<div class="seat-pick">${others.map((x) => `<button type="button" class="btn small" data-act="playseat" data-id="${esc(x.id)}">${GLYPH.play}${esc(x.name.split(' ')[0])}</button>`).join('')}${room ? `<button type="button" class="btn small" data-act="newseat" data-role="${role}">${GLYPH.plus}New ${esc(word(role))}</button>` : ''}</div>`
     : '';
+  const partyLine = pick.heroic
+    ? `<p class="fine"><b>Friends &amp; Party Finder only:</b> Warband companions are disabled on Heroic.</p>`
+    : `<p class="fine"><b>Warband &amp; Group:</b> ${esc(mates.join(' & '))} join your party (or group with friends).</p>`;
   return `<div class="dgx-me r-${role}">
       <span class="dgx-fig" aria-hidden="true">${heroImg(heroSprite(h, role, p), { cls: 'dgx-img' })}</span>
       <span class="dgx-who"><b>${esc(h.name)}</b><span>Item level ${ilvl(loadoutFor(p, h).score)}</span></span>
       ${others.length || room ? `<button type="button" class="btn small" data-act="alts" aria-expanded="${pick.alts}">Change</button>` : ''}
     </div>${list}
-    <p class="fine">${esc(bots.join(' and '))} join as bots.</p>`;
+    ${partyLine}`;
 }
 
 /** which brew you take in: one bottle a run */

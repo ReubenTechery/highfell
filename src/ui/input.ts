@@ -6,7 +6,7 @@
  * Z X C heal the tank, you and the DPS, Esc pauses. Chains and wisps are cut with a mouse drag.
  */
 import { dist, distXY } from '../core/math';
-import { AB } from '../content/roles';
+import { AB, abKey } from '../content/roles';
 import { S, emit } from '../dungeon/state.js';
 import { fx, killMob } from '../dungeon/entities.js';
 import { autoTarget, bestCluster, clampRange, doDodge, heroBy, isFoe, mend, useAbility } from '../dungeon/heroes.js';
@@ -57,7 +57,7 @@ export function playerIntent(h: any): void {
 
 /** where an aimed button lands: dragged, under the mouse, or picked for you on a quick tap */
 export function aimPoint(a: Aim): { x: number; y: number } {
-  const h = S.player, def = AB[h.role as 'tank'][a.slot as 'a1'];
+  const h = S.player, def = AB[abKey(h)][a.slot as 'a1'];
   const range = def.range || 520;
   if (a.mouse && a.mx !== undefined) return clampRange(h, a.mx, a.my, range);
   const dx = a.cx - a.sx, dy = a.cy - a.sy, l = Math.hypot(dx, dy);
@@ -79,9 +79,9 @@ function chainHalves(ch: any): [{ x: number; y: number }, { x: number; y: number
 }
 /** a mate's cage under this world point */
 const cageAt = (w: { x: number; y: number }) => S.mobs.find((m: any) => m.alive && m.cage && m.hero !== S.player && distXY(w.x, w.y, m.x, m.y - 50) < 80) || null;
-/** is there a chain or a wisp under this screen point? Those touches are swipes, never the stick */
+/** is there a chain or a wisp under this screen point? Only the healer can swipe them; for others it is the stick/dodge */
 function onMechanic(x: number, y: number): boolean {
-  if (!S) return false;
+  if (!S || !S.player || S.player.role !== 'healer') return false;
   const w = toWorld(x, y);
   for (const m of S.mobs) if (m.alive && m.M.wisp && distXY(w.x, w.y, m.x, m.y - 40) < 70) return true;
   for (const ch of S.chains) {
@@ -137,7 +137,7 @@ export function bindInput(layer: HTMLElement, ui: InputUI): void {
     const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy), dur = b.t - a.t;
     if (S.paused) { if (len > 34 && dur < 500) ui.onTutInput?.('dodge'); return; }
     if (g.sliced) return;
-    if (len > 34 && dur < 340) { if (doDodge(S.player, dx, dy)) ui.hintDone('dodge'); return; }
+    if (len > 34 && dur < 340) { doDodge(S.player, dx, dy); return; }
     if (len < 16 && dur < 420) tapWorld(toWorld(b.x, b.y), ui);
   };
   layer.addEventListener('pointerup', end);
@@ -160,34 +160,35 @@ export function bindInput(layer: HTMLElement, ui: InputUI): void {
     if (S.paused || S.over) return;
     if (e.repeat && c !== 'Digit4') return;
     IN.keys[c] = true;
+    if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(c)) ui.hintDone('introMove');
     const h = S.player;
     if (h.st.caged && (c === 'Space' || c.startsWith('Digit') || c.startsWith('Key'))) { mashCage(h, ui); return; }
-    if (c === 'Space' || c === 'ShiftLeft' || c === 'ShiftRight') { doDodge(h, h.intent.mx, h.intent.my); ui.hintDone('dodge'); return; }
+    if (c === 'Space' || c === 'ShiftLeft' || c === 'ShiftRight') { doDodge(h, h.intent.mx, h.intent.my); return; }
     if (c === 'Digit1' || c === 'Digit2' || c === 'Digit3' || c === 'Digit4') {
       const slot = 'a' + c.slice(5);
-      const def = AB[h.role as 'tank'][slot as 'a1'];
-      if (def.hold) { IN.block = true; ui.holdBtn(slot, true); ui.hintDone('block'); return; }
+      const def = AB[abKey(h)][slot as 'a1'];
+      if (def.hold) { IN.block = true; ui.holdBtn(slot, true); return; }
       let aim: unknown = null;
       if (def.aim && IN.mouse) aim = toWorld(IN.mouse.x, IN.mouse.y);
       else if (!def.aim && h.picked && isFoe(h.picked)) aim = h.picked;
       useAbility(h, slot, aim);
       return;
     }
-    if (h.role === 'healer' && (c === 'KeyZ' || c === 'KeyX' || c === 'KeyC')) { const r = ({ KeyZ: 'tank', KeyX: 'healer', KeyC: 'dps' } as Record<string, string>)[c]; const t = heroBy(r); if (t) mend(h, t); ui.hintDone('heal'); return; }
+    if (h.role === 'healer' && (c === 'KeyZ' || c === 'KeyX' || c === 'KeyC')) { const r = ({ KeyZ: 'tank', KeyX: 'healer', KeyC: 'dps' } as Record<string, string>)[c]; const t = heroBy(r); if (t) mend(h, t); return; }
   });
   window.addEventListener('keyup', (e) => {
     IN.keys[e.code] = false;
     if (S && (e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3' || e.code === 'Digit4') && S.player) {
       const slot = 'a' + e.code.slice(5);
-      if (AB[S.player.role as 'tank'][slot as 'a1']?.hold) { IN.block = false; ui.holdBtn(slot, false); }
+      if (AB[abKey(S.player)][slot as 'a1']?.hold) { IN.block = false; ui.holdBtn(slot, false); }
     }
   });
   window.addEventListener('blur', () => { IN.keys = {}; IN.block = false; IN.stick = null; ui.stick(null); });
 }
 
-/** a swipe that crosses a wisp or a chain cuts it */
-export function trySlice(a: { x: number; y: number }, b: { x: number; y: number }, ui: InputUI): boolean {
-  if (!S || !S.player.alive || S.player.st.caged) return false;
+/** a swipe by the healer that crosses a wisp or a chain cuts it */
+export function trySlice(a: { x: number; y: number }, b: { x: number; y: number }, _ui: InputUI): boolean {
+  if (!S || !S.player.alive || S.player.st.caged || S.player.role !== 'healer') return false;
   const p = toWorld(a.x, a.y), q = toWorld(b.x, b.y);
   let hit = false;
   for (const m of S.mobs) {
@@ -201,15 +202,13 @@ export function trySlice(a: { x: number; y: number }, b: { x: number; y: number 
   if (hit) {
     const trail = S.looks && S.looks.has('cosmetic.trail_wisp');
     fx({ type: 'swipe', x: p.x, y: p.y, x2: q.x, y2: q.y, dur: trail ? 0.45 : 0.2, col: trail ? '#C8F5E8' : undefined });
-    ui.hintDone('wisp'); ui.hintDone('chain');
   }
   return hit;
 }
 /** a tap on a cage, by you inside it or by you breaking a mate out (h is whoever is in the cage) */
-export function mashCage(h: any, ui: InputUI): void {
+export function mashCage(h: any, _ui?: InputUI): void {
   if (!h || !h.st.caged) return;
   mashEngine(h);
-  ui.hintDone(h === S.player ? 'cageSelf' : 'cage');
 }
 export function tapWorld(w: { x: number; y: number }, ui: InputUI): void {
   const h = S.player;
@@ -218,7 +217,7 @@ export function tapWorld(w: { x: number; y: number }, ui: InputUI): void {
   if (cage) { mashCage(cage.hero, ui); return; }
   let best: any = null, bd = 1e9;
   for (const a of S.heroes) { if (!a.alive) continue; const d = distXY(w.x, w.y, a.x, a.y - 40); if (d < 52 && d < bd) { bd = d; best = a; } }
-  if (best && h.role === 'healer') { mend(h, best); ui.hintDone('heal'); return; }
+  if (best && h.role === 'healer') { mend(h, best); return; }
   let mb: any = null; bd = 1e9;
   for (const m of S.mobs) { if (!isFoe(m) || m.cage) continue; const d = distXY(w.x, w.y, m.x, m.y - (m.isBoss ? 120 : m.M.big ? 70 : 40)); const r = m.isBoss ? 120 : m.M.big ? 70 : 44; if (d < r && d < bd) { bd = d; mb = m; } }
   if (mb) { h.picked = mb; fx({ type: 'ring', x: mb.x, y: mb.y, r0: 10, r1: mb.r + 30, col: '#FF6B5E', dur: 0.25, w: 4, ground: true }); }

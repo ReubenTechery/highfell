@@ -32,21 +32,23 @@ export const brewFx = (id) => (id && BREW_FX[id]) || {};
 export function makeHero(role, isPlayer, loadout) {
   const R = ROLES[role];
   const L = loadout || {};
+  const cls = L.cls || (role === 'tank' ? 'warrior' : role === 'healer' ? 'cleric' : 'mage');
+  const isRogue = cls === 'rogue';
   const power = L.power || 1;
   const maxHp = Math.round(R.hp * hpMultiplier(power));
   const B = brewFx(L.brew);
   return {
-    id: 'h_' + role, kind: 'hero', role, name: L.name || R.name, sprite: L.sprite || R.sprite, isPlayer, x: 0, y: 0, r: R.r,
+    id: 'h_' + role, kind: 'hero', role, cls, name: L.name || R.name, sprite: L.sprite || (isRogue ? 'rogue' : R.sprite), isPlayer, x: 0, y: 0, r: R.r,
     face: -Math.PI / 2, back: true, flip: false, hp: maxHp, maxHp, armor: R.armor, power,
     traits: new Set(L.traits || []), bonuses: new Set(L.bonuses || []), unique: L.unique || null,
-    talents: Object.assign({ a1: 0, a2: 0, a3: 0, a4: 0 }, L.talents || {}),
-    weaponRar: L.weaponRar || 0, threatMod: R.threat * (B.threat || 1), speed: R.speed * (B.speed || 1), alive: true,
+    weaponRar: L.weaponRar || 0, threatMod: R.threat * (B.threat || 1), speed: R.speed * (isRogue ? 1.1 : 1) * (B.speed || 1), alive: true,
     // the party's brew, poured at the door (see BREW_FX)
     brew: L.brew || null, brewCol: L.brewCol || null, brewUsed: false,
     mana: 100, maxMana: 100, cd: { a1: 0, a2: 0, a3: 0, a4: 0, dodge: 0 }, gcd: 0, atkT: 0.4,
+    frenzyT: 0, nightstalkerT: 0, ghostSaved: false,
     target: null, picked: null, stillT: 1, dodgeT: 0, dodgeX: 0, dodgeY: -1, iframe: 0,
     blocking: false, blockT: 9, dash: null, cast: null,
-    st: { stun: 0, root: 0, haunt: 0, air: 0, kx: 0, ky: 0, chained: null, caged: null },
+    st: { stun: 0, root: 0, haunt: 0, air: 0, ghost: 0, surge: 0, zeal: 0, kx: 0, ky: 0, chained: null, caged: null },
     absorb: 0, absorbT: 0, flash: 0, hurtT: 0, lunge: 0, lungeA: 0, walkT: 0, squash: 0, moving: 0,
     say: null, sayT: 0, deadT: 0, swings: 0, hots: [],
     intent: { mx: 0, my: 0, block: false },
@@ -66,8 +68,15 @@ export function makeMob(type, x, y, pack) {
     atkT: rand(0.3, 0.9), wind: 0, ab: {}, cast: null, busy: 0,
     st: { stun: 0, freeze: 0, slow: 0, slowT: 0, kx: 0, ky: 0 },
     flash: 0, lunge: 0, lungeA: 0, face: Math.PI / 2, flip: rng() < 0.5, walkT: rand(0, 6), squash: 0, rise: 0, deadT: 0, moving: 0,
-    isBoss: !!M.boss, phase: 1, armorUp: 0, untargetable: false, hidden: false, pose: null, dmgMul: 1, ghostProps: !!M.wisp,
+    isBoss: !!M.boss, phase: 1, armorUp: 0, exposed: 0, untargetable: false, hidden: false, pose: null, dmgMul: 1, ghostProps: !!M.wisp,
   };
+}
+
+export function exposeMob(m, dur, label) {
+  if (!m || !m.alive || m.cage || m.M.wisp) return;
+  m.exposed = Math.max(m.exposed || 0, dur || 3.0);
+  fxText(m.x, m.y - (m.isBoss ? 210 : 120), label || 'Exposed!', '#FFE08A', 24, { dur: 1.3 });
+  fx({ type: 'ring', x: m.x, y: m.y - 30, r0: 24, r1: m.r + 74, col: '#F2C230', dur: 0.35, w: 6 });
 }
 
 /* ---------- floating text and effects ---------- */
@@ -135,9 +144,11 @@ export function hurtHero(h, amt, src, o) {
   if (o.ground && h.st.air > 0) return 0;
   // the dungeon's tuning: everything that hurts a hero hits this much harder
   let a = amt * S.tune.hit;
+  let blocked = false;
   if (o.block !== false && h.blocking && src) {
     const off = Math.abs(angDiff(h.face, Math.atan2(src.y - h.y, src.x - h.x)));
     if (off < 1.45) {
+      blocked = true;
       if (o.heavy && o.perfectable !== false && h.blockT <= PERFECT_WINDOW) {
         a = 0; h.stats.perfect++; S.stats.perfect++;
         const intro = S.opts && S.opts.start === 'intro';
@@ -145,7 +156,7 @@ export function hurtHero(h, amt, src, o) {
         if (src.kind === 'mob' && src.alive) {
           src.st.stun = Math.max(src.st.stun, intro && src.isBoss ? 3.2 : (src.isBoss ? 1.6 : 1.2));
           src.wind = 0; src.busy = 0;
-          if (h.isPlayer) fxText(src.x, src.y - (src.isBoss ? 200 : 110), intro && src.isBoss ? 'Staggered!' : 'Stunned', '#FFE08A', intro && src.isBoss ? 24 : 20, { dur: 1.4 });
+          exposeMob(src, src.isBoss ? 3.5 : 2.5, intro && src.isBoss ? 'Staggered!' : 'Exposed!');
         }
         sfx('perfect'); shake(6); hitstop(0.08);
         fx({ type: 'ring', x: h.x, y: h.y - 30, r0: 20, r1: 110, col: '#F2C230', dur: 0.35, w: 6 });
@@ -164,7 +175,11 @@ export function hurtHero(h, amt, src, o) {
       }
     }
   }
-  if (!o.pierce) a *= 1 - h.armor * (o.magic ? 0.4 : 1);
+  if (!o.pierce && (!o.hazard || blocked)) a *= 1 - h.armor * (o.magic ? 0.4 : 1);
+  // Barrowguard 3pc: active skeleton thralls beside the tank soak 25% of incoming hits
+  if (h.role === 'tank' && a > 0 && S.thralls && S.thralls.some((tr) => tr.alive && tr.kind === 'bg' && tr.owner === h)) {
+    a *= 0.75;
+  }
   // Starlight Elixir: once a run, a hit that would knock you down leaves you on half health
   if (brewFx(h.brew).save && !h.brewUsed && h.hp - Math.round(Math.max(0, a - h.absorb)) <= 0) {
     h.brewUsed = true; h.absorb = 0; h.hp = Math.round(h.maxHp * 0.5); h.flash = 0.12; h.iframe = Math.max(h.iframe, 0.6);
@@ -176,7 +191,9 @@ export function hurtHero(h, amt, src, o) {
     return 0;
   }
   if (h.absorb > 0 && a > 0) {
-    const t = Math.min(h.absorb, a); h.absorb -= t; a -= t;
+    // Unblocked ground/boss telegraphs pierce 60% of Ward shields so standing in red circles still hurts
+    const cap = o.hazard && !blocked ? a * 0.4 : a;
+    const t = Math.min(h.absorb, cap); h.absorb = Math.max(0, h.absorb - t); a -= t;
     if (t > 0 && !o.quiet && h.isPlayer) fxText(h.x, h.y - 70, 'Absorbed', '#DDF3FF', 16);
     if (h.absorb <= 0.5) {
       h.absorb = 0;
@@ -187,9 +204,23 @@ export function hurtHero(h, amt, src, o) {
   }
   a = Math.round(a);
   if (S.opts && S.opts.start === 'intro') a = Math.min(a, Math.max(0, h.hp - Math.round(h.maxHp * 0.2)));
+  // Candlewake 3pc: once per fight, an ally taking fatal damage becomes a ghost for 6s instead of dying
+  if (h.st && h.st.ghost > 0) {
+    a = Math.min(a, Math.max(0, h.hp - 1));
+  } else if (a > 0 && h.hp - a <= 0 && !h.ghostSaved && S.heroes.some((hl) => hl.alive && hl.bonuses && hl.bonuses.has('candlewake3'))) {
+    h.ghostSaved = true; h.absorb = 0; h.hp = Math.max(1, Math.round(h.maxHp * 0.35)); h.st.ghost = 6.0; h.flash = 0.14; h.iframe = Math.max(h.iframe, 0.7);
+    fxText(h.x, h.y - 114, 'Candlewake!', '#C8F5E8', 28, { dur: 1.5 });
+    fx({ type: 'ring', x: h.x, y: h.y - 40, r0: 20, r1: 120, col: '#C8F5E8', dur: 0.45, w: 6 });
+    dots(h.x, h.y - 50, '#C8F5E8', 14, 180);
+    sfx('revive'); shake(4);
+    return 0;
+  }
   if (a > 0) {
     h.hp -= a; h.flash = 0.12; h.hurtT = 0.25; h.stats.taken += a;
-    if (!o.quiet && h.isPlayer) fxText(h.x, h.y - 60, '-' + a, o.numCol || '#FF6B5E', o.numSize || (a >= 100 ? 26 : 20), o.numDur ? { dur: o.numDur } : undefined);
+    if (!o.quiet && h.isPlayer) {
+      const label = o.crush ? `-${a} CRUSH!` : '-' + a;
+      fxText(h.x, h.y - 60, label, o.numCol || '#FF6B5E', o.numSize || (o.crush || a >= 100 ? 26 : 20), o.numDur ? { dur: o.numDur } : undefined);
+    }
     if (h.isPlayer) { shake(a >= 100 ? 7 : 3); S.hurtFlash = Math.min(1, S.hurtFlash + a / 300); }
     if (o.kind) { S.stats[o.kind + 'Hits'] = (S.stats[o.kind + 'Hits'] || 0) + 1; emit({ type: 'hazard.hit', kind: o.kind, player: !!h.isPlayer }); }
     if (h.hp <= 0) killHero(h);
@@ -212,12 +243,22 @@ export function killHero(h) {
 export function hurtMob(m, amt, src, o) {
   o = o || {};
   if (!m.alive || m.untargetable || S.over) return 0;
+  // only the healer can banish wisps
+  if (m.M.wisp && src && src.role !== 'healer') return 0;
   if (m.cage) { m.hp -= 1; m.flash = 0.1; sfx('cagehit'); bits(m.x, m.y - 50, 'shard_bone', 1, 90); if (m.hp <= 0) breakCage(m, true, src); return 1; }
   let a = amt * (o.raw ? 1 : (src && src.power) || 1);
+  if (!o.raw && src && src.st) {
+    if (src.st.surge > 0) a *= 1.2;
+    if (src.st.ghost > 0) a *= 1.25;
+  }
+  if (m.exposed > 0) a *= 1.35;
   let crit = false;
   // the party's brew: Glowcap Draught and Starlight Elixir hit harder
   if (src && src.brew) a *= brewFx(src.brew).dmg || 1;
-  if (!o.noCrit && rng() < (o.crit === undefined ? 0.12 : o.crit)) { a *= 2; crit = true; }
+  const gearCrit = src && src.power > 1 ? Math.min(0.14, (src.power - 1) * 0.14) : 0;
+  const zealCrit = src && src.st && src.st.zeal > 0 ? 0.1 : 0;
+  const critChance = (o.crit === undefined ? 0.12 : o.crit) + (o.crit === 1 ? 0 : gearCrit + zealCrit);
+  if (!o.noCrit && rng() < critChance) { a *= 2; crit = true; }
   else if (!o.noCrit && src && src.traits && src.traits.has('headsman') && m.st.stun > 0) { a *= 2; crit = true; }
   if (o.shatter && m.st.freeze > 0) a *= o.shatter;
   if (m.armorUp > 0) a *= 1 - m.armorUp;
@@ -230,7 +271,7 @@ export function hurtMob(m, amt, src, o) {
   const big = crit || a >= 250;
   const iceCrit = crit && src && src.isPlayer && S.looks && S.looks.has('cosmetic.crit_ice');
   if (iceCrit) bits(m.x, m.y - (m.isBoss ? 150 : 60), 'shard_ice', 6, 220);
-  if (!o.quiet && src && src.isPlayer) fxText(m.x, m.y - (m.isBoss ? 170 : m.M.big ? 120 : 70), (crit ? a + '!' : '' + a), iceCrit ? '#8FD6FF' : o.col || (crit ? '#F2C230' : '#FFFFFF'), o.size || (a >= 600 ? 40 : big ? 30 : 21), { dur: big ? 1.15 : 0.9, crit });
+  if (!o.quiet && src && src.isPlayer) fxText(m.x, m.y - (m.isBoss ? 170 : m.M.big ? 120 : 70), (crit ? a + '!' : '' + a), iceCrit ? '#8FD6FF' : o.col || (crit || m.exposed > 0 ? '#F2C230' : '#FFFFFF'), o.size || (a >= 600 ? 40 : big ? 30 : 21), { dur: big ? 1.15 : 0.9, crit });
   if (o.knock && !m.isBoss && !m.M.big) { const an = Math.atan2(m.y - src.y, m.x - src.x); m.st.kx += Math.cos(an) * o.knock; m.st.ky += Math.sin(an) * o.knock; }
   if (crit && src && src.isPlayer) hitstop(0.035);
   if (crit && src && src.kind === 'hero') emit({ type: 'crit', amount: a, player: !!src.isPlayer });
@@ -240,7 +281,32 @@ export function hurtMob(m, amt, src, o) {
 export function killMob(m, src) {
   m.hp = 0; m.alive = false; m.deadT = 0; m.cast = null; m.state = 'dead';
   emit({ type: 'mob.killed', mob: m.type, boss: !!m.isBoss, undead: !!m.M.skeleton, byPlayer: !!(src && src.isPlayer) });
-  if (m.M.wisp) { dots(m.x, m.y - 40, '#C8F5E8', 10, 160); fx({ type: 'ring', x: m.x, y: m.y - 40, r0: 8, r1: 46, col: '#C8F5E8', dur: 0.25, w: 4 }); sfx('pop'); return; }
+  if (m.M.wisp) {
+    dots(m.x, m.y - 40, '#C8F5E8', 10, 160); fx({ type: 'ring', x: m.x, y: m.y - 40, r0: 8, r1: 46, col: '#C8F5E8', dur: 0.25, w: 4 }); sfx('pop');
+    // Soul Spark backlash: banishing a wisp during a boss fight zaps the boss and restores healer mana
+    if (src && src.role === 'healer' && S.boss && S.boss.alive && !S.boss.hidden) {
+      src.mana = Math.min(src.maxMana, src.mana + 5);
+      hurtMob(S.boss, 180, src, { raw: true, noCrit: true, col: '#C8F5E8', size: 19 });
+      fx({ type: 'beam', x: m.x, y: m.y - 40, x2: S.boss.x, y2: S.boss.y - 90, col: '#C8F5E8', dur: 0.22 });
+    }
+    return;
+  }
+  // Rimebone 3pc: anything dying inside Blizzard rises as a frost skeleton for 6s
+  if (!m.isBoss && S.zones && S.thralls) {
+    const bz = S.zones.find((z) => z.kind === 'blizzard' && z.src && z.src.bonuses && z.src.bonuses.has('rimebone3') && Math.hypot(m.x - z.x, m.y - z.y) <= z.r + m.r + 20);
+    if (bz && S.thralls.filter((tr) => tr.alive && tr.kind === 'frost').length < 3) {
+      S.thralls.push({ id: 'tr' + (S.seq++), kind: 'frost', owner: bz.src, sp: 'rattler', x: m.x, y: m.y, r: 15, life: 6, maxLife: 6, atkT: 0.3, face: -Math.PI / 2, flip: false, walkT: 0, moving: 0, lunge: 0, lungeA: 0, rise: 0.35, alive: true });
+      fxText(m.x, m.y - 84, 'Frost Skeleton!', '#8FD6FF', 18, { dur: 1.0 });
+    }
+  }
+  // Sir Rattlebones Phase 2: killing a rallied guard lashes the boss and cracks his rally armour when the last one falls
+  if (m.rally && S.boss && S.boss.alive && S.boss.type === 'knight') {
+    hurtMob(S.boss, Math.round(S.boss.maxHp * 0.04), src, { raw: true, noCrit: true, col: '#FFE08A', size: 19 });
+    if (!S.mobs.some((o) => o !== m && o.alive && o.rally)) {
+      S.boss.armorUp = 0;
+      exposeMob(S.boss, 3.0, 'Armour Cracked! Exposed!');
+    }
+  }
   const big = m.M.big;
   bits(m.x, m.y - (big ? 70 : 40), 'shard_bone', big ? 10 : 5, big ? 260 : 190);
   bits(m.x, m.y - (big ? 90 : 60), 'shard_skull', 1, 150);
@@ -258,6 +324,10 @@ export function healHero(src, t, amt, o) {
   const a = Math.round(amt * (o.raw ? 1 : (src && src.power) || 1));
   const real = Math.min(a, t.maxHp - t.hp);
   t.hp += real;
+  if (t.st && t.st.ghost > 0 && t.hp >= t.maxHp * 0.85) {
+    t.st.ghost = 0;
+    fxText(t.x, t.y - 106, 'Restored!', '#FFE08A', 22, { dur: 1.1 });
+  }
   if (src) { src.stats.heal += real; src.stats.overheal += a - real; }
   if ((real > 0 || o.show) && mine(src, t)) fxText(t.x, t.y - 74, '+' + a, '#7BE05A', o.size || (a >= 150 ? 22 : 18), { dur: 0.9 });
   // healing pulls a little threat from everything in the fight

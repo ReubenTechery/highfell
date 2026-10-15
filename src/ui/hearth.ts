@@ -14,7 +14,7 @@ import { CLASSES, MAX_HEROES, RACES, type ClassId, type RaceId } from '../conten
 import { BUNK_SLOTS, FLOORS, HOUSE_SPOTS, LOOK_ROOMS, ROOMS, THINGS, roomAt, type HouseAction, type HouseSpot, type ThingDef } from '../content/house';
 import { lookOf, ownedOfKind } from '../meta/hearth';
 import { loadoutFor, waiting } from '../meta/gear';
-import { activeHero, finishHearthTour, heroLevel, needsHearthTour, roleOf, talentPointsLeft, type Hero } from '../meta/profile';
+import { activeHero, finishHearthTour, needsHearthTour, roleOf, type Hero } from '../meta/profile';
 import type { App } from './app';
 import { actions, esc, GLYPH } from './dom';
 import { ART, bitsHtml, heroSprite, placeSprite, spriteBit, tile, type Bit } from './art';
@@ -44,7 +44,7 @@ const TOUR_STEPS: { room: string; thing?: string; at: [number, number]; callout:
   {
     room: 'hall',
     at: [HERO_AT.x, HERO_AT.y - 310],
-    callout: 'Tap Hero · Gear & Skills',
+    callout: 'Tap Hero · Gear & Build',
     step: '1 / 3',
     title: 'Your Hearth',
     sub: 'Gear up by the fire & decorate rooms.',
@@ -366,7 +366,7 @@ export class Hearth {
     else if (t.action === 'logs') label = `<text class="lbl small" x="${t.x}" y="${t.y + 26}">Collection Log</text>`;
     else if (t.action === 'brew') label = `<text class="lbl small" x="${t.x}" y="${t.y + 26}">Brew</text>`;
     else if (t.action === 'satchel') label = `<text class="lbl small" x="${t.x}" y="${t.y + 26}">Satchel</text>`;
-    if (t.action === 'gear') { const up = waiting(this.app.p, h).length + talentPointsLeft(h); if (up) extra.pips.push(pip(t.x + 60, top + 20, String(up))); }
+    if (t.action === 'gear') { const up = waiting(this.app.p, h).length; if (up) extra.pips.push(pip(t.x + 60, top + 20, String(up))); }
     const hl = this.tourStep !== null && TOUR_STEPS[this.tourStep]?.thing === t.id ? ' tour-hl' : '';
     return `<g class="thing a-${t.action}${hl}" data-thing="${t.id}" data-x="${t.x}" data-y="${t.y}" tabindex="0" role="button" aria-label="${esc(t.label)}">
       ${placeSprite(sprite, t.x, t.y, { k })}${bed?.plant ? placeSprite(bed.plant, t.x, t.y - 36 * k, { k: 0.9 * k }) : ''}${label}<rect class="hl" x="${(t.x + vx * k).toFixed(1)}" y="${top.toFixed(1)}" width="${(w * k).toFixed(1)}" height="${(hh * k).toFixed(1)}" rx="16"/></g>`;
@@ -413,7 +413,7 @@ export class Hearth {
     const others = p.roster.filter((x2) => x2.id !== p.active);
     others.forEach((o, i) => {
       const [bx, by] = BUNK_SLOTS[i], bk = 1.45, role = roleOf(o);
-      const up = waiting(p, o).length + talentPointsLeft(o);
+      const up = waiting(p, o).length;
       if (up) extra.pips.push(pip(bx + 34, by - 170, String(up)));
       out.push({ y: by, svg: `<g class="hero" data-hero="${esc(o.id)}" data-x="${bx}" data-y="${by}" tabindex="0" role="button" aria-label="${esc(o.name)}, ${esc(CLASSES[o.cls as ClassId]?.name || o.cls)}">
         <ellipse cx="${bx}" cy="${by}" rx="${30 * bk}" ry="${9 * bk}" style="fill: rgba(18, 12, 28, 0.4)"/>
@@ -433,13 +433,13 @@ export class Hearth {
 
   /* ---------------------------------------------------------------- the buttons over the house */
   private hud(h: Hero): void {
-    const p = this.app.p, role = roleOf(h), lv = heroLevel(h);
+    const p = this.app.p, role = roleOf(h);
     const cls = CLASSES[h.cls as ClassId], race = RACES[h.race as RaceId];
     const rec = p.dungeons.barrow, dg = DUNGEONS.barrow;
-    const up = waiting(p, h).length + talentPointsLeft(h);
+    const up = waiting(p, h).length;
     this.top.innerHTML = `
-      <button type="button" class="h-tag" data-act="gear" style="--light: ${race?.light || '#F4B942'}" aria-label="${esc(h.name)}, level ${lv}, item level ${ilvl(loadoutFor(p, h).score)}: gear${up ? `, ${up} new to put on` : ''}">
-        <i class="rdot ${role}" aria-hidden="true"></i><span><b>${esc(h.name)}</b><small><span class="long">Lv ${lv} ${esc(race?.name || h.race)} ${esc(cls?.name || h.cls)} · </span>Item level ${ilvl(loadoutFor(p, h).score)}</small></span>
+      <button type="button" class="h-tag" data-act="gear" style="--light: ${race?.light || '#F4B942'}" aria-label="${esc(h.name)}, item level ${ilvl(loadoutFor(p, h).score)}: gear${up ? `, ${up} new to put on` : ''}">
+        <i class="rdot ${role}" aria-hidden="true"></i><span><b>${esc(h.name)}</b><small><span class="long">${esc(race?.name || h.race)} ${esc(cls?.name || h.cls)} · </span>Item level ${ilvl(loadoutFor(p, h).score)}</small></span>
         ${up ? `<i class="badge" aria-hidden="true">${up}</i>` : ''}
       </button>
       <div class="right">

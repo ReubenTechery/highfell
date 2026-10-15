@@ -3,17 +3,17 @@ import { keeperTick, knightTick } from './bosses.js';
 
 /* kind picks the behaviour: melee, ranged, caller, brute, wisp. Bosses bring their own ai. */
 export const MOBS = {
-  rattler: { name: 'Rattler', kind: 'melee', hp: 470, r: 15, speed: 152, dmg: 40, every: 1.4, wind: 0.3, reach: 22, aggro: 230, sp: 'rattler', skeleton: true },
-  rattler2: { name: 'Rattler', kind: 'melee', hp: 500, r: 15, speed: 148, dmg: 42, every: 1.45, wind: 0.3, reach: 22, aggro: 230, sp: 'rattler2', skeleton: true },
-  archer: { name: 'Bone Archer', kind: 'ranged', hp: 330, r: 14, speed: 125, dmg: 22, every: 1.6, wind: 0.3, reach: 22, aggro: 300, sp: 'archer', skeleton: true, ranged: { min: 220, max: 360, dmg: 48, every: 2.4, warn: 0.55, speed: 560 } },
-  brute: { name: 'Bonebrute', kind: 'brute', hp: 3000, r: 30, speed: 100, dmg: 110, every: 2.2, wind: 0.5, reach: 30, aggro: 240, sp: 'brute', heavy: true, big: true, skeleton: true },
-  caller: { name: 'Gravecaller', kind: 'caller', hp: 760, r: 15, speed: 110, dmg: 22, every: 1.6, wind: 0.3, reach: 22, aggro: 300, sp: 'caller', keep: 240, skeleton: true },
-  wisp: { name: 'Wisp', kind: 'wisp', hp: 1, r: 12, speed: 98, dmg: 70, every: 99, wind: 0, reach: 6, aggro: 0, sp: 'wisp', wisp: true },
-  knight: { name: 'Sir Rattlebones', kind: 'melee', hp: 11000, r: 36, speed: 100, dmg: 120, every: 2.0, wind: 0.45, reach: 34, aggro: 260, sp: 'knight', heavy: true, big: true, boss: true, skeleton: true,
+  rattler: { name: 'Rattler', kind: 'melee', hp: 565, r: 15, speed: 152, dmg: 50, every: 1.4, wind: 0.3, reach: 22, aggro: 230, sp: 'rattler', skeleton: true },
+  rattler2: { name: 'Rattler', kind: 'melee', hp: 600, r: 15, speed: 148, dmg: 52, every: 1.45, wind: 0.3, reach: 22, aggro: 230, sp: 'rattler2', skeleton: true },
+  archer: { name: 'Bone Archer', kind: 'ranged', hp: 395, r: 14, speed: 125, dmg: 30, every: 1.6, wind: 0.3, reach: 22, aggro: 300, sp: 'archer', skeleton: true, ranged: { min: 220, max: 360, dmg: 62, every: 2.4, warn: 0.55, speed: 560 } },
+  brute: { name: 'Bonebrute', kind: 'brute', hp: 2460, r: 30, speed: 100, dmg: 140, every: 2.2, wind: 0.5, reach: 30, aggro: 240, sp: 'brute', heavy: true, big: true, skeleton: true },
+  caller: { name: 'Gravecaller', kind: 'caller', hp: 770, r: 15, speed: 110, dmg: 32, every: 1.6, wind: 0.3, reach: 22, aggro: 300, sp: 'caller', keep: 240, skeleton: true },
+  wisp: { name: 'Wisp', kind: 'wisp', hp: 1, r: 12, speed: 98, dmg: 95, every: 99, wind: 0, reach: 6, aggro: 0, sp: 'wisp', wisp: true },
+  knight: { name: 'Sir Rattlebones', kind: 'melee', hp: 11400, r: 36, speed: 100, dmg: 150, every: 2.0, wind: 0.45, reach: 34, aggro: 260, sp: 'knight', heavy: true, big: true, boss: true, skeleton: true,
     ai: knightTick, phases: 2, enrage: 180, acts: { sweep: 'Cleaving Sweep', charge: 'Shield Charge', rally: 'Rally the Dead' } },
-  keeper: { name: 'The Gravekeeper', kind: 'melee', hp: 29500, r: 50, speed: 92, dmg: 150, every: 2.0, wind: 0.5, reach: 40, aggro: 0, sp: 'keeper', heavy: true, big: true, boss: true,
+  keeper: { name: 'The Gravekeeper', kind: 'melee', hp: 41600, r: 50, speed: 92, dmg: 180, every: 2.0, wind: 0.5, reach: 40, aggro: 0, sp: 'keeper', heavy: true, big: true, boss: true,
     ai: keeperTick, phases: 3, enrage: 300, light: { dx: 104, dy: -90, r: 170 }, poseSprites: { smash: 'keeper_smash' },
-    acts: { smash: 'Shovel Smash', burrow: 'Burrowing', leap: 'Leap', bury: 'Bury the Yard' } },
+    acts: { smash: 'Shovel Smash', burrow: 'Burrowing', leap: 'Leap', bury: 'Bury the Yard', stride: 'Grave Stride' } },
 };
 
 /* packs: mobs and where they stand. Bots walk to `goTo` when the pack has no live mobs to aim at. */

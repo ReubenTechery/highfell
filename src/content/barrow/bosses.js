@@ -2,10 +2,18 @@
 import { angTo, dist, distXY, lerp } from '../../core/math';
 import { pick, rand, rng, vrand } from '../../core/rng';
 import { HOOKS, S } from '../../dungeon/state.js';
-import { aggro, banner, bits, call, dots, fx, hitstop, hurtHero, sfx, shake } from '../../dungeon/entities.js';
+import { aggro, banner, bits, call, dots, exposeMob, fx, hitstop, hurtHero, sfx, shake } from '../../dungeon/entities.js';
 import { makeCage, makeChain, partyPulse, randomHero, spawnMob } from '../../dungeon/mobs.js';
 import { moveEnt } from '../../dungeon/world.js';
 import { MAP } from './map.js';
+
+const YARD_SPOTS = [
+  { x: 350, y: 470 },
+  { x: 650, y: 470 },
+  { x: 500, y: 360 },
+  { x: 360, y: 610 },
+  { x: 640, y: 610 },
+];
 
 /* ---------- Sir Rattlebones ---------- */
 export function knightTick(m, dt) {
@@ -26,7 +34,7 @@ export function knightTick(m, dt) {
   if (m.wind > 0) return false;
   ab.sweep -= dt; ab.charge -= dt;
   if (ab.charge <= 0) {
-    ab.charge = m.phase === 2 ? 9 : 11;
+    ab.charge = m.phase === 2 ? 8 : 9.5;
     const v = (intro && S.player && S.player.alive ? S.player : null) || randomHero(true) || m.target;
     if (v) {
       const a = angTo(m, v), len = intro ? Math.min(dist(m, v) + 90, 210) : dist(m, v) + 150;
@@ -38,11 +46,11 @@ export function knightTick(m, dt) {
     }
   }
   if (ab.sweep <= 0 && (!intro || (S.hints.dodge && dist(m, m.target) <= 155))) {
-    ab.sweep = m.phase === 2 ? 7 : 8.5;
+    ab.sweep = m.phase === 2 ? 6.2 : 7.5;
     const a = angTo(m, m.target);
     m.act = { k: 'sweep', t: 0, dur: 1.55 };
     m.face = a; m.flip = Math.cos(a) < 0; m.pose = 'wind';
-    S.hazards.push({ shape: 'cone', x: m.x, y: m.y, a, r: 210, arc: 2.27, warn: 1.4, t: 0, dmg: 190, heavy: true, block: true, src: m, tankBuster: true,
+    S.hazards.push({ shape: 'cone', x: m.x, y: m.y, a, r: 210, arc: 2.27, warn: 1.4, t: 0, dmg: 295, heavy: true, block: true, src: m, tankBuster: true,
       onFire: () => { sfx('sweep'); shake(5); m.pose = null; m.lunge = 0.2; m.lungeA = a; fx({ type: 'slash', x: m.x, y: m.y - 60, a, r: 150, dur: 0.22, col: '#FFFFFF', wide: true }); } });
     if (intro) call('Heavy swing! Block it', 'alarm', 1.2);
     return true;
@@ -89,13 +97,18 @@ function knightAct(m, dt) {
       if (!h.alive || a.hit.has(h.id)) continue;
       if (dist(h, m) <= h.r + m.r + 8) {
         a.hit.add(h.id);
-        const got = hurtHero(h, 190, m, { heavy: true, block: true });
-        if (got > 40) { h.st.stun = Math.max(h.st.stun, 0.7); h.st.kx += Math.cos(a.a + 1.57 * (rng() < 0.5 ? 1 : -1)) * 320; h.st.ky += Math.sin(a.a) * 200; }
+        const got = hurtHero(h, 340 * m.dmgMul, m, { heavy: true, block: false, hazard: true });
+        if (got > 40) { h.st.stun = Math.max(h.st.stun, 0.8); h.st.kx += Math.cos(a.a + 1.57 * (rng() < 0.5 ? 1 : -1)) * 320; h.st.ky += Math.sin(a.a) * 200; }
         shake(5); sfx('thud');
       }
     }
     if (!ok || a.went >= a.len) {
       m.act = null; m.atkT = intro ? 0.3 : 1.0;
+      if (a.hit.size === 0 && !intro) {
+        m.st.stun = Math.max(m.st.stun, 1.4);
+        exposeMob(m, 3.5, 'Crashed! Exposed!');
+        bits(m.x, m.y - 40, 'shard_bone', 6, 180);
+      }
       if (intro && !S.hints.block) m.ab.sweep = Math.max(m.ab.sweep, 1.4);
       shake(3);
     }
@@ -115,22 +128,31 @@ export function keeperTick(m, dt) {
     m.phase = 2; m.act = { k: 'leap', t: 0 }; m.wind = 0; m.pose = null;
     ab.wisps = 3.5; ab.chain = 7; ab.smash = 11; ab.toss = 9;
     banner('Phase 2: lights out. Watch for wisps and chains.', 'warn', 2.6); sfx('roar');
-    S.hazards.push({ shape: 'circle', x: MAP.arena.x, y: MAP.arena.y, r: 150, warn: 1.2, t: 0, dmg: 120, src: m, onFire: () => { shake(9); sfx('slam'); } });
+    S.hazards.push({ shape: 'circle', x: MAP.arena.x, y: MAP.arena.y, r: 150, warn: 1.2, t: 0, dmg: 180, src: m, onFire: () => { shake(9); sfx('slam'); } });
     return true;
   }
   if (m.phase === 2 && m.hp < m.maxHp * 0.33 && !m.act) {
     m.phase = 3; m.act = { k: 'bury', t: 0 }; m.wind = 0; m.pose = 'smash';
-    ab.burrow = 6; ab.cage = 11; ab.smash = 9;
-    banner('Phase 3: he’s burying the yard. Stay inside the ring!', 'warn', 2.8); sfx('roar');
+    ab.burrow = 6; ab.cage = 11; ab.smash = 9; ab.stride = 4.5;
+    banner('Phase 3: his lantern burns the yard! Stay in his green circle!', 'warn', 2.8); sfx('roar');
     return true;
   }
   if (m.phase >= 2) { ab.pulse = (ab.pulse === undefined ? 5 : ab.pulse) - dt; if (ab.pulse <= 0) { ab.pulse = m.phase === 2 ? 9 : 11; partyPulse(m, m.phase === 2 ? 55 : 65, m.phase === 2 ? 'Grave cold' : 'Grave dust', m.phase === 2 ? '#C8F5E8' : '#C9B79A'); } }
   if (m.act) return keeperAct(m, dt);
   if (m.wind > 0) return false;
-  for (const k of ['smash', 'toss', 'hands', 'wisps', 'chain', 'burrow', 'cage']) if (ab[k] !== undefined) ab[k] -= dt;
+  for (const k of ['smash', 'toss', 'hands', 'wisps', 'chain', 'burrow', 'cage', 'stride']) if (ab[k] !== undefined) ab[k] -= dt;
   const P = m.phase;
   if (ab.smash <= 0) { ab.smash = P === 3 ? 12 : P === 2 ? 15 : 13; return startSmash(m); }
   if (P === 3 && ab.burrow <= 0) { ab.burrow = 16; return startBurrow(m); }
+  if (P === 3 && ab.stride <= 0) {
+    ab.stride = 8.5;
+    const pool = YARD_SPOTS.filter((p) => distXY(p.x, p.y, m.x, m.y) > 150);
+    const to = pick(pool.length ? pool : YARD_SPOTS);
+    m.act = { k: 'stride', t: 0, dur: 1.5, from: { x: m.x, y: m.y }, to };
+    call('He’s moving! Stay in his green circle!', 'alarm', 1.5);
+    sfx('dig', 0.7);
+    return true;
+  }
   // only the tank is ever caged: the boss turns on someone else until he's out and Slams it back
   if (P === 3 && ab.cage <= 0) {
     ab.cage = 18;
@@ -145,7 +167,6 @@ export function keeperTick(m, dt) {
       w.state = 'fight'; w.seed = rand(0, 9); w.target = targets[i % targets.length] || null; w.life = 14;
     }
     sfx('wail');
-    if (!S.hints.wisp) { S.hints.wisp = 1; HOOKS.hint('wisp'); }
     m.act = { k: 'gesture', t: 0, dur: 0.6 };
     return true;
   }
@@ -156,9 +177,11 @@ export function keeperTick(m, dt) {
   }
   if (P === 1 && ab.hands <= 0) {
     ab.hands = 12;
-    for (const h of S.heroes) if (h.alive) S.hazards.push({ shape: 'circle', kind: 'hand', x: h.x, y: h.y, r: 60, warn: 1.25, t: 0, dmg: 95, root: 1.5, src: m, onFire: (z) => { S.fx.push({ type: 'hand', x: z.x, y: z.y + 4, t: 0, dur: 1.1 }); bits(z.x, z.y, 'shard_dirt', 5, 120); } });
+    for (const h of S.heroes) if (h.alive) S.hazards.push({ shape: 'circle', kind: 'hand', x: h.x, y: h.y, r: 60, warn: 1.25, t: 0, dmg: 200, root: 1.5, src: m, onFire: (z) => { S.fx.push({ type: 'hand', x: z.x, y: z.y + 4, t: 0, dur: 1.1 }); bits(z.x, z.y, 'shard_dirt', 5, 120); } });
     sfx('rumble');
-    m.act = { k: 'gesture', t: 0, dur: 0.6 };
+    const pool = YARD_SPOTS.slice(0, 3).filter((p) => distXY(p.x, p.y, m.x, m.y) > 120);
+    const to = pick(pool.length ? pool : YARD_SPOTS.slice(0, 3));
+    m.act = { k: 'stride', t: 0, dur: 0.9, from: { x: m.x, y: m.y }, to };
     return true;
   }
   if (P <= 2 && ab.toss <= 0) {
@@ -167,7 +190,7 @@ export function keeperTick(m, dt) {
     if (v) {
       const a = angTo(m, v);
       m.face = a; m.flip = Math.cos(a) < 0;
-      S.hazards.push({ shape: 'cone', x: m.x, y: m.y, a, r: 380, arc: 0.9, warn: 1.1, t: 0, dmg: 120, block: true, src: m, follow: m, onFire: (z) => { sfx('toss'); for (let i = 0; i < 8; i++) { const r = vrand(80, 360), aa = a + vrand(-0.4, 0.4); dots(m.x + Math.cos(aa) * r, m.y + Math.sin(aa) * r, '#6B4A3A', 2, 80, { size: 7 }); } } });
+      S.hazards.push({ shape: 'cone', x: m.x, y: m.y, a, r: 380, arc: 0.9, warn: 1.1, t: 0, dmg: 210, block: true, src: m, follow: m, onFire: (z) => { sfx('toss'); for (let i = 0; i < 8; i++) { const r = vrand(80, 360), aa = a + vrand(-0.4, 0.4); dots(m.x + Math.cos(aa) * r, m.y + Math.sin(aa) * r, '#6B4A3A', 2, 80, { size: 7 }); } } });
       m.act = { k: 'gesture', t: 0, dur: 1.15 };
       return true;
     }
@@ -187,12 +210,12 @@ function startSmash(m) {
       dots(zz.x, zz.y, '#6B4A3A', 16, 280, { size: 7 });
       for (const h of S.heroes) {
         if (!h.alive) continue;
-        if (h === t && distXY(h.x, h.y, zz.x, zz.y) <= zz.r + h.r) hurtHero(h, 520 * m.dmgMul, m, { heavy: true, block: true, pierce: true, smash: true });
-        else if (distXY(h.x, h.y, zz.x, zz.y) <= zz.r + h.r) hurtHero(h, 180 * m.dmgMul, m, { block: false });
+        if (h === t && distXY(h.x, h.y, zz.x, zz.y) <= zz.r + h.r) hurtHero(h, 560 * m.dmgMul, m, { heavy: true, block: true, pierce: true, smash: true });
+        else if (distXY(h.x, h.y, zz.x, zz.y) <= zz.r + h.r) hurtHero(h, 240 * m.dmgMul, m, { block: false, hazard: true });
       }
     } };
   S.hazards.push(z);
-  if (t.isPlayer && t.role === 'tank') { S.timers.push({ t: 0.7, fn: () => { if (m.act && m.act.k === 'smash') call('BLOCK!', 'alarm', 1.0); } }); if (!S.hints.block) { S.hints.block = 1; HOOKS.hint('block'); } }
+  if (t.isPlayer && t.role === 'tank') S.timers.push({ t: 0.7, fn: () => { if (m.act && m.act.k === 'smash') call('BLOCK!', 'alarm', 1.0); } });
   sfx('windup');
   return true;
 }
@@ -207,10 +230,9 @@ function startBurrow(m) {
       m.x = z.x; m.y = z.y; m.hidden = false; m.untargetable = false; m.home = { x: z.x, y: z.y };
       shake(10); sfx('erupt'); hitstop(0.05);
       bits(z.x, z.y, 'shard_dirt', 22, 340);
-      for (const h of S.heroes) if (h.alive && distXY(h.x, h.y, z.x, z.y) <= z.r + h.r) { const got = hurtHero(h, 220 * m.dmgMul, m, { block: false }); if (got > 0) h.st.air = 0.6; }
-      S.rings.push({ x: z.x, y: z.y, r: 40, speed: 270, w: 26, max: 620, hit: new Set(), dmg: 90, src: m });
-      S.timers.push({ t: 0.75, fn: () => { if (m.alive) S.rings.push({ x: z.x, y: z.y, r: 40, speed: 270, w: 26, max: 620, hit: new Set(), dmg: 90, src: m }); } });
-      if (!S.hints.rings) { S.hints.rings = 1; HOOKS.hint('rings'); }
+      for (const h of S.heroes) if (h.alive && distXY(h.x, h.y, z.x, z.y) <= z.r + h.r) { const got = hurtHero(h, 330 * m.dmgMul, m, { block: false, hazard: true }); if (got > 0) h.st.air = 0.6; }
+      S.rings.push({ x: z.x, y: z.y, r: 40, speed: 270, w: 26, max: 620, hit: new Set(), dmg: 215, src: m });
+      S.timers.push({ t: 0.75, fn: () => { if (m.alive) S.rings.push({ x: z.x, y: z.y, r: 40, speed: 270, w: 26, max: 620, hit: new Set(), dmg: 215, src: m }); } });
     } });
   return true;
 }
@@ -229,11 +251,23 @@ function keeperAct(m, dt) {
   if (a.k === 'bury') {
     if (a.t > 0.8 && !a.done) {
       a.done = true; m.pose = null; S.darkTarget = 0;
-      S.ring = { r: MAP.arena.r, target: 300, tick: 0.5 };
+      S.ring = { x: m.x, y: m.y, r: MAP.arena.r, target: 265, tick: 0.5, followBoss: true };
       shake(10); sfx('slam'); sfx('fire');
       fx({ type: 'ring', x: m.x, y: m.y, r0: 40, r1: 460, col: '#9BE15D', dur: 0.6, w: 10, ground: true });
     }
     if (a.t > 2.0) m.act = null;
+    return true;
+  }
+  if (a.k === 'stride') {
+    const k = Math.min(1, a.t / a.dur);
+    const ease = k * k * (3 - 2 * k);
+    m.x = lerp(a.from.x, a.to.x, ease);
+    m.y = lerp(a.from.y, a.to.y, ease);
+    m.face = Math.atan2(a.to.y - a.from.y, a.to.x - a.from.x);
+    m.flip = Math.cos(m.face) < 0;
+    m.moving = 0.1; m.walkT += dt * 14;
+    if (S.frame % 3 === 0) bits(m.x, m.y, 'shard_dirt', 2, 110);
+    if (a.t >= a.dur) { m.act = null; m.home = { x: m.x, y: m.y }; }
     return true;
   }
   if (a.k === 'smash') {

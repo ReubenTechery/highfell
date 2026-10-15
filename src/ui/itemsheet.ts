@@ -6,7 +6,7 @@
  */
 import { DUNGEONS, SETS, thing } from '../content';
 import { ROLES } from '../content/roles';
-import { ROLE_SLOTS } from '../content/gear';
+import { ROLE_SLOTS, gearKey } from '../content/gear';
 import type { CollectibleKind, ItemDef, RoleId } from '../content/types';
 import { GARDEN_TABLE } from '../content/vale';
 import { compareFor, compareOn, floorWorn, itemShare, wearerOf, type Compare, type Effect, type Verdict } from '../meta/gear';
@@ -34,9 +34,9 @@ export function itemSheet(p: Profile, id: string, hasBack: boolean): { head: str
   const e = p.collection[id];
   let kind = '', side = '', more = '', vs = '', act = '';
   if (t?.kind === 'item') {
-    const d: ItemDef = t.def;
+    const d: ItemDef = t.def, gk = gearKey(d);
     const look = rarLook(id);
-    kind = d.kind === 'unique' ? `Unique ${ROLE_SLOTS[d.role][d.slot].name.toLowerCase()} · ${ROLES[d.role].title}` : d.kind === 'set' ? `Epic · ${SETS[d.setId!].name} set · ${ROLES[d.role].title} ${d.slot}` : `${look.name} ${d.slot}`;
+    kind = d.kind === 'unique' ? `Unique ${ROLE_SLOTS[gk][d.slot].name.toLowerCase()} · ${ROLES[d.role].title}` : d.kind === 'set' ? `Epic · ${SETS[d.setId!].name} set · ${ROLES[d.role].title} ${d.slot}` : `${look.name} ${d.slot}`;
     const cmp = held(p, d);
     if (cmp) { vs = cmp.html; act = cmp.act; }
     // what the piece gives on its own, next to its picture
@@ -88,7 +88,7 @@ function tag(n: number, unit = ''): string {
  *  (when you own it) a way to the gear doll to put it on */
 function held(p: Profile, d: ItemDef): { html: string; act: string; c: Compare } {
   const h = wearerOf(p, d);
-  const c = (h && compareFor(p, h, d.id)) || compareOn(floorWorn(p, d.role), d.role, d);
+  const c = (h && compareFor(p, h, d.id)) || compareOn(floorWorn(p, d.role, d.cls), d.role, d);
   const who = h ? h.name.split(' ')[0] : `a new ${d.role === 'dps' ? 'DPS' : ROLES[d.role].title.toLowerCase()}`;
   const v = VERDICT[c.verdict];
   const top = `<div class="cmp-verdict">${v.mark}<b>${v.word}</b><span>${c.verdict === 'wearing' ? `${esc(who)} has it on` : `for ${esc(who)}`}</span></div>`;
