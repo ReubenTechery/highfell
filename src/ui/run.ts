@@ -30,7 +30,7 @@ import { RECIPES } from '../content/vale';
 import { drinkForRun } from '../meta/vale';
 import type { App } from './app';
 import { $, esc, flash, fmtT } from './dom';
-import { heroSprite, nameOf, tile } from './art';
+import { heroImg, heroSprite, nameOf, tile } from './art';
 import { IN, aimPoint, bindInput, mashCage, playerIntent, resetInput, type InputUI } from './input';
 import { SFX } from './sound';
 
@@ -346,16 +346,50 @@ export class RunScene implements InputUI {
   private showWelcome(): void {
     if (!S) return;
     S.paused = true;
-    this.msg({
-      eyebrow: 'First time here?',
-      title: 'Welcome to Highfell',
-      text: 'Play a quick one-minute tutorial, or jump straight to making your hero.',
-      big: true,
-      buttons: [
-        ['Play tutorial (1 min)', () => { S.paused = false; $('ov-msg').hidden = true; this.hint('introMove'); }],
-        [activeHero(this.app.p) ? 'Back to the hearth' : 'Make my hero', () => this.skipIntro()],
-      ],
+    const hasHero = !!activeHero(this.app.p);
+    const ov = $('ov-msg');
+    ov.classList.add('welcome');
+    $('msg-eyebrow').textContent = '3-Hero Co-Op Dungeons';
+    $('msg-title').textContent = 'Welcome to Highfell';
+    $('msg-text').innerHTML = `
+      <div class="wk-stage" aria-hidden="true">
+        <div class="wk-glow"></div>
+        <span class="wk-stage-tag">Barrow Crypt · Trinity Party</span>
+        <div class="wk-party">
+          <div class="wk-fig side">${heroImg(ROLES.healer.sprite, { cls: 'wk-img' })}<span class="wk-role"><i class="rdot healer"></i>Healer</span></div>
+          <div class="wk-fig lead">${heroImg(ROLES.tank.sprite, { cls: 'wk-img' })}<span class="wk-role"><i class="rdot tank"></i>Tank (You)</span></div>
+          <div class="wk-fig side">${heroImg(ROLES.dps.sprite, { cls: 'wk-img' })}<span class="wk-role"><i class="rdot dps"></i>DPS</span></div>
+        </div>
+      </div>
+      <div class="wk-pills">
+        <span class="wk-pill"><span class="tile">${tile('shield')}</span><b>4-Min Runs</b></span>
+        <span class="wk-pill"><span class="tile">${tile('u_gravedigger')}</span><b>1/50 Uniques</b></span>
+        <span class="wk-pill"><span class="tile">${tile('c_pet_keeper')}</span><b>Pets & Hearth</b></span>
+      </div>`;
+    const acts = $('msg-actions');
+    acts.innerHTML = `
+      <button type="button" class="btn gold big wk-btn" data-w="play">
+        <span class="tile wk-ic" aria-hidden="true">${tile('cleave')}</span>
+        <span class="wk-tx"><b>Play 1-Min Tutorial</b><small>Smash the boss in full Epic gear</small></span>
+      </button>
+      <button type="button" class="btn big wk-btn" data-w="skip">
+        <span class="tile wk-ic" aria-hidden="true">${tile('c_dwarf')}</span>
+        <span class="wk-tx"><b>${hasHero ? 'Back to the Hearth' : 'Skip · Make My Hero'}</b><small>${hasHero ? 'Return to your house' : 'Jump straight to hero creation'}</small></span>
+      </button>`;
+    acts.querySelector('[data-w="play"]')?.addEventListener('click', () => {
+      SFX.play('ui');
+      ov.classList.remove('welcome');
+      ov.hidden = true;
+      S.paused = false;
+      this.hint('introMove');
     });
+    acts.querySelector('[data-w="skip"]')?.addEventListener('click', () => {
+      SFX.play('ui');
+      ov.classList.remove('welcome');
+      this.skipIntro();
+    });
+    ov.hidden = false;
+    (acts.querySelector('button') as HTMLElement | null)?.focus({ preventScroll: true });
   }
 
   /* ---------------------------------------------------------------- the meta glue */
@@ -417,6 +451,7 @@ export class RunScene implements InputUI {
 
   /* ---------------------------------------------------------------- menus */
   private msg(o: { eyebrow: string; title: string; text: string; big?: boolean; buttons: [string, () => void][] }): void {
+    $('ov-msg').classList.remove('welcome');
     $('msg-eyebrow').textContent = o.eyebrow;
     $('msg-title').textContent = o.title;
     $('msg-text').textContent = o.text;
