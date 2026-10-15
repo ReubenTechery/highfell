@@ -3,11 +3,11 @@ import { dist, distXY, lerp } from '../core/math';
 import { setSeed } from '../core/rng';
 import { ORDER } from '../content/roles';
 import { HOOKS, S, emit, setS } from './state.js';
-import { aggro, banner, bits, dots, fxText, healHero, hurtHero, hurtMob, makeHero, makeMob, sfx, shake } from './entities.js';
+import { aggro, banner, bits, dots, fx, fxText, healHero, hurtHero, hurtMob, makeHero, makeMob, sfx, shake } from './entities.js';
 import { botTick, inHaz } from './bots.js';
-import { heroBy, heroTick, isFoe, later, projHit } from './heroes.js';
+import { applyBleed, heroBy, heroTick, isFoe, later, projHit } from './heroes.js';
 import { chainTick, mobTick, nearestHeroTo, spawnMob } from './mobs.js';
-import { canStand, inWalk, moveEnt, roomIndexOf } from './world.js';
+import { canStand, inWalk, moveEnt, roomIndexOf, walkTo } from './world.js';
 import { tickWalkout } from './walkout.js';
 
 /* dg: a dungeon definition (map, mobs, packs, script). opts:
@@ -15,9 +15,9 @@ import { tickWalkout } from './walkout.js';
 export function newGame(dg, opts) {
   setSeed(opts.seed || ((Date.now() & 0xfffffff) | 1));
   setS({
-    dg, t: 0, frame: 0, seq: 1, opts, heroes: [], mobs: [], packs: [], projs: [], hazards: [], zones: [], fx: [], texts: [], parts: [], timers: [], rings: [], chains: [],
+    dg, t: 0, frame: 0, seq: 1, opts, heroes: [], mobs: [], packs: [], projs: [], hazards: [], zones: [], thralls: [], fx: [], texts: [], parts: [], timers: [], rings: [], chains: [],
     gates: JSON.parse(JSON.stringify(dg.gates)), props: [],
-    inCombat: false, lastCombat: -99, combatStart: 0, boss: null, bossFight: null, ring: null, dark: 0, darkTarget: 0, shake: 0, hitstop: 0, hurtFlash: 0,
+    inCombat: false, lastCombat: -99, combatStart: 0, boss: null, bossFight: null, ring: null, seal: null, dark: 0, darkTarget: 0, shake: 0, hitstop: 0, hurtFlash: 0,
     banner: null, call: null, walkout: null, hush: false, looks: new Set(opts.looks || []), stats: { deaths: 0, perfect: 0, kicks: 0, cuts: 0, cages: 0, wipes: 0, start: 0 }, hints: {}, over: false, chest: null,
     cp: 0, quiet: !!opts.quiet, auto: !!opts.auto, noEvents: !!opts.noEvents, cleared: 0, total: dg.packs.length, startedAt: 0,
     // how hard this dungeon is: hit (everything that hurts a hero), trashHp (health of everything but the
@@ -89,10 +89,14 @@ export function spawnChest(x, y, boss) {
 export function checkPack(p) {
   if (p.cleared || p.mobs.some((m) => m.alive)) return;
   p.cleared = true; S.cleared++;
-  if (!p.def.boss) { fxText(S.player.x, S.player.y - 140, 'Pack down', '#9BE15D', 20, { dur: 1.2 }); }
+  if (!p.def.boss) {
+    const dur = S.t - (p.pulledAt || S.combatStart || S.t);
+    const melted = dur > 0.2 && dur < 13.5;
+    fxText(S.player.x, S.player.y - 140, melted ? 'MELTED!' : 'Pack down', melted ? '#F2C230' : '#9BE15D', melted ? 25 : 20, { dur: 1.25 });
+  }
 }
 export function triggerAmbush(p) {
-  p.triggered = true; p.pulled = true;
+  p.triggered = true; p.pulled = true; p.pulledAt = S.t;
   for (const [type, x, y] of p.def.mobs) {
     const m = spawnMob(type, x, y, null, true);
     m.pack = p; p.mobs.push(m); m.rise = 0.9; m.riseDur = 0.9;
@@ -108,10 +112,10 @@ export function respawn() {
   const room = S.wipeRoom !== undefined ? S.wipeRoom : S.cp;
   const cps = S.dg.checkpoints;
   const cp = cps[Math.min(room, cps.length - 1)];
-  S.hazards = []; S.zones = []; S.projs = []; S.rings = []; S.chains = []; S.timers = []; S.ring = null; S.dark = 0; S.darkTarget = 0;
+  S.hazards = []; S.zones = []; S.thralls = []; S.projs = []; S.rings = []; S.chains = []; S.timers = []; S.ring = null; S.dark = 0; S.darkTarget = 0;
   for (const h of S.heroes) {
-    Object.assign(h, { alive: true, hp: h.maxHp, mana: h.maxMana, absorb: 0, absorbT: 0, dodgeT: 0, dash: null, cast: null, blocking: false, target: null, picked: null, holdFire: false, hots: [] });
-    h.st = { stun: 0, root: 0, haunt: 0, air: 0, kx: 0, ky: 0, chained: null, caged: null };
+    Object.assign(h, { alive: true, hp: h.maxHp, mana: h.maxMana, absorb: 0, absorbT: 0, dodgeT: 0, dash: null, cast: null, blocking: false, target: null, picked: null, holdFire: false, hots: [], ghostSaved: false });
+    h.st = { stun: 0, root: 0, haunt: 0, air: 0, ghost: 0, surge: 0, zeal: 0, kx: 0, ky: 0, chained: null, caged: null };
     for (const k in h.cd) h.cd[k] = 0;
     h.bot.ignore = new Set(); h.bot.seen = new Set();
   }
@@ -131,7 +135,7 @@ export function respawn() {
     p.pulled = false;
     p.mobs = p.mobs.filter((m) => m.alive && !m.extra);
     for (const m of p.mobs) {
-      Object.assign(m, { x: m.home0 ? m.home0.x : m.home.x, y: m.home0 ? m.home0.y : m.home.y, hp: m.maxHp, state: 'idle', target: null, forced: null, forcedT: 0, wind: 0, cast: null, busy: 0, act: null, pose: null, ab: {}, phase: 1, armorUp: 0, dmgMul: 1, hidden: false, untargetable: false, jumpZ: 0, calmUntil: S.t + 4 });
+      Object.assign(m, { x: m.home0 ? m.home0.x : m.home.x, y: m.home0 ? m.home0.y : m.home.y, hp: m.maxHp, state: 'idle', target: null, forced: null, forcedT: 0, wind: 0, cast: null, busy: 0, act: null, pose: null, ab: {}, phase: 1, armorUp: 0, exposed: 0, dmgMul: 1, hidden: false, untargetable: false, jumpZ: 0, calmUntil: S.t + 4 });
       m.threat = new Map(); m.st = { stun: 0, freeze: 0, slow: 0, slowT: 0, kx: 0, ky: 0 };
       m.speed = m.M.speed;
       if (m.home0) m.home = { x: m.home0.x, y: m.home0.y };
@@ -164,6 +168,7 @@ export function update(dt) {
   for (const h of S.heroes) { h.botDriven = !h.isPlayer || S.auto; if (h.botDriven) botTick(h, dt); }
   for (const h of S.heroes) heroTick(h, dt);
   for (const m of S.mobs) mobTick(m, dt);
+  tickThralls(dt);
   tickProjs(dt); tickHazards(dt); tickZones(dt); tickRings(dt);
   for (const ch of S.chains.slice()) chainTick(ch, dt);
   if (S.ring) tickFireRing(dt);
@@ -203,6 +208,10 @@ export function update(dt) {
   tickFx(dt);
 }
 function onCombatEnd() {
+  for (const h of S.heroes) {
+    h.ghostSaved = false;
+    if (h.st) h.st.ghost = 0;
+  }
   const dead = S.heroes.filter((h) => !h.alive);
   if (!dead.length || S.over) return;
   later(2.4, () => {
@@ -210,12 +219,62 @@ function onCombatEnd() {
     const healer = heroBy('healer');
     for (const h of S.heroes) {
       if (h.alive) continue;
-      h.alive = true; h.hp = Math.round(h.maxHp * 0.5); h.st = { stun: 0, root: 0, haunt: 0, air: 0, kx: 0, ky: 0, chained: null, caged: null };
+      h.alive = true; h.hp = Math.round(h.maxHp * 0.5); h.st = { stun: 0, root: 0, haunt: 0, air: 0, ghost: 0, surge: 0, zeal: 0, kx: 0, ky: 0, chained: null, caged: null };
       fxText(h.x, h.y - 100, healer && healer.alive && healer !== h ? healer.name + ' brings ' + (h.isPlayer ? 'you' : h.name) + ' back' : 'Back up', '#9BE15D', 20, { dur: 1.6 });
       dots(h.x, h.y - 40, '#FFE08A', 14, 160);
     }
     sfx('revive');
   });
+}
+
+function tickThralls(dt) {
+  if (!S.thralls || !S.thralls.length) return;
+  for (let i = S.thralls.length - 1; i >= 0; i--) {
+    const tr = S.thralls[i];
+    tr.life -= dt;
+    tr.lunge = Math.max(0, (tr.lunge || 0) - dt);
+    tr.moving = Math.max(0, (tr.moving || 0) - dt);
+    if (!tr.alive || tr.life <= 0 || !tr.owner || !tr.owner.alive || S.over) {
+      tr.alive = false;
+      S.thralls.splice(i, 1);
+      continue;
+    }
+    if (tr.rise > 0) { tr.rise -= dt; continue; }
+    let t = tr.owner.target && isFoe(tr.owner.target) && !tr.owner.target.cage && !tr.owner.target.M.wisp ? tr.owner.target : null;
+    if (!t) {
+      let bd = 420;
+      for (const m of S.mobs) {
+        if (!isFoe(m) || m.cage || m.M.wisp || (m.state !== 'fight' && !m.isBoss)) continue;
+        const d = dist(tr, m);
+        if (d < bd) { bd = d; t = m; }
+      }
+    }
+    if (t) {
+      const d = dist(tr, t), reach = tr.r + t.r + 22;
+      if (d > reach) {
+        walkTo(tr, t.x, t.y, 260, dt, reach - 4);
+      } else {
+        tr.face = Math.atan2(t.y - tr.y, t.x - tr.x);
+        tr.flip = Math.cos(tr.face) < 0;
+        tr.atkT -= dt;
+        if (tr.atkT <= 0) {
+          tr.atkT = tr.kind === 'shade' ? 0.55 : 0.85;
+          tr.lunge = 0.14; tr.lungeA = tr.face;
+          const dmg = tr.kind === 'shade' ? 30 : tr.kind === 'frost' ? 28 : 22;
+          const col = tr.kind === 'shade' ? '#B79CFF' : tr.kind === 'frost' ? '#8FD6FF' : '#FFE08A';
+          hurtMob(t, dmg, tr.owner, { col, size: 16, threat: tr.kind === 'bg' ? 2 : 0.5 });
+          if (tr.kind === 'shade' && t.alive) applyBleed(tr.owner, t, 3.5);
+          if (tr.kind === 'frost' && t.alive && !t.isBoss) {
+            t.st.slow = Math.max(t.st.slow, 0.35);
+            t.st.slowT = Math.max(t.st.slowT, 1.5);
+          }
+          fx({ type: 'slash', x: tr.x, y: tr.y - 24, a: tr.face, r: 34, dur: 0.14, col });
+        }
+      }
+    } else if (dist(tr, tr.owner) > 68) {
+      walkTo(tr, tr.owner.x, tr.owner.y + 24, 230, dt, 48);
+    }
+  }
 }
 
 function separate() {
@@ -304,8 +363,14 @@ function tickZones(dt) {
     z.t += dt; z.tickT -= dt;
     if (z.tickT <= 0) {
       z.tickT = z.tick;
-      if (z.kind === 'heal') { for (const h of S.heroes) if (h.alive && distXY(h.x, h.y, z.x, z.y) <= z.r + h.r * 0.5) healHero(z.src, h, z.val || 36, { size: 16 }); }
-      else if (z.kind === 'blizzard') {
+      if (z.kind === 'heal') {
+        for (const h of S.heroes) if (h.alive && distXY(h.x, h.y, z.x, z.y) <= z.r + h.r * 0.5) healHero(z.src, h, z.val || 36, { size: 16 });
+        if (z.src && z.src.bonuses && z.src.bonuses.has('candlewake3')) {
+          for (const m of S.mobs) if (isFoe(m) && !m.cage && distXY(m.x, m.y, z.x, z.y) <= z.r + m.r * 0.5) hurtMob(m, 32, z.src, { col: '#FFE08A', size: 16, noCrit: true });
+        }
+      } else if (z.kind === 'blizzard') {
+        const rb3 = !!(z.src && z.src.bonuses && z.src.bonuses.has('rimebone3'));
+        if (rb3) bits(z.x + Math.cos(S.t * 7 + i) * z.r * 0.45, z.y + Math.sin(S.t * 5 + i) * z.r * 0.35, 'shard_bone', 1, 95);
         for (const m of S.mobs) {
           if (!isFoe(m) || m.cage || distXY(m.x, m.y, z.x, z.y) > z.r + m.r * 0.5) continue;
           hurtMob(m, z.val || 20, z.src, { crit: 0.06, size: 17, col: '#DDF3FF' });
@@ -338,11 +403,29 @@ function tickRings(dt) {
 }
 function tickFireRing(dt) {
   const R = S.ring, A = S.dg.map.arena;
-  R.r = Math.max(R.target, R.r - 22 * dt);
+  if (R.followBoss && S.boss && S.boss.alive && !S.boss.hidden) {
+    R.x = lerp(R.x === undefined ? A.x : R.x, S.boss.x, Math.min(1, dt * 6));
+    R.y = lerp(R.y === undefined ? A.y : R.y, S.boss.y, Math.min(1, dt * 6));
+  } else if (R.x === undefined) {
+    R.x = A.x; R.y = A.y;
+  }
+  R.r = Math.max(R.target, R.r - 24 * dt);
+  for (const h of S.heroes) {
+    if (!h.alive) continue;
+    if (distXY(h.x, h.y, R.x, R.y) <= R.r - h.r * 0.35) {
+      h.st.zeal = Math.max(h.st.zeal || 0, 0.6);
+    }
+  }
   R.tick -= dt;
   if (R.tick <= 0) {
     R.tick = 0.5;
-    for (const h of S.heroes) if (h.alive && dist(h, A) > R.r - h.r * 0.5) { hurtHero(h, 26, null, { magic: true, pierce: true, block: false, dodge: false, numCol: '#9BE15D', numSize: 16, numDur: 0.6 }); if (h.isPlayer && !S.hints.fire) { S.hints.fire = 1; S.call = { str: 'Get inside the ring!', kind: 'alarm', t: 0, dur: 1.4 }; } }
+    for (const h of S.heroes) {
+      if (!h.alive) continue;
+      if (distXY(h.x, h.y, R.x, R.y) > R.r - h.r * 0.35) {
+        hurtHero(h, 34, null, { magic: true, pierce: true, block: false, dodge: false, numCol: '#9BE15D', numSize: 16, numDur: 0.6 });
+        if (h.isPlayer && !S.hints.fire) { S.hints.fire = 1; S.call = { str: 'Stay inside his green circle!', kind: 'alarm', t: 0, dur: 1.6 }; }
+      }
+    }
   }
 }
 

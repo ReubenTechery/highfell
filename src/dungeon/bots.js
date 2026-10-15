@@ -7,6 +7,14 @@ import { bestCluster, doDodge, heroBy, isFoe, mend, useAbility } from './heroes.
 import { chainEnds, cutChain, mashCage } from './mobs.js';
 import { canStand, freeSpot, navPoint } from './world.js';
 
+function ringCenter() {
+  if (!S.ring) return S.dg.map.arena;
+  return {
+    x: S.ring.x !== undefined ? S.ring.x : S.dg.map.arena.x,
+    y: S.ring.y !== undefined ? S.ring.y : S.dg.map.arena.y,
+  };
+}
+
 /* ---------- bots: the two seats you are not in (in the real game, your mates) ---------- */
 export function inHaz(z, x, y, pad) {
   const ox = z.x, oy = z.y;
@@ -34,14 +42,20 @@ export function dangerAt(h, x, y, horizon, forSpot) {
     if (z.live && z.t >= z.warn + z.live - 0.2) continue;
     if (inHaz(z, x, y, h.r + 6)) { if (!best || tti < best.tti) best = { tti, z }; }
   }
-  if (S.ring && distXY(x, y, S.dg.map.arena.x, S.dg.map.arena.y) > S.ring.r - h.r - 14) best = { tti: 0, fire: true };
+  if (S.ring) {
+    const rc = ringCenter();
+    if (distXY(x, y, rc.x, rc.y) > S.ring.r - h.r - 14) best = { tti: 0, fire: true };
+  }
   return best;
 }
 export function okHere(h) {
   if (dangerAt(h, h.x, h.y, 1.6)) return false;
   const boss = S.boss && S.boss.alive && !S.boss.hidden ? S.boss : null;
   if (boss && inFrontOf(boss, h.x, h.y)) return false;
-  if (S.ring && dist(h, S.dg.map.arena) > S.ring.r - h.r - 40) return false;
+  if (S.ring) {
+    const rc = ringCenter();
+    if (distXY(h.x, h.y, rc.x, rc.y) > S.ring.r - h.r - 40) return false;
+  }
   if (smashBubble(h.x, h.y, h)) return false;
   if (h.cls === 'rogue') {
     const t = h.picked || h.target;
@@ -132,6 +146,10 @@ export function nextObjective() {
 export function centroid(list) { let x = 0, y = 0; list.forEach((m) => { x += m.x; y += m.y; }); return { x: x / list.length, y: y / list.length }; }
 
 export function idleGoal(h) {
+  if (S.seal && S.seal.active && !S.seal.done && !S.inCombat) {
+    const pad = S.seal.pads.find((p) => p.role === h.role);
+    if (pad && distXY(h.x, h.y, pad.x, pad.y) < 440) return { x: pad.x, y: pad.y, tol: 10 };
+  }
   const L = leaderHero();
   if (h === L) {
     if (!partyReady(h)) { h.bot.waiting = true; return null; }
@@ -176,8 +194,8 @@ export function backSpot(h, b, dd, side) {
 }
 export function ringClamp(p, h) {
   if (!S.ring) return p;
-  const A = S.dg.map.arena, d = distXY(p.x, p.y, A.x, A.y), lim = S.ring.r - h.r - 50;
-  if (d > lim) { p.x = A.x + ((p.x - A.x) / d) * lim; p.y = A.y + ((p.y - A.y) / d) * lim; }
+  const rc = ringCenter(), d = distXY(p.x, p.y, rc.x, rc.y), lim = S.ring.r - h.r - 45;
+  if (d > lim && d > 0.1) { p.x = rc.x + ((p.x - rc.x) / d) * lim; p.y = rc.y + ((p.y - rc.y) / d) * lim; }
   return p;
 }
 export function combatGoal(h) {
@@ -204,7 +222,7 @@ export function combatGoal(h) {
     }
     return ringClamp(standNear(h, t, 8), h);
   }
-  const want = h.role === 'dps' ? 290 : 240;
+  const want = h.role === 'dps' ? 255 : 225;
   if (boss && boss.state === 'fight') {
     const p = backSpot(h, boss, want, h.role === 'dps' ? -1 : 1);
     if (h.role === 'healer' && tank && tank.alive && distXY(p.x, p.y, tank.x, tank.y) > 470) { p.x = lerp(p.x, tank.x, 0.4); p.y = lerp(p.y, tank.y, 0.4); }
@@ -341,14 +359,13 @@ export function rogueActions(h) {
   if (h.cd.a3 <= 0 && (caster || close.length >= 2)) { useAbility(h, 'a3'); return; }
   if (h.cd.a4 <= 0 && !dangerAt(h, tgt.x, tgt.y, 1.0)) {
     const needGap = d > 95 + tgt.r && d <= 340 + tgt.r;
-    const wantSteroid = d <= 95 + tgt.r && !tgt.cage && tgt.bleed && tgt.bleed.t > 0 && h.frenzyT <= 0;
+    const wantSteroid = d <= 95 + tgt.r && !tgt.cage && tgt.bleed && tgt.bleed.left > 0 && h.frenzyT <= 0;
     if (needGap || wantSteroid) { useAbility(h, 'a4', tgt); return; }
   }
   if (d <= 95 + tgt.r) {
-    if (!tgt.cage && h.cd.a1 <= 0 && (!tgt.bleed || tgt.bleed.t < 1.8)) { useAbility(h, 'a1', tgt); return; }
-    if (h.cd.a2 <= 0 && (tgt.cage || (tgt.bleed && tgt.bleed.t > 0) || tgt.hp < 220)) { useAbility(h, 'a2', tgt); return; }
+    if (!tgt.cage && h.cd.a1 <= 0 && (!tgt.bleed || tgt.bleed.left < 1.8)) { useAbility(h, 'a1', tgt); return; }
+    if (h.cd.a2 <= 0 && (tgt.cage || (tgt.bleed && tgt.bleed.left > 0) || tgt.hp < 220)) { useAbility(h, 'a2', tgt); return; }
     if (h.cd.a1 <= 0) { useAbility(h, 'a1', tgt); return; }
-    if (h.cd.a3 <= 0 && (h.talents?.a3 || 0) >= 1 && tgt.bleed && tgt.bleed.t > 0) { useAbility(h, 'a3'); return; }
   }
 }
 export function dpsActions(h) {

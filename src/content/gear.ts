@@ -105,7 +105,8 @@ export function regularItems(): ItemDef[] {
 export function weightedScore(scores: Record<SlotId, number>): number {
   return SLOTS.reduce((a, s) => a + s.weight * scores[s.id], 0);
 }
-/** Damage and healing multiplier: 1.00 at all Common up to 1.45 at all Epic. */
-export const powerFromScore = (w: number): number => 1 + (0.45 * (w - 10)) / 12;
+/** Damage and healing multiplier: 1.00 at all Common (10), 1.48 at Rare (18), 1.72 at plain Epic (22), and 1.96 at full Dungeon BiS (26). */
+export const powerFromScore = (w: number): number => 1 + (0.72 * (w - 10)) / 12;
 /** Health grows a little slower than power. */
-export const hpMultiplier = (power: number): number => 1 + (power - 1) * 0.6;
+export const hpMultiplier = (power: number): number => 1 + (power - 1) * 0.5;
+

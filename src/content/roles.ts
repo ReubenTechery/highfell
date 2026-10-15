@@ -9,7 +9,7 @@ export const abKey = (h: RoleId | GearKey | { role?: RoleId; cls?: string }): Ge
   typeof h === 'string' ? h : h.cls === 'rogue' ? 'rogue' : (h.role ?? CLASSES[(h.cls as ClassId) || 'warrior']?.role ?? 'dps');
 
 export const ROLES: Record<RoleId, RoleDef> = {
-  tank: { id: 'tank', name: 'Brannoc', title: 'Tank', hp: 1250, armor: 0.55, speed: 176, r: 18, threat: 1.3, color: '#4F6FA8', sprite: 'tank',
+  tank: { id: 'tank', name: 'Brannoc', title: 'Tank', hp: 1250, armor: 0.44, speed: 176, r: 18, threat: 1.3, color: '#4F6FA8', sprite: 'tank',
     blurb: 'Cleave through packs, Slam to yank foes into a whirlwind, Charge stragglers, block big hits.' },
   healer: { id: 'healer', name: 'Maren', title: 'Healer', hp: 820, armor: 0.2, speed: 182, r: 16, threat: 1, color: '#E7B53C', sprite: 'healer',
     blurb: 'Tap a frame to heal. Smite when everyone is topped up.' },
@@ -44,4 +44,5 @@ export const AB: Record<GearKey, Record<AbilitySlot, AbilityDef>> = {
   },
 };
 
-export const MEND = { heal: 140, mana: 6, gcd: 0.45, range: 560 };
+export const MEND = { heal: 138, mana: 6, gcd: 0.56, range: 560 };
+

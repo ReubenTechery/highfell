@@ -24,6 +24,7 @@ import { lootGlint, startWalkout } from '../dungeon/walkout.js';
 import { Achiever } from '../meta/achievements';
 import { loadoutFor, partyRar, plainLoadout, worn } from '../meta/gear';
 import { countBossWipe, countRunStart, resolveClear, resolveKill, runLoot, tellOf, type ClearLoot, type KillLoot } from '../meta/loot';
+import { heroesFor } from '../meta/party';
 import { activeHero, finishIntroRun, heroById, roleOf, type Hero } from '../meta/profile';
 import { heroArt } from '../content/folk';
 import { RECIPES } from '../content/vale';
@@ -253,8 +254,14 @@ export class RunScene implements InputUI {
     const tierSuffix = rar <= 0 ? '_rags' : rar === 1 ? '_iron' : '';
     const loadouts: Record<string, unknown> = {};
     for (const r of ['tank', 'healer', 'dps'] as RoleId[]) {
-      const base = r === role ? (test || !h ? plainLoadout(r, rar, h?.cls) : loadoutFor(p, h)) : plainLoadout(r, rar);
-      loadouts[r] = { ...base, sprite: `${ROLES[r].sprite}${tierSuffix}` };
+      const mate = r === role ? null : (!test && !intro && !o.heroic ? heroesFor(p, r)[0] || null : null);
+      if (mate) {
+        const base = loadoutFor(p, mate);
+        loadouts[r] = { ...base, cls: mate.cls, name: mate.name, sprite: heroSprite(mate, r, p) };
+      } else {
+        const base = r === role ? (test || !h ? plainLoadout(r, rar, h?.cls) : loadoutFor(p, h)) : plainLoadout(r, rar);
+        loadouts[r] = { ...base, sprite: `${ROLES[r].sprite}${tierSuffix}` };
+      }
     }
     if (intro) loadouts.tank = { ...(loadouts.tank as object), unique: 'gravedigger', bonuses: ['barrowguard2'], name: 'Brannoc', sprite: 'tank' };
     // a brew from the Vale, drunk at the door: practice uses it but keeps the bottle
@@ -384,8 +391,12 @@ export class RunScene implements InputUI {
       const x = e.x ?? S.player.x, y = e.y ?? S.player.y;
       const last = e.boss === this.dg.finalBoss;
       if (!this.practice && hero) {
+        const prevBest = p.bosses[`${this.dg.id}.${e.boss}`]?.pb ?? null;
         const kl = resolveKill(p, this.dg, e.boss, hero, e.time, this.lootRng);
         this.kills.push(kl);
+        if (prevBest !== null && e.time < prevBest) {
+          banner(`New Personal Best! ${fmtT(e.time)} (-${Math.max(1, Math.round(prevBest - e.time))}s)`, 'good', 2.8);
+        }
         for (const d of kl.drops) if (d.isNew && this.ach) for (const id of this.ach.collected(d.id)) this.unlockedNow(id);
         if (last) {
           this.clear = resolveClear(p, this.dg, hero, S.t - S.startedAt, this.lootRng);
@@ -600,8 +611,10 @@ export class RunScene implements InputUI {
       const enr = M.enrage || 0;
       const left = enr - ((B.ab && B.ab.t) || 0);
       const act = B.act && M.acts && M.acts[B.act.k];
-      $('bb-sub').textContent = (act ? act + ' · ' : '') + (enr ? (left > 0 ? 'Enrage in ' + fmtT(left) : 'Enraged') : '');
-      $('bb-sub').classList.toggle('hot', !!act || (enr > 0 && left <= 30));
+      const exp = B.exposed > 0 ? 'EXPOSED! (+35% DMG)' : '';
+      const head = exp || act || '';
+      $('bb-sub').textContent = (head ? head + ' · ' : '') + (enr ? (left > 0 ? 'Enrage in ' + fmtT(left) : 'Enraged') : '');
+      $('bb-sub').classList.toggle('hot', !!head || (enr > 0 && left <= 30));
     } else if (!bb.hidden) bb.hidden = true;
     const A = AB[abKey(p)];
     this.root.querySelectorAll<HTMLElement>('.ab').forEach((b) => {
@@ -670,4 +683,3 @@ function comboFor(p: any, slot: string): string {
   }
   return '';
 }
-

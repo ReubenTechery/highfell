@@ -311,15 +311,18 @@ test('profile: a v4 save keeps what everyone wears, with empty bags', () => {
   assert.deepEqual(h.fresh, []);
 });
 
-test('gear: power runs 1.00 at Common to 1.45 at Epic, sets add bonuses', () => {
+test('gear: power runs 1.00 at Common to 1.72 at Epic, sets add bonuses', () => {
   assert.equal(plainLoadout('tank', 0).power, 1);
-  assert.ok(Math.abs(plainLoadout('tank', 3).power - 1.45) < 1e-9);
+  assert.ok(Math.abs(plainLoadout('tank', 3).power - 1.72) < 1e-9);
   const { p, h } = withHero('tank');
   for (const id of ['barrowguard.helm', 'barrowguard.shoulders']) { p.collection[id] = { n: 1, kc: 1, at: 0 }; equip(p, h, ITEMS[id].slot, id); }
   const l = loadoutFor(p, h);
   assert.ok(l.bonuses.includes('barrowguard2'));
   assert.ok(!l.bonuses.includes('barrowguard3'));
   assert.equal(equip(p, h, 'chest', 'barrowguard.chest'), false, 'cannot wear what you do not own');
+  p.collection['barrowguard.chest'] = { n: 1, kc: 1, at: 0 };
+  assert.equal(equip(p, h, 'chest', 'barrowguard.chest'), true);
+  assert.ok(loadoutFor(p, h).bonuses.includes('barrowguard3'), '3-piece set bonus is live');
   const mage = newHero(p, { name: 'Sorrel Mistvale', race: 'elf', cls: 'mage' })!;
   assert.equal(equip(p, mage, 'helm', 'barrowguard.helm'), false, 'a set piece only fits its role');
 });
@@ -498,7 +501,7 @@ test('heroic: opens after ten clears, drops the Barrow’s pieces gilded at the 
   assert.equal(compareFor(p, h, 'barrowguard.helm')!.verdict, 'same');
 });
 
-test('party: you take your hero’s seat, bots take the others, and any of your heroes can take a seat they fit', () => {
+test('party: you take your hero’s seat, your Warband heroes take the others on Normal (disabled on Heroic), and bots stand in for empty seats', () => {
   const p = freshProfile();
   assert.deepEqual(seats(p).map((s) => s.bot), ['Brannoc', 'Maren', 'Ivy'], 'no hero yet: three bots');
   const tank = newHero(p, { name: 'Hollis Emberhand', race: 'dwarf', cls: 'warrior' })!;
@@ -512,7 +515,14 @@ test('party: you take your hero’s seat, bots take the others, and any of your 
   assert.deepEqual(heroesFor(p, 'dps'), []);
   setActive(p, healer.id, 2);
   assert.equal(seats(p)[1].hero?.id, healer.id, 'playing your healer puts you in the healer seat');
-  assert.equal(seats(p)[0].bot, 'Brannoc', 'and a bot takes the tank seat');
+  assert.equal(seats(p)[0].hero?.id, tank.id, 'your tank joins the Warband in the tank seat on Normal');
+  assert.equal(seats(p)[0].bot, null);
+  assert.equal(seats(p)[2].bot, 'Ivy', 'and a bot stands in for the empty DPS seat');
+  // Heroic is Friends & Party Finder only: Warband companions are disabled on Heroic
+  const hSeats = seats(p, true);
+  assert.equal(hSeats[1].hero?.id, healer.id, 'you still take your own seat on Heroic');
+  assert.equal(hSeats[0].hero, null, 'Warband tank does not join Heroic');
+  assert.equal(hSeats[2].hero, null, 'Warband DPS does not join Heroic');
   const tank2 = newHero(p, { name: 'Brakka Stoutmantle', race: 'dwarf', cls: 'warrior' })!;
   setActive(p, tank2.id, 3);
   assert.deepEqual(heroesFor(p, 'tank').map((h) => h.id), [tank2.id, tank.id], 'the tank you played last comes first');
@@ -545,12 +555,12 @@ test('loot: each role sees its own set and weapon, with what anyone can get, and
 
 test('gear: a drop held up against what its role wears says plainly if it is better, and what it adds or takes away', () => {
   const { p, h } = withHero('tank');
-  // a new tank in Common: the set helm is 16 item levels, 12% damage and 7.2% health better, brings its own perk, and starts the set
+  // a new tank in Common: the set helm is 16 item levels, 19.2% damage and 9.6% health better, brings its own perk, and starts the set
   let c = compareFor(p, h, 'barrowguard.helm')!;
   assert.equal(c.verdict, 'better');
   assert.deepEqual(c.ilvl, [10, 26]);
-  assert.equal(c.power, 12);
-  assert.equal(c.health, 7.2);
+  assert.equal(c.power, 19.2);
+  assert.equal(c.health, 9.6);
   assert.deepEqual(c.set, [0, 1]);
   assert.deepEqual([c.gains.map((e) => e.id), c.loses], [['bg_helm'], []]);
   p.collection['barrowguard.helm'] = { n: 1, kc: 1, at: 0 };
@@ -566,7 +576,7 @@ test('gear: a drop held up against what its role wears says plainly if it is bet
   equip(p, h, 'helm', null); h.regular.chest = { rar: 3 };
   c = compareFor(p, h, 'barrowguard.chest')!;
   assert.equal(c.verdict, 'better');
-  assert.equal(c.power, 3);
+  assert.equal(c.power, 4.8);
   // the unique axe keeps your unlocked weapon trait active, so it is a pure upgrade over a Rare/Epic regular axe
   h.regular.weapon = { rar: 2, trait: 'wide' };
   c = compareFor(p, h, 'gravekeeper.tank')!;
@@ -695,5 +705,3 @@ test('gnomes and goblins: every class, sex, ladder armour tier, and Barrow Epic 
     }
   }
 });
-
-
