@@ -39,6 +39,7 @@ export function camTarget() {
   if (S.chest && !S.chest.open && dist(p, S.chest) < 500) { x = lerp(x, S.chest.x, 0.3); y = lerp(y, S.chest.y, 0.3); }
   const wf = walkoutFocus();
   if (wf) { x = lerp(x, wf.x, 0.75); y = lerp(y, wf.y, 0.75); }
+  if (S.paused && S.opts && S.opts.start === 'intro' && VIEW.portrait) y += 155;
   VIEW.fx = VIEW.W * (VIEW.portrait && VIEW.W < 700 ? (p.role === 'healer' && S.player === p ? 0.4 : 0.47) : 0.5);
   const ri = Math.max(0, roomIndexOf(p.x, p.y));
   const room = S.dg.map.rooms[ri] || S.dg.map.rooms[0];
@@ -207,15 +208,27 @@ export function drawHazard(ctx, z) {
     ctx.globalAlpha = 1;
     return;
   }
-  const col = [224, 74, 63];
-  const rgba = (a) => `rgba(${col[0]}, ${col[1]}, ${col[2]}, ${a})`;
   const bust = z.smash || z.tankBuster;
+  const col = bust ? [242, 175, 48] : [224, 74, 63];
+  const rgba = (a) => `rgba(${col[0]}, ${col[1]}, ${col[2]}, ${a})`;
   hazardPath(ctx, z, 1);
-  ctx.fillStyle = rgba(0.16); ctx.fill();
+  ctx.fillStyle = rgba(bust ? 0.2 : 0.16); ctx.fill();
   ctx.lineWidth = bust ? 9 : 6.5; ctx.strokeStyle = 'rgba(30, 26, 26, 0.75)'; ctx.stroke();
-  ctx.lineWidth = bust ? 5 : 3.5; ctx.strokeStyle = bust ? '#F2C230' : rgba(1); ctx.stroke();
+  ctx.lineWidth = bust ? 5 : 3.5; ctx.strokeStyle = bust ? '#FFE08A' : rgba(1); ctx.stroke();
   hazardPath(ctx, z, Math.max(0.02, p));
-  ctx.fillStyle = rgba(0.3 + p * 0.12); ctx.fill();
+  ctx.fillStyle = rgba(0.32 + p * 0.14); ctx.fill();
+  if (z.shape === 'rect') {
+    const ca = Math.cos(z.a), sa = Math.sin(z.a), hw = z.w * 0.28;
+    ctx.strokeStyle = 'rgba(255, 232, 224, 0.7)'; ctx.lineWidth = 3.5;
+    for (let d = 55; d < z.len - 25; d += 58) {
+      const cx = z.x + ca * d, cy = z.y + sa * d;
+      ctx.beginPath();
+      ctx.moveTo(cx - ca * 14 - sa * hw, cy - sa * 14 + ca * hw);
+      ctx.lineTo(cx + ca * 6, cy + sa * 6);
+      ctx.lineTo(cx - ca * 14 + sa * hw, cy - sa * 14 - ca * hw);
+      ctx.stroke();
+    }
+  }
   if (z.burrow) {
     ctx.fillStyle = '#6B4A3A'; ctx.strokeStyle = K; ctx.lineWidth = 3.5;
     const wob = Math.sin(S.t * 18) * 3;

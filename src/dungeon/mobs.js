@@ -29,7 +29,16 @@ export function mobTick(m, dt) {
   if (m.M.wisp) { wispTick(m, dt); return; }
   if (m.state === 'idle') { idleTick(m, dt); return; }
   m.fightT += dt;
-  if (st.freeze > 0 || st.stun > 0) { m.wind = 0; if (m.cast) interruptCast(m); if (m.act && m.act.k !== 'rally') { m.act = null; m.pose = null; } return; }
+  if (S.opts && S.opts.start === 'intro' && m.isBoss && m.act && (m.act.k === 'charge' || m.act.k === 'sweep')) { st.freeze = 0; st.stun = 0; }
+  if (st.freeze > 0 || st.stun > 0) {
+    m.wind = 0;
+    if (m.cast) interruptCast(m);
+    if (m.act && m.act.k !== 'rally') {
+      S.hazards = S.hazards.filter((z) => z.src !== m || z.live);
+      m.act = null; m.pose = null;
+    }
+    return;
+  }
   const prev = m.target;
   m.target = pickTarget(m);
   if (prev && m.target && m.target !== prev) {

@@ -16,9 +16,9 @@ export const ROLES: Record<RoleId, RoleDef> = {
 export const AB: Record<RoleId, Record<AbilitySlot, AbilityDef>> = {
   tank: {
     a1: { key: 'cleave', name: 'Cleave', cd: 2.2, desc: 'Fast, wide axe sweep through foes in front of you. Crushes stunned or clumped packs for heavy bonus damage.', combo: '② Spammable finisher: Crush! bonus damage on stunned or 2+ clumped foes' },
-    a2: { key: 'shield', name: 'Shield', cd: 0, hold: true, desc: 'Hold to block from the front. Block right before a big hit to stun it and counter-strike.', combo: '① Perfect block stuns ➔ ② Cleave crushes for bonus damage' },
-    a3: { key: 'charge', name: 'Charge', cd: 6.5, desc: 'Rush a mob and shoulder-slam it. Stuns nearby foes and readies Cleave.', combo: '① Charge stuns pack & readies Cleave ➔ ② Cleave crushes' },
-    a4: { key: 'slam', name: 'Slam', cd: 6, desc: 'Drag every nearby foe in, force them onto you, and spin a 360° whirlwind through the pack.', combo: '① Drag pack in + Whirlwind ➔ ② Cleave crushes the clump' },
+    a2: { key: 'charge', name: 'Charge', cd: 6.5, desc: 'Rush a mob and shoulder-slam it. Stuns nearby foes and readies Cleave.', combo: '① Charge stuns pack & readies Cleave ➔ ② Cleave crushes' },
+    a3: { key: 'slam', name: 'Slam', cd: 6, desc: 'Drag every nearby foe in, force them onto you, and spin a 360° whirlwind through the pack.', combo: '① Drag pack in + Whirlwind ➔ ② Cleave crushes the clump' },
+    a4: { key: 'shield', name: 'Shield', cd: 0, hold: true, desc: 'Hold to block from the front. Block right before a big hit to stun it and counter-strike.', combo: '① Perfect block stuns ➔ ② Cleave crushes for bonus damage' },
   },
   healer: {
     a1: { key: 'circle', name: 'Prayer circle', cd: 5, mana: 14, aim: true, range: 520, desc: 'Allies standing in it heal fast.', combo: '① Drop Circle ➔ ② Smite pulses bonus healing inside it' },
@@ -43,16 +43,16 @@ export const TALENTS: Record<RoleId, Record<AbilitySlot, [TalentRankDef, TalentR
       { name: 'Executioner', desc: '−0.4s Cleave cooldown and +35% Crush damage on stunned or clumped foes.' },
     ],
     a2: [
-      { name: 'Spiked Buckler', desc: '+30% Perfect Block counter damage and stuns foes in front.' },
-      { name: 'Bulwark', desc: 'Perfect Block grants +90 HP shield (stacks with Barrowguard) and resets Cleave.' },
-    ],
-    a3: [
       { name: 'Battering Ram', desc: '+25% Charge impact damage and shaves 1.5s off Cleave.' },
       { name: 'Relentless', desc: '−1.2s Charge cooldown, +0.4s stun, and resets Cleave.' },
     ],
-    a4: [
+    a3: [
       { name: 'Whirlwind Pull', desc: '+25% Slam & Whirlwind damage and +20% pull radius.' },
       { name: 'Iron Cyclone', desc: '−1.0s Slam cooldown, +50% threat, and an extra Whirlwind spin.' },
+    ],
+    a4: [
+      { name: 'Spiked Buckler', desc: '+30% Perfect Block counter damage and stuns foes in front.' },
+      { name: 'Bulwark', desc: 'Perfect Block grants +90 HP shield (stacks with Barrowguard) and resets Cleave.' },
     ],
   },
   healer: {

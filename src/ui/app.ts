@@ -11,7 +11,7 @@ import { loadArt } from '../dungeon/art.js';
 import { setHooks } from '../dungeon/state.js';
 import { VIEW, resizeView } from '../dungeon/render.js';
 import type { RunLoot } from '../meta/loot';
-import { activeHero } from '../meta/profile';
+import { activeHero, needsIntroRun } from '../meta/profile';
 import type { RoleId } from '../content/types';
 import type { RaceId } from '../content/folk';
 import { $, GLYPH } from './dom';
@@ -124,9 +124,9 @@ export class App {
       if (!this.raf) { this.last = 0; this.raf = requestAnimationFrame((t) => this.frame(t)); }
     }
   }
-  /** home: the house, opening on the hall (or a room you name, like the bunk room). With no heroes yet, the hero maker instead. */
+  /** home: the house, opening on the hall (or a room you name, like the bunk room). With no heroes yet, the prologue or hero maker instead. */
   showHearth(room?: string): void {
-    if (!activeHero(this.p)) { this.showCreate(); return; }
+    if (!activeHero(this.p)) { if (needsIntroRun(this.p)) this.startIntro(); else this.showCreate(); return; }
     this.sheets.close();
     if (room) this.hearth.aim(room);
     this.show('hearth');
@@ -159,8 +159,11 @@ export class App {
     this.refresh();
   }
   refresh(): void {
-    // the last hero went (a reset here or on another device): back to the maker
-    if (!activeHero(this.p) && this.scene !== 'run' && this.scene !== 'create') { this.showCreate(); return; }
+    // the last hero went (a reset here or on another device): back to the prologue or maker
+    if (!activeHero(this.p) && this.scene !== 'run' && this.scene !== 'create' && this.scene !== 'reveal') {
+      if (needsIntroRun(this.p)) this.startIntro(); else this.showCreate();
+      return;
+    }
     if (this.scene === 'hearth') this.hearth.render();
     if (this.scene === 'vale') this.vale.update();
     if (this.scene === 'brew') this.brew.update();
@@ -172,6 +175,11 @@ export class App {
   setDev(d: Partial<Dev>): void {
     this.dev = { ...this.dev, ...d };
     try { localStorage.setItem(DEV_KEY, JSON.stringify(this.dev)); } catch { /* fine */ }
+  }
+
+  /** first time in the game: play a short prologue as a full-Epic tank with Maren and Ivy */
+  startIntro(): void {
+    this.startRun({ start: 'intro', testRar: 3, role: 'tank' });
   }
 
   startRun(o: RunOpts): void {
@@ -201,14 +209,14 @@ const SHELL = `
   <div class="hud" id="hud">
     <div class="hud-top">
       <ol class="frames" id="frames" aria-label="Your party"></ol>
-      <div class="menu"><button type="button" class="icon-btn" id="pause-btn" aria-label="Pause">${GLYPH.pause}</button></div>
+      <div class="menu"><button type="button" class="btn small gold" id="intro-skip" hidden>Skip intro</button><button type="button" class="icon-btn" id="pause-btn" aria-label="Pause">${GLYPH.pause}</button></div>
       <div class="bossbar glass" id="bossbar" hidden>
         <div class="bb-row"><span class="bb-name" id="bb-name">Boss</span><span class="bb-phase" id="bb-phase"></span></div>
         <div class="bar"><i class="trail" id="bb-trail"></i><i id="bb-fill"></i><span id="bb-pct">100%</span></div>
         <div class="bb-sub" id="bb-sub"></div>
       </div>
     </div>
-    <div class="run-tags"><span class="chip dark heroic-tag" id="heroic-tag" hidden>Heroic</span><span class="chip dark practice-tag" id="practice-tag" hidden>Practice: no loot</span><span class="chip dark brew-tag" id="brew-tag" hidden></span></div>
+    <div class="run-tags"><span class="chip dark heroic-tag" id="intro-tag" hidden>Prologue · Full Epic Tank</span><span class="chip dark heroic-tag" id="heroic-tag" hidden>Heroic</span><span class="chip dark practice-tag" id="practice-tag" hidden>Practice: no loot</span><span class="chip dark brew-tag" id="brew-tag" hidden></span></div>
     <div class="banner" id="banner"></div>
     <div class="call" id="call"></div>
     <div class="hint glass" id="hint" hidden></div>

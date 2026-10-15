@@ -242,7 +242,7 @@ export function useAbility(h, slot, aim) {
 /* Slam: drag everything around you in, make it turn on you, and spin a 360° whirlwind through the pack */
 function abSlam(h) {
   let n = 0;
-  const rk = tal(h, 'a4'), R = rk >= 1 ? 240 : 200, wR = rk >= 1 ? 128 : 114;
+  const rk = tal(h, 'a3'), R = rk >= 1 ? 240 : 200, wR = rk >= 1 ? 128 : 114;
   for (const m of S.mobs) {
     if (!isFoe(m) || m.cage || m.M.wisp || dist(m, h) > R + m.r || Math.abs(m.y - h.y) > 600) continue;
     taunt(m, h, 4);
@@ -351,7 +351,7 @@ function dashTick(h, dt) {
   if (!moveEnt(h, (dx / dd) * step, (dy / dd) * step)) { chargeImpact(h, d); h.dash = null; }
 }
 function chargeImpact(h, d) {
-  const ring = h.traits.has('ringing'), rk = tal(h, 'a3'), dmg = rk >= 1 ? 100 : 80, stunDur = rk >= 2 ? 1.4 : 1.0;
+  const ring = h.traits.has('ringing'), rk = tal(h, 'a2'), dmg = rk >= 1 ? 100 : 80, stunDur = rk >= 2 ? 1.4 : 1.0;
   const hits = foesNear(h.x, h.y, 92, false).filter((m) => !m.cage);
   for (const m of hits) {
     aggro(m, h, 0);
@@ -373,7 +373,7 @@ function chargeImpact(h, d) {
 }
 /* a perfect block hits back, and Barrowguard + Bulwark stack into a shield */
 export function onPerfectBlock(h, src) {
-  const rk = tal(h, 'a2');
+  const rk = tal(h, 'a4');
   if (src && src.kind === 'mob' && src.alive) {
     hurtMob(src, rk >= 1 ? 195 : 150, h, { col: '#F2C230', size: 26, noCrit: true });
     if (rk >= 1) {

@@ -16,13 +16,13 @@ import { activeHero, heroById, heroLevel, roleOf, talentPointsLeft } from '../me
 import { itemShare, waiting, worn } from '../meta/gear';
 import type { App } from './app';
 import { actions, esc, fmtN, fmtRate, fmtT, GLYPH, reducedMotion, wait } from './dom';
-import { colourOf, iconOf, nameOf, spriteURL } from './art';
+import { colourOf, iconOf, nameOf, spriteURL, tile } from './art';
 import { ROLE_STAT } from './itemsheet';
 import { rewards } from './dungeonsheet';
 import { SFX } from './sound';
 import type { RunOpts } from './run';
 
-export interface RevealExtra { unlocked: string[]; hero: string | null; role: RoleId; deaths: number; again: RunOpts | null; preview?: boolean }
+export interface RevealExtra { unlocked: string[]; hero: string | null; role: RoleId; deaths: number; again: RunOpts | null; preview?: boolean; intro?: boolean }
 
 /** who walks out when a dungeon's whole log is filled: the Barrow's gives the Risen, its heroic log gilds them */
 const LOG_ART: Record<string, string> = { 'barrow.log': 'risen_tank_f', 'barrow-heroic.log': 'risen_tank_gilded_f' };
@@ -46,6 +46,7 @@ export class Reveal {
       flip: (el) => this.flip(+el.dataset.i!),
       again: () => { SFX.play('ui'); if (this.extra?.again) this.app.startRun(this.extra.again); },
       home: () => { SFX.play('ui'); this.goHome(); },
+      makeintro: () => { SFX.play('ui'); if (activeHero(this.app.p)) this.app.showHearth(); else this.app.showCreate(); },
       gear: () => { SFX.play('ui'); this.goHome(); const id = this.extra?.hero || activeHero(this.app.p)?.id; if (id) this.app.sheets.open({ kind: 'gear', hero: id }); },
       keep: () => { this.trait = null; SFX.play('ui'); this.renderOffer(); },
       take: (el) => { const t = el.dataset.trait!; const h = heroById(this.app.p, this.extra?.hero); if (!this.extra?.preview && h) { takeTrait(h, t); this.app.store.save(); } this.trait = t; SFX.play('coin'); this.renderOffer(); },
@@ -62,19 +63,22 @@ export class Reveal {
     const tell: Tell = loot.tell;
     const dg = DUNGEONS[loot.dungeon] || BARROW;
     this.root.className = `scene reveal t-${tell}`;
-    const head = extra.preview ? 'Preview: nothing is added' : `${dg.name} · clear ${fmtN(loot.clears)}`;
+    const head = extra.intro ? 'Tutorial complete · How dungeon chests work' : extra.preview ? 'Preview: nothing is added' : `${dg.name} · clear ${fmtN(loot.clears)}`;
+    const title = extra.intro ? 'What a real clear can drop' : 'The Gravekeeper is buried';
     // the pet that came out of the chest stands in for the lantern (gilded from Heroic)
     const pet = loot.drops.find((d) => d.source === 'table' && COLLECTIBLES[d.id]?.kind === 'pet');
     const lantern = tell === 'pet' ? (pet && COLLECTIBLES[pet.id].sprite) || 'pet_keeper' : tell === 'unique' ? 'lantern_gold' : 'lantern_out';
-    const kcChips = Object.entries(loot.kc).map(([b, n]) => `<span class="chip dark">${esc(dg.bosses.find((x) => x.id === b)?.name || b)} <b>KC ${fmtN(n)}</b></span>`).join('');
+    const kcChips = extra.intro
+      ? `<span class="chip dark">Example chest · <b>4 drop types</b></span>`
+      : Object.entries(loot.kc).map(([b, n]) => `<span class="chip dark">${esc(dg.bosses.find((x) => x.id === b)?.name || b)} <b>KC ${fmtN(n)}</b></span>`).join('');
     this.root.innerHTML = `<div class="rv-inner">
-      <div class="rv-head"><p class="eyebrow">${esc(head)}</p><h1>The Gravekeeper is buried</h1>
-        <div class="chips"><span class="chip dark ${loot.newPb ? 'pb' : ''}">${loot.newPb ? 'New best · ' : ''}<b>${fmtT(loot.time)}</b></span>${kcChips}</div></div>
+      <div class="rv-head"><p class="eyebrow">${esc(head)}</p><h1>${esc(title)}</h1>
+        <div class="chips"><span class="chip dark ${loot.newPb ? 'pb' : ''}">${extra.intro ? 'Prologue · ' : loot.newPb ? 'New best · ' : ''}<b>${fmtT(loot.time)}</b></span>${kcChips}</div></div>
       <button type="button" class="chest-stage idle" data-act="open" aria-label="Open the chest">
         <span class="halo"></span>
         <img class="lant" src="${spriteURL(lantern)}" alt="">
         <img class="chest-img" src="${spriteURL('chest')}" alt="">
-        <span class="tap">Tap the chest</span>
+        <span class="tap">${extra.intro ? 'Tap to see example drops' : 'Tap the chest'}</span>
       </button>
       <div class="cards" id="rv-cards" hidden></div>
       <div class="rv-panel" id="rv-offer" hidden></div>
@@ -82,9 +86,9 @@ export class Reveal {
       <div class="rv-panel rv-log" id="rv-log" hidden></div>
       <div class="rv-panel" id="rv-ach" hidden></div>
       <div class="rv-actions" id="rv-actions" hidden>
-        ${extra.again && !extra.preview ? '<button type="button" class="btn gold big" data-act="again">Run it again</button>' : ''}
+        ${extra.intro ? `<button type="button" class="btn gold big" id="rv-make" data-act="makeintro">${activeHero(this.app.p) ? 'Back to the hearth' : 'Make your hero'}</button>` : `${extra.again && !extra.preview ? '<button type="button" class="btn gold big" data-act="again">Run it again</button>' : ''}
         <button type="button" class="btn" data-act="home">Back to the hearth</button>
-        ${extra.preview ? '' : '<button type="button" class="btn" data-act="gear">Gear</button>'}
+        ${extra.preview ? '' : '<button type="button" class="btn" data-act="gear">Gear</button>'}`}
       </div>
     </div>
     <button type="button" class="btn small skip" data-act="skip" id="rv-skip" hidden>Skip</button>`;
@@ -150,12 +154,18 @@ export class Reveal {
   private async pause(ms: number): Promise<void> { if (!this.skipping) await wait(ms); }
 
   private cardHtml(d: Drop, i: number): string {
+    const intro = !!this.extra?.intro;
     const table = d.source === 'table';
     const c = COLLECTIBLES[d.id];
     const it = ITEMS[d.id];
     const cls = c && c.kind === 'pet' ? 'r-pet' : table ? 'r-unique' : '';
     let sub = '', note = '', gains = '';
-    if (d.source === 'regular' || d.source === 'spare') {
+    if (intro) {
+      if (d.source === 'regular') { sub = 'Every clear · Your hero'; note = 'Climbs Common → Epic in ~10 runs'; }
+      else if (d.source === 'spare') { sub = 'Every clear · Shared warband'; note = 'Keeps your other heroes geared up'; }
+      else if (c) { sub = `${fmtRate(d.rate)} fixed rate · Hearth trophy`; note = 'Display trophies, mounts & pets at home'; }
+      else { sub = `${fmtRate(d.rate)} fixed rate · Set piece`; note = 'Every boss rolls its own table per kill'; }
+    } else if (d.source === 'regular' || d.source === 'spare') {
       const role = d.role as RoleId, slot = d.slot as SlotId, r = RARITY[d.rar as Rar];
       const slotName = ROLE_SLOTS[role][slot].name.toLowerCase();
       if (d.offerTrait) { const t = traitDef(role, d.offerTrait)!; sub = `Trait offer · ${esc(t.name)}`; note = esc(t.desc); }
@@ -180,7 +190,7 @@ export class Reveal {
       }
       note = d.dupe ? `Duplicate: +${d.marks} ${esc(BARROW.marksName)}` : c ? (c.kind === 'pet' ? 'Waiting by the fire' : c.kind === 'mount' ? 'In the stall at home' : c.kind === 'cosmetic' ? 'A new look' : 'On the mantel') : it?.setId ? `${esc(it.name.split(' ')[0])} set piece · ilvl ${itemShare(it).ilvl}` : it?.effectDesc ? esc(it.effectDesc) : '';
     }
-    const stamp = table ? (d.dupe ? '<span class="stamp dupe">Dupe</span>' : '<span class="stamp">New</span>') : d.offerTrait ? '' : '<span class="stamp" style="background: var(--green)">Up</span>';
+    const stamp = intro ? '<span class="stamp ex">Example</span>' : table ? (d.dupe ? '<span class="stamp dupe">Dupe</span>' : '<span class="stamp">New</span>') : d.offerTrait ? '' : '<span class="stamp" style="background: var(--green)">Up</span>';
     return `<button type="button" class="lc ${cls}" data-act="flip" data-i="${i}" aria-label="Card ${i + 1}">
       <span class="in"><span class="fc back"></span>
       <span class="fc front" style="--rc: ${colourOf(d.id)}">${stamp}<span class="tile" aria-hidden="true">${iconOf(d.id)}</span><b>${esc(nameOf(d.id))}</b><span class="sub">${sub}</span>${gains}${note ? `<em>${note}</em>` : ''}</span></span></button>`;
@@ -224,7 +234,7 @@ export class Reveal {
     const loot = this.loot!, extra = this.extra!, p = this.app.p;
     const dg = DUNGEONS[loot.dungeon] || BARROW;
     const got = dg.collection.filter((id) => p.collection[id]).length;
-    const newSlots = loot.drops.filter((d) => d.source === 'table' && d.isNew).length;
+    const newSlots = extra.intro ? 0 : loot.drops.filter((d) => d.source === 'table' && d.isNew).length;
     // a heroic clear pays the Barrow's own Marks
     const rec = p.dungeons[dg.heroicOf || dg.id];
     const kc = Object.entries(loot.kc);
@@ -233,15 +243,32 @@ export class Reveal {
     const lvUp = (loot.levelAfter || 1) > (loot.levelBefore || 1);
     const sum = $('rv-sum', this.root);
     sum.hidden = false;
-    sum.innerHTML = `<h3>This run</h3><div class="rv-grid">
-      <div class="kv"><span>Time</span><b>${fmtT(loot.time)}</b><small>${loot.newPb ? 'New best!' : loot.firstClear ? 'First clear!' : `Best ${fmtT(loot.pb)}`}</small></div>
-      <div class="kv"><span>Hero level</span><b>Lv ${lvNow}</b><small>${lvUp ? 'Level up! +1 Ability Point' : loot.xpGained ? `+${loot.xpGained} XP` : 'Max level'}</small></div>
-      ${kc.map(([b, n]) => `<div class="kv"><span>${esc(dg.bosses.find((x) => x.id === b)?.name || b)}</span><b>KC ${fmtN(n)}</b></div>`).join('')}
-      <div class="kv"><span>${esc(dg.marksName)}</span><b>+${loot.marks}</b><small>${fmtN(rec ? rec.marks : 0)} total</small></div>
-      <div class="kv"><span>Collection log</span><b>${got} / ${dg.collection.length}</b><small>${newSlots ? `+${newSlots} new` : ''}</small></div>
-      <div class="kv"><span>Party deaths</span><b>${extra.deaths}</b></div>
-    </div>`;
+    sum.innerHTML = extra.intro
+      ? `<h3>How every real clear pays out</h3><div class="rv-grid">
+          <div class="kv"><span>Run length</span><b>~4 min</b><small>Junk-food runs</small></div>
+          <div class="kv"><span>Gear ladder</span><b>Common → Epic</b><small>~10 clears to cap</small></div>
+          <div class="kv"><span>${esc(dg.marksName)}</span><b>+1 per clear</b><small>Dupes give +3</small></div>
+          <div class="kv"><span>Your collection log</span><b>${got} / ${dg.collection.length}</b><small>Waiting for you</small></div>
+        </div>`
+      : `<h3>This run</h3><div class="rv-grid">
+          <div class="kv"><span>Time</span><b>${fmtT(loot.time)}</b><small>${loot.newPb ? 'New best!' : loot.firstClear ? 'First clear!' : `Best ${fmtT(loot.pb)}`}</small></div>
+          <div class="kv"><span>Hero level</span><b>Lv ${lvNow}</b><small>${lvUp ? 'Level up! +1 Ability Point' : loot.xpGained ? `+${loot.xpGained} XP` : 'Max level'}</small></div>
+          ${kc.map(([b, n]) => `<div class="kv"><span>${esc(dg.bosses.find((x) => x.id === b)?.name || b)}</span><b>KC ${fmtN(n)}</b></div>`).join('')}
+          <div class="kv"><span>${esc(dg.marksName)}</span><b>+${loot.marks}</b><small>${fmtN(rec ? rec.marks : 0)} total</small></div>
+          <div class="kv"><span>Collection log</span><b>${got} / ${dg.collection.length}</b><small>${newSlots ? `+${newSlots} new` : ''}</small></div>
+          <div class="kv"><span>Party deaths</span><b>${extra.deaths}</b></div>
+        </div>`;
     this.renderOffer();
+    if (extra.intro) {
+      const el = $('rv-log', this.root);
+      const ach = ACHIEVEMENTS['barrow.log'];
+      const pct = (got / dg.collection.length * 100).toFixed(1);
+      el.hidden = false;
+      el.innerHTML = `<h3>Your Barrow Crypt Collection Log</h3>
+        <p class="fine"><b>Those cards above are examples.</b> Your hero starts at 0 / 16. Fill all 16 slots to unlock these three prizes forever:</p>
+        <div class="dgx-logbar" style="pointer-events: none"><span>Your Barrow Crypt log</span><b>${got}/${dg.collection.length}</b><i aria-hidden="true"><i style="width: ${pct}%"></i></i><span class="dgx-prize" aria-hidden="true">${tile('c_risen')}</span></div>
+        ${ach ? rewards(ach, false) : ''}`;
+    }
     // what a filled log gave, with the way to it: make one of the new heroes, put the look up
     const logs = extra.unlocked.map((id) => ACHIEVEMENTS[id]).filter((a) => a?.log);
     if (logs.length) {
@@ -281,6 +308,20 @@ export class Reveal {
     this.app.home();
   }
 
+  /** the end of the prologue run: open the chest to see how regular gear, uniques, trophies and the collection log work */
+  showIntro(time = 48): void {
+    const role: RoleId = 'tank';
+    const drops: Drop[] = [
+      { id: gearId('tank', 'chest', 3), source: 'regular', role: 'tank', slot: 'chest', rar: 3, prevRar: 2, isNew: true, dupe: false, marks: 0, toEquip: true },
+      { id: gearId('healer', 'helm', 2), source: 'spare', role: 'healer', slot: 'helm', rar: 2, prevRar: 1, isNew: true, dupe: false, marks: 0 },
+      { id: 'barrowguard.helm', source: 'table', boss: 'knight', rate: 1 / 50, kc: 12, role: 'tank', isNew: true, dupe: false, marks: 0, toEquip: true },
+      { id: 'trophy.rattlebones_plume', source: 'table', boss: 'knight', rate: 1 / 50, kc: 12, role: 'tank', isNew: true, dupe: false, marks: 0 },
+    ];
+    const loot: RunLoot = { dungeon: 'barrow', role, hero: '', drops, tell: 'unique', kc: { knight: 12 }, marks: 1, clears: 10, time: Math.max(12, Math.round(time)), pb: Math.max(12, Math.round(time)), newPb: false, firstClear: false };
+    this.app.show('reveal');
+    this.show(loot, { unlocked: [], hero: null, role, deaths: 0, again: null, preview: true, intro: true });
+  }
+
   /** the reveal with made-up loot, for testing the look. Touches nothing in the save. 'log' plays a run
    *  that fills the Barrow's whole collection log. */
   preview(kind: Tell | 'log'): void {
@@ -294,7 +335,7 @@ export class Reveal {
     const set = { tank: 'barrowguard', healer: 'candlewake', dps: 'rimebone' }[role];
     if (tell !== 'normal') drops.push({ id: `${set}.helm`, source: 'table', boss: 'keeper', rate: 1 / 50, kc: kcK, role, isNew: true, dupe: false, marks: 0, toEquip: true });
     if (tell === 'unique') drops.push({ id: 'trophy.rattlebones_plume', source: 'table', boss: 'knight', rate: 1 / 50, kc: kcN, role, isNew: false, dupe: true, marks: 3 });
-    if (tell === 'pet') drops.push({ id: 'pet.pint_gravekeeper', source: 'table', boss: 'keeper', rate: 1 / 5000, kc: kcK, role, isNew: true, dupe: false, marks: 0 });
+    if (tell === 'pet') drops.push({ id: 'pet.pint_gravekeeper', source: 'table', rate: 1 / 5000, boss: 'keeper', kc: kcK, role, isNew: true, dupe: false, marks: 0 });
     const loot: RunLoot = { dungeon: 'barrow', role, hero: h?.id || '', drops, tell, kc: { knight: kcN, keeper: kcK }, marks: 1 + drops.reduce((a, d) => a + d.marks, 0), clears: (p.dungeons.barrow?.clears || 0) + 1, time: 247, pb: p.dungeons.barrow?.pb ?? 247, newPb: false, firstClear: false };
     this.app.show('reveal');
     this.show(loot, { unlocked: kind === 'log' ? ['barrow.log'] : [], hero: h?.id || null, role, deaths: 0, again: null, preview: true });

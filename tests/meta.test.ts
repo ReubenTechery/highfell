@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { makeRng } from '../src/core/rng';
 import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, SETS, checkContent, heroicVersion } from '../src/content';
 import { BARROW } from '../src/content/barrow';
-import { activeHero, createHero, dungeonRecord, freshProfile, heroLevel, migrate, nameProblem, PROFILE_VERSION, removeHero, renameHero, resetTalents, roleOf, setActive, spendTalent, talentPointsLeft, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
+import { activeHero, createHero, dungeonRecord, finishHearthTour, finishIntroRun, freshProfile, heroLevel, migrate, nameProblem, needsHearthTour, needsIntroRun, PROFILE_VERSION, removeHero, renameHero, resetTalents, roleOf, setActive, spendTalent, startHearthTour, talentPointsLeft, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
 import { DUPE_MARKS, heroicOpen, heroicProgress, resolveRun, rollTable } from '../src/meta/loot';
 import { bestRegular, buyTrait, compareFor, compareOn, equip, floorWorn, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, wearerOf, worn } from '../src/meta/gear';
 import { CLASSES, FOUNDERS, HERO_ART, MAX_HEROES, RACES, allHeroArt, canMake, cleanName, defaultSex, heroArt } from '../src/content/folk';
@@ -582,6 +582,25 @@ test('art: every icon and sprite the content names exists', async () => {
   for (const c of Object.values(COLLECTIBLES)) if (c.kind === 'mount' && !c.saddle) missing.push('saddle for ' + c.id);
   for (const n of ['slam', 'cleave', 'smite', 'icicle', 'shield', 'charge', 'circle', 'ward', 'sunburst', 'blizzard', 'nova', 'comet', 'dodge', 'mend', 'marks']) if (!tiles[n]) missing.push('icon ' + n);
   assert.deepEqual(missing, []);
+});
+
+test('onboarding: a fresh profile plays the intro run once, existing heroes skip it, and the first hero triggers the hearth tour', () => {
+  const p = freshProfile();
+  assert.equal(needsIntroRun(p), true, 'a fresh save starts on the intro run');
+  assert.equal(needsHearthTour(p), false);
+  finishIntroRun(p);
+  assert.equal(needsIntroRun(p), false, 'finishing or skipping the intro marks it done');
+  // an existing save that already has a hero never needs the intro run or tour unless asked
+  const existing = freshProfile();
+  newHero(existing, { name: 'Brannoc', race: 'dwarf', cls: 'warrior' });
+  assert.equal(needsIntroRun(existing), false);
+  assert.equal(needsHearthTour(existing), false);
+  // making the first hero starts the hearth tour, and finishing it closes it
+  newHero(p, { name: 'Hollis Coalbeard', race: 'dwarf', cls: 'warrior' });
+  startHearthTour(p);
+  assert.equal(needsHearthTour(p), true);
+  finishHearthTour(p);
+  assert.equal(needsHearthTour(p), false);
 });
 
 test('hero levels & ability tree: dungeon clears grant XP, unlock ability points, and each spent point adds mastery power', () => {

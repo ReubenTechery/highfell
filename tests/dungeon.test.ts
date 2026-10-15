@@ -46,9 +46,9 @@ test('threat: hit harder than the tank and it comes for you; Slam grabs it back 
   hurtMob(m, 400, dps, { quiet: true, noCrit: true });
   m.target = pickTarget(m);
   assert.equal(m.target, dps);
-  // Slam (a4) from 150 away: it turns back, can't be pulled off for a while, slides in, and gets sliced by the whirlwind
+  // Slam (a3) from 150 away: it turns back, can't be pulled off for a while, slides in, and gets sliced by the whirlwind
   m.x = tank.x + 150; m.y = tank.y; m.st.kx = m.st.ky = 0;
-  assert.ok(useAbility(tank, 'a4', null));
+  assert.ok(useAbility(tank, 'a3', null));
   assert.equal(pickTarget(m), tank);
   assert.ok(m.forcedT > 3);
   assert.ok(tank.whirlT > 0.3, 'Slam starts the 360° whirlwind spin');
@@ -131,6 +131,32 @@ test('heroes: every one the game can draw knows where its weapon is and how tall
   assert.equal(heroFit('tank_rags', true).wx, -heroFit('tank_rags', false).wx);
 });
 
+test('intro: starts in the Ossuary, protects the party from dying, and spawns the walkout and chest when Sir Rattlebones falls', () => {
+  const { s, tank, healer, dps } = game('tank', 'intro');
+  assert.ok(s.tune.hit < 1 && s.tune.bossHp < 1, 'intro tuning is gentler and faster');
+  // Room 1 and Rooms 4-5 are already marked cleared so the run ends at Sir Rattlebones
+  const byId = (id: string) => s.packs.find((p: any) => p.def.id === id);
+  assert.equal(byId('A').cleared, true);
+  assert.equal(byId('B').cleared, false);
+  assert.equal(byId('C').cleared, false);
+  assert.equal(byId('K').cleared, false);
+  assert.equal(byId('D').cleared, true);
+  assert.equal(byId('E').cleared, true);
+  assert.equal(byId('G').cleared, true);
+  // non-lethal protection: no hero can drop below 20% health in the intro
+  hurtHero(tank, 99999, null, { pierce: true, dodge: false, block: false });
+  assert.ok(tank.alive && tank.hp >= Math.round(tank.maxHp * 0.2), 'cannot die in the intro');
+  tank.hp = tank.maxHp;
+  for (const h of [tank, healer, dps]) h.power = 1.45;
+  s.auto = true;
+  for (let i = 0; i < 60 * 75 && s.over !== 'victory'; i++) update(1 / 60);
+  assert.equal(byId('K').cleared, true, 'Sir Rattlebones is defeated');
+  assert.ok(s.hints.dodge && s.hints.block && s.hints.stagger && s.hints.slam, 'dodge, block, stagger and slam tutorial moments all triggered before the boss fell');
+  assert.ok(s.walkout && s.walkout.tell === 'unique', 'the unique lantern walkout played');
+  assert.ok(s.chest && s.chest.open, 'the chest spawned in the tomb and opened');
+  assert.equal(s.over, 'victory');
+});
+
 test('combat & gear look: heroes start in visual _rags, step to _iron and heroic armour, Cleave is a1 (2.2s cd), and Bulwark stacks with Barrowguard', () => {
   // Visual progression: Common -> _rags, Uncommon -> _iron, Rare/Epic -> full heroic armour
   assert.equal(heroSprite({ race: 'dwarf', cls: 'warrior', sex: 'm', regular: { weapon: { rar: 0 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'tank'), 'tank_rags');
@@ -145,7 +171,7 @@ test('combat & gear look: heroes start in visual _rags, step to _iron and heroic
 
   // Bulwark (Shield Rank 2) stacks with Barrowguard 2-piece (150 + 90 = 240 absorb) and resets Cleave (a1)
   tank.cd.a1 = 2.0;
-  tank.talents.a2 = 2;
+  tank.talents.a4 = 2;
   tank.bonuses.add('barrowguard2');
   onPerfectBlock(tank, s.packs[0].mobs[0]);
   assert.equal(tank.cd.a1, 0, 'Bulwark resets Cleave cooldown on Perfect Block');

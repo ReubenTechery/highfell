@@ -26,6 +26,7 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 14 
 | Logs | Collection log by boss and gathering spot, grouped by dungeon and place, OSRS style: drops, kill count, fastest kill, wipes; Normal or Heroic; each dungeon's whole log with what finishing it gives; achievements; the Vale's story; stats |  |
 | Riding out | The Vale map (Bramblewick is the one place open); walking out, or riding once you have a mount; Bramblewick Hollow with three gathering close-ups that pay XP every cut, Dottle's errands (goats, crows, sparks, the kettle, deliveries) and 8 story pages; Gathering and Brewing ranks; the Hill Goat from the goats errand; 3 pets, 4 trophies, bunting and a hare | Moonmere and Emberdeep, friends seen out riding, more close-ups |
 | Brews | The cauldron by your fire, 4 brews, one bottle a run, picked on the dungeon sheet | More recipes as places open |
+| Onboarding | First-time prologue run as Brannoc in full Epic gear + Barrowguard set + *The Gravedigger* with Maren and Ivy against the Ossuary and Sir Rattlebones (teaches abilities, dodge-rolling, blocking, and peeling); gold walkout + showcase chest reveal explaining the gear ladder, fixed drop rates, Collection Log rewards and hearth; hero creation followed by a 3-step guided tour of the Hearth (`hall` → `yard` Ride out → `cellar` Dungeons) |  |
 
 ## At a glance
 

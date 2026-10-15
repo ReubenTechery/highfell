@@ -11,7 +11,7 @@ import { AB, ROLES } from '../content/roles';
 import type { RoleId } from '../content/types';
 import { newHero } from '../meta/gear';
 import { openProgress, opened, unlockOf } from '../meta/logs';
-import { nameProblem, setActive } from '../meta/profile';
+import { finishIntroRun, nameProblem, setActive, startHearthTour } from '../meta/profile';
 import type { App } from './app';
 import { actions, esc, GLYPH } from './dom';
 import { heroImg, heroSprite, tile } from './art';
@@ -131,9 +131,12 @@ export class Creator {
     const p = this.app.p;
     const why = this.why();
     if (why) { this.err = why; SFX.play('nope'); this.syncGo(); return; }
+    const first = p.roster.length === 0;
     const h = newHero(p, { name: this.name, race: this.race, cls: this.cls, sex: this.sex, free: this.app.dev.allOpen });
     if (!h) { this.err = 'That hero could not be made'; SFX.play('nope'); this.syncGo(); return; }
     setActive(p, h.id);
+    finishIntroRun(p);
+    if (first) startHearthTour(p);
     // saving redraws the maker, so note now where to go after
     const toDungeons = this.forSeat;
     this.typed = false; this.name = ''; this.forSeat = false;

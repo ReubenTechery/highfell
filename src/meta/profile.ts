@@ -163,20 +163,25 @@ const MIGRATIONS: Record<number, (raw: any) => any> = {
      as it was. */
   5: (d) => ({ ...d, hearth: { ...obj(d.hearth), looks: {} } }),
   /* v6 heroes had one look per combo. From v7 each hero has a male or female look (`sex`), XP from their
-     clears, and an ability upgrade tree (`talents`). */
-  6: (d) => ({
-    ...d,
-    roster: (Array.isArray(d.roster) ? d.roster : []).map((h: any) => {
-      const x = obj(h);
-      const clears = Math.max(0, Math.floor(num(x.clears, 0)));
-      return {
-        ...x,
-        sex: x.sex === 'm' || x.sex === 'f' ? x.sex : defaultSex(String(x.race || ''), String(x.cls || '')),
-        xp: Math.max(0, Math.floor(num(x.xp, clears * XP_PER_LEVEL))),
-        talents: obj(x.talents),
-      };
-    }),
-  }),
+     clears, and an ability upgrade tree (`talents`). Existing saves with heroes have already seen the game,
+     so mark the prologue and hearth tour done. */
+  6: (d) => {
+    const hadHeroes = Array.isArray(d.roster) && d.roster.length > 0;
+    return {
+      ...d,
+      roster: (Array.isArray(d.roster) ? d.roster : []).map((h: any) => {
+        const x = obj(h);
+        const clears = Math.max(0, Math.floor(num(x.clears, 0)));
+        return {
+          ...x,
+          sex: x.sex === 'm' || x.sex === 'f' ? x.sex : defaultSex(String(x.race || ''), String(x.cls || '')),
+          xp: Math.max(0, Math.floor(num(x.xp, clears * XP_PER_LEVEL))),
+          talents: obj(x.talents),
+        };
+      }),
+      counters: { ...obj(d.counters), ...(hadHeroes ? { 'intro.run': 1, 'intro.tour': 2 } : {}) },
+    };
+  },
 };
 
 /** Reads any stored value into a valid current profile. Unknown or broken data starts fresh. */
@@ -362,3 +367,13 @@ export function setActive(p: Profile, id: string, now = Date.now()): boolean {
   p.active = id; h.playedAt = now;
   return true;
 }
+
+/* ---------------------------------------------------------------- onboarding */
+/** A fresh profile with no heroes plays the prologue run first, once. */
+export const needsIntroRun = (p: Profile): boolean => p.roster.length === 0 && !p.counters['intro.run'];
+export const finishIntroRun = (p: Profile): void => { p.counters['intro.run'] = 1; };
+/** After making your first hero, the hearth gives a quick tour of the rooms, riding out and dungeons. */
+export const startHearthTour = (p: Profile): void => { p.counters['intro.tour'] = 1; };
+export const needsHearthTour = (p: Profile): boolean => p.roster.length > 0 && p.counters['intro.tour'] === 1;
+export const finishHearthTour = (p: Profile): void => { p.counters['intro.tour'] = 2; };
+

@@ -127,13 +127,21 @@ export function hurtHero(h, amt, src, o) {
     if (off < 1.45) {
       if (o.heavy && o.perfectable !== false && h.blockT <= PERFECT_WINDOW) {
         a = 0; h.stats.perfect++; S.stats.perfect++;
+        const intro = S.opts && S.opts.start === 'intro';
         if (h.isPlayer) fxText(h.x, h.y - 96, 'PERFECT!', '#F2C230', 30, { dur: 1.3 });
-        if (src.kind === 'mob' && src.alive) { src.st.stun = Math.max(src.st.stun, src.isBoss ? 1.6 : 1.2); src.wind = 0; src.busy = 0; if (h.isPlayer) fxText(src.x, src.y - (src.isBoss ? 200 : 110), 'Stunned', '#FFE08A', 20); }
+        if (src.kind === 'mob' && src.alive) {
+          src.st.stun = Math.max(src.st.stun, intro && src.isBoss ? 3.2 : (src.isBoss ? 1.6 : 1.2));
+          src.wind = 0; src.busy = 0;
+          if (h.isPlayer) fxText(src.x, src.y - (src.isBoss ? 200 : 110), intro && src.isBoss ? 'Staggered!' : 'Stunned', '#FFE08A', intro && src.isBoss ? 24 : 20, { dur: 1.4 });
+        }
         sfx('perfect'); shake(6); hitstop(0.08);
         fx({ type: 'ring', x: h.x, y: h.y - 30, r0: 20, r1: 110, col: '#F2C230', dur: 0.35, w: 6 });
         if (o.smash && S.bossFight && h.isPlayer) S.bossFight.smashPerfect++;
         emit({ type: 'block', perfect: true, player: !!h.isPlayer, smash: !!o.smash });
         onPerfectBlock(h, src);
+        if (intro && h.isPlayer && src.isBoss && !S.hints.stagger) {
+          later(0.26, () => { if (!S.hints.stagger) { S.hints.stagger = 1; HOOKS.hint('stagger'); } });
+        }
       } else {
         a *= 0.25; h.stats.blocks++;
         if (h.isPlayer) fxText(h.x, h.y - 90, 'Blocked', '#C9D2DC', 18);
@@ -165,6 +173,7 @@ export function hurtHero(h, amt, src, o) {
     }
   }
   a = Math.round(a);
+  if (S.opts && S.opts.start === 'intro') a = Math.min(a, Math.max(0, h.hp - Math.round(h.maxHp * 0.2)));
   if (a > 0) {
     h.hp -= a; h.flash = 0.12; h.hurtT = 0.25; h.stats.taken += a;
     if (!o.quiet && h.isPlayer) fxText(h.x, h.y - 60, '-' + a, o.numCol || '#FF6B5E', o.numSize || (a >= 100 ? 26 : 20), o.numDur ? { dur: o.numDur } : undefined);
