@@ -157,25 +157,48 @@ test('intro: starts in the Ossuary, protects the party from dying, and spawns th
   assert.equal(s.over, 'victory');
 });
 
-test('combat & gear look: heroes start in visual _rags, step to _iron and heroic armour, Cleave is a1 (2.2s cd), and Bulwark stacks with Barrowguard', () => {
+test('combat & gear look: heroes start in visual _rags, step to _iron and heroic armour, Cleave is a1 (2.2s cd), Perfect Block resets Cleave, and Boss Weapons buff core abilities', () => {
   // Visual progression: Common -> _rags, Uncommon -> _iron, Rare/Epic -> full heroic armour
   assert.equal(heroSprite({ race: 'dwarf', cls: 'warrior', sex: 'm', regular: { weapon: { rar: 0 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'tank'), 'tank_rags');
   assert.equal(heroSprite({ race: 'dwarf', cls: 'warrior', sex: 'm', regular: { weapon: { rar: 1 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'tank'), 'tank_iron');
   assert.equal(heroSprite({ race: 'dwarf', cls: 'warrior', sex: 'm', regular: { weapon: { rar: 2 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'tank'), 'tank');
 
-  // Cleave is a1 with 2.2s base cooldown (1.8s at Rank 2)
-  const { s, tank } = game('tank');
+  const { s, tank, healer, dps } = game('tank');
   assert.equal(abCd(tank, 'a1'), 2.2);
-  tank.talents.a1 = 2;
-  assert.ok(Math.abs(abCd(tank, 'a1') - 1.8) < 1e-6);
 
-  // Bulwark (Shield Rank 2) stacks with Barrowguard 2-piece (150 + 90 = 240 absorb) and resets Cleave (a1)
+  // Baseline Perfect Block resets Cleave (a1) and Barrowguard 2-piece grants 150 absorb
   tank.cd.a1 = 2.0;
-  tank.talents.a4 = 2;
   tank.bonuses.add('barrowguard2');
   onPerfectBlock(tank, s.packs[0].mobs[0]);
-  assert.equal(tank.cd.a1, 0, 'Bulwark resets Cleave cooldown on Perfect Block');
-  assert.equal(tank.absorb, Math.round(240 * tank.power), 'Bulwark (+90) stacks with Barrowguard (+150)');
+  assert.equal(tank.cd.a1, 0, 'Perfect Block resets Cleave cooldown');
+  assert.equal(tank.absorb, Math.round(150 * tank.power), 'Barrowguard 2-piece grants 150 absorb on Perfect Block');
+
+  // Tank Boss Weapon (gravedigger): Charge (a2) resets Cleave cooldown on impact
+  const m = s.packs[0].mobs[0];
+  m.hp = m.maxHp = 50000;
+  tank.unique = 'gravedigger';
+  tank.x = m.x; tank.y = m.y + 120;
+  tank.cd.a1 = 2.0; tank.cd.a2 = 0; tank.gcd = 0;
+  assert.ok(useAbility(tank, 'a2', m));
+  step(0.35);
+  assert.equal(tank.cd.a1, 0, 'The Gravedigger makes Charge reset Cleave cooldown');
+
+  // Healer Boss Weapon (longnight): Sunburst (a3) sears nearby enemies and wards allies for 75
+  healer.unique = 'longnight';
+  healer.x = m.x + 40; healer.y = m.y;
+  healer.cd.a3 = 0; healer.gcd = 0;
+  const mHpBefore = m.hp;
+  assert.ok(useAbility(healer, 'a3', null));
+  assert.ok(m.hp < mHpBefore, 'Lantern of the Long Night makes Sunburst sear nearby foes');
+  assert.ok(healer.absorb >= Math.round(75 * healer.power), 'Lantern of the Long Night makes Sunburst ward allies');
+
+  // Mage Boss Weapon (gravefrost): Rime burst resets Icicle and spawns a frost storm
+  dps.unique = 'gravefrost';
+  dps.cd.a2 = 0; dps.cd.a4 = 5.0; dps.gcd = 0;
+  const zonesBefore = s.zones.length;
+  assert.ok(useAbility(dps, 'a2', null));
+  assert.equal(dps.cd.a4, 0, 'Gravefrost Staff makes Rime burst reset Icicle cooldown');
+  assert.equal(s.zones.length, zonesBefore + 1, 'Gravefrost Staff makes Rime burst leave a frost storm');
 });
 
 test('cooperative roles & lethal telegraphs: only healer can banish wisps and cut chains, and unblocked hazards ignore passive armor', () => {
@@ -209,7 +232,7 @@ test('cooperative roles & lethal telegraphs: only healer can banish wisps and cu
   assert.ok(hp0 - tank.hp < 50, 'Blocked hazard receives both block reduction and armor mitigation');
 });
 
-test('rogue: +10% movement speed always, glass cannon stats, twin-dagger autos, Viper DoT, Heartstrike guaranteed crit, Fan kick, and Shadowstep blink', () => {
+test('rogue: +10% movement speed always, glass cannon stats, twin-dagger autos, Viper Venom DoT, Shadowstrike guaranteed crit, Fan kick, Shadowstep blink, and Cryptfangs reset', () => {
   newGame(BARROW_ENGINE, { role: 'dps', seed: 77, start: 'entrance', auto: false, quiet: true, noEvents: true, loadouts: { dps: { cls: 'rogue', sprite: 'rogue_rags' } } });
   const s = S as any;
   const rogue = s.heroes.find((h: any) => h.role === 'dps');
@@ -224,43 +247,47 @@ test('rogue: +10% movement speed always, glass cannon stats, twin-dagger autos, 
   m.hp = m.maxHp = 100000;
   rogue.x = m.x; rogue.y = m.y + 45;
 
-  // 1. Heartstrike (a2) on unpoisoned target vs Viper Blades (a1) bleeding target
+  // 1. Shadowstrike (a2) on unpoisoned target vs Viper Blades (a1) poisoned target
   const hp0 = m.hp;
   assert.ok(useAbility(rogue, 'a2', m));
   const dryHit = hp0 - m.hp;
   assert.ok(dryHit > 0);
   rogue.cd.a2 = 0; rogue.gcd = 0;
 
-  // Apply Viper Blades (a1): immediate twin-dagger hit + 5s poison/bleed DoT
+  // Apply Viper Blades (a1): immediate twin-dagger hit + 5s Viper Venom DoT
   assert.ok(useAbility(rogue, 'a1', m));
-  assert.ok(m.bleed && m.bleed.left >= 5, 'Viper Blades applies 5s bleed/poison DoT');
+  assert.ok(m.bleed && m.bleed.left >= 5, 'Viper Blades applies 5s Viper Venom DoT');
   const hpAfterViper = m.hp;
   step(1.1);
   assert.ok(m.hp < hpAfterViper, 'Viper Blades DoT ticks every 0.5s');
 
-  // Heartstrike (a2) on bleeding target: guaranteed 100% crit + +20% crit damage
+  // Shadowstrike (a2) on poisoned target: guaranteed 100% crit + +25% crit damage
   rogue.cd.a2 = 0; rogue.gcd = 0;
   const hpBeforeCrit = m.hp;
   assert.ok(useAbility(rogue, 'a2', m));
   const bleedCritHit = hpBeforeCrit - m.hp;
-  assert.ok(bleedCritHit > dryHit * 1.8, `Heartstrike on bleeding target (${bleedCritHit}) hits much harder than unpoisoned (${dryHit})`);
+  assert.ok(bleedCritHit > dryHit * 1.8, `Shadowstrike on poisoned target (${bleedCritHit}) hits much harder than unpoisoned (${dryHit})`);
 
-  // 2. Shadowstep (a4): teleports behind target, grants Shadow Frenzy, and shaves 2s off Heartstrike cd
+  // 2. Shadowstep (a4): teleports behind target, grants Shadow Frenzy, shaves 2s off Shadowstrike cd (or resets it with The Cryptfangs)
   rogue.cd.a2 = 5.0; rogue.gcd = 0;
   rogue.x = m.x; rogue.y = m.y + 220;
   assert.ok(useAbility(rogue, 'a4', m));
   assert.ok(Math.hypot(rogue.x - m.x, rogue.y - m.y) < 80, 'Shadowstep blinks into melee behind target');
-  assert.ok(rogue.frenzyT >= 3.4, 'Shadowstep grants Shadow Frenzy attack speed buff');
-  assert.ok(rogue.cd.a2 <= 3.05, 'Shadowstep shaves 2s off Heartstrike cooldown');
+  assert.ok(rogue.frenzyT >= 3.7, 'Shadowstep grants Shadow Frenzy attack speed buff');
+  assert.ok(rogue.cd.a2 <= 3.05, 'Shadowstep shaves 2s off Shadowstrike cooldown');
 
-  // 3. Fan of Blades (a3): modest AoE + interrupts kickable casts + Rank 1 refreshes bleed
-  rogue.talents.a3 = 1;
+  rogue.unique = 'cryptfangs';
+  rogue.cd.a2 = 5.0; rogue.cd.a4 = 0; rogue.gcd = 0;
+  assert.ok(useAbility(rogue, 'a4', m));
+  assert.equal(rogue.cd.a2, 0, 'The Cryptfangs makes Shadowstep completely reset Shadowstrike cooldown');
+
+  // 3. Fan of Blades (a3): modest AoE + interrupts kickable casts + refreshes Viper Venom duration
   m.bleed.left = 1.2;
   m.cast = { k: 'volley', t: 0.5, dur: 1.5, kick: true, fn: () => {} };
   rogue.cd.a3 = 0; rogue.gcd = 0;
   assert.ok(useAbility(rogue, 'a3', null));
   assert.equal(m.cast, null, 'Fan of Blades interrupts enemy cast');
-  assert.ok(m.bleed.left >= 4.9, 'Crimson Tempest (Rank 1) refreshes Viper Blades duration');
+  assert.ok(m.bleed.left >= 4.9, 'Fan of Blades refreshes Viper Blades duration');
 });
 
 

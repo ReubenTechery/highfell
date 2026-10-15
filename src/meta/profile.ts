@@ -13,8 +13,8 @@
  * Changing its shape: bump PROFILE_VERSION and add a step to MIGRATIONS that turns the previous
  * version into the new one. Old saves are upgraded on load; nothing is ever thrown away silently.
  */
-import type { AbilitySlot, Rar, RoleId, SlotId } from '../content/types';
-import { ORDER, SLOTS_AB } from '../content/roles';
+import type { Rar, RoleId, SlotId } from '../content/types';
+import { ORDER } from '../content/roles';
 import { SLOT_IDS } from '../content/gear';
 import { CLASSES, FOUNDERS, MAX_HEROES, canMake, cleanName, defaultSex, type ClassId, type RaceId, type SexId } from '../content/folk';
 import { settleSpots } from './hearth';
@@ -23,9 +23,6 @@ import { opened } from './logs';
 export const PROFILE_VERSION = 7;
 /** Shared gear climbs to Rare. Epic is earned on the hero. */
 export const WARBAND_CAP: Rar = 2;
-export const MAX_HERO_LEVEL = 9;
-export const XP_PER_LEVEL = 100;
-export const MAX_TALENT_RANK = 2;
 
 export interface RegularSlot { rar: Rar; trait?: string }
 export interface Hero {
@@ -51,10 +48,6 @@ export interface Hero {
   named: boolean;
   /** full clears this hero has done */
   clears: number;
-  /** hero XP earned from bosses and clears (100 XP per level, up to Level 9) */
-  xp: number;
-  /** Skill Tree Lite: ability upgrade rank (0..2) for each of the 4 ability buttons */
-  talents: Record<AbilitySlot, number>;
 }
 export interface CollectionEntry { n: number; kc: number; at: number }
 /** A gathering spot's state: harvests ready, the day they were last topped up, whether the next one shimmers. */
@@ -108,7 +101,6 @@ export interface Profile {
 const blankSlots = (): Record<SlotId, RegularSlot> => Object.fromEntries(SLOT_IDS.map((s) => [s, { rar: 0 as Rar }])) as Record<SlotId, RegularSlot>;
 const blankEquip = (): Record<SlotId, string | null> => Object.fromEntries(SLOT_IDS.map((s) => [s, null])) as Record<SlotId, string | null>;
 const blankBag = (): Record<SlotId, RegularSlot | null> => Object.fromEntries(SLOT_IDS.map((s) => [s, null])) as Record<SlotId, RegularSlot | null>;
-const blankTalents = (): Record<AbilitySlot, number> => ({ a1: 0, a2: 0, a3: 0, a4: 0 });
 
 export function freshProfile(now = Date.now()): Profile {
   return {
@@ -162,21 +154,17 @@ const MIGRATIONS: Record<number, (raw: any) => any> = {
   /* v5 had one look for the house, the tavern. From v6 each room can have its own, and every room starts
      as it was. */
   5: (d) => ({ ...d, hearth: { ...obj(d.hearth), looks: {} } }),
-  /* v6 heroes had one look per combo. From v7 each hero has a male or female look (`sex`), XP from their
-     clears, and an ability upgrade tree (`talents`). Existing saves with heroes have already seen the game,
-     so mark the prologue and hearth tour done. */
+  /* v6 heroes had one look per combo. From v7 each hero has a male or female look (`sex`). Existing saves
+     with heroes have already seen the game, so mark the prologue and hearth tour done. */
   6: (d) => {
     const hadHeroes = Array.isArray(d.roster) && d.roster.length > 0;
     return {
       ...d,
       roster: (Array.isArray(d.roster) ? d.roster : []).map((h: any) => {
         const x = obj(h);
-        const clears = Math.max(0, Math.floor(num(x.clears, 0)));
         return {
           ...x,
           sex: x.sex === 'm' || x.sex === 'f' ? x.sex : defaultSex(String(x.race || ''), String(x.cls || '')),
-          xp: Math.max(0, Math.floor(num(x.xp, clears * XP_PER_LEVEL))),
-          talents: obj(x.talents),
         };
       }),
       counters: { ...obj(d.counters), ...(hadHeroes ? { 'intro.run': 1, 'intro.tour': 2 } : {}) },
@@ -208,15 +196,7 @@ function normHero(x: unknown, now: number): Hero | null {
   if (!id || !name || !race || !cls) return null;
   const sex: SexId = h.sex === 'm' || h.sex === 'f' ? h.sex : defaultSex(race, cls);
   const clears = Math.max(0, Math.floor(num(h.clears, 0)));
-  const xp = Math.max(0, Math.floor(num(h.xp, clears * XP_PER_LEVEL)));
-  const out: Hero = { id, name, race, cls, sex, createdAt: num(h.createdAt, now), playedAt: num(h.playedAt, now), regular: blankSlots(), bag: blankBag(), equip: blankEquip(), fresh: [], title: str(h.title), named: h.named !== false, clears, xp, talents: blankTalents() };
-  const rawTal = obj(h.talents);
-  let budget = Math.min(MAX_HERO_LEVEL, 1 + Math.floor(xp / XP_PER_LEVEL)) - 1;
-  for (const s of SLOTS_AB) {
-    const rk = Math.max(0, Math.min(MAX_TALENT_RANK, Math.floor(num(rawTal[s], 0)), budget));
-    out.talents[s] = rk;
-    budget -= rk;
-  }
+  const out: Hero = { id, name, race, cls, sex, createdAt: num(h.createdAt, now), playedAt: num(h.playedAt, now), regular: blankSlots(), bag: blankBag(), equip: blankEquip(), fresh: [], title: str(h.title), named: h.named !== false, clears };
   for (const s of SLOT_IDS) {
     out.regular[s] = normRegular(obj(h.regular)[s]);
     const b = obj(h.bag)[s];
@@ -310,36 +290,12 @@ export function createHero(p: Profile, o: { name: string; race: RaceId; cls: Cla
   const h: Hero = {
     id: id || 'h_' + now.toString(36) + Math.floor(Math.random() * 1e6).toString(36),
     name: o.name, race: o.race, cls: o.cls, sex, createdAt: now, playedAt: now,
-    regular: blankSlots(), bag: blankBag(), equip: blankEquip(), fresh: [], title: null, named: true, clears: 0, xp: 0, talents: blankTalents(),
+    regular: blankSlots(), bag: blankBag(), equip: blankEquip(), fresh: [], title: null, named: true, clears: 0,
   };
   for (const s of SLOT_IDS) h.regular[s] = { ...p.warband[role][s] };
   p.roster.push(h);
   if (!p.active) p.active = h.id;
   return h;
-}
-
-/** Hero level (1 to MAX_HERO_LEVEL) from earned XP. Each level above 1 grants 1 Talent Point. */
-export const heroLevel = (h: Pick<Hero, 'xp'>): number => Math.min(MAX_HERO_LEVEL, 1 + Math.floor(Math.max(0, h.xp || 0) / XP_PER_LEVEL));
-export function heroXpProgress(h: Pick<Hero, 'xp'>): { level: number; max: boolean; into: number; need: number; pct: number } {
-  const level = heroLevel(h), max = level >= MAX_HERO_LEVEL;
-  const into = max ? XP_PER_LEVEL : Math.max(0, (h.xp || 0) - (level - 1) * XP_PER_LEVEL);
-  return { level, max, into, need: XP_PER_LEVEL, pct: max ? 100 : Math.min(100, Math.round((into / XP_PER_LEVEL) * 100)) };
-}
-export const talentPointsSpent = (h: Pick<Hero, 'talents'>): number => SLOTS_AB.reduce((a, s) => a + (h.talents?.[s] || 0), 0);
-export const talentPointsLeft = (h: Pick<Hero, 'xp' | 'talents'>): number => Math.max(0, (heroLevel(h) - 1) - talentPointsSpent(h));
-
-/** Spend 1 Talent Point to upgrade an ability (up to Rank 2). */
-export function spendTalent(h: Hero, slot: AbilitySlot): boolean {
-  if (!SLOTS_AB.includes(slot) || talentPointsLeft(h) <= 0 || (h.talents[slot] || 0) >= MAX_TALENT_RANK) return false;
-  h.talents[slot] = (h.talents[slot] || 0) + 1;
-  return true;
-}
-
-/** Reset spent Talent Points so the player can re-pick their ability upgrade order. */
-export function resetTalents(h: Hero): boolean {
-  if (talentPointsSpent(h) <= 0) return false;
-  h.talents = blankTalents();
-  return true;
 }
 
 /** Remove a hero. The last one can't go; if it was active, the oldest left takes over. */

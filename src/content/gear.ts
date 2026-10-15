@@ -76,9 +76,9 @@ export const TRAITS: Record<GearKey, TraitDef[]> = {
     { id: 'quickfrost', name: 'Quickfrost', desc: 'Comet casts twice as fast.' },
   ],
   rogue: [
-    { id: 'twinvenom', name: 'Twin Venom', desc: 'Your twin-dagger swings extend Venomous Bleed by 1.5s.' },
-    { id: 'arterial', name: 'Arterial Cut', desc: 'Heartstrike on a bleeding foe refunds 1.2s of its cooldown.' },
-    { id: 'nightstalker', name: 'Nightstalker', desc: 'Shadowstep makes your next Heartstrike deal 30% bonus damage.' },
+    { id: 'twinvenom', name: 'Twin Venom', desc: 'Your twin-dagger swings extend Viper Venom by 1.5s.' },
+    { id: 'arterial', name: 'Venomrush', desc: 'Shadowstrike on a poisoned foe refunds 1.2s of its cooldown.' },
+    { id: 'nightstalker', name: 'Nightstalker', desc: 'Shadowstep makes your next Shadowstrike deal 30% bonus damage.' },
   ],
 };
 export const traitDef = (role: GearKey, id: string | undefined): TraitDef | undefined =>

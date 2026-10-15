@@ -1,11 +1,11 @@
 /** What a hero is wearing, what it adds up to, and changing it. Nothing goes on by itself: new pieces
  *  wait in the hero's bag (regular gear) or as fresh uniques until you put them on. */
-import type { AbilitySlot, GearKey, ItemDef, Rar, RoleId, SlotId } from '../content/types';
+import type { GearKey, ItemDef, Rar, RoleId, SlotId } from '../content/types';
 import type { RegularSlot } from './profile';
 import { ITEMS, SETS } from '../content';
 import { EPIC, RARITY, SLOTS, SLOT_IDS, TRAITS, gearId, gearKey, hpMultiplier, powerFromScore, traitDef, weightedScore } from '../content/gear';
 import type { ClassId, RaceId } from '../content/folk';
-import { activeHero, createHero, roleOf, talentPointsSpent, type Hero, type Profile } from './profile';
+import { activeHero, createHero, roleOf, type Hero, type Profile } from './profile';
 
 export interface Worn { slot: SlotId; def: ItemDef; trait?: string; unique: boolean }
 export interface Loadout {
@@ -16,7 +16,6 @@ export interface Loadout {
   unique: string | null;
   sets: Record<string, number>;
   score: number;
-  talents?: Record<AbilitySlot, number>;
 }
 
 /** Whether an item belongs to this hero's class/role (Rogue uses cls: 'rogue'; Mage uses role: 'dps' without cls). */
@@ -66,9 +65,7 @@ export function loadoutOf(items: Worn[]): Loadout {
 }
 
 export function loadoutFor(p: Profile, h: Hero): Loadout {
-  const l = loadoutOf(Object.values(worn(p, h)));
-  const pts = talentPointsSpent(h);
-  return { ...l, power: Math.round((l.power + pts * 0.015) * 1000) / 1000, talents: { ...h.talents } };
+  return loadoutOf(Object.values(worn(p, h)));
 }
 
 /** Plain regular gear at one rarity: what the bots in your party wear, and test gear. */

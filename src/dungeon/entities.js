@@ -28,7 +28,6 @@ export function makeHero(role, isPlayer, loadout) {
     id: 'h_' + role, kind: 'hero', role, cls, name: L.name || R.name, sprite: L.sprite || (isRogue ? 'rogue' : R.sprite), isPlayer, x: 0, y: 0, r: R.r,
     face: -Math.PI / 2, back: true, flip: false, hp: maxHp, maxHp, armor: R.armor, power,
     traits: new Set(L.traits || []), bonuses: new Set(L.bonuses || []), unique: L.unique || null,
-    talents: Object.assign({ a1: 0, a2: 0, a3: 0, a4: 0 }, L.talents || {}),
     weaponRar: L.weaponRar || 0, threatMod: R.threat, speed: R.speed * (isRogue ? 1.1 : 1) * (L.brew === 'fizz' ? 1.12 : 1), alive: true,
     // a brew from the Vale, drunk at the door: tonic, fizz, glow or elixir (see doDodge, hurtMob, hurtHero)
     brew: L.brew || null, brewCol: L.brewCol || null, brewUsed: false,

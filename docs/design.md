@@ -65,9 +65,9 @@ Every role gets three core buttons, one Ult and the swipe dodge, and each role's
 | Role / Class | 1 | 2 | 3 | 4 |
 | --- | --- | --- | --- | --- |
 | Tank (Warrior) | Cleave: fast front sweep, Crush bonus on heavy/stunned/clumped foes, 2.2s | Charge: dash, hit, taunt and stun nearby foes, readies Cleave, 6.5s | Slam: drag nearby foes in, taunt for 4s, spin a 360° whirlwind, 6s | Shield (hold): a perfect block stuns, counter-strikes and resets Cleave |
-| Healer (Cleric) | Prayer circle, 5s | Ward, 4s | Sunburst, 14s | Smite: heals your most hurt ally for the damage dealt, pulses Prayer circles and gives mana back, 2.5s |
-| DPS (Mage) | Blizzard, 7.5s | Rime burst, 11s | Comet: 0.9s cast, 5.5s | Icicle: instant, triple damage on frozen mobs, 2.5s |
-| DPS (Rogue) | Viper Blades: single-target twin-dagger slash + 5s Venomous Bleed, 2.4s | Heartstrike: single-target execution thrust, guaranteed crit + 55% bonus damage on bleeding targets, 3.6s | Fan of Blades: modest 360° throwing-knife spin + enemy cast interrupt, 6.5s | Shadowstep: blink through shadow behind target, interrupt casts, +35% attack speed for 3.5s, shaves 2s off Heartstrike, 5.8s |
+| Healer (Cleric) | Prayer circle, 5s | Ward, 3.8s | Sunburst, 13s | Smite: heals your most hurt ally for the damage dealt, pulses Prayer circles and gives mana back, 2.4s |
+| DPS (Mage) | Blizzard, 7.8s | Rime burst, 11.5s | Comet: 0.9s cast, 5.6s | Icicle: instant, triple damage on frozen mobs, 2.6s |
+| DPS (Rogue) | Viper Blades: single-target twin-dagger slash + 5.5s Viper Venom, 2.3s | Shadowstrike: single-target execution thrust, guaranteed crit + 60% bonus damage on poisoned targets, 3.4s | Fan of Blades: modest 360° throwing-knife spin + enemy cast interrupt + refreshes active venom, 6.0s | Shadowstep: blink through shadow behind target, interrupt casts, +35% attack speed for 3.8s, shaves 2s off Shadowstrike, 5.5s |
 
 **What's off now** (my read from the sims; tell me if something else felt off in play)
 
@@ -112,38 +112,13 @@ Crits get bigger numbers, a screen shake and a sound. A better weapon means bigg
 
 **Open call:** when all three Ults land within 5 seconds, fire a screen-wide team finisher? My pick is yes: it's the one big shared moment a dungeon gets.
 
-## Talents
+## Talents (retired in favor of Gear, Set & Boss Weapon Ability Buffs)
 
-Each role has three paths and four rows: you pick one talent per row, from any path, and respec free on the start screen. Rows open at hero level 2, 4, 6 and 8, about a level per run, so the whole tree is open within roughly eight runs. Row 4 is each path's keystone (★); hybrids are allowed, and some will be the best builds.
-
-### Tank: Bulwark · Brawler · Warden
-
-| Row | Bulwark: block god | Brawler: hit hard, heal off hits | Warden: protect the team |
-| --- | --- | --- | --- |
-| 1 | **Steady Hands**: perfect-block window 50% longer | **Bloodied Axe**: heal for 10% of damage dealt | **Rally**: Taunt also shields allies for 120 |
-| 2 | **Spiked Rim**: blocked hits deal 60 back, perfect blocks 250 | **Reckless Charge**: Charge every 6s, reset on a kill | **Guardian's Charge**: Charge goes for whatever is hitting your mates |
-| 3 | **Unmoved**: full speed while blocking | **Whirling Axe**: every 4th swing hits all around you | **Hold the Line**: allies near you take 10% less |
-| 4 ★ | **Mirror Wall**: perfect blocks bounce projectiles back; Openings last 2s longer | **Red Mist**: the lower your health, the harder you hit and heal, up to 40% | **Martyr**: 20% of the damage your allies take comes to you instead |
-
-### Healer: Dawn · Aegis · Zealot
-
-| Row | Dawn: big heals | Aegis: shields first | Zealot: heal by fighting |
-| --- | --- | --- | --- |
-| 1 | **Bright Mend**: 20% chance Mend heals double | **Thick Ward**: Ward absorbs 40% more | **Sun-scorch**: Smite hits 30% harder |
-| 2 | **Sunrise**: Dawn fills 30% faster | **Bouncing Ward**: a broken Ward jumps to the next hurt ally at half strength | **Burning Ground**: Prayer circle burns enemies inside it |
-| 3 | **Rescue**: heals on allies under 30% are 50% stronger | **Sanctuary**: allies in Prayer circle take 15% less | **Zeal**: each Smite takes 1s off Ward |
-| 4 ★ | **Second Sunrise**: once per fight, a killing blow on an ally is stopped and they're healed to half | **Overflow**: overhealing becomes a shield, up to 300 | **Sun Lance**: every 5th Smite is a beam through a whole line that heals everyone |
-
-### DPS: Shatter · Comet · Whiteout
-
-| Row | Shatter: freeze and crit | Comet: big hits | Whiteout: hit everything |
-| --- | --- | --- | --- |
-| 1 | **Brittle**: frozen or slowed mobs take 20% more from you | **Heavy Comet**: Comet hits 30% harder | **Wide Storm**: Blizzard is 35% bigger |
-| 2 | **Hard Freeze**: Rime burst freezes 1.5s longer and slows bosses | **Twin Comets**: Comet holds 2 charges | **Drifting Storm**: Blizzard follows its target |
-| 3 | **Ice Shards**: frozen mobs burst into shards when they die | **Crater**: Comet leaves ice that slows mobs and makes them take 15% more | **Deep Chill**: mobs in Blizzard for 3s freeze for 1s |
-| 4 ★ | **Shatterstorm**: crits on frozen mobs explode for half damage around them | **Third Star**: every 3rd Comet is instant and three times the size | **Endless Winter**: two Blizzards at once |
-
-Levels unlock choices and looks, never stats.
+Skill trees and hero levels are omitted so that **Gear alone drives damage, healing, health, and ability fantasy**. Every class's 4 buttons are balanced out of the box, and Dungeon / Heroic Boss Weapons and 3-piece sets transform and buff how those 4 buttons work:
+- **The Gravedigger** (Tank): Every fifth swing digs in with a stunning tremor, and `Charge` resets `Cleave`’s cooldown.
+- **Lantern of the Long Night** (Healer): `Mend` wards its target for 60, and `Sunburst` sears nearby foes for 90 holy damage and wards the party for 75.
+- **Gravefrost Staff** (Mage): `Comet` freezes everything it hits for 2 seconds, and `Rime burst` resets `Icicle` and leaves a 3s frost storm.
+- **The Cryptfangs** (Rogue): Every fourth twin-dagger slash strikes twice and refreshes Viper Venom, and `Shadowstep` resets `Shadowstrike`.
 
 ## Heroes and alts
 
@@ -155,8 +130,8 @@ A hero is one race and one class, picked when you make them and fixed after. You
 - **Shared gear:** a floor per role, up to Rare. Spare pieces and your own ladder raise it, and every hero of that role can put it on, including heroes made later (a new hero starts wearing it). Epic is earned on the hero.
 - **Nothing goes on by itself.** A new piece waits in the hero's bag and glows on the gear doll with "Up" (a better regular piece) or "New" (a unique). Your hero's tag at the top of the house counts what's waiting; tap the slot, compare, and Put it on: the slot bursts, the item level counts up. The chest reveal says "Put it on in Gear".
 - **Races:** Dwarf, Elf and Human from the start. Gnome, Goblin, the Risen (undead) and Orc are earned, each in its own dungeon: the Risen from filling Barrow Crypt's whole collection log, the others with dungeons to come. The hero maker shows how close you are to each.
-- **Classes:** Warrior (tank), Cleric (healer), Mage (ranged AoE/Shatter DPS) and Rogue (fast melee single-target bleed/crit DPS with permanent +10% movement speed and twin daggers as a single pair item). That's all four.
-- **Drawn today:** Dwarf Warrior (tank), Human Cleric (healer), Elf Mage (DPS), Human/Elf Rogue (DPS), and the Risen as all four: skeletons in their class's own outfit, with green light in their eyes (gold bones with Gilded Bones). The rest show in the hero maker as Soon.
+- **Classes:** Warrior (tank), Cleric (healer), Mage (ranged AoE/Shatter DPS) and Rogue (fast melee single-target venom/crit DPS with permanent +10% movement speed and twin daggers as a single pair item). That's all four.
+- **Drawn today:** Dwarf Warrior (tank), Human Cleric (healer), Elf Mage (DPS), Human/Elf Rogue (DPS), and Gnome, Goblin and the Risen as all four classes. The rest show in the hero maker as Soon.
 - **Old saves:** became one hero, named for the role you last played, with a one-time rename.
 
 ## Home: the house
@@ -236,7 +211,7 @@ The weapon is the upgrade you feel; Helm, Shoulders and Chest are the set. Power
 | Tank (Warrior) | **Wide Swings**: swings hit everything in front at full damage | **Ringing Blow**: Charge hits twice and everything it hits turns on you | **Headsman**: hits on stunned mobs always crit |
 | Healer (Cleric) | **Sunflare**: Mend splashes half to the next hurt ally | **Quick Hands**: Mend recasts faster | **Kindle**: a Ward that breaks heals for 80 |
 | DPS (Mage) | **Shatterlance**: Comet on frozen mobs hits 3× | **Splinter**: frostbolts split to a second mob | **Quickfrost**: Comet casts twice as fast |
-| DPS (Rogue) | **Twin Venom**: twin-dagger auto-attacks extend Venomous Bleed by 1.5s | **Arterial Strike**: Heartstrike on a bleeding foe refunds 1.2s of its cooldown | **Nightstalker**: Shadowstep makes your next Heartstrike deal +30% damage |
+| DPS (Rogue) | **Twin Venom**: twin-dagger auto-attacks extend Viper Venom by 1.5s | **Venomrush**: Shadowstrike on a poisoned foe refunds 1.2s of its cooldown | **Nightstalker**: Shadowstep makes your next Shadowstrike deal +30% damage |
 
 Most of today's other traits fold into talents. Four of them carry straight WoW spell names (Icy Veins, Cold Snap, Deep Freeze, Last Stand), so v2 drops those names, along with Frost nova.
 
@@ -256,7 +231,7 @@ Most of today's other traits fold into talents. Four of them carry straight WoW 
 | **Barrowguard** (tank) | Bone-white plate, skull shoulders, coffin-lid shield | Perfect blocks give you a 150 bone shield | Slam raises 2 skeleton thralls for 8s; they fight beside you and soak hits |
 | **Candlewake** (healer) | Black robes, candle crown, a lantern | Mend leaves a candle that heals 40 more over 4s | An ally who would die becomes a ghost for 6s, still fighting, and you heal them back to life. Once per ally per fight |
 | **Rimebone** (Mage DPS) | Frosted bone crown, icicle shoulders | Comet on a frozen mob refunds half its cooldown | Blizzard rains bone shards; anything that dies in it rises as a frost skeleton that fights for you for 6s |
-| **Shadeveil** (Rogue DPS) | Shadow-stitched mask, bone-bladed spaulders, silent leather jerkin | Critical hits with Heartstrike or Viper Blades erupt in shadow for 55 damage | Shadowstep leaves a shadow clone for 6s that slashes your target with twin daggers |
+| **Shadeveil** (Rogue DPS) | Shadow-stitched mask, bone-bladed spaulders, silent leather jerkin | Critical hits with Shadowstrike or Viper Blades erupt in shadow for 55 damage | Shadowstep leaves a shadow clone for 6s that slashes your target with twin daggers |
 
 ### Sets by dungeon
 

@@ -23,8 +23,6 @@ export interface AbilityDef {
   combo?: string;
 }
 
-export interface TalentRankDef { name: string; desc: string }
-
 export interface RarityDef { key: string; name: string; score: number; color: string; ink: string }
 export interface SlotDef { id: SlotId; weight: number }
 export interface RoleSlotDef { name: string; icon: string }

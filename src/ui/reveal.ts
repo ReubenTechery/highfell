@@ -11,7 +11,7 @@ import { RARITY, ROLE_SLOTS, gearId, gearKey, traitDef } from '../content/gear';
 import { ROLES } from '../content/roles';
 import type { Rar, RoleId, SlotId } from '../content/types';
 import { takeTrait, type Drop, type RunLoot, type Tell } from '../meta/loot';
-import { activeHero, heroById, heroLevel, roleOf, talentPointsLeft } from '../meta/profile';
+import { activeHero, heroById, roleOf } from '../meta/profile';
 import { itemShare, waiting, worn } from '../meta/gear';
 import type { App } from './app';
 import { actions, esc, fmtN, fmtRate, fmtT, GLYPH, reducedMotion, wait } from './dom';
@@ -239,14 +239,11 @@ export class Reveal {
     const rec = p.dungeons[dg.heroicOf || dg.id];
     const kc = Object.entries(loot.kc);
     const h = heroById(p, extra.hero);
-    const lvNow = h ? heroLevel(h) : (loot.levelAfter || 1);
-    const lvUp = (loot.levelAfter || 1) > (loot.levelBefore || 1);
     const sum = $('rv-sum', this.root);
     sum.hidden = !!extra.intro;
     if (!extra.intro) {
       sum.innerHTML = `<h3>This run</h3><div class="rv-grid">
           <div class="kv"><span>Time</span><b>${fmtT(loot.time)}</b><small>${loot.newPb ? 'New best!' : loot.firstClear ? 'First clear!' : `Best ${fmtT(loot.pb)}`}</small></div>
-          <div class="kv"><span>Hero level</span><b>Lv ${lvNow}</b><small>${lvUp ? 'Level up! +1 Ability Point' : loot.xpGained ? `+${loot.xpGained} XP` : 'Max level'}</small></div>
           ${kc.map(([b, n]) => `<div class="kv"><span>${esc(dg.bosses.find((x) => x.id === b)?.name || b)}</span><b>KC ${fmtN(n)}</b></div>`).join('')}
           <div class="kv"><span>${esc(dg.marksName)}</span><b>+${loot.marks}</b><small>${fmtN(rec ? rec.marks : 0)} total</small></div>
           <div class="kv"><span>Collection log</span><b>${got} / ${dg.collection.length}</b><small>${newSlots ? `+${newSlots} new` : ''}</small></div>
@@ -277,10 +274,10 @@ export class Reveal {
       ach.hidden = false;
       ach.innerHTML = `<h3>Achievements</h3>${extra.unlocked.map((id) => { const a = ACHIEVEMENTS[id]; return `<div class="ach"><span class="medal ${a.tier}" aria-hidden="true">${a.points}</span><div><div class="n">${esc(a.name)}</div><div class="rw">${esc(a.reward.title ? 'Title: ' + (TITLES[a.reward.title]?.text || '') : a.reward.text)}</div></div><div class="pts">${a.points}<small>points</small></div></div>`; }).join('')}`;
     }
-    // new gear or ability points wait for you: the Gear button says how much
-    const up = h && !extra.preview ? waiting(p, h).length + talentPointsLeft(h) : 0;
+    // new gear waits for you: the Gear button says how much
+    const up = h && !extra.preview ? waiting(p, h).length : 0;
     const gb = this.root.querySelector<HTMLElement>('#rv-actions [data-act="gear"]');
-    if (gb && up) { gb.classList.add('gold', 'has-up'); gb.innerHTML = `Gear &amp; abilities<i class="badge" aria-hidden="true">${up}</i>`; }
+    if (gb && up) { gb.classList.add('gold', 'has-up'); gb.innerHTML = `Gear<i class="badge" aria-hidden="true">${up}</i>`; }
     $('rv-actions', this.root).hidden = false;
     (this.root.querySelector('#rv-actions .btn') as HTMLElement | null)?.focus({ preventScroll: true });
   }

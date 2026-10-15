@@ -34,8 +34,8 @@ slice). Nothing else gets added to that shape without the owner saying so.
    guide to understand, it is a raid mechanic.
 2. **Power is short, collecting is long.** Regular gear climbs Common → Uncommon → Rare in eight clears, while
    Epic comes from the dungeon's 3-piece set (1/35 a piece) and boss weapon (1/50, ~1/10 chance per clear at an Epic
-   piece and ~50 clears for a full 4/4 Epic kit). Heroes also level up from 1 to 9 (+1 Ability Point per level to
-   upgrade their 4 abilities across 2 ranks each). Beyond that, progress is sideways: sets, weapon traits, talents,
+   piece and ~50 clears for a full 4/4 Epic kit). There are no hero levels or skill trees: gear, sets, weapon traits,
+   and dungeon/heroic boss weapons drive all power and ability buffs. Beyond that, progress is sideways: sets, weapon traits,
    looks, pets, mounts, titles, trophies, achievements. Skill and achievements earn looks, never power. Someone with
    three hours on a Friday is never behind.
 3. **Honest OSRS loot.** Every line of a table rolls on its own at a fixed rate. No pity. Kill counts
@@ -79,27 +79,27 @@ slice). Nothing else gets added to that shape without the owner saying so.
 | One self-contained HTML file, no frameworks, no runtime dependencies | It has to run anywhere, including inside claude.ai |
 | A save never loses data: change its shape only with a version bump and a migration | People's progress is sacred |
 
-The full systems design (abilities, talents, sets, drop tables, achievements, balance rules) is in
+The full systems design (abilities, sets, drop tables, achievements, balance rules) is in
 `docs/design.md`. Parked ideas and proposals are in `docs/ideas.md`. Nothing in ideas is decided.
 
 ## Rules of the game's systems (as built)
 
 - **Loot** rolls when a boss dies (`resolveKill`): every line of its table rolls on its own, per player, and
   kill counts are per boss. Every clear also gives a Mark, a ladder piece (Common to Rare in eight clears)
-  and a spare piece for another role, plus Hero XP (+35 XP per mini-boss, +65 XP per clear = 100 XP / 1 Hero Level per clear up to Level 9). Practice runs give nothing.
+  and a spare piece for another role. Practice runs give nothing.
 - **The walkout:** the final boss's drops decide the lantern's tell. Normal: it gutters out. Unique: it
   flares gold and the chest knocks twice. Pet: every light dies, the sound cuts, the lantern lifts and the
   pet walks out. The first second is identical for all three on purpose.
 - **Heroes:** up to six; the last one can't be deleted; a hero the game named (from the move to heroes) can be
   renamed once. The active hero is the one by the fire in the house and the one a run plays; the others wait by their beds
   in the bunk room (tap one to play them, an empty bed makes a new hero). Each hero has its own
-  male or female look (`sex`), ladder gear, XP/level (`xp`), ability tree ranks (`talents`: 2 ranks per ability across `a1..a4`), title and clears. Shared by all heroes: the collection (a unique fits any hero of its role),
+  male or female look (`sex`), ladder gear, title and clears. Shared by all heroes: the collection (a unique fits any hero of its role),
   kill counts, Marks, achievements, titles, the hearth, the Vale. A race and class combo is playable once it
   has a ready class and art in `HERO_ART` (`HERO_ART_SEX` for male/female variants, keeping the same body and armour silhouette) and its race is open; the rest show as "Soon". A race marked
   `earned` (gnome, goblin, the Risen, orc) opens with the achievement that gives it (`reward.race`), and
   stays locked until a dungeon does.
-- **Gear:** nothing goes on by itself. Heroes start in humble Common rags and bronze/wood weapons (`_0` icon tier), climb through Uncommon (`_1`) to Rare (`_2`) in eight clears, and earn Epic (`_3`) from dungeon sets (1/35) and boss weapons (1/50). A ladder piece (and the shared floor) waits in the hero's bag; a new
-  unique waits in their `fresh` list. Your hero's tag at the top of the house (and the armour stand) counts what's waiting (plus unspent ability points); you put it
+- **Gear:** nothing goes on by itself. Heroes start in humble Common rags and bronze/wood weapons (`_0` icon tier), climb through Uncommon (`_1`) to Rare (`_2`) in eight clears, and earn Epic (`_3`) from dungeon sets (1/35) and boss weapons (1/50), which buff and transform core abilities. A ladder piece (and the shared floor) waits in the hero's bag; a new
+  unique waits in their `fresh` list. Your hero's tag at the top of the house (and the armour stand) counts what's waiting; you put it
   on in the doll, which shows a side-by-side Old-vs-New comparison with exact item level, damage/healing, and health gains. A drop's sheet holds it up against what its role wears (`compareOn`): better is more item level
   or a new effect with nothing lost, worse is less or an effect lost for nothing, both at once is a trade. A
   bonus that isn't ready yet is listed but doesn't make a piece better.

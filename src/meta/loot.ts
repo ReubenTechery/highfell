@@ -12,7 +12,7 @@ import { ORDER } from '../content/roles';
 import type { Rng } from '../core/rng';
 import { autoPlace } from './hearth';
 import { bagIt, bestRegular, fitsHero, freshForRole } from './gear';
-import { WARBAND_CAP, bossRecord, dungeonRecord, heroLevel, roleOf, type Hero, type Profile } from './profile';
+import { WARBAND_CAP, bossRecord, dungeonRecord, roleOf, type Hero, type Profile } from './profile';
 
 export type Tell = 'normal' | 'unique' | 'pet';
 
@@ -51,15 +51,10 @@ export interface RunLoot {
   pb: number | null;
   newPb: boolean;
   firstClear: boolean;
-  xpGained?: number;
-  levelBefore?: number;
-  levelAfter?: number;
 }
 
 export const DUPE_MARKS = 3;
 export const CLEAR_MARKS = 1;
-export const BOSS_XP = 35;
-export const CLEAR_XP = 65;
 /** A heroic dungeon opens once you've cleared its normal one this many times: about when gear tops out. */
 export const HEROIC_AFTER = 10;
 
@@ -164,7 +159,7 @@ export interface RunEnd {
 }
 
 /** What one boss kill gave: rolled the moment it dies, like loot hitting the floor. */
-export interface KillLoot { boss: string; kc: number; time: number; newPb: boolean; drops: Drop[]; marks: number; xp?: number }
+export interface KillLoot { boss: string; kc: number; time: number; newPb: boolean; drops: Drop[]; marks: number }
 
 /** A kill counts and rolls its table. Practice runs never call this. */
 export function resolveKill(p: Profile, dg: DungeonInfo, boss: string, h: Hero, time: number | null, rng: Rng, now = Date.now()): KillLoot {
@@ -173,9 +168,7 @@ export function resolveKill(p: Profile, dg: DungeonInfo, boss: string, h: Hero, 
   br.kc++;
   const newPb = typeof time === 'number' && (br.pb === null || time < br.pb);
   if (newPb) br.pb = time;
-  const xp = boss !== dg.finalBoss ? BOSS_XP : 0;
-  h.xp = (h.xp || 0) + xp;
-  const out: KillLoot = { boss, kc: br.kc, time: time ?? 0, newPb: newPb && br.kc > 1, drops: [], marks: 0, xp };
+  const out: KillLoot = { boss, kc: br.kc, time: time ?? 0, newPb: newPb && br.kc > 1, drops: [], marks: 0 };
   const table = dg.loot.find((t) => t.boss === boss);
   if (table) for (const d of rollTable(table, role, rng, h.cls)) out.drops.push(grant(p, h, d.id, { source: 'table', boss, rate: d.rate, kc: br.kc }, now));
   out.marks = out.drops.reduce((a, d) => a + d.marks, 0);
@@ -184,14 +177,13 @@ export function resolveKill(p: Profile, dg: DungeonInfo, boss: string, h: Hero, 
 }
 
 /** What finishing the dungeon gave: the clear, the ladder piece, the spare piece and a mark. */
-export interface ClearLoot { clears: number; time: number; pb: number | null; newPb: boolean; firstClear: boolean; drops: Drop[]; marks: number; xp?: number }
+export interface ClearLoot { clears: number; time: number; pb: number | null; newPb: boolean; firstClear: boolean; drops: Drop[]; marks: number }
 
 export function resolveClear(p: Profile, dg: DungeonInfo, h: Hero, time: number, rng: Rng): ClearLoot {
   const rec = dungeonRecord(p, dg.id);
   rec.clears++;
   h.clears++;
-  h.xp = (h.xp || 0) + CLEAR_XP;
-  const out: ClearLoot = { clears: rec.clears, time, pb: null, newPb: false, firstClear: rec.clears === 1, drops: [], marks: CLEAR_MARKS, xp: CLEAR_XP };
+  const out: ClearLoot = { clears: rec.clears, time, pb: null, newPb: false, firstClear: rec.clears === 1, drops: [], marks: CLEAR_MARKS };
   if (rec.pb === null || time < rec.pb) { out.newPb = rec.pb !== null; rec.pb = time; }
   out.pb = rec.pb;
   out.drops.push(regularDrop(p, h, rng));
@@ -204,10 +196,7 @@ export function resolveClear(p: Profile, dg: DungeonInfo, h: Hero, time: number,
 /** Everything a run gave, put together for the reveal. The final boss's drops decide the tell. */
 export function runLoot(p: Profile, dg: DungeonInfo, h: Hero, kills: KillLoot[], clear: ClearLoot | null): RunLoot {
   const rec = dungeonRecord(p, dg.id);
-  const xpGained = kills.reduce((a, k) => a + (k.xp || 0), 0) + (clear?.xp || 0);
-  const levelAfter = heroLevel(h);
-  const levelBefore = heroLevel({ xp: Math.max(0, (h.xp || 0) - xpGained) });
-  const out: RunLoot = { dungeon: dg.id, role: roleOf(h), hero: h.id, drops: [], tell: 'normal', kc: {}, marks: 0, clears: rec.clears, time: clear ? clear.time : 0, pb: rec.pb, newPb: !!clear?.newPb, firstClear: !!clear?.firstClear, xpGained, levelBefore, levelAfter };
+  const out: RunLoot = { dungeon: dg.id, role: roleOf(h), hero: h.id, drops: [], tell: 'normal', kc: {}, marks: 0, clears: rec.clears, time: clear ? clear.time : 0, pb: rec.pb, newPb: !!clear?.newPb, firstClear: !!clear?.firstClear };
   for (const k of kills) { out.kc[k.boss] = k.kc; out.drops.push(...k.drops); out.marks += k.marks; }
   if (clear) { out.drops.push(...clear.drops); out.marks += clear.marks; }
   const last = kills.find((k) => k.boss === dg.finalBoss);
