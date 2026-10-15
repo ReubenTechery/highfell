@@ -254,7 +254,7 @@ export class RunScene implements InputUI {
     const tierSuffix = rar <= 0 ? '_rags' : rar === 1 ? '_iron' : '';
     const loadouts: Record<string, unknown> = {};
     for (const r of ['tank', 'healer', 'dps'] as RoleId[]) {
-      const mate = r === role ? null : (!test && !intro ? heroesFor(p, r)[0] || null : null);
+      const mate = r === role ? null : (!test && !intro && !o.heroic ? heroesFor(p, r)[0] || null : null);
       if (mate) {
         const base = loadoutFor(p, mate);
         loadouts[r] = { ...base, cls: mate.cls, name: mate.name, sprite: heroSprite(mate, r, p) };

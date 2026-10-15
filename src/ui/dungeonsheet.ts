@@ -96,9 +96,10 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
   </div>`;
   let foot: string;
   if (!open) foot = `<p class="fine dgx-shut">${GLYPH.lock}Heroic opens after ${HEROIC_AFTER} clears of the ${esc(base.name.split(' ')[0])}. You have ${hp.have}.</p>`;
-  else if (playing) foot = `<button type="button" class="btn gold big${pick.heroic ? ' heroic' : ''}" data-act="go">${practice ? 'Start practice' : pick.heroic ? 'Enter Heroic' : `Enter the ${esc(base.name.split(' ')[0])}`}</button>`;
-  else if (p.roster.length < MAX_HEROES) foot = `<button type="button" class="btn gold big" data-act="newseat" data-role="${role}">${GLYPH.plus}Make a ${esc(word(role))}</button>`;
-  else foot = `<p class="fine">Your bunk room is full. Let a hero go to make a ${esc(word(role))}.</p>`;
+  else if (!playing && p.roster.length < MAX_HEROES) foot = `<button type="button" class="btn gold big" data-act="newseat" data-role="${role}">${GLYPH.plus}Make a ${esc(word(role))}</button>`;
+  else if (!playing) foot = `<p class="fine">Your bunk room is full. Let a hero go to make a ${esc(word(role))}.</p>`;
+  else if (pick.heroic && !practice && !allOpen) foot = `<p class="fine dgx-shut">${GLYPH.lock}Heroic is Friends &amp; Party Finder only (Warband disabled). Switch to Practice or enable "Everything open" in Settings to test solo.</p>`;
+  else foot = `<button type="button" class="btn gold big${pick.heroic ? ' heroic' : ''}" data-act="go">${practice ? 'Start practice' : pick.heroic ? 'Enter Heroic' : `Enter the ${esc(base.name.split(' ')[0])}`}</button>`;
   return { head: '<h2>Dungeons</h2>', body, foot };
 }
 
@@ -134,24 +135,27 @@ function item(p: Profile, d: DropDef): string {
     <span class="tile" aria-hidden="true">${iconOf(d.id)}</span><small>${have ? GLYPH.check : fmtRate(d.rate)}</small></button>`;
 }
 
-/** who plays the role: your hero, a way to change to another of yours, and who your Warband companions/bots are */
+/** who plays the role: your hero, a way to change to another of yours, and party rules (Normal: Warband & Group; Heroic: Friends & Party Finder only) */
 function me(p: Profile, role: RoleId, pick: DungeonPick): string {
   const h = activeHero(p);
   if (!h || roleOf(h) !== role) return `<div class="dgx-me none r-${role}"><b>No ${esc(word(role))} yet</b><span class="fine">Make one to play this seat.</span></div>`;
   const others = heroesFor(p, role).filter((x) => x.id !== h.id);
   const room = p.roster.length < MAX_HEROES;
-  const mates = seats(p)
+  const mates = seats(p, false)
     .filter((s) => s.role !== role)
     .map((s) => (s.hero ? `${s.hero.name} (ilvl ${ilvl(loadoutFor(p, s.hero).score)})` : `${s.bot} (bot)`));
   const list = pick.alts
     ? `<div class="seat-pick">${others.map((x) => `<button type="button" class="btn small" data-act="playseat" data-id="${esc(x.id)}">${GLYPH.play}${esc(x.name.split(' ')[0])}</button>`).join('')}${room ? `<button type="button" class="btn small" data-act="newseat" data-role="${role}">${GLYPH.plus}New ${esc(word(role))}</button>` : ''}</div>`
     : '';
+  const partyLine = pick.heroic
+    ? `<p class="fine"><b>Friends &amp; Party Finder only:</b> Warband companions are disabled on Heroic.</p>`
+    : `<p class="fine"><b>Warband &amp; Group:</b> ${esc(mates.join(' & '))} join your party (or group with friends).</p>`;
   return `<div class="dgx-me r-${role}">
       <span class="dgx-fig" aria-hidden="true">${heroImg(heroSprite(h, role, p), { cls: 'dgx-img' })}</span>
       <span class="dgx-who"><b>${esc(h.name)}</b><span>Item level ${ilvl(loadoutFor(p, h).score)}</span></span>
       ${others.length || room ? `<button type="button" class="btn small" data-act="alts" aria-expanded="${pick.alts}">Change</button>` : ''}
     </div>${list}
-    <p class="fine">Warband: ${esc(mates.join(' & '))} join your party.</p>`;
+    ${partyLine}`;
 }
 
 /** which brew you take in: one bottle a run */

@@ -501,7 +501,7 @@ test('heroic: opens after ten clears, drops the Barrow’s pieces gilded at the 
   assert.equal(compareFor(p, h, 'barrowguard.helm')!.verdict, 'same');
 });
 
-test('party: you take your hero’s seat, your Warband heroes take the others, and bots stand in for empty seats', () => {
+test('party: you take your hero’s seat, your Warband heroes take the others on Normal (disabled on Heroic), and bots stand in for empty seats', () => {
   const p = freshProfile();
   assert.deepEqual(seats(p).map((s) => s.bot), ['Brannoc', 'Maren', 'Ivy'], 'no hero yet: three bots');
   const tank = newHero(p, { name: 'Hollis Emberhand', race: 'dwarf', cls: 'warrior' })!;
@@ -515,9 +515,14 @@ test('party: you take your hero’s seat, your Warband heroes take the others, a
   assert.deepEqual(heroesFor(p, 'dps'), []);
   setActive(p, healer.id, 2);
   assert.equal(seats(p)[1].hero?.id, healer.id, 'playing your healer puts you in the healer seat');
-  assert.equal(seats(p)[0].hero?.id, tank.id, 'your tank joins the Warband in the tank seat');
+  assert.equal(seats(p)[0].hero?.id, tank.id, 'your tank joins the Warband in the tank seat on Normal');
   assert.equal(seats(p)[0].bot, null);
   assert.equal(seats(p)[2].bot, 'Ivy', 'and a bot stands in for the empty DPS seat');
+  // Heroic is Friends & Party Finder only: Warband companions are disabled on Heroic
+  const hSeats = seats(p, true);
+  assert.equal(hSeats[1].hero?.id, healer.id, 'you still take your own seat on Heroic');
+  assert.equal(hSeats[0].hero, null, 'Warband tank does not join Heroic');
+  assert.equal(hSeats[2].hero, null, 'Warband DPS does not join Heroic');
   const tank2 = newHero(p, { name: 'Brakka Stoutmantle', race: 'dwarf', cls: 'warrior' })!;
   setActive(p, tank2.id, 3);
   assert.deepEqual(heroesFor(p, 'tank').map((h) => h.id), [tank2.id, tank.id], 'the tank you played last comes first');

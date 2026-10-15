@@ -271,9 +271,11 @@ export class Sheets {
   /* ---------------------------------------------------------------- the dungeon picker (drawn in dungeonsheet.ts) */
   private go(): void {
     const pr = this.pick;
+    const practice = pr.mode === 'practice';
     if (!pickedDungeon(this.app.p, pr, this.app.dev.allOpen).open) { SFX.play('nope'); return; }
+    if (pr.heroic && !practice && !this.app.dev.allOpen) { SFX.play('nope'); return; }
     SFX.play('ui');
-    if (pr.mode === 'practice') this.app.startRun({ start: pr.start, testRar: pr.gear === 'mine' ? null : (pr.gear as Rar), heroic: pr.heroic });
+    if (practice) this.app.startRun({ start: pr.start, testRar: pr.gear === 'mine' ? null : (pr.gear as Rar), heroic: pr.heroic });
     else this.app.startRun({ start: 'entrance', testRar: null, heroic: pr.heroic });
   }
 
