@@ -28,22 +28,22 @@ export const ROLE_SLOTS: Record<RoleId, Record<SlotId, RoleSlotDef>> = {
 
 const NAMES: Record<RoleId, Record<SlotId, [string, string, string, string]>> = {
   tank: {
-    weapon: ['Rusty Hand Axe', 'Iron War Axe', 'Barrow Cleaver', 'Gravebreaker'],
-    helm: ['Dented Cap', 'Iron Helm', 'Crypt Warden Helm', 'Helm of the Long Watch'],
-    shoulders: ['Leather Pads', 'Iron Pauldrons', 'Crypt Warden Pauldrons', 'Pauldrons of the Long Watch'],
-    chest: ['Patched Mail', 'Iron Plate', 'Crypt Warden Plate', 'Plate of the Long Watch'],
+    weapon: ['Chipped Bronze Hatchet', 'Iron War Axe', 'Barrow Cleaver', 'Gravebreaker'],
+    helm: ['Tattered Rag Cap', 'Iron Pot Helm', 'Crypt Warden Helm', 'Helm of the Long Watch'],
+    shoulders: ['Burlap Shoulder Wraps', 'Iron Pauldrons', 'Crypt Warden Pauldrons', 'Pauldrons of the Long Watch'],
+    chest: ['Patched Rag Tunic', 'Iron Chainmail', 'Crypt Warden Plate', 'Plate of the Long Watch'],
   },
   healer: {
-    weapon: ['Ash Staff', 'Sunwood Staff', 'Dawnbringer', 'Staff of First Light'],
-    helm: ['Linen Hood', 'Pilgrim Hood', 'Hood of Quiet Mercy', 'Circlet of the Sun'],
-    shoulders: ['Linen Shawl', 'Pilgrim Mantle', 'Mantle of Quiet Mercy', 'Mantle of the Sun'],
-    chest: ['Linen Robe', 'Pilgrim Robe', 'Robe of Quiet Mercy', 'Vestments of the Sun'],
+    weapon: ['Gnarled Branch', 'Sunwood Staff', 'Dawnbringer', 'Staff of First Light'],
+    helm: ['Frayed Rag Hood', 'Pilgrim Hood', 'Hood of Quiet Mercy', 'Circlet of the Sun'],
+    shoulders: ['Patchwork Shawl', 'Pilgrim Mantle', 'Mantle of Quiet Mercy', 'Mantle of the Sun'],
+    chest: ['Tattered Sackcloth', 'Pilgrim Robe', 'Robe of Quiet Mercy', 'Vestments of the Sun'],
   },
   dps: {
-    weapon: ['Birch Staff', 'Frostwood Staff', 'Rimecaller', 'Winter’s Edge'],
-    helm: ['Wool Hat', 'Snowweave Hat', 'Hat of the Long Night', 'Crown of the Glacier'],
-    shoulders: ['Wool Wrap', 'Snowweave Mantle', 'Frostfur Mantle', 'Mantle of the Glacier'],
-    chest: ['Wool Robe', 'Snowweave Robe', 'Robe of the Long Night', 'Robe of the Glacier'],
+    weapon: ['Splintered Wand', 'Frostwood Staff', 'Rimecaller', 'Winter’s Edge'],
+    helm: ['Moth-Eaten Cap', 'Snowweave Hat', 'Hat of the Long Night', 'Crown of the Glacier'],
+    shoulders: ['Frayed Cloth Wrap', 'Snowweave Mantle', 'Frostfur Mantle', 'Mantle of the Glacier'],
+    chest: ['Patched Apprentice Rags', 'Snowweave Robe', 'Robe of the Long Night', 'Robe of the Glacier'],
   },
 };
 
@@ -73,7 +73,7 @@ export function regularItems(): ItemDef[] {
   const out: ItemDef[] = [];
   for (const role of Object.keys(NAMES) as RoleId[]) {
     for (const slot of SLOT_IDS) {
-      NAMES[role][slot].forEach((name, rar) => out.push({ id: gearId(role, slot, rar as Rar), name, role, slot, kind: 'gear', rar: rar as Rar, icon: ROLE_SLOTS[role][slot].icon }));
+      NAMES[role][slot].forEach((name, rar) => out.push({ id: gearId(role, slot, rar as Rar), name, role, slot, kind: 'gear', rar: rar as Rar, icon: `${ROLE_SLOTS[role][slot].icon}_${rar}` }));
     }
   }
   return out;

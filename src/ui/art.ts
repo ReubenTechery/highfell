@@ -24,7 +24,7 @@ export const tile = (name: string): string => TILES[name] || TILES.mend || '';
 /** The icon for anything with an id: regular gear, set pieces, uniques, collectibles. */
 export function iconOf(id: string): string {
   const it = ITEMS[id];
-  if (it) return tile(it.kind === 'gear' ? ROLE_SLOTS[it.role][it.slot].icon : it.icon);
+  if (it) return tile(it.icon || ROLE_SLOTS[it.role][it.slot].icon);
   const c = COLLECTIBLES[id];
   if (c) return tile(c.icon);
   return tile('mend');
@@ -100,11 +100,27 @@ export function riderSvg(heroSprite: string, mountId: string, x: number, y: numb
 
 /** Gilded Bones (the heroic Barrow log's reward) is yours and switched on: the Risen are drawn in gold. */
 export const gildedBones = (p: Profile): boolean => !!p.collection['cosmetic.gilded_bones'] && !p.settings.looksOff.includes('cosmetic.gilded_bones');
-/** The sprite set a hero is drawn with: its race and class art (gilded for a Risen hero when Gilded
- *  Bones is on, given the save), or its seat's art if this build has none. */
-export function heroSprite(h: { race: string; cls: string }, role: RoleId, p?: Profile): string {
-  const art = heroArt(h.race, h.cls) || ROLES[role].sprite;
-  return p && h.race === 'risen' && gildedBones(p) ? `${art}_gilded` : art;
+/** The sprite set a hero is drawn with: its race and class art, visually stepped from starter rags
+ *  (`_rags` at Common) to iron/apprentice gear (`_iron` at Uncommon) to full heroic plate/robes (Rare+),
+ *  or gilded for a Risen hero when Gilded Bones is on. */
+export function heroSprite(
+  h: { race: string; cls: string; sex?: string; regular?: Record<string, { rar: number }>; equip?: Partial<Record<string, string | null>> },
+  role: RoleId,
+  p?: Profile,
+): string {
+  const art = heroArt(h.race, h.cls, h.sex) || ROLES[role].sprite;
+  if (p && h.race === 'risen' && gildedBones(p)) return `${art}_gilded`;
+  let maxRar = 0;
+  if (h.regular) {
+    for (const s of Object.values(h.regular)) if (s && s.rar > maxRar) maxRar = s.rar;
+  }
+  if (h.equip) {
+    for (const uid of Object.values(h.equip)) {
+      if (uid && ITEMS[uid] && (!p || p.collection[uid])) maxRar = Math.max(maxRar, ITEMS[uid].rar);
+    }
+  }
+  const suffix = maxRar <= 0 ? '_rags' : maxRar === 1 ? '_iron' : '';
+  return ART[ `${art}${suffix}_f`] ? `${art}${suffix}` : art;
 }
 /** A hero's front sprite as an <img>, sized by its own height (against HERO_H) so a dwarf stands shorter
  *  than an elf. */

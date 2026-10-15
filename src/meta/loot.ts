@@ -12,7 +12,7 @@ import { ORDER } from '../content/roles';
 import type { Rng } from '../core/rng';
 import { autoPlace } from './hearth';
 import { bagIt, bestRegular, freshForRole } from './gear';
-import { WARBAND_CAP, bossRecord, dungeonRecord, roleOf, type Hero, type Profile } from './profile';
+import { WARBAND_CAP, bossRecord, dungeonRecord, heroLevel, roleOf, type Hero, type Profile } from './profile';
 
 export type Tell = 'normal' | 'unique' | 'pet';
 
@@ -51,10 +51,15 @@ export interface RunLoot {
   pb: number | null;
   newPb: boolean;
   firstClear: boolean;
+  xpGained?: number;
+  levelBefore?: number;
+  levelAfter?: number;
 }
 
 export const DUPE_MARKS = 3;
 export const CLEAR_MARKS = 1;
+export const BOSS_XP = 35;
+export const CLEAR_XP = 65;
 /** A heroic dungeon opens once you've cleared its normal one this many times: about when gear tops out. */
 export const HEROIC_AFTER = 10;
 
@@ -86,24 +91,25 @@ function grant(p: Profile, h: Hero, id: string, meta: Pick<Drop, 'source' | 'bos
   return d;
 }
 
-const ladderStep = (rng: Rng): number => (rng() < 0.75 ? 1 : 2);
+export const REG_CAP: Rar = 2;
 
-/** The regular piece for the hero you played: their weakest slot (counting what waits in the bag) moves up,
- *  and the new piece goes in the bag. At full Epic it offers a new weapon trait instead. */
+/** The regular piece for the hero you played: their weakest slot (counting what waits in the bag) moves up
+ *  one step up to Rare (Epic comes from the dungeon's set and boss weapon). At full Rare it offers weapon traits. */
 export function regularDrop(p: Profile, h: Hero, rng: Rng): Drop {
   const role = roleOf(h);
   const best = (s: SlotId) => bestRegular(h, s);
   const minR = Math.min(...SLOT_IDS.map((s) => best(s).rar)) as Rar;
-  if (minR >= EPIC) {
-    const cur = best('weapon').trait;
+  if (minR >= REG_CAP) {
+    const wep = best('weapon');
+    const cur = wep.trait;
     const others = TRAITS[role].filter((t) => t.id !== cur);
     const t = others[Math.floor(rng() * others.length)];
-    return { id: gearId(role, 'weapon', EPIC), source: 'regular', role, slot: 'weapon', rar: EPIC, prevRar: EPIC, isNew: false, dupe: false, marks: 0, offerTrait: t.id, prevTrait: cur };
+    return { id: gearId(role, 'weapon', wep.rar), source: 'regular', role, slot: 'weapon', rar: wep.rar, prevRar: wep.rar, isNew: false, dupe: false, marks: 0, offerTrait: t.id, prevTrait: cur };
   }
   const slots = SLOT_IDS.filter((s) => best(s).rar === minR);
   const slot = slots[Math.floor(rng() * slots.length)];
-  const rar = Math.min(EPIC, minR + ladderStep(rng)) as Rar;
-  const trait = rar === EPIC && slot === 'weapon' ? TRAITS[role][Math.floor(rng() * TRAITS[role].length)].id : undefined;
+  const rar = Math.min(REG_CAP, minR + 1) as Rar;
+  const trait = rar >= REG_CAP && slot === 'weapon' ? TRAITS[role][Math.floor(rng() * TRAITS[role].length)].id : undefined;
   bagIt(h, slot, trait ? { rar, trait } : { rar });
   raiseFloor(p, role, slot, rar);
   return { id: gearId(role, slot, rar), source: 'regular', role, slot, rar, prevRar: h.regular[slot].rar, trait, isNew: true, dupe: false, marks: 0, toEquip: true };
@@ -131,10 +137,10 @@ export function spareDrop(p: Profile, played: RoleId, rng: Rng): Drop | null {
   return { id: gearId(who, slot, rar), source: 'spare', role: who, slot, rar, prevRar: minR, isNew: true, dupe: false, marks: 0 };
 }
 
-/** Accept or refuse a sideways trait offer. It goes on your Epic regular weapon, worn or in the bag. */
+/** Accept or refuse a sideways trait offer. It goes on your regular weapon, worn or in the bag. */
 export function takeTrait(h: Hero, trait: string): void {
   const reg = bestRegular(h, 'weapon');
-  if (reg.rar === EPIC && TRAITS[roleOf(h)].some((t) => t.id === trait)) reg.trait = trait;
+  if (reg.rar >= REG_CAP && TRAITS[roleOf(h)].some((t) => t.id === trait)) reg.trait = trait;
 }
 
 export const tellOf = (drops: Drop[]): Tell =>
@@ -152,7 +158,7 @@ export interface RunEnd {
 }
 
 /** What one boss kill gave: rolled the moment it dies, like loot hitting the floor. */
-export interface KillLoot { boss: string; kc: number; time: number; newPb: boolean; drops: Drop[]; marks: number }
+export interface KillLoot { boss: string; kc: number; time: number; newPb: boolean; drops: Drop[]; marks: number; xp?: number }
 
 /** A kill counts and rolls its table. Practice runs never call this. */
 export function resolveKill(p: Profile, dg: DungeonInfo, boss: string, h: Hero, time: number | null, rng: Rng, now = Date.now()): KillLoot {
@@ -161,7 +167,9 @@ export function resolveKill(p: Profile, dg: DungeonInfo, boss: string, h: Hero, 
   br.kc++;
   const newPb = typeof time === 'number' && (br.pb === null || time < br.pb);
   if (newPb) br.pb = time;
-  const out: KillLoot = { boss, kc: br.kc, time: time ?? 0, newPb: newPb && br.kc > 1, drops: [], marks: 0 };
+  const xp = boss !== dg.finalBoss ? BOSS_XP : 0;
+  h.xp = (h.xp || 0) + xp;
+  const out: KillLoot = { boss, kc: br.kc, time: time ?? 0, newPb: newPb && br.kc > 1, drops: [], marks: 0, xp };
   const table = dg.loot.find((t) => t.boss === boss);
   if (table) for (const d of rollTable(table, role, rng)) out.drops.push(grant(p, h, d.id, { source: 'table', boss, rate: d.rate, kc: br.kc }, now));
   out.marks = out.drops.reduce((a, d) => a + d.marks, 0);
@@ -170,13 +178,14 @@ export function resolveKill(p: Profile, dg: DungeonInfo, boss: string, h: Hero, 
 }
 
 /** What finishing the dungeon gave: the clear, the ladder piece, the spare piece and a mark. */
-export interface ClearLoot { clears: number; time: number; pb: number | null; newPb: boolean; firstClear: boolean; drops: Drop[]; marks: number }
+export interface ClearLoot { clears: number; time: number; pb: number | null; newPb: boolean; firstClear: boolean; drops: Drop[]; marks: number; xp?: number }
 
 export function resolveClear(p: Profile, dg: DungeonInfo, h: Hero, time: number, rng: Rng): ClearLoot {
   const rec = dungeonRecord(p, dg.id);
   rec.clears++;
   h.clears++;
-  const out: ClearLoot = { clears: rec.clears, time, pb: null, newPb: false, firstClear: rec.clears === 1, drops: [], marks: CLEAR_MARKS };
+  h.xp = (h.xp || 0) + CLEAR_XP;
+  const out: ClearLoot = { clears: rec.clears, time, pb: null, newPb: false, firstClear: rec.clears === 1, drops: [], marks: CLEAR_MARKS, xp: CLEAR_XP };
   if (rec.pb === null || time < rec.pb) { out.newPb = rec.pb !== null; rec.pb = time; }
   out.pb = rec.pb;
   out.drops.push(regularDrop(p, h, rng));
@@ -189,7 +198,10 @@ export function resolveClear(p: Profile, dg: DungeonInfo, h: Hero, time: number,
 /** Everything a run gave, put together for the reveal. The final boss's drops decide the tell. */
 export function runLoot(p: Profile, dg: DungeonInfo, h: Hero, kills: KillLoot[], clear: ClearLoot | null): RunLoot {
   const rec = dungeonRecord(p, dg.id);
-  const out: RunLoot = { dungeon: dg.id, role: roleOf(h), hero: h.id, drops: [], tell: 'normal', kc: {}, marks: 0, clears: rec.clears, time: clear ? clear.time : 0, pb: rec.pb, newPb: !!clear?.newPb, firstClear: !!clear?.firstClear };
+  const xpGained = kills.reduce((a, k) => a + (k.xp || 0), 0) + (clear?.xp || 0);
+  const levelAfter = heroLevel(h);
+  const levelBefore = heroLevel({ xp: Math.max(0, (h.xp || 0) - xpGained) });
+  const out: RunLoot = { dungeon: dg.id, role: roleOf(h), hero: h.id, drops: [], tell: 'normal', kc: {}, marks: 0, clears: rec.clears, time: clear ? clear.time : 0, pb: rec.pb, newPb: !!clear?.newPb, firstClear: !!clear?.firstClear, xpGained, levelBefore, levelAfter };
   for (const k of kills) { out.kc[k.boss] = k.kc; out.drops.push(...k.drops); out.marks += k.marks; }
   if (clear) { out.drops.push(...clear.drops); out.marks += clear.marks; }
   const last = kills.find((k) => k.boss === dg.finalBoss);

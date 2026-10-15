@@ -6,21 +6,23 @@
  * thing you see.
  */
 import { DUNGEONS } from '../content';
-import { CLASSES, CLASS_ORDER, MAX_HEROES, RACES, RACE_ORDER, canMake, heroArt, type ClassId, type RaceId } from '../content/folk';
-import { ROLES } from '../content/roles';
+import { CLASSES, CLASS_ORDER, MAX_HEROES, RACES, RACE_ORDER, canMake, defaultSex, heroArt, type ClassId, type RaceId, type SexId } from '../content/folk';
+import { AB, ROLES } from '../content/roles';
 import type { RoleId } from '../content/types';
 import { newHero } from '../meta/gear';
 import { openProgress, opened, unlockOf } from '../meta/logs';
 import { nameProblem, setActive } from '../meta/profile';
 import type { App } from './app';
 import { actions, esc, GLYPH } from './dom';
-import { heroImg } from './art';
+import { heroImg, heroSprite, tile } from './art';
 import { SFX } from './sound';
 
 
 export class Creator {
   private race: RaceId = 'dwarf';
   private cls: ClassId = 'warrior';
+  private sex: SexId = 'm';
+  private showLore = false;
   private name = '';
   private typed = false;
   private err = '';
@@ -33,6 +35,8 @@ export class Creator {
       back: () => { SFX.play('ui'); app.showHearth('bunks'); },
       race: (el) => this.pickRace(el.dataset.v as RaceId),
       cls: (el) => this.pickClass(el.dataset.v as ClassId),
+      sex: (el) => this.pickSex(el.dataset.v as SexId),
+      lore: () => { this.showLore = !this.showLore; SFX.play('ui'); this.render(); },
       dice: () => { this.name = this.roll(); this.typed = false; this.err = ''; SFX.play('ui'); this.render(); },
     });
     root.addEventListener('input', (e) => {
@@ -56,10 +60,11 @@ export class Creator {
   open(first: boolean, role?: RoleId, race?: RaceId): void {
     this.first = first;
     this.err = '';
+    this.showLore = false;
     this.forSeat = !!role;
     const c = role ? CLASS_ORDER.find((x) => CLASSES[x].role === role && this.racesFor(x).length) : undefined;
-    if (c) { this.cls = c; this.race = this.racesFor(c)[0]; this.typed = false; this.name = ''; }
-    if (race && RACES[race]) { this.race = race; if (!canMake(race, this.cls)) this.cls = this.classesFor(race)[0] || this.cls; this.typed = false; this.name = ''; }
+    if (c) { this.cls = c; this.race = this.racesFor(c)[0]; this.sex = defaultSex(this.race, this.cls); this.typed = false; this.name = ''; }
+    if (race && RACES[race]) { this.race = race; if (!canMake(race, this.cls)) this.cls = this.classesFor(race)[0] || this.cls; this.sex = defaultSex(this.race, this.cls); this.typed = false; this.name = ''; }
     if (!this.typed || !this.name) this.name = this.roll();
     this.render();
   }
@@ -81,14 +86,22 @@ export class Creator {
     SFX.play('ui');
     this.render();
   }
+  private pickSex(s: SexId): void {
+    if (s !== 'm' && s !== 'f') return;
+    this.sex = s;
+    if (!this.typed) this.name = this.roll();
+    SFX.play('ui');
+    this.render();
+  }
 
   private roll(): string {
     const R = RACES[this.race];
+    const pool = R.firstBySex?.[this.sex] || R.first;
     for (let i = 0; i < 30; i++) {
-      const n = `${R.first[Math.floor(Math.random() * R.first.length)]} ${R.family[Math.floor(Math.random() * R.family.length)]}`;
+      const n = `${pool[Math.floor(Math.random() * pool.length)]} ${R.family[Math.floor(Math.random() * R.family.length)]}`;
       if (n.length <= 24 && !nameProblem(this.app.p, n)) return n;
     }
-    return R.first[0];
+    return pool[0];
   }
 
   /** where a race is earned: the dungeon whose log gives it, if there is one yet */
@@ -118,7 +131,7 @@ export class Creator {
     const p = this.app.p;
     const why = this.why();
     if (why) { this.err = why; SFX.play('nope'); this.syncGo(); return; }
-    const h = newHero(p, { name: this.name, race: this.race, cls: this.cls, free: this.app.dev.allOpen });
+    const h = newHero(p, { name: this.name, race: this.race, cls: this.cls, sex: this.sex, free: this.app.dev.allOpen });
     if (!h) { this.err = 'That hero could not be made'; SFX.play('nope'); this.syncGo(); return; }
     setActive(p, h.id);
     // saving redraws the maker, so note now where to go after
@@ -135,45 +148,97 @@ export class Creator {
     const R = RACES[this.race], C = CLASSES[this.cls];
     const earned = this.open_(this.race);
     const ok = canMake(this.race, this.cls) && earned;
-    const art = heroArt(this.race, this.cls) || (this.racesFor(this.cls).length ? heroArt(this.racesFor(this.cls)[0], this.cls) : null) || ROLES[C.role].sprite;
-    const chip = (r: RaceId): string => {
+    const fallbackRace = this.racesFor(this.cls)[0];
+    const art = heroSprite({ race: canMake(this.race, this.cls) ? this.race : (fallbackRace || this.race), cls: this.cls, sex: this.sex, regular: this.app.p.warband[C.role] }, C.role, this.app.p);
+
+    const raceMedallion = (r: RaceId): string => {
       const x = RACES[r], can = this.classesFor(r).length > 0, pr = openProgress(this.app.p, 'race', r), mine = this.open_(r);
-      // a race you earn shows how close you are, then that it's yours
-      const tag = !can || (x.earned && !this.earnedIn(r)) ? 'Soon' : pr.need ? (mine ? 'Earned' : `Log ${pr.have}/${pr.need}`) : '';
-      return `<button type="button" class="cr-chip${x.earned ? ' earned' : ''}${x.earned && !mine ? ' locked' : ''}" data-act="race" data-v="${r}" aria-pressed="${r === this.race}" style="--c: ${x.light}">
-        <i class="sw" aria-hidden="true"></i><b>${esc(x.name)}</b><span>${esc(x.hometown)}</span>${tag ? `<em>${esc(tag)}</em>` : ''}</button>`;
+      const locked = !can || (x.earned && !mine);
+      const badge = locked
+        ? `<i class="cr-lock" aria-hidden="true">${GLYPH.lock}</i>${pr.need ? `<em class="cr-prog">${pr.have}/${pr.need}</em>` : ''}`
+        : x.earned && mine ? `<i class="cr-open" aria-hidden="true">${GLYPH.check}</i>` : '';
+      return `<button type="button" class="cr-med${x.earned ? ' earned' : ''}${locked ? ' locked' : ''}" data-act="race" data-v="${r}" aria-pressed="${r === this.race}" style="--c: ${x.light}">
+        <span class="cr-med-ring"><span class="cr-med-art">${tile(x.icon)}</span>${badge}</span>
+        <b>${esc(x.name)}</b></button>`;
     };
-    const raceChips = `<div class="cr-chips">${RACE_ORDER.filter((r) => !RACES[r].earned).map(chip).join('')}</div>
-      <h4 class="cr-sub">Earned in dungeons</h4><div class="cr-chips earned">${RACE_ORDER.filter((r) => RACES[r].earned).map(chip).join('')}</div>`;
-    const classChips = CLASS_ORDER.map((c) => {
+
+    const classCrest = (c: ClassId): string => {
       const x = CLASSES[c];
-      const who = this.racesFor(c);
-      const tag = !x.ready ? 'Soon' : canMake(this.race, c) ? '' : who.length === 1 ? `${RACES[who[0]].name} only` : '';
-      return `<button type="button" class="cr-chip" data-act="cls" data-v="${c}" aria-pressed="${c === this.cls}">
-        <i class="rdot ${x.role}" aria-hidden="true"></i><b>${esc(x.name)}</b><span>${esc(x.roleName)}</span>${tag ? `<em>${esc(tag)}</em>` : ''}</button>`;
+      const can = x.ready && canMake(this.race, c);
+      const starter = RACE_ORDER.find((r) => !RACES[r].earned && canMake(r, c)) || this.racesFor(c)[0];
+      const only = !x.ready ? 'Soon' : !can && starter ? `${RACES[starter].name} only` : '';
+      const clsState = !x.ready ? ' locked' : !can ? ' unavail' : '';
+      return `<button type="button" class="cr-crest ${x.role}${clsState}" data-act="cls" data-v="${c}" aria-pressed="${c === this.cls}">
+        <span class="cr-crest-tile"><span class="cr-crest-art">${tile(x.icon)}</span>${!can ? `<i class="cr-lock" aria-hidden="true">${GLYPH.lock}</i>` : `<i class="rdot ${x.role}" aria-hidden="true"></i>`}</span>
+        <b>${esc(x.name)}</b>
+        ${only ? `<em class="cr-only">${esc(only)}</em>` : `<span>${esc(x.roleName)}</span>`}</button>`;
+    };
+
+    const dng = this.earnedIn(this.race);
+    const pr = openProgress(this.app.p, 'race', this.race);
+    const pct = pr.need ? Math.round((pr.have / pr.need) * 100) : 0;
+    const unlockCard = ok ? '' : R.earned && !earned
+      ? dng
+        ? `<div class="cr-unlock">
+            <div class="cr-unlock-head"><i class="cr-unlock-ic">${GLYPH.lock}</i><div><b>Locked · ${esc(dng)}</b><span>Complete the collection log to awaken the ${esc(R.plural)}</span></div></div>
+            <div class="cr-bar"><i style="width:${pct}%"></i><span>${pr.have} / ${pr.need} log slots</span></div>
+          </div>`
+        : `<div class="cr-unlock"><div class="cr-unlock-head"><i class="cr-unlock-ic">${GLYPH.lock}</i><div><b>Locked · Future Dungeon</b><span>${esc(R.plural)} are earned in a dungeon to come</span></div></div></div>`
+      : `<div class="cr-unlock"><div class="cr-unlock-head"><i class="cr-unlock-ic">${GLYPH.lock}</i><div><b>Coming Soon</b><span>${esc(R.name)} ${esc(C.name.toLowerCase())}s are still on the drawing board</span></div></div></div>`;
+
+    const sigs = C.signature.map((slot) => {
+      const ab = AB[C.role][slot];
+      const shortDesc = ab.desc.split('.')[0] + '.';
+      return `<div class="cr-ab"><span class="cr-ab-ic">${tile(ab.key)}</span><div class="cr-ab-tx"><b>${esc(ab.name)}</b><span>${esc(shortDesc)}</span></div></div>`;
     }).join('');
+
+    const lorePopover = this.showLore ? `<div class="cr-lore-pop" role="dialog" aria-label="Lore">
+      <div class="cr-lore-head"><b>${esc(R.plural)} of ${esc(R.hometown)}</b><button type="button" class="icon-btn small" data-act="lore" aria-label="Close lore">${GLYPH.close}</button></div>
+      <p>${esc(R.lore)}</p>
+      <p class="cr-trick"><b>${esc(R.trick.name)}:</b> ${esc(R.trick.desc)}</p>
+    </div>` : '';
+
     const why = this.why();
     this.root.className = 'scene create';
     this.root.style.setProperty('--light', R.light);
     this.root.innerHTML = `
       <div class="cr-top">
         ${this.first ? '<span></span>' : `<button type="button" class="btn small" data-act="back">${GLYPH.left}Back</button>`}
-        <div class="cr-title"><h2>${this.first ? 'Make your hero' : 'New hero'}</h2><p>Race and class are for keeps. Up to ${MAX_HEROES} heroes.</p></div>
-        <span></span>
+        <div class="cr-title"><h2>${this.first ? 'Choose Your Hero' : 'New Hero'}</h2><p>${esc(R.hometown)} · ${this.app.p.roster.length}/${MAX_HEROES} heroes</p></div>
+        <button type="button" class="icon-btn cr-lore-btn" data-act="lore" aria-pressed="${this.showLore}" aria-label="Hero lore" title="Lore">${GLYPH.book}</button>
       </div>
       <div class="cr-main">
-        <section class="cr-col cr-races" aria-label="Race"><h3>Race</h3>${raceChips}</section>
         <div class="cr-model ${ok ? '' : 'shadow'}">
+          <span class="cr-rays" aria-hidden="true"></span>
           <span class="cr-light" aria-hidden="true"></span>
+          <div class="cr-stage-top">
+            <span class="cr-badge"><i class="rdot ${C.role}"></i><b>${esc(R.name)} ${esc(C.name)}</b> · ${esc(C.roleName)}</span>
+            <div class="cr-sex" role="group" aria-label="Body style">
+              <button type="button" class="cr-sex-btn" data-act="sex" data-v="m" aria-pressed="${this.sex === 'm'}" aria-label="Male" title="Male">${GLYPH.male}</button>
+              <button type="button" class="cr-sex-btn" data-act="sex" data-v="f" aria-pressed="${this.sex === 'f'}" aria-label="Female" title="Female">${GLYPH.female}</button>
+            </div>
+          </div>
           <div class="cr-fig">${heroImg(art, { cls: 'cr-img', alt: ok ? `${R.name} ${C.name}` : '' })}<span class="cr-floor" aria-hidden="true"></span></div>
-          ${ok ? '' : `<p class="cr-soon">${R.earned && !earned ? (this.earnedIn(this.race) ? `Earned in ${esc(this.earnedIn(this.race))}` : 'Earned in a dungeon to come') : 'Not drawn yet'}</p>`}
-          <p class="cr-home">${esc(R.hometown)}</p>
+          ${unlockCard}
+          ${lorePopover}
         </div>
-        <section class="cr-col cr-classes" aria-label="Class"><h3>Class</h3><div class="cr-chips">${classChips}</div></section>
-        <section class="cr-lore">
-          <div><h4>${esc(R.plural)} <small>${esc(R.hometown)} · ${esc(R.height)}</small></h4><p>${esc(R.lore)}</p><p class="look">${esc(R.look)}</p><p><b>${esc(R.trick.name)}.</b> ${esc(R.trick.desc)}</p></div>
-          <div><h4>${esc(C.name)} <small><i class="rdot ${C.role}" aria-hidden="true"></i>${esc(C.roleName)}</small></h4><p>${esc(C.blurb)}</p>${C.ready ? '' : '<p class="look">Its kit is still being made.</p>'}</div>
-        </section>
+        <div class="cr-controls">
+          <section class="cr-sec cr-races" aria-label="Race">
+            <div class="cr-sec-head"><h3>Race</h3><span>Starter &amp; dungeon-earned</span></div>
+            <div class="cr-meds">${RACE_ORDER.map(raceMedallion).join('')}</div>
+          </section>
+          <section class="cr-sec cr-classes" aria-label="Class">
+            <div class="cr-sec-head"><h3>Class &amp; Role</h3><span>4 buttons + dodge</span></div>
+            <div class="cr-crests">${CLASS_ORDER.map(classCrest).join('')}</div>
+            <div class="cr-kit">
+              <div class="cr-role-banner ${C.role}">
+                <span class="cr-role-tag"><i class="rdot ${C.role}"></i>${esc(C.roleName)}</span>
+                <p>${esc(C.job)}</p>
+              </div>
+              ${sigs ? `<div class="cr-abs">${sigs}</div>` : `<p class="cr-kit-soon">Rogue kit arrives in the classes pass.</p>`}
+            </div>
+          </section>
+        </div>
       </div>
       <form class="cr-foot" autocomplete="off">
         <label class="sr" for="cr-name">Name</label>

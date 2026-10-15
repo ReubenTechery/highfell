@@ -6,13 +6,13 @@
  * their buttons; most of them draw in a file of their own.
  */
 import { COLLECTIBLES, DUNGEONS, ITEMS, SETS, TITLES, thing } from '../content';
-import { AB, ROLES, SLOTS_AB } from '../content/roles';
+import { AB, ROLES, SLOTS_AB, TALENTS } from '../content/roles';
 import { ROLE_SLOTS, SLOT_IDS, TRAITS, gearId, traitDef } from '../content/gear';
 import { CLASSES, RACES, type ClassId, type RaceId } from '../content/folk';
-import type { ItemDef, Rar, RoleId, SlotId } from '../content/types';
+import type { AbilitySlot, ItemDef, Rar, RoleId, SlotId } from '../content/types';
 import { INGREDIENTS, INGREDIENT_ORDER, PLACES, RECIPES, RECIPE_ORDER, SKILLS } from '../content/vale';
 import { rankProgress, recipeUnlocked } from '../meta/vale';
-import { activeHero, freshProfile, heroById, nameProblem, removeHero, renameHero, roleOf, setActive, type Hero } from '../meta/profile';
+import { MAX_HERO_LEVEL, MAX_TALENT_RANK, activeHero, freshProfile, heroById, heroXpProgress, nameProblem, removeHero, renameHero, resetTalents, roleOf, setActive, spendTalent, talentPointsLeft, talentPointsSpent, type Hero } from '../meta/profile';
 import { pickRole } from '../meta/party';
 import { REROLL_COST, bestRegular, buyTrait, equip, healthPct, itemShare, loadoutFor, ownedFor, powerPct, putOn, seenSlot, waitingFor, worn, type Waiting, type Worn } from '../meta/gear';
 import { HEARTH_SPOTS, place, setLook, spotById, spotOf } from '../meta/hearth';
@@ -126,6 +126,8 @@ export class Sheets {
       puton: (el) => { const h = this.gearHero(); if (h) this.putOn(h, el.dataset.slot as SlotId); },
       notnow: (el) => { const h = this.gearHero(); if (!h) return; seenSlot(h, el.dataset.slot as SlotId); SFX.play('ui'); this.app.save(); },
       trait: (el) => { const h = this.gearHero(); if (!h) return; if (buyTrait(this.app.p, h, 'barrow', el.dataset.trait!)) { SFX.play('coin'); this.app.save(); } else SFX.play('nope'); },
+      talent: (el) => { const h = this.gearHero(); if (!h) return; if (spendTalent(h, el.dataset.ab as AbilitySlot)) { SFX.play('place'); this.app.save(); } else SFX.play('nope'); },
+      talentreset: () => { const h = this.gearHero(); if (!h) return; if (resetTalents(h)) { SFX.play('ui'); this.app.save(); } },
       playas: () => { const h = this.gearHero(); if (!h) return; setActive(this.app.p, h.id); SFX.play('ui'); this.app.save(); },
       look: (el) => { const p = this.app.p, id = el.dataset.id!; const off = new Set(p.settings.looksOff); if (off.has(id)) off.delete(id); else off.add(id); p.settings.looksOff = [...off]; SFX.play('ui'); this.app.save(); },
       tab: (el) => { SFX.play('ui'); this.open({ kind: 'logs', tab: el.dataset.tab as LogTab }); },
@@ -294,28 +296,66 @@ export class Sheets {
         <div class="doll-pw"><span>${esc(cap(word.short))}</span><b>+${powerPct(L)}%</b><span>Health</span><b>+${healthPct(L)}%</b></div>
       </div>
     </div>`;
-    const extras = Object.entries(L.sets).map(([id, n]) => SETS[id] ? `<span class="chip set">${esc(SETS[id].name)} set <b>${n}/3</b>${n >= 2 ? ' · bonus on' : ''}</span>` : '').join('')
+    const xpProg = heroXpProgress(h);
+    const ptsLeft = talentPointsLeft(h), ptsSpent = talentPointsSpent(h);
+    const extras = `<span class="chip">Level <b>${xpProg.level}/${MAX_HERO_LEVEL}</b></span>`
+      + (ptsSpent > 0 ? `<span class="chip">Mastery <b>+${Math.round(ptsSpent * 1.5 * 10) / 10}%</b></span>` : '')
+      + Object.entries(L.sets).map(([id, n]) => SETS[id] ? `<span class="chip set">${esc(SETS[id].name)} set <b>${n}/3</b>${n >= 2 ? ' · bonus on' : ''}</span>` : '').join('')
       + L.traits.map((t) => `<span class="chip">Trait <b>${esc(traitDef(role, t)?.name || t)}</b></span>`).join('');
-    const stats = extras ? `<div class="power">${extras}</div>` : '';
+    const stats = `<div class="power">${extras}</div>`;
     const tip = this.tooltip(h, w[sel], L.sets, waitingFor(p, h, sel));
+    // Skill Tree Lite: 4 abilities, their combo chains, and 2 upgrade ranks each
+    const keyNum: Record<AbilitySlot, string> = { a1: '1', a2: '2', a3: '3', a4: '4' };
+    const treeRows = SLOTS_AB.map((s) => {
+      const ab = AB[role][s], tals = TALENTS[role][s], rk = h.talents?.[s] || 0;
+      const canUp = ptsLeft > 0 && rk < MAX_TALENT_RANK;
+      return `<div class="ab-row${rk >= MAX_TALENT_RANK ? ' max' : rk > 0 ? ' on' : ''}">
+        <div class="ab-row-head">
+          <span class="ab-ic"><span class="tile">${tile(ab.key)}</span><i>${keyNum[s]}</i></span>
+          <div class="ab-tx">
+            <b>${esc(ab.name)} <small>Rank ${rk}/${MAX_TALENT_RANK}</small></b>
+            <span>${esc(ab.desc)}</span>
+            ${ab.combo ? `<em class="ab-combo">${esc(ab.combo)}</em>` : ''}
+          </div>
+          ${canUp ? `<button type="button" class="btn small gold ab-up" data-act="talent" data-ab="${s}">${GLYPH.rise}Upgrade</button>` : `<span class="ab-rk-pill">${rk >= MAX_TALENT_RANK ? 'Maxed' : `${rk}/${MAX_TALENT_RANK}`}</span>`}
+        </div>
+        <div class="ab-nodes">
+          ${tals.map((node, i) => `<button type="button" class="ab-node${rk > i ? ' got' : canUp && rk === i ? ' next' : ''}" data-act="talent" data-ab="${s}" ${canUp && rk === i ? '' : 'disabled'}><i>${rk > i ? '✓' : i + 1}</i><div><b>${esc(node.name)}</b><span>${esc(node.desc)}</span></div></button>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
+    const treeBox = `<div class="box treebox${ptsLeft > 0 ? ' has-pts' : ''}">
+      <div class="tree-head">
+        <div>
+          <h3 class="section-title">Ability tree &amp; combos<small>Level ${xpProg.level} · ${ptsSpent}/${MAX_HERO_LEVEL - 1} ranks unlocked</small></h3>
+          <p class="fine">Every boss and clear grants Hero XP (+1 Ability Point per level, +1.5% ${esc(word.short)} per point).</p>
+        </div>
+        <div class="tree-meta">
+          ${ptsLeft > 0 ? `<span class="pts-badge">${ptsLeft} ${ptsLeft === 1 ? 'point' : 'points'} ready!</span>` : ''}
+          ${ptsSpent > 0 ? `<button type="button" class="btn small" data-act="talentreset">Reset points</button>` : ''}
+        </div>
+      </div>
+      <div class="xp-bar" title="${xpProg.max ? 'Max hero level reached' : `${xpProg.into} / ${xpProg.need} XP to Level ${xpProg.level + 1}`}"><i style="width:${xpProg.pct}%"></i><span>${xpProg.max ? `Level ${xpProg.level} (Max Level)` : `Level ${xpProg.level} · ${xpProg.into} / ${xpProg.need} XP to next point`}</span></div>
+      <div class="ab-tree">${treeRows}</div>
+    </div>`;
     // the set for this role
     const setBoxes = Object.values(SETS).filter((s) => s.role === role).map((set) => {
       const n = L.sets[set.id] || 0;
       const have = set.pieces.filter((id) => p.collection[id]).length;
       return `<div class="box setbox">
         <h3 class="section-title">${esc(set.name)} set<small>wearing ${n} of 3 · own ${have} of 3</small></h3>
-        <div class="setpieces">${set.pieces.map((id) => { const own = !!p.collection[id], on = Object.values(w).some((x) => x.def.id === id); return `<button type="button" class="sp ${on ? 'on' : own ? 'own' : ''}" data-act="item" data-id="${id}"><span class="tile" aria-hidden="true">${iconOf(id)}</span><span>${esc(nameOf(id))}<small>${on ? 'Wearing' : own ? 'Owned' : fmtRate(1 / 50)}</small></span></button>`; }).join('')}</div>
+        <div class="setpieces">${set.pieces.map((id) => { const own = !!p.collection[id], on = Object.values(w).some((x) => x.def.id === id); return `<button type="button" class="sp ${on ? 'on' : own ? 'own' : ''}" data-act="item" data-id="${id}"><span class="tile" aria-hidden="true">${iconOf(id)}</span><span>${esc(nameOf(id))}<small>${on ? 'Wearing' : own ? 'Owned' : fmtRate(1 / 35)}</small></span></button>`; }).join('')}</div>
         <div class="setline ${n >= 2 ? 'on' : ''}"><i>2</i><span>${esc(set.bonus2.desc)}</span></div>
         <div class="setline ${n >= 3 ? 'on' : ''} ${set.bonus3.ready ? '' : 'later'}"><i>3</i><span>${esc(set.bonus3.desc)}${set.bonus3.ready ? '' : ' <em>(coming in a later update)</em>'}</span></div>
-        <p class="fine">Pieces drop from the Gravekeeper, 1 in 50 each. ${esc(set.look)}.</p></div>`;
+        <p class="fine">Epic set pieces drop from the Gravekeeper, 1 in 35 each. ${esc(set.look)}.</p></div>`;
     }).join('');
-    // epic weapon trait
+    // weapon trait (unlocked at Rare)
     const marks = p.dungeons.barrow?.marks || 0;
     const regW = bestRegular(h, 'weapon');
-    const traitBox = regW.rar === 3 ? `<div class="box"><h3 class="section-title">Weapon trait<small>${marks} Barrow Marks</small></h3>
-      <div class="offer">${TRAITS[role].map((t) => `<button type="button" class="opt" data-act="trait" data-trait="${t.id}" aria-pressed="${regW.trait === t.id}" ${regW.trait === t.id || marks < REROLL_COST ? 'disabled' : ''}><b>${esc(t.name)}</b>${esc(t.desc)}${regW.trait === t.id ? '<span class="m">On your weapon</span>' : `<span class="m">Swap for ${REROLL_COST} marks</span>`}</button>`).join('')}</div>
-      ${w.weapon.unique ? '<p class="fine">You are wearing a unique weapon; the trait is on your regular one.</p>' : ''}</div>`
-      : `<p class="fine">At Epic your regular weapon rolls a trait that changes how a button works. Every clear moves your weakest piece up.</p>`;
+    const traitBox = regW.rar >= 2 ? `<div class="box"><h3 class="section-title">Weapon trait<small>${marks} Barrow Marks</small></h3>
+      <div class="offer">${TRAITS[role].map((t) => `<button type="button" class="opt" data-act="trait" data-trait="${t.id}" aria-pressed="${regW.trait === t.id}" ${regW.trait === t.id || marks < REROLL_COST ? 'disabled' : ''}><b>${esc(t.name)}</b>${esc(t.desc)}${regW.trait === t.id ? '<span class="m">Active on your hero</span>' : `<span class="m">Swap for ${REROLL_COST} marks</span>`}</button>`).join('')}</div>
+      ${w.weapon.unique ? '<p class="fine">Your unlocked weapon trait stays active alongside your unique weapon.</p>' : ''}</div>`
+      : `<p class="fine">At Rare your weapon rolls a trait that changes how an ability works. Every clear moves your weakest piece up.</p>`;
     // title
     const titles = p.titles.filter((t) => TITLES[t]);
     const titleBox = `<div class="box"><h3 class="section-title">Title<small>shown with ${esc(h.name.split(' ')[0])}’s name</small></h3>${titles.length ? `<div class="titles" role="radiogroup">
@@ -330,8 +370,8 @@ export class Sheets {
       return `<button type="button" class="pick" data-act="${own ? 'look' : 'item'}" data-id="${id}" aria-pressed="${on}"><span class="tile" aria-hidden="true" ${own ? '' : 'style="filter: grayscale(1) opacity(0.5)"'}>${tile(c.icon)}</span><span><b>${esc(c.name)}</b><span>${own ? (on ? 'On' : 'Off') : esc(c.source)}</span></span></button>`;
     }).join('')}</div></div>`;
     const play = p.active === h.id ? '' : `<div class="actions"><button type="button" class="btn small gold" data-act="playas">${GLYPH.play}Play as ${esc(h.name.split(' ')[0])}</button></div>`;
-    const body = `${doll}${tip}${stats}${play}${setBoxes}${traitBox}${titleBox}${looksBox}`;
-    const head = `<h2>${esc(h.name)}${title ? ` <em class="h-title">${esc(title)}</em>` : ''}</h2><p><i class="rdot ${role}" aria-hidden="true"></i>${esc(race?.name || h.race)} ${esc(cls?.name || h.cls)} · ${esc(cls?.roleName || ROLES[role].title)}${p.active === h.id ? ' · playing' : ''}</p>`;
+    const body = `${doll}${tip}${stats}${play}${treeBox}${setBoxes}${traitBox}${titleBox}${looksBox}`;
+    const head = `<h2>${esc(h.name)}${title ? ` <em class="h-title">${esc(title)}</em>` : ''}</h2><p><i class="rdot ${role}" aria-hidden="true"></i>Level ${xpProg.level} ${esc(race?.name || h.race)} ${esc(cls?.name || h.cls)} · ${esc(cls?.roleName || ROLES[role].title)}${p.active === h.id ? ' · playing' : ''}</p>`;
     return { head, body };
   }
 
@@ -341,33 +381,44 @@ export class Sheets {
     const share = itemShare(d);
     const set = d.setId ? SETS[d.setId] : null;
     const slotName = ROLE_SLOTS[role][it.slot].name;
-    const badge = wait ? `<i class="sl-up" aria-hidden="true">${wait.kind === 'unique' ? 'New' : 'Up'}</i>` : '';
+    const wShare = wait ? itemShare(ITEMS[wait.id]) : null;
+    const dp = wShare ? Math.round((wShare.power - share.power) * 10) / 10 : 0;
+    const badge = wait ? `<i class="sl-up" aria-hidden="true">${dp > 0 ? `+${dp}%` : wait.kind === 'unique' ? 'New' : 'Up'}</i>` : '';
     return `<button type="button" class="slot r-${look.key}${wait ? ' up' : ''}${just ? ' just-on' : ''}" data-act="slot" data-slot="${it.slot}" aria-pressed="${on}" style="--rc: ${look.color}; --rl: ${look.light}" aria-label="${esc(slotName)}: ${esc(d.name)}, ${esc(look.name)}${set ? `, ${esc(set.name)} set` : ''}${wait ? '. Something better is waiting to go on' : ''}">
       ${badge}${just ? '<span class="sl-burst" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' : ''}<span class="sl-tile"><span class="tile">${iconOf(d.id)}</span>${set ? `<i class="sl-set" title="${esc(set.name)} set">${sets[set.id] || 0}/3</i>` : ''}${d.kind === 'unique' ? `<i class="sl-star" title="Unique">${STAR}</i>` : ''}</span>
       <span class="sl-tx"><span class="sl-kind">${esc(slotName)}</span><b class="sl-name" style="color: ${look.ink}">${esc(d.name)}</b>
         <span class="sl-meta"><b style="color: ${look.ink}">${esc(look.name)}</b><span class="sl-il"> · ${share.ilvl}</span></span>
-        <span class="sl-stat">${share.power > 0 ? `+${share.power}% ${ROLE_STAT[role].short}` : 'Starter'}</span>${set ? `<span class="sl-setname">${esc(set.name)} ${sets[set.id] || 0}/3</span>` : ''}</span>
+        <span class="sl-stat">${share.power > 0 ? `+${share.power}% ${ROLE_STAT[role].short}` : 'Starter rags'}</span>${wait ? `<span class="sl-up-line">${GLYPH.rise}${dp > 0 ? `+${dp}% ${ROLE_STAT[role].short} waiting` : `${esc(ITEMS[wait.id].name)} waiting`}</span>` : set ? `<span class="sl-setname">${esc(set.name)} ${sets[set.id] || 0}/3</span>` : ''}</span>
     </button>`;
   }
 
-  /** something waiting to go on: what it is, what it adds over what you wear, and the button */
+  /** something waiting to go on: side-by-side Old -> New comparison, exact stat gains, and the button */
   private waitCard(h: Hero, wt: Waiting, wornDef: ItemDef, sets: Record<string, number>): string {
-    const role = roleOf(h), d = ITEMS[wt.id], look = rarLook(d.id);
+    const role = roleOf(h), d = ITEMS[wt.id], look = rarLook(d.id), oldLook = rarLook(wornDef.id);
     const share = itemShare(d), now = itemShare(wornDef);
     const slotName = ROLE_SLOTS[role][wt.slot].name;
-    const dp = Math.round((share.power - now.power) * 10) / 10, dh = Math.round((share.health - now.health) * 10) / 10;
-    const lines = [`<li>+${share.power}% ${esc(ROLE_STAT[role].main)}${dp > 0 ? ` <b class="gain">+${dp}</b>` : ''}</li>`, `<li>+${share.health}% health${dh > 0 ? ` <b class="gain">+${dh}</b>` : ''}</li>`];
+    const dp = Math.round((share.power - now.power) * 10) / 10, dh = Math.round((share.health - now.health) * 10) / 10, dil = share.ilvl - now.ilvl;
+    const delta = (v: number, u = '') => v > 0 ? `<b class="cmp-d up">${GLYPH.rise}+${v}${u}</b>` : v < 0 ? `<b class="cmp-d down">${GLYPH.fall}−${Math.abs(v)}${u}</b>` : `<b class="cmp-d">Same</b>`;
     let extra = '';
-    if (d.effectDesc) extra += `<p class="tip-eq">When worn: ${esc(d.effectDesc)}</p>`;
+    if (d.effectDesc) extra += `<p class="tip-eq"><b>+ Unique effect:</b> ${esc(d.effectDesc)}</p>`;
     const trait = wt.kind === 'regular' ? wt.piece.trait : undefined;
     const tr = trait ? traitDef(role, trait) : undefined;
-    if (tr) extra += `<p class="tip-tr"><b>Trait: ${esc(tr.name)}.</b> ${esc(tr.desc)}</p>`;
-    if (d.setId && SETS[d.setId]) { const st = SETS[d.setId], n = (sets[st.id] || 0) + 1; extra += `<p class="tip-tr">${esc(st.name)} set: ${n} of 3 once it is on.${n >= 2 ? ` (2) ${esc(st.bonus2.desc)}` : ''}</p>`; }
+    if (tr) extra += `<p class="tip-tr"><b>+ Weapon trait (${esc(tr.name)}):</b> ${esc(tr.desc)}</p>`;
+    if (d.setId && SETS[d.setId]) { const st = SETS[d.setId], n = (sets[st.id] || 0) + 1; extra += `<p class="tip-tr"><b>+ ${esc(st.name)} set (${sets[st.id] || 0}/3 → ${n}/3):</b> ${n >= 2 ? esc(st.bonus2.desc) : `1 more piece activates: ${esc(st.bonus2.desc)}`}</p>`; }
     return `<div class="tip tip-wait" style="--rc: ${look.color}; --rl: ${look.light}">
-      <span class="tw-eye">${wt.kind === 'unique' ? 'New unique' : 'Better piece'} · not on yet</span>
-      <div class="tip-head"><span class="tile" aria-hidden="true">${iconOf(d.id)}</span><div><b class="tip-n">${esc(d.name)}</b><span class="tip-k">${esc(look.name)} ${esc(slotName.toLowerCase())} · Item level ${share.ilvl}${share.ilvl > now.ilvl ? ` <b class="gain">+${share.ilvl - now.ilvl}</b>` : ''}</span></div></div>
-      <ul class="tip-stats">${lines.join('')}</ul>${extra}
-      <div class="tw-acts"><button type="button" class="btn gold big puton" data-act="puton" data-slot="${wt.slot}">${GLYPH.shield}Put it on</button>${wt.kind === 'unique' ? `<button type="button" class="btn small ghost" data-act="notnow" data-slot="${wt.slot}">Not now</button>` : ''}</div>
+      <span class="tw-eye">${wt.kind === 'unique' ? 'New unique upgrade' : 'Upgrade waiting'} · tap below to equip</span>
+      <div class="tw-vs">
+        <div class="tw-side old"><span class="tile" style="--c: ${oldLook.color}">${iconOf(wornDef.id)}</span><div><small>Wearing now</small><b style="color: ${oldLook.ink}">${esc(wornDef.name)}</b><span>${esc(oldLook.name)} · ilvl ${now.ilvl}</span></div></div>
+        <i class="tw-arrow" aria-hidden="true">${GLYPH.right}</i>
+        <div class="tw-side new"><span class="tile" style="--c: ${look.color}">${iconOf(d.id)}</span><div><small>New ${esc(slotName.toLowerCase())}</small><b style="color: ${look.ink}">${esc(d.name)}</b><span>${esc(look.name)} · ilvl ${share.ilvl}</span></div></div>
+      </div>
+      <div class="cmp-rows tw-rows">
+        <div class="cmp-row"><span>Item level <small>${now.ilvl} → ${share.ilvl}</small></span>${delta(dil)}</div>
+        <div class="cmp-row"><span>${esc(cap(ROLE_STAT[role].main))} <small>+${now.power}% → +${share.power}%</small></span>${delta(dp, '%')}</div>
+        <div class="cmp-row"><span>Health <small>+${now.health}% → +${share.health}%</small></span>${delta(dh, '%')}</div>
+      </div>
+      ${extra}
+      <div class="tw-acts"><button type="button" class="btn gold big puton" data-act="puton" data-slot="${wt.slot}">${GLYPH.shield}Put on ${esc(d.name)}</button>${wt.kind === 'unique' ? `<button type="button" class="btn small ghost" data-act="notnow" data-slot="${wt.slot}">Not now</button>` : ''}</div>
     </div>`;
   }
 
@@ -391,7 +442,7 @@ export class Sheets {
     }
     if (d.flavor) extra += `<p class="tip-fl">“${esc(d.flavor)}”</p>`;
     let src = '';
-    if (d.kind === 'gear') src = d.rar < 3 ? 'Regular gear. Every clear upgrades your weakest piece.' : 'Regular gear, as good as it gets. Clears now offer new traits.';
+    if (d.kind === 'gear') src = d.rar < 2 ? 'Regular gear. Every clear upgrades your weakest piece up to Rare.' : 'Regular Rare gear (ladder cap). Epic gear drops from the dungeon set (1/35) and boss weapons (1/50).';
     else {
       for (const dg of Object.values(DUNGEONS)) for (const tb of dg.loot) for (const x of tb.drops) if (x.id === d.id) src = `Drops from ${dg.bosses.find((b) => b.id === tb.boss)?.name || tb.boss}, ${fmtRate(x.rate)}.`;
       const e = p.collection[d.id];

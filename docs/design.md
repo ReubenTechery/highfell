@@ -12,7 +12,7 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 14 
 
 | Part | Built | Still design |
 | --- | --- | --- |
-| Heroes | Race and class picked once, for keeps; up to 6 heroes; beds in the house to switch, rename once or let one go; your hero by the fire. Dwarf, Elf and Human from the start; the Risen (undead) earned from the Barrow's collection log, as any class | Gnomes, goblins and orcs, each earned in a dungeon of its own; the other race and class combos; the Rogue's kit; racial tricks |
+| Heroes | Race, class and male or female look picked once, for keeps (same body and armour silhouette, distinct heads/hair/beard vs braids); visual hero maker with race medallions, locked-race log progress, class crests and role purpose + two signature abilities; up to 6 heroes; beds in the house to switch, rename once or let one go; your hero by the fire. Dwarf, Elf and Human from the start; the Risen (undead) earned from the Barrow's collection log, as any class | Gnomes, goblins and orcs, each earned in a dungeon of its own; the other race and class combos; the Rogue's kit; racial tricks |
 | Abilities | Four buttons per role plus the dodge; a perfect block stuns and hits back | Ults, Openings, team combos |
 | Talents | Epic weapon traits, swappable for 5 Barrow Marks | The three paths and four rows per role, hero levels |
 | Gear and sets | 4 slots on a gear doll that shows rarity, set count and what each piece adds; Common to Epic in about ten clears, Barrow sets with their 2-piece bonuses, the three Gravekeeper weapons. Nothing goes on by itself: new pieces glow on the doll until you put them on | 3-piece bonuses (they need summons), the wardrobe, gear drawn on your hero |
@@ -281,18 +281,18 @@ Loot runs on OSRS rules: every unique has its own drop rate, rare means properly
 
 | Drop | Rate | Average time (4-minute clears) | Notes |
 | --- | --- | --- | --- |
-| Regular gear | Every clear | Every clear | The Common → Epic ladder, plus a piece for one of your other roles |
-| Set helm for your role | 1/50 | About 3 hours 20 | Barrowguard, Candlewake or Rimebone |
-| Set shoulders | 1/50 | About 3 hours 20 |  |
-| Set chest | 1/50 | About 3 hours 20 |  |
+| Regular gear | Every clear | Every clear | The Common → Rare ladder (8 clears), plus a piece for one of your other roles |
+| Set helm for your role | 1/35 | About 2 hours 20 | Barrowguard, Candlewake or Rimebone (Epic) |
+| Set shoulders | 1/35 | About 2 hours 20 |  |
+| Set chest | 1/35 | About 2 hours 20 |  |
 | Sir Rattlebones' Plume | 1/50 | About 3 hours 20 | From the mini boss; a trophy for the mantel |
-| Gravekeeper's weapon for your role | 1/100 | About 7 hours | The Gravedigger, Lantern of the Long Night or Gravefrost Staff, each with its own effect |
+| Gravekeeper's weapon for your role | 1/50 | About 3 hours 20 | The Gravedigger, Lantern of the Long Night or Gravefrost Staff, each with its own effect |
 | Gravehound (mount) | 1/1,000 | About 67 hours | Waits in the Hearth's stall |
 | Ghostly Dye | 1/1,000 | About 67 hours | Your Barrow set goes pale and see-through. Looks only |
 | Pint-sized Gravekeeper (pet) | 1/5,000 | About 333 hours | Sits by the fire at home |
 
 - Rolls are independent, OSRS style: two uniques in one clear can happen, and so can a 200-clear dry streak (about 1 player in 60).
-- A full set for your role averages about 90 clears, roughly 6 hours.
+- An Epic piece (3 set pieces at 1/35 + 1 weapon at 1/50) drops about once every 10 clears (~10.6% per clear), and completing the full 4/4 Epic kit averages ~50 clears (~3.5 hours).
 - No pity on uniques. Duplicates give 3 Barrow Marks each.
 - Kill count shows on every loot screen and in the collection log ("Rimebone Chest, KC 42"), so spoons and dry streaks become stories.
 

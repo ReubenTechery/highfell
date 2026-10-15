@@ -12,11 +12,12 @@ import { ROLES } from '../content/roles';
 import type { Rar, RoleId, SlotId } from '../content/types';
 import { gearId } from '../content/gear';
 import { takeTrait, type Drop, type RunLoot, type Tell } from '../meta/loot';
-import { activeHero, heroById, roleOf } from '../meta/profile';
-import { waiting } from '../meta/gear';
+import { activeHero, heroById, heroLevel, roleOf, talentPointsLeft } from '../meta/profile';
+import { itemShare, waiting, worn } from '../meta/gear';
 import type { App } from './app';
-import { actions, esc, fmtN, fmtRate, fmtT, reducedMotion, wait } from './dom';
+import { actions, esc, fmtN, fmtRate, fmtT, GLYPH, reducedMotion, wait } from './dom';
 import { colourOf, iconOf, nameOf, spriteURL } from './art';
+import { ROLE_STAT } from './itemsheet';
 import { rewards } from './dungeonsheet';
 import { SFX } from './sound';
 import type { RunOpts } from './run';
@@ -153,27 +154,36 @@ export class Reveal {
     const c = COLLECTIBLES[d.id];
     const it = ITEMS[d.id];
     const cls = c && c.kind === 'pet' ? 'r-pet' : table ? 'r-unique' : '';
-    let sub = '', note = '';
+    let sub = '', note = '', gains = '';
     if (d.source === 'regular' || d.source === 'spare') {
-      const r = RARITY[d.rar as Rar];
-      const slotName = ROLE_SLOTS[d.role as RoleId][d.slot as SlotId].name.toLowerCase();
-      if (d.offerTrait) { const t = traitDef(d.role as RoleId, d.offerTrait)!; sub = `Trait offer · ${esc(t.name)}`; note = esc(t.desc); }
+      const role = d.role as RoleId, slot = d.slot as SlotId, r = RARITY[d.rar as Rar];
+      const slotName = ROLE_SLOTS[role][slot].name.toLowerCase();
+      if (d.offerTrait) { const t = traitDef(role, d.offerTrait)!; sub = `Trait offer · ${esc(t.name)}`; note = esc(t.desc); }
       else {
-        sub = `${r.name} ${slotName}${d.source === 'spare' ? ` · shared` : ''}`;
-        note = d.source === 'spare' ? `Every ${ROLES[d.role as RoleId].title.toLowerCase()} hero can put it on` : d.prevRar !== undefined && d.prevRar !== d.rar ? `Better than your ${RARITY[d.prevRar].name}` : '';
-        if (d.trait) note += `${note ? '. ' : ''}Trait: ${esc(traitDef(d.role as RoleId, d.trait)?.name || '')}`;
-        if (d.toEquip) note += `${note ? '. ' : ''}Put it on in Gear`;
+        const prev = ITEMS[gearId(role, slot, (d.prevRar ?? 0) as Rar)];
+        const nowS = prev ? itemShare(prev) : { power: 0, health: 0, ilvl: 10 }, newS = it ? itemShare(it) : nowS;
+        const dp = Math.round((newS.power - nowS.power) * 10) / 10, dh = Math.round((newS.health - nowS.health) * 10) / 10;
+        sub = `${r.name} ${slotName}${d.source === 'spare' ? ` · shared` : ` · ilvl ${nowS.ilvl} → ${newS.ilvl}`}`;
+        if (dp > 0) gains = `<span class="lc-gains"><b class="up">${GLYPH.rise}+${dp}% ${esc(ROLE_STAT[role].short)}</b><b class="up">${GLYPH.rise}+${dh}% hp</b></span>`;
+        note = d.source === 'spare' ? `For your ${ROLES[role].title.toLowerCase()} heroes` : prev && d.prevRar !== d.rar ? `Replaces ${esc(prev.name)}` : '';
+        if (d.trait) note += `${note ? ' · ' : ''}Trait: ${esc(traitDef(role, d.trait)?.name || '')}`;
       }
     } else {
       const boss = BARROW.bosses.find((b) => b.id === d.boss)?.name || '';
       sub = `${fmtRate(d.rate)} · ${esc(boss)} KC ${fmtN(d.kc || 0)}`;
-      note = d.dupe ? `Duplicate: +${d.marks} ${esc(BARROW.marksName)}` : c ? (c.kind === 'pet' ? 'Waiting by the fire' : c.kind === 'mount' ? 'In the stall at home' : c.kind === 'cosmetic' ? 'A new look' : 'On the mantel') : it?.setId ? `${esc(it.name.split(' ')[0])} set piece` : it?.effectDesc ? esc(it.effectDesc) : '';
-      if (d.toEquip && !d.dupe) note += `${note ? '. ' : ''}Put it on in Gear`;
+      if (it && !d.dupe) {
+        const h = heroById(this.app.p, this.extra?.hero || null) || activeHero(this.app.p);
+        const cur = h && roleOf(h) === it.role ? worn(this.app.p, h)[it.slot].def : ITEMS[gearId(it.role, it.slot, 0)];
+        const nowS = cur ? itemShare(cur) : { power: 0, health: 0, ilvl: 10 }, newS = itemShare(it);
+        const dp = Math.round((newS.power - nowS.power) * 10) / 10, dh = Math.round((newS.health - nowS.health) * 10) / 10;
+        if (dp > 0) gains = `<span class="lc-gains"><b class="up">${GLYPH.rise}+${dp}% ${esc(ROLE_STAT[it.role].short)}</b><b class="up">${GLYPH.rise}+${dh}% hp</b></span>`;
+      }
+      note = d.dupe ? `Duplicate: +${d.marks} ${esc(BARROW.marksName)}` : c ? (c.kind === 'pet' ? 'Waiting by the fire' : c.kind === 'mount' ? 'In the stall at home' : c.kind === 'cosmetic' ? 'A new look' : 'On the mantel') : it?.setId ? `${esc(it.name.split(' ')[0])} set piece · ilvl ${itemShare(it).ilvl}` : it?.effectDesc ? esc(it.effectDesc) : '';
     }
     const stamp = table ? (d.dupe ? '<span class="stamp dupe">Dupe</span>' : '<span class="stamp">New</span>') : d.offerTrait ? '' : '<span class="stamp" style="background: var(--green)">Up</span>';
     return `<button type="button" class="lc ${cls}" data-act="flip" data-i="${i}" aria-label="Card ${i + 1}">
       <span class="in"><span class="fc back"></span>
-      <span class="fc front" style="--rc: ${colourOf(d.id)}">${stamp}<span class="tile" aria-hidden="true">${iconOf(d.id)}</span><b>${esc(nameOf(d.id))}</b><span class="sub">${sub}</span>${note ? `<em>${note}</em>` : ''}</span></span></button>`;
+      <span class="fc front" style="--rc: ${colourOf(d.id)}">${stamp}<span class="tile" aria-hidden="true">${iconOf(d.id)}</span><b>${esc(nameOf(d.id))}</b><span class="sub">${sub}</span>${gains}${note ? `<em>${note}</em>` : ''}</span></span></button>`;
   }
 
   private flip(i: number): void {
@@ -218,10 +228,14 @@ export class Reveal {
     // a heroic clear pays the Barrow's own Marks
     const rec = p.dungeons[dg.heroicOf || dg.id];
     const kc = Object.entries(loot.kc);
+    const h = heroById(p, extra.hero);
+    const lvNow = h ? heroLevel(h) : (loot.levelAfter || 1);
+    const lvUp = (loot.levelAfter || 1) > (loot.levelBefore || 1);
     const sum = $('rv-sum', this.root);
     sum.hidden = false;
     sum.innerHTML = `<h3>This run</h3><div class="rv-grid">
       <div class="kv"><span>Time</span><b>${fmtT(loot.time)}</b><small>${loot.newPb ? 'New best!' : loot.firstClear ? 'First clear!' : `Best ${fmtT(loot.pb)}`}</small></div>
+      <div class="kv"><span>Hero level</span><b>Lv ${lvNow}</b><small>${lvUp ? 'Level up! +1 Ability Point' : loot.xpGained ? `+${loot.xpGained} XP` : 'Max level'}</small></div>
       ${kc.map(([b, n]) => `<div class="kv"><span>${esc(dg.bosses.find((x) => x.id === b)?.name || b)}</span><b>KC ${fmtN(n)}</b></div>`).join('')}
       <div class="kv"><span>${esc(dg.marksName)}</span><b>+${loot.marks}</b><small>${fmtN(rec ? rec.marks : 0)} total</small></div>
       <div class="kv"><span>Collection log</span><b>${got} / ${dg.collection.length}</b><small>${newSlots ? `+${newSlots} new` : ''}</small></div>
@@ -241,11 +255,10 @@ export class Reveal {
       ach.hidden = false;
       ach.innerHTML = `<h3>Achievements</h3>${extra.unlocked.map((id) => { const a = ACHIEVEMENTS[id]; return `<div class="ach"><span class="medal ${a.tier}" aria-hidden="true">${a.points}</span><div><div class="n">${esc(a.name)}</div><div class="rw">${esc(a.reward.title ? 'Title: ' + (TITLES[a.reward.title]?.text || '') : a.reward.text)}</div></div><div class="pts">${a.points}<small>points</small></div></div>`; }).join('')}`;
     }
-    // new gear waits for you: the Gear button says how much
-    const h = heroById(p, extra.hero);
-    const up = h && !extra.preview ? waiting(p, h).length : 0;
+    // new gear or ability points wait for you: the Gear button says how much
+    const up = h && !extra.preview ? waiting(p, h).length + talentPointsLeft(h) : 0;
     const gb = this.root.querySelector<HTMLElement>('#rv-actions [data-act="gear"]');
-    if (gb && up) { gb.classList.add('gold', 'has-up'); gb.innerHTML = `Put on new gear<i class="badge" aria-hidden="true">${up}</i>`; }
+    if (gb && up) { gb.classList.add('gold', 'has-up'); gb.innerHTML = `Gear &amp; abilities<i class="badge" aria-hidden="true">${up}</i>`; }
     $('rv-actions', this.root).hidden = false;
     (this.root.querySelector('#rv-actions .btn') as HTMLElement | null)?.focus({ preventScroll: true });
   }
