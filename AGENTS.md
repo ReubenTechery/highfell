@@ -168,7 +168,8 @@ The full systems design (abilities, talents, sets, drop tables, achievements, ba
   sound. `styles.css` is inlined by the build.
 - `src/sim` and `scripts/sim.mjs`: headless bot runs of the real engine (the balance numbers).
 - `tools/`: the art pipeline (Python writes SVG into `art/*.json`; the heroes are in `art_heroes.py`, their
-  faces in `art_heads.py`), `art_sheet.py` (look at your art), `pw_check.py` (screenshot the built game).
+  faces in `art_heads.py`), `art_sheet.py` (look at your art), `pw_check.py` (screenshot the built game),
+  `pw_perf.py` (measure the house's speed on a slowed-down phone).
 - `tests/`: `balance.test.ts` (bot clears must stay in their bands), `dungeon.test.ts` (threat, cages,
   numbers, tuning, where each hero's weapon and head are), `meta.test.ts`, `vale.test.ts`.
 
@@ -181,6 +182,7 @@ npm run preview        # play it: http://localhost:5173, and a phone address on 
 npm run sim            # the balance table (--gear 3, --solo, --seeds N)
 python3 tools/pw_check.py shot.png --w 390 --h 844 --touch    # a phone screenshot of the built game
 python3 tools/pw_check.py shot.png --w 1440 --h 900           # a desktop screenshot
+python3 tools/pw_perf.py                                      # how heavy the house is on a slowed-down phone
 python3 tools/art_sheet.py shots/art.png art/vale.json        # a contact sheet of the art
 ```
 
