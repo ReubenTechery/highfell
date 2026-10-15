@@ -29,3 +29,13 @@ export function pickRole(p: Profile, role: RoleId, now = Date.now()): Hero | nul
   setActive(p, next.id, now);
   return next;
 }
+
+/** What one seat brings to the door: its player's chosen brew, if they have a bottle of it. Bots bring none. */
+export interface SeatBrew { role: RoleId; leader: boolean; brew: string | null }
+/** One bottle a run serves the whole party, so nobody wastes one: the run's leader's brew is poured if
+ *  they brought one, else the first seat's in order (tank, healer, DPS). Only that bottle is spent; the
+ *  others stay on their shelves. Brews never stack. Null when nobody brought one. */
+export function pourFor(brought: SeatBrew[]): SeatBrew | null {
+  const withBrew = brought.filter((s) => s.brew);
+  return withBrew.find((s) => s.leader) || [...withBrew].sort((a, b) => ORDER.indexOf(a.role) - ORDER.indexOf(b.role))[0] || null;
+}

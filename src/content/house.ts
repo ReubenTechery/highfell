@@ -10,7 +10,7 @@
 import type { CollectibleKind } from './types';
 
 /** What tapping a thing in the house does. */
-export type HouseAction = 'dungeons' | 'ride' | 'gear' | 'logs' | 'brew' | 'satchel';
+export type HouseAction = 'dungeons' | 'garden' | 'gear' | 'logs' | 'brew' | 'satchel';
 
 export interface RoomDef {
   id: string;
@@ -23,7 +23,8 @@ export interface RoomDef {
   /** where its sign sits when you're zoomed out, if not at the focus */
   sign?: [number, number];
 }
-export interface ThingDef { id: string; room: string; label: string; action: HouseAction; sprite: string; x: number; y: number; k?: number }
+/** bed: for the garden's planter beds, which bed (its sprite follows what grows in it) */
+export interface ThingDef { id: string; room: string; label: string; action: HouseAction; sprite: string; x: number; y: number; k?: number; bed?: number }
 export interface HouseSpot { id: string; kind: CollectibleKind; label: string; room: string; x: number; y: number; k?: number; flip?: boolean }
 
 /** inside the outer walls */
@@ -39,13 +40,15 @@ export const ROOMS: RoomDef[] = [
   { id: 'stable', name: 'Stable', x: 0, y: -484, w: 640, h: 484, focus: [250, -230] },
   { id: 'brewery', name: 'Brewing', x: 664, y: -484, w: 536, h: 484, focus: [930, -230] },
   { id: 'cellar', name: 'The Barrow', x: 0, y: 36, w: 1200, h: 464, focus: [420, 300] },
-  { id: 'yard', name: 'Ride out', x: -900, y: -520, w: 872, h: 520, focus: [-320, -210], sign: [-210, -250] },
+  { id: 'yard', name: 'Garden', x: -900, y: -520, w: 872, h: 520, focus: [-400, -210], sign: [-400, -250] },
 ];
 
 /** the things you tap: each one opens what used to be a button */
 export const THINGS: ThingDef[] = [
   { id: 'barrow', room: 'cellar', label: 'The door to the Barrow: dungeons', action: 'dungeons', sprite: 'barrow_door', x: 300, y: 444 },
-  { id: 'signpost', room: 'yard', label: 'Ride out to the Vale', action: 'ride', sprite: 'signpost', x: -270, y: 0, k: 1.3 },
+  { id: 'bed.0', room: 'yard', label: 'A garden bed', action: 'garden', sprite: 'bed', x: -600, y: 0, bed: 0 },
+  { id: 'bed.1', room: 'yard', label: 'A garden bed', action: 'garden', sprite: 'bed', x: -400, y: 0, bed: 1 },
+  { id: 'bed.2', room: 'yard', label: 'A garden bed', action: 'garden', sprite: 'bed', x: -200, y: 0, bed: 2 },
   { id: 'armour', room: 'armory', label: 'The armour stand: your gear', action: 'gear', sprite: 'armor_stand', x: 800, y: -1210 },
   { id: 'lectern', room: 'loft', label: 'The big book: your collection log', action: 'logs', sprite: 'lectern', x: 600, y: -1726 },
   { id: 'cauldron', room: 'brewery', label: 'The cauldron: brew', action: 'brew', sprite: 'cauldron', x: 960, y: -22, k: 0.9 },
@@ -73,7 +76,7 @@ export const HOUSE_SPOTS: HouseSpot[] = [
   { id: 'banner.armory', kind: 'banner', label: 'The armory wall', room: 'armory', x: 930, y: -1640 },
   { id: 'flag.l', kind: 'banner', label: 'Roof, left flag', room: 'loft', x: -70, y: -2372 },
   { id: 'flag.r', kind: 'banner', label: 'Roof, right flag', room: 'loft', x: 1270, y: -2372 },
-  { id: 'mount.yard', kind: 'mount', label: 'The yard', room: 'yard', x: -560, y: -4 },
+  { id: 'mount.yard', kind: 'mount', label: 'The garden', room: 'yard', x: -810, y: -4 },
 ];
 
 /** two shelves of four trophies on one side of the loft, the lower shelf first */

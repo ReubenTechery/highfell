@@ -17,10 +17,11 @@ import type { AbilitySlot, Rar, RoleId, SlotId } from '../content/types';
 import { ORDER, SLOTS_AB } from '../content/roles';
 import { SLOT_IDS } from '../content/gear';
 import { CLASSES, FOUNDERS, MAX_HEROES, canMake, cleanName, defaultSex, type ClassId, type RaceId, type SexId } from '../content/folk';
+import { BEDS } from '../content/vale';
 import { settleSpots } from './hearth';
 import { opened } from './logs';
 
-export const PROFILE_VERSION = 7;
+export const PROFILE_VERSION = 8;
 /** Shared gear climbs to Rare. Epic is earned on the hero. */
 export const WARBAND_CAP: Rar = 2;
 export const MAX_HERO_LEVEL = 9;
@@ -57,21 +58,28 @@ export interface Hero {
   talents: Record<AbilitySlot, number>;
 }
 export interface CollectionEntry { n: number; kc: number; at: number }
-/** A gathering spot's state: harvests ready, the day they were last topped up, whether the next one shimmers. */
+/** A gathering spot's state from the days you rode out (kept, never used again). */
 export interface NodeState { n: number; day: number; shimmer: boolean }
 export interface PlaceState { nodes: Record<string, NodeState>; errands: { n: number; day: number; next: number } }
-/** Everything from riding out: what you carry, what is brewed, your skills and where you have been. */
+/** A garden bed: the seed in it (null when empty), the clears it has grown, whether it shimmers. */
+export interface BedState { seed: string | null; grown: number; shimmer: boolean }
+/** Everything from the garden and the cauldron: what you carry, what is brewed, your skills. */
 export interface ValeState {
   satchel: Record<string, number>;
   shelf: Record<string, number>;
   /** XP by skill: gather, brew */
   xp: Record<string, number>;
+  /** where you rode out to, before the garden (kept so nothing is lost) */
   places: Record<string, PlaceState>;
   /** lore pages unlocked, in the order they came */
   lore: string[];
-  /** the brew to drink at the start of your next run from the entrance, or null */
+  /** the brew you bring to your next run from the entrance, or null */
   drink: string | null;
   rides: number;
+  /** seeds waiting to be planted, by plant id */
+  seeds: Record<string, number>;
+  /** the planter beds in the yard, always BEDS of them */
+  beds: BedState[];
 }
 export interface BossRecord { kc: number; pb: number | null; wipes: number }
 export interface DungeonRecord { runs: number; clears: number; pb: number | null; marks: number }
@@ -120,10 +128,12 @@ export function freshProfile(now = Date.now()): Profile {
     hearth: { spots: {}, looks: {} },
     settings: { sound: true, looksOff: [] },
     seen: {},
-    vale: freshVale(),
+    // one Glowcap seed to start, so the garden can be tried before the Barrow drops one
+    vale: { ...freshVale(), seeds: { glowcap: 1 } },
   };
 }
-export const freshVale = (): ValeState => ({ satchel: {}, shelf: {}, xp: {}, places: {}, lore: [], drink: null, rides: 0 });
+export const emptyBed = (): BedState => ({ seed: null, grown: 0, shimmer: false });
+export const freshVale = (): ValeState => ({ satchel: {}, shelf: {}, xp: {}, places: {}, lore: [], drink: null, rides: 0, seeds: {}, beds: Array.from({ length: BEDS }, emptyBed) });
 
 const num = (v: unknown, d: number): number => (typeof v === 'number' && isFinite(v) ? v : d);
 const obj = (v: unknown): Record<string, any> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, any>) : {});
@@ -181,6 +191,12 @@ const MIGRATIONS: Record<number, (raw: any) => any> = {
       }),
       counters: { ...obj(d.counters), ...(hadHeroes ? { 'intro.run': 1, 'intro.tour': 2 } : {}) },
     };
+  },
+  /* v7 rode out to the Vale. From v8 the garden by the house takes its place: empty beds, and one
+     Glowcap seed to start. Everything from the Vale stays (herbs, brews, skills, pages, places). */
+  7: (d) => {
+    const v = obj(d.vale);
+    return { ...d, vale: { ...v, seeds: { glowcap: 1 }, beds: Array.from({ length: BEDS }, emptyBed) } };
   },
 };
 
@@ -277,6 +293,12 @@ function normVale(x: unknown): ValeState {
   out.lore = Array.isArray(v.lore) ? [...new Set(v.lore.filter((t: unknown): t is string => typeof t === 'string'))] : [];
   out.drink = str(v.drink);
   out.rides = Math.max(0, Math.floor(num(v.rides, 0)));
+  out.seeds = counts(v.seeds);
+  const beds = Array.isArray(v.beds) ? v.beds : [];
+  out.beds = out.beds.map((b, i) => {
+    const x = obj(beds[i]), seed = str(x.seed);
+    return seed ? { seed, grown: Math.max(0, Math.floor(num(x.grown, 0))), shimmer: x.shimmer === true } : b;
+  });
   return out;
 }
 

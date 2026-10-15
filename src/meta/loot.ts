@@ -13,6 +13,7 @@ import type { Rng } from '../core/rng';
 import { autoPlace } from './hearth';
 import { bagIt, bestRegular, freshForRole } from './gear';
 import { WARBAND_CAP, bossRecord, dungeonRecord, heroLevel, roleOf, type Hero, type Profile } from './profile';
+import { growBeds, rollSeeds } from './vale';
 
 export type Tell = 'normal' | 'unique' | 'pet';
 
@@ -54,6 +55,10 @@ export interface RunLoot {
   xpGained?: number;
   levelBefore?: number;
   levelAfter?: number;
+  /** seeds the bosses dropped, by plant id */
+  seeds?: Record<string, number>;
+  /** garden beds this clear made ready */
+  bedsReady?: number;
 }
 
 export const DUPE_MARKS = 3;
@@ -158,9 +163,9 @@ export interface RunEnd {
 }
 
 /** What one boss kill gave: rolled the moment it dies, like loot hitting the floor. */
-export interface KillLoot { boss: string; kc: number; time: number; newPb: boolean; drops: Drop[]; marks: number; xp?: number }
+export interface KillLoot { boss: string; kc: number; time: number; newPb: boolean; drops: Drop[]; marks: number; xp?: number; seeds?: Record<string, number> }
 
-/** A kill counts and rolls its table. Practice runs never call this. */
+/** A kill counts and rolls its table (and its seed lines). Practice runs never call this. */
 export function resolveKill(p: Profile, dg: DungeonInfo, boss: string, h: Hero, time: number | null, rng: Rng, now = Date.now()): KillLoot {
   const role = roleOf(h);
   const br = bossRecord(p, dg.id, boss);
@@ -174,11 +179,12 @@ export function resolveKill(p: Profile, dg: DungeonInfo, boss: string, h: Hero, 
   if (table) for (const d of rollTable(table, role, rng)) out.drops.push(grant(p, h, d.id, { source: 'table', boss, rate: d.rate, kc: br.kc }, now));
   out.marks = out.drops.reduce((a, d) => a + d.marks, 0);
   dungeonRecord(p, marksOf(dg)).marks += out.marks;
+  out.seeds = rollSeeds(p, dg, boss, rng);
   return out;
 }
 
-/** What finishing the dungeon gave: the clear, the ladder piece, the spare piece and a mark. */
-export interface ClearLoot { clears: number; time: number; pb: number | null; newPb: boolean; firstClear: boolean; drops: Drop[]; marks: number; xp?: number }
+/** What finishing the dungeon gave: the clear, the ladder piece, the spare piece and a mark. The garden grows a step. */
+export interface ClearLoot { clears: number; time: number; pb: number | null; newPb: boolean; firstClear: boolean; drops: Drop[]; marks: number; xp?: number; bedsReady?: number }
 
 export function resolveClear(p: Profile, dg: DungeonInfo, h: Hero, time: number, rng: Rng): ClearLoot {
   const rec = dungeonRecord(p, dg.id);
@@ -192,6 +198,7 @@ export function resolveClear(p: Profile, dg: DungeonInfo, h: Hero, time: number,
   const spare = spareDrop(p, roleOf(h), rng);
   if (spare) out.drops.push(spare);
   dungeonRecord(p, marksOf(dg)).marks += out.marks;
+  out.bedsReady = growBeds(p);
   return out;
 }
 
@@ -201,8 +208,12 @@ export function runLoot(p: Profile, dg: DungeonInfo, h: Hero, kills: KillLoot[],
   const xpGained = kills.reduce((a, k) => a + (k.xp || 0), 0) + (clear?.xp || 0);
   const levelAfter = heroLevel(h);
   const levelBefore = heroLevel({ xp: Math.max(0, (h.xp || 0) - xpGained) });
-  const out: RunLoot = { dungeon: dg.id, role: roleOf(h), hero: h.id, drops: [], tell: 'normal', kc: {}, marks: 0, clears: rec.clears, time: clear ? clear.time : 0, pb: rec.pb, newPb: !!clear?.newPb, firstClear: !!clear?.firstClear, xpGained, levelBefore, levelAfter };
-  for (const k of kills) { out.kc[k.boss] = k.kc; out.drops.push(...k.drops); out.marks += k.marks; }
+  const seeds: Record<string, number> = {};
+  const out: RunLoot = { dungeon: dg.id, role: roleOf(h), hero: h.id, drops: [], tell: 'normal', kc: {}, marks: 0, clears: rec.clears, time: clear ? clear.time : 0, pb: rec.pb, newPb: !!clear?.newPb, firstClear: !!clear?.firstClear, xpGained, levelBefore, levelAfter, seeds, bedsReady: clear?.bedsReady || 0 };
+  for (const k of kills) {
+    out.kc[k.boss] = k.kc; out.drops.push(...k.drops); out.marks += k.marks;
+    for (const [s, n] of Object.entries(k.seeds || {})) seeds[s] = (seeds[s] || 0) + n;
+  }
   if (clear) { out.drops.push(...clear.drops); out.marks += clear.marks; }
   const last = kills.find((k) => k.boss === dg.finalBoss);
   out.tell = last ? tellOf(last.drops) : 'normal';

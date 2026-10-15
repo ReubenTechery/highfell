@@ -8,7 +8,8 @@ import { BARROW_ENGINE } from '../content/barrow/engine';
 import type { RoleId } from '../content/types';
 
 export const STEP = 1 / 60;
-export interface SimOpts { role: RoleId; seed: number; start?: string; solo?: boolean; heroic?: boolean; loadouts?: Record<string, unknown>; maxT?: number; maxWipes?: number; events?: boolean }
+/** brew: a recipe id poured for the whole party at the door */
+export interface SimOpts { role: RoleId; seed: number; start?: string; solo?: boolean; heroic?: boolean; loadouts?: Record<string, unknown>; maxT?: number; maxWipes?: number; events?: boolean; brew?: string }
 export interface PackTime { id: string; pulled: number; cleared: number | null }
 export interface SimResult {
   role: RoleId; seed: number; over: string; t: number; clear: number | null; wipes: number;
@@ -20,7 +21,7 @@ export interface SimResult {
 }
 
 export function simRun(o: SimOpts): SimResult {
-  newGame(BARROW_ENGINE, { role: o.role, seed: o.seed, start: o.start || 'entrance', solo: !!o.solo, heroic: !!o.heroic, auto: true, quiet: true, noEvents: !o.events, loadouts: o.loadouts || {} });
+  newGame(BARROW_ENGINE, { role: o.role, seed: o.seed, start: o.start || 'entrance', solo: !!o.solo, heroic: !!o.heroic, auto: true, quiet: true, noEvents: !o.events, loadouts: o.loadouts || {}, ...(o.brew ? { brew: o.brew } : {}) });
   const s = S as any;
   s.startedAt = s.t;
   const maxT = o.maxT ?? 1500, maxWipes = o.maxWipes ?? 6;

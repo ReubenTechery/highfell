@@ -1,28 +1,25 @@
 /**
- * Riding out: the rules for gathering, errands and brewing. Nothing here touches a dungeon except a
- * brew you choose to drink, and nothing here makes gear: what you get is ingredients, brews, story
- * pages and collectibles. Places regrow overnight and bank up to three days, so a missed day is
- * never a loss.
+ * The garden and the cauldron: the rules. Bosses drop seeds (every seed line rolls on its own, per
+ * player, like any drop). A seed goes in one of the planter beds in the yard and grows one step for
+ * every dungeon clear; after GROW_CLEARS it's ready, and it waits for you as long as you like. It never
+ * wilts, nothing runs on a clock, and seeds bank with no limit.
  *
  * A harvest is rolled the moment you start its close-up (like a boss kill), so closing the page
  * mid-way never loses a drop and backing out can never be used to reroll one. Perfects add on top
  * when the close-up ends. XP comes a little at a time: every cut and every lap of the stir pays
  * straight away, and finishing pays a little more.
  *
- * You start on foot. Dottle's first errand (herding her goats) gives you a goat, and a mount makes
- * every ride out quicker.
+ * Herbs go in the cauldron. One bottle is poured at the door for the whole party (see party.ts) and
+ * makes that run quicker; nothing needs one.
  */
 import { COLLECTIBLES } from '../content';
-import { ERRAND_BANK, FOOT_SECS, INGREDIENTS, NODE_BANK, NODE_PER_DAY, PLACES, RANK_XP, RECIPES, SHIMMER } from '../content/vale';
-import type { DropDef, ErrandDef, LorePage, NodeDef, PlaceDef } from '../content/types';
+import { FIRST_HARVEST_GIFT, GARDEN_TABLE, GROW_CLEARS, INGREDIENTS, PLANTS, RANK_XP, RECIPES, SHIMMER } from '../content/vale';
+import type { DropDef, DungeonInfo, NodeDef } from '../content/types';
 import type { Rng } from '../core/rng';
 import { autoPlace } from './hearth';
-import { count, type PlaceState, type Profile } from './profile';
+import { count, emptyBed, type BedState, type Profile } from './profile';
 
-/** A day number in the player's own time zone: nodes regrow at their midnight. */
-export const dayOf = (now: number): number => Math.floor((now - new Date(now).getTimezoneOffset() * 60000) / 86400000);
-
-/** Testing switches from the settings sheet: never saved, never on for anyone else. */
+/** Testing switches from the settings sheet: never saved, never on for anyone else. free: beds are ready at once. */
 export interface ValeDev { free?: boolean; luck?: number }
 
 /* ---------------------------------------------------------------- ranks */
@@ -50,7 +47,7 @@ function addXp(p: Profile, skill: string, amt: number): RankUp | null {
 /* ---------------------------------------------------------------- XP, a little at a time */
 /** how a cut, a pluck or a lap of the stir went */
 export type Grade = 'perfect' | 'good' | 'rough' | 'ouch';
-/** gathering XP for one cut or pluck (a shimmering plant adds SHIMMER_XP), and for finishing a harvest */
+/** gathering XP for one cut or pluck (a shimmering bed adds SHIMMER_XP), and for finishing a harvest */
 export const CUT_XP: Record<Grade, number> = { perfect: 6, good: 4, rough: 2, ouch: 1 };
 export const SHIMMER_XP = 2;
 export const HARVEST_XP = 4;
@@ -64,33 +61,48 @@ function gain(p: Profile, skill: string, amt: number): XpGain {
   return { skill, xp: amt, rankUp, total: p.vale.xp[skill] };
 }
 
-/* ---------------------------------------------------------------- places */
-/** A place's state, created on first visit and topped up for the days since you were last there. */
-export function placeState(p: Profile, placeId: string, now = Date.now(), rng: Rng = Math.random): PlaceState {
-  const pl = PLACES[placeId];
-  const today = dayOf(now);
-  let st = p.vale.places[placeId];
-  if (!st) st = p.vale.places[placeId] = { nodes: {}, errands: { n: 1, day: today, next: 0 } };
-  for (const n of pl?.nodes || []) {
-    let ns = st.nodes[n.id];
-    // a first visit starts with a few harvests ready, so the first trip is a proper one
-    if (!ns) ns = st.nodes[n.id] = { n: 3, day: today, shimmer: rng() < SHIMMER };
-    if (today > ns.day) { ns.n = Math.min(NODE_BANK, ns.n + (today - ns.day) * NODE_PER_DAY); ns.day = today; }
+/* ---------------------------------------------------------------- seeds */
+/** A boss kill rolls its seed lines, each on its own, for this player. Practice runs never call this. */
+export function rollSeeds(p: Profile, dg: DungeonInfo, boss: string, rng: Rng, luck = 1): Record<string, number> {
+  const got: Record<string, number> = {};
+  for (const sd of dg.seeds || []) {
+    if (sd.boss !== boss || rng() >= sd.rate * luck) continue;
+    got[sd.seed] = (got[sd.seed] || 0) + 1;
+    p.vale.seeds[sd.seed] = (p.vale.seeds[sd.seed] || 0) + 1;
+    count(p, 'vale.seeds');
   }
-  if (today > st.errands.day) { st.errands.n = Math.min(ERRAND_BANK, st.errands.n + (today - st.errands.day)); st.errands.day = today; }
-  return st;
+  return got;
+}
+export const seedTotal = (p: Profile): number => Object.values(p.vale.seeds).reduce((a, n) => a + n, 0);
+
+/* ---------------------------------------------------------------- beds */
+export type BedPhase = 'empty' | 'growing' | 'ready';
+export const bedPhase = (b: BedState): BedPhase => (!b.seed ? 'empty' : b.grown >= GROW_CLEARS ? 'ready' : 'growing');
+/** clears still to go before a bed is ready */
+export const clearsLeft = (b: BedState): number => Math.max(0, GROW_CLEARS - b.grown);
+export const readyBeds = (p: Profile): number => p.vale.beds.filter((b) => bedPhase(b) === 'ready').length;
+
+/** Plant a seed in an empty bed. Whether it shimmers is rolled now, so you see it while it grows. */
+export function plant(p: Profile, bed: number, seed: string, rng: Rng): boolean {
+  const b = p.vale.beds[bed];
+  if (!b || b.seed || !PLANTS[seed] || (p.vale.seeds[seed] || 0) <= 0) return false;
+  p.vale.seeds[seed]--;
+  if (!p.vale.seeds[seed]) delete p.vale.seeds[seed];
+  p.vale.beds[bed] = { seed, grown: 0, shimmer: rng() < SHIMMER };
+  count(p, 'vale.planted');
+  return true;
 }
 
-/** The mount you ride: whatever is in your stall, else your fastest one, else none (you walk). */
-export function rideMount(p: Profile): string | null {
-  const m = p.hearth.spots['mount.stall'];
-  if (m && COLLECTIBLES[m]?.kind === 'mount' && p.collection[m]) return m;
-  const owned = Object.keys(p.collection).filter((id) => COLLECTIBLES[id]?.kind === 'mount');
-  owned.sort((a, b) => (COLLECTIBLES[a].ride || FOOT_SECS) - (COLLECTIBLES[b].ride || FOOT_SECS));
-  return owned[0] || null;
+/** A dungeon clear (Normal or Heroic, never practice): every planted bed grows a step. Returns how many just became ready. */
+export function growBeds(p: Profile): number {
+  let ready = 0;
+  for (const b of p.vale.beds) {
+    if (!b.seed || b.grown >= GROW_CLEARS) continue;
+    b.grown++;
+    if (b.grown >= GROW_CLEARS) ready++;
+  }
+  return ready;
 }
-/** Seconds a ride out takes on a mount (or on foot, with none). */
-export const rideSecs = (mount: string | null): number => (mount && COLLECTIBLES[mount]?.ride) || FOOT_SECS;
 
 /* ---------------------------------------------------------------- drops */
 export interface ValeDrop { id: string; isNew: boolean; dupe: boolean; placed?: string | null; rate: number }
@@ -108,44 +120,46 @@ function rollDrops(p: Profile, table: DropDef[], kc: number, rng: Rng, now: numb
 }
 const add = (p: Profile, id: string, n: number): void => { if (n > 0) p.vale.satchel[id] = (p.vale.satchel[id] || 0) + n; };
 
-/* ---------------------------------------------------------------- gathering */
+/* ---------------------------------------------------------------- harvesting */
 /** A harvest in progress: rolled at the start, Perfects added at the end. */
 export interface Harvest {
-  place: string;
+  bed: number;
   node: NodeDef;
   shimmer: boolean;
-  /** ingredients already in your satchel from the roll */
+  /** herbs already in your satchel from the roll */
   base: number;
   dew: number;
   drops: ValeDrop[];
-  /** harvests of this spot so far, this one included: its kill count */
+  /** the goat your first harvest brings, if this was it */
+  gift: string | null;
+  /** harvests so far, this one included: the garden's kill count */
   kc: number;
   /** gathering XP its cuts have paid so far */
   xp: number;
 }
 
-export function readyAt(p: Profile, placeId: string, nodeId: string, now = Date.now()): number {
-  return placeState(p, placeId, now).nodes[nodeId]?.n ?? 0;
-}
-
-/** Start a harvest: spends one, rolls the yield, the dew and the rare table. Null if none are ready. */
-export function beginHarvest(p: Profile, placeId: string, nodeId: string, rng: Rng, now = Date.now(), dev: ValeDev = {}): Harvest | null {
-  const pl = PLACES[placeId], node = pl?.nodes.find((n) => n.id === nodeId);
-  if (!pl || !node) return null;
-  const ns = placeState(p, placeId, now, rng).nodes[nodeId];
-  if (ns.n <= 0 && !dev.free) return null;
-  if (!dev.free) ns.n--;
-  const shimmer = ns.shimmer;
-  ns.shimmer = rng() < SHIMMER;
+/** Start a harvest: empties the bed, rolls the yield, the dew and the rare table. Null if the bed isn't ready. */
+export function beginHarvest(p: Profile, bed: number, rng: Rng, now = Date.now(), dev: ValeDev = {}): Harvest | null {
+  const b = p.vale.beds[bed];
+  const node = b?.seed ? PLANTS[b.seed] : undefined;
+  if (!b || !node || (bedPhase(b) !== 'ready' && !dev.free)) return null;
+  const shimmer = b.shimmer;
+  p.vale.beds[bed] = emptyBed();
   const [lo, hi] = node.yield;
   const base = lo + Math.floor(rng() * (hi - lo + 1)) + yieldBonus(skillRank(p, 'gather'));
-  const dew = shimmer ? 1 + (rng() < 0.35 ? 1 : 0) : 0;
+  const dew = shimmer ? 2 + (rng() < 0.5 ? 1 : 0) : 0;
   add(p, node.gives, base);
   add(p, 'dew', dew);
-  const kc = count(p, `vale.${placeId}.${nodeId}`);
-  count(p, 'vale.harvests');
-  const drops = rollDrops(p, node.table, kc, rng, now, dev.luck || 1);
-  return { place: placeId, node, shimmer, base, dew, drops, kc, xp: 0 };
+  const kc = count(p, 'vale.harvests');
+  // your first harvest brings a goat into the garden: not a roll, she's just yours
+  let gift: string | null = null;
+  if (!p.collection[FIRST_HARVEST_GIFT]) {
+    gift = FIRST_HARVEST_GIFT;
+    p.collection[gift] = { n: 1, kc, at: now };
+    autoPlace(p, gift);
+  }
+  const drops = rollDrops(p, GARDEN_TABLE, kc, rng, now, dev.luck || 1);
+  return { bed, node, shimmer, base, dew, drops, gift, kc, xp: 0 };
 }
 
 /** One cut or pluck lands: its XP is yours straight away, so leaving mid-harvest keeps it. Three a harvest. */
@@ -164,47 +178,6 @@ export function endHarvest(p: Profile, h: Harvest, perfects: number): HarvestEnd
   const rankUp = addXp(p, 'gather', HARVEST_XP);
   h.xp += HARVEST_XP;
   return { gained: h.base + pf, perfects: pf, xp: h.xp, rankUp };
-}
-
-/* ---------------------------------------------------------------- errands */
-/** Today's errand at a place, or null when it's done for now. The order is fixed per place, so it's the same on every device. */
-export function errandAt(p: Profile, placeId: string, now = Date.now()): ErrandDef | null {
-  const pl = PLACES[placeId];
-  if (!pl) return null;
-  const st = placeState(p, placeId, now);
-  if (st.errands.n <= 0) return null;
-  return pl.errands[(st.errands.next * 3) % pl.errands.length];
-}
-/** What a deliver errand still needs from your satchel, or null if you can hand it over now. */
-export function errandShort(p: Profile, e: ErrandDef): Record<string, number> | null {
-  if (e.kind !== 'deliver' || !e.needs) return null;
-  const short: Record<string, number> = {};
-  for (const [k, n] of Object.entries(e.needs)) { const have = p.vale.satchel[k] || 0; if (have < n) short[k] = n - have; }
-  return Object.keys(short).length ? short : null;
-}
-
-export interface ErrandDone { errand: ErrandDef; page: LorePage | null; drops: ValeDrop[]; xp: number; rankUp: RankUp | null; gift: string | null }
-export function completeErrand(p: Profile, placeId: string, rng: Rng, now = Date.now(), dev: ValeDev = {}): ErrandDone | null {
-  const pl: PlaceDef | undefined = PLACES[placeId];
-  const e = errandAt(p, placeId, now);
-  if (!pl || !e || errandShort(p, e)) return null;
-  for (const [k, n] of Object.entries(e.needs || {})) p.vale.satchel[k] -= n;
-  const st = placeState(p, placeId, now);
-  st.errands.n--; st.errands.next++;
-  const page = pl.lore.find((l) => !p.vale.lore.includes(l.id)) || null;
-  if (page) p.vale.lore.push(page.id);
-  const kc = count(p, `vale.${placeId}.errands`);
-  count(p, 'vale.errands');
-  // a thank-you the first time (Dottle's goat): not a roll, it is just yours
-  let gift: string | null = null;
-  if (e.gives && !p.collection[e.gives]) {
-    gift = e.gives;
-    p.collection[gift] = { n: 1, kc, at: now };
-    if (COLLECTIBLES[gift]) autoPlace(p, gift);
-  }
-  const drops = rollDrops(p, pl.errandTable, kc, rng, now, dev.luck || 1);
-  const xp = 15;
-  return { errand: e, page, drops, xp, rankUp: addXp(p, 'gather', xp), gift };
 }
 
 /* ---------------------------------------------------------------- brewing */
@@ -252,12 +225,14 @@ export function brew(p: Profile, id: string, quality: BrewQuality): BrewDone | n
   return { ...done, rankUp: done.rankUp || up };
 }
 
-/** The brew for a run from the entrance: one bottle of your chosen brew, if you have one. */
-export function drinkForRun(p: Profile, spend: boolean): string | null {
+/** The brew you bring to the door: your chosen one, if you have a bottle of it. */
+export function broughtBrew(p: Profile): string | null {
   const d = p.vale.drink;
-  if (!d || !RECIPES[d] || (p.vale.shelf[d] || 0) <= 0) return null;
-  if (spend) p.vale.shelf[d]--;
-  return d;
+  return d && RECIPES[d] && (p.vale.shelf[d] || 0) > 0 ? d : null;
+}
+/** Your bottle was the one poured for the party: one off the shelf (practice keeps it). */
+export function spendBottle(p: Profile, id: string): void {
+  if ((p.vale.shelf[id] || 0) > 0) p.vale.shelf[id]--;
 }
 
 /** Every ingredient name, for anything that lists them. */

@@ -12,7 +12,9 @@ import { ROLES } from '../content/roles';
 import type { Rar, RoleId, SlotId } from '../content/types';
 import { gearId } from '../content/gear';
 import { takeTrait, type Drop, type RunLoot, type Tell } from '../meta/loot';
-import { activeHero, heroById, heroLevel, roleOf, talentPointsLeft } from '../meta/profile';
+import { activeHero, heroById, heroLevel, roleOf, talentPointsLeft, type Profile } from '../meta/profile';
+import { readyBeds, seedTotal } from '../meta/vale';
+import { PLANTS } from '../content/vale';
 import { itemShare, waiting, worn } from '../meta/gear';
 import type { App } from './app';
 import { actions, esc, fmtN, fmtRate, fmtT, GLYPH, reducedMotion, wait } from './dom';
@@ -251,6 +253,7 @@ export class Reveal {
           <div class="kv"><span>${esc(dg.marksName)}</span><b>+${loot.marks}</b><small>${fmtN(rec ? rec.marks : 0)} total</small></div>
           <div class="kv"><span>Collection log</span><b>${got} / ${dg.collection.length}</b><small>${newSlots ? `+${newSlots} new` : ''}</small></div>
           <div class="kv"><span>Party deaths</span><b>${extra.deaths}</b></div>
+          ${gardenKv(p, loot)}
         </div>`;
     }
     this.renderOffer();
@@ -338,3 +341,11 @@ export class Reveal {
 }
 
 function $(id: string, root: HTMLElement): HTMLElement { return root.querySelector('#' + id) as HTMLElement; }
+/** the garden after this run: seeds the bosses dropped, and beds this clear made ready */
+function gardenKv(p: Profile, loot: RunLoot): string {
+  const seeds = Object.entries(loot.seeds || {});
+  const got = seeds.map(([id, n]) => `+${n} ${PLANTS[id]?.seed || id}`).join(', ');
+  const ready = readyBeds(p);
+  const note = loot.bedsReady ? `${loot.bedsReady} bed${loot.bedsReady > 1 ? 's' : ''} just got ready` : ready ? `${ready} bed${ready > 1 ? 's' : ''} ready` : `${seedTotal(p)} seed${seedTotal(p) === 1 ? '' : 's'} to plant`;
+  return `<div class="kv"><span>Garden</span><b>${got ? esc(got) : 'No seed'}</b><small>${esc(note)}</small></div>`;
+}
