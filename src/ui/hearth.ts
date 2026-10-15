@@ -38,30 +38,36 @@ const [X0, Y0] = HOUSE_BOUNDS;
 /** what a scene draws besides the layer you tap: the bits that move (y-sorted like the layer) and the pips */
 interface Extras { bits: { y: number; bit: Bit }[]; pips: Bit[] }
 
-/** the 3-step guided tour shown after making your first hero */
-const TOUR_STEPS: { room: string; thing?: string; eyebrow: string; title: string; text: string; next: string }[] = [
+/** the 3-step guided tour shown after making your first hero: points directly at the object in each room */
+const TOUR_STEPS: { room: string; thing?: string; at: [number, number]; callout: string; step: string; title: string; sub: string; next: string }[] = [
   {
     room: 'hall',
-    eyebrow: 'Welcome home · 1 of 3',
+    at: [HERO_AT.x, HERO_AT.y - 310],
+    callout: 'Tap Hero · Gear & Skills',
+    step: '1 / 3',
     title: 'Your Hearth',
-    text: 'Your hero stands by the fire. Tap your hero or the armour stand to put on new gear, the loft book to see your Collection Log, and Decorate to place trophies, banners, pets and room looks you earn.',
-    next: 'Next: Ride out',
+    sub: 'Gear up by the fire & decorate rooms.',
+    next: 'Next →',
   },
   {
     room: 'yard',
     thing: 'signpost',
-    eyebrow: 'Between runs · 2 of 3',
-    title: 'Ride out to the Vale',
-    text: 'Tap the signpost in the yard to ride out for a few cosy minutes. Gather herbs, stir one-run brews at the cauldron, and help Dottle with her goats on your first errand to earn the Hill Goat mount.',
-    next: 'Next: Dungeons',
+    at: [-270, -290],
+    callout: 'Tap Signpost · Ride Out',
+    step: '2 / 3',
+    title: 'The Vale',
+    sub: 'Gather herbs, brew potions & earn mounts.',
+    next: 'Next →',
   },
   {
     room: 'cellar',
     thing: 'barrow',
-    eyebrow: 'The core loop · 3 of 3',
-    title: 'Run dungeons, build your hearth',
-    text: 'Tap the Barrow door or the big Dungeons button whenever you have four minutes. Every clear upgrades your gear, rolls fixed-rate uniques and pets for your log, and brings new treasures home.',
-    next: 'Open Dungeons',
+    at: [300, 140],
+    callout: 'Tap Door · Enter Dungeon',
+    step: '3 / 3',
+    title: 'Dungeons',
+    sub: '4-minute runs for rare loot & pets.',
+    next: 'Dungeons',
   },
 ];
 
@@ -119,7 +125,7 @@ export class Hearth {
       tourskip: () => { SFX.play('ui'); this.endTour(false); },
     });
     // taps anywhere in the scene, past the house's edges too; the buttons over it look after themselves
-    root.addEventListener('click', (e) => { if (!(e.target as Element).closest('.no-cam')) this.tap(e); });
+    root.addEventListener('click', (e) => { const t = e.target as Element; if (this.root.contains(t) && !t.closest('.no-cam, [data-act]')) this.tap(e); });
     this.svg.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter' && e.key !== ' ') return;
       const el = (e.target as Element).closest('[data-thing], [data-spot], [data-hero], [data-new]');
@@ -237,8 +243,11 @@ export class Hearth {
   private far(): boolean { return this.cam.z < this.roomZ * 0.75; }
   private goRoom(id: string, jump = false): void {
     const r = ROOMS.find((x) => x.id === id) || ROOMS.find((x) => x.id === HOME_ROOM)!;
-    if (jump) this.cam.set(r.focus[0], r.focus[1], this.roomZ);
-    else this.cam.flyTo(r.focus[0], r.focus[1], this.roomZ);
+    const step = this.tourStep !== null && TOUR_STEPS[this.tourStep]?.room === id ? TOUR_STEPS[this.tourStep] : null;
+    const fx = step ? step.at[0] + (id === 'hall' ? 70 : 0) : r.focus[0];
+    const fy = r.focus[1];
+    if (jump) this.cam.set(fx, fy, this.roomZ);
+    else this.cam.flyTo(fx, fy, this.roomZ);
   }
   private overview(jump = false): void {
     const [x0, y0, x1, y1] = HOUSE_FIT;
@@ -258,6 +267,13 @@ export class Hearth {
         const [sx, sy] = this.cam.toScreen(ax, ay);
         el.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px) translate(-50%, -50%)`;
       }
+    }
+    const pin = this.signs.querySelector<HTMLElement>('.h-tour-pin');
+    if (pin && this.tourStep !== null) {
+      const [ax, ay] = TOUR_STEPS[this.tourStep].at;
+      const [sx0, sy] = this.cam.toScreen(ax, ay);
+      const sx = Math.max(125, Math.min(this.cam.w - 125, sx0));
+      pin.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px) translate(-50%, -100%)`;
     }
     const z = this.root.querySelector<HTMLElement>('[data-act="zoom"]');
     if (z) {
@@ -339,8 +355,12 @@ export class Hearth {
     const top = t.y + vy * k;
     let label = '';
     if (t.id === 'signpost') label = `<text class="sign" x="${t.x + 4 * k}" y="${t.y - 162 * k}" style="font-size: ${Math.round(30 * k)}px">Ride out</text>`;
+    else if (t.action === 'dungeons') label = `<text class="lbl" x="${t.x}" y="${t.y + 44}">Dungeons</text>`;
+    else if (t.action === 'gear') label = `<text class="lbl small" x="${t.x}" y="${t.y + 28}">Gear</text>`;
+    else if (t.action === 'logs') label = `<text class="lbl small" x="${t.x}" y="${t.y + 26}">Collection Log</text>`;
+    else if (t.action === 'brew') label = `<text class="lbl small" x="${t.x}" y="${t.y + 26}">Brew</text>`;
+    else if (t.action === 'satchel') label = `<text class="lbl small" x="${t.x}" y="${t.y + 26}">Satchel</text>`;
     if (t.action === 'gear') { const up = waiting(this.app.p, h).length + talentPointsLeft(h); if (up) extra.pips.push(pip(t.x + 60, top + 20, String(up))); }
-    if (t.action === 'dungeons') label = `<text class="lbl" x="${t.x}" y="${t.y + 44}">Dungeons</text>`;
     const hl = this.tourStep !== null && TOUR_STEPS[this.tourStep]?.thing === t.id ? ' tour-hl' : '';
     return `<g class="thing a-${t.action}${hl}" data-thing="${t.id}" data-x="${t.x}" data-y="${t.y}" tabindex="0" role="button" aria-label="${esc(t.label)}">
       ${placeSprite(t.sprite, t.x, t.y, { k })}${label}<rect class="hl" x="${(t.x + vx * k).toFixed(1)}" y="${top.toFixed(1)}" width="${(w * k).toFixed(1)}" height="${(hh * k).toFixed(1)}" rx="16"/></g>`;
@@ -426,13 +446,12 @@ export class Hearth {
     this.bottom.innerHTML = step
       ? `<div class="h-tour" role="region" aria-label="Welcome tour">
           <div class="h-tour-tx">
-            <span class="eyebrow">${esc(step.eyebrow)}</span>
-            <b>${esc(step.title)}</b>
-            <p>${esc(step.text)}</p>
+            <b><span class="h-tour-step">${esc(step.step)}</span>${esc(step.title)}</b>
+            <p>${esc(step.sub)}</p>
           </div>
           <div class="h-tour-acts">
             <button type="button" class="btn small" data-act="tourskip">Skip</button>
-            <button type="button" class="btn gold" data-act="tournext">${this.tourStep === TOUR_STEPS.length - 1 ? GLYPH.door : ''}${esc(step.next)}</button>
+            <button type="button" class="btn small gold" data-act="tournext">${this.tourStep === TOUR_STEPS.length - 1 ? GLYPH.door : ''}${esc(step.next)}</button>
           </div>
         </div>`
       : this.decorating
@@ -441,7 +460,9 @@ export class Hearth {
           <button type="button" class="icon-btn h-zoom" data-act="zoom" aria-label="See the whole house" title="See the whole house">${HOUSE_GLYPH}</button>
           <button type="button" class="btn gold big h-go" data-act="dungeon">${GLYPH.door}Dungeons</button>
         </div>`;
-    this.signs.innerHTML = ROOMS.map((r) => `<button type="button" class="h-sign" data-act="room" data-room="${r.id}" tabindex="-1">${esc(r.name)}</button>`).join('');
+    const pinHtml = step ? `<button type="button" class="h-tour-pin" data-act="tournext"><b>${esc(step.callout)}</b><i aria-hidden="true">▼</i></button>` : '';
+    this.signs.innerHTML = ROOMS.map((r) => `<button type="button" class="h-sign" data-act="room" data-room="${r.id}" tabindex="-1">${esc(r.name)}</button>`).join('') + pinHtml;
+    this.onView();
     this.syncState();
   }
 }
