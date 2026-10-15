@@ -2,7 +2,7 @@
 import { angTo, dist, distXY, TAU } from '../core/math';
 import { pick, rand, rng } from '../core/rng';
 import { S, emit } from './state.js';
-import { addThreat, aggro, banner, bits, call, dots, fx, fxText, hurtHero, killMob, makeMob, pickTarget, sfx, shake } from './entities.js';
+import { addThreat, aggro, banner, bits, call, dots, fx, fxText, hurtHero, hurtMob, killMob, makeMob, pickTarget, sfx, shake } from './entities.js';
 import { canStand, moveEnt, roomIndexOf, walkTo } from './world.js';
 
 export function nearestHeroTo(x, y, preferNonTank) {
@@ -19,6 +19,16 @@ export function randomHero(nonTank, except) {
 export function mobTick(m, dt) {
   m.flash -= dt; m.lunge -= dt; m.moving -= dt;
   if (!m.alive) { m.deadT += dt; return; }
+  if (m.bleed && m.bleed.left > 0) {
+    m.bleed.left -= dt;
+    m.bleed.next -= dt;
+    if (m.bleed.next <= 0) {
+      m.bleed.next += 0.5;
+      hurtMob(m, m.bleed.per, m.bleed.src, { col: '#7CF06A', size: 16, noCrit: true });
+      dots(m.x, m.y - 38, '#7CF06A', 2, 70, { size: 4 });
+      if (!m.alive) return;
+    }
+  }
   const st = m.st;
   st.stun = Math.max(0, st.stun - dt); st.freeze = Math.max(0, st.freeze - dt);
   if (st.slowT > 0) { st.slowT -= dt; if (st.slowT <= 0) st.slow = 0; }
@@ -154,9 +164,9 @@ function callerTick(m, dt) {
     return true;
   }
   if (ab.rot <= 0) {
-    ab.rot = 7.5;
+    ab.rot = 7.0;
     const v = randomHero(false);
-    if (v) { S.hazards.push({ shape: 'circle', x: v.x, y: v.y, r: 85, warn: 1.0, live: 6, tick: 0.5, dmg: 20, magic: true, pool: 'rot', t: 0, src: m }); sfx('rot', 0.6); }
+    if (v) { S.hazards.push({ shape: 'circle', x: v.x, y: v.y, r: 88, warn: 1.0, live: 6, tick: 0.5, dmg: 46, magic: true, pool: 'rot', t: 0, src: m }); sfx('rot', 0.6); }
   }
   const t = m.target, d = dist(m, t);
   if (d < m.r + t.r + 26) return false;
@@ -168,12 +178,12 @@ function callerTick(m, dt) {
 
 function bruteTick(m, dt) {
   const ab = m.ab;
-  if (ab.slam === undefined) ab.slam = 4;
+  if (ab.slam === undefined) ab.slam = 2.8;
   if (m.busy > 0) { m.busy -= dt; if (m.busy <= 0) m.pose = null; return true; }
   ab.slam -= dt;
   if (ab.slam <= 0) {
-    ab.slam = 9; m.busy = 1.7; m.pose = 'wind'; m.wind = 0;
-    S.hazards.push({ shape: 'circle', x: m.x, y: m.y, r: 150, warn: 1.5, t: 0, src: m, dmg: 110, knock: 300, follow: m,
+    ab.slam = 7.5; m.busy = 1.6; m.pose = 'wind'; m.wind = 0;
+    S.hazards.push({ shape: 'circle', x: m.x, y: m.y, r: 150, warn: 1.45, t: 0, src: m, dmg: 230, knock: 300, stun: 0.6, follow: m,
       onFire: (z) => { shake(8); sfx('slam'); fx({ type: 'ring', x: z.x, y: z.y, r0: 30, r1: 160, col: '#C9B79A', dur: 0.35, w: 10, ground: true }); dots(z.x, z.y, '#C9B79A', 14, 260); m.lunge = 0.2; m.lungeA = Math.PI / 2; } });
     return true;
   }
@@ -190,7 +200,7 @@ function wispTick(m, dt) {
   m.x += Math.cos(a) * m.speed * dt; m.y += Math.sin(a) * m.speed * dt;
   m.flip = Math.cos(a) < 0; m.moving = 0.1; m.walkT += dt * 4;
   if (dist(m, t) < m.r + t.r + 6) {
-    const got = hurtHero(t, 85, m, { magic: true, block: false });
+    const got = hurtHero(t, 115, m, { magic: true, block: false, hazard: true });
     if (got > 0) { t.st.haunt = 3; if (t.isPlayer) fxText(t.x, t.y - 110, 'Haunted', '#C8F5E8', 16); }
     killMob(m, null);
   }
@@ -251,7 +261,7 @@ export function makeChain(boss, h) {
   h.st.chained = ch;
   S.chains.push(ch);
   sfx('chain');
-  call('Cut the chain!', 'alarm', 1.6);
+  call(S.player && S.player.role === 'healer' ? 'Swipe the chain!' : 'Chained! Healer, cut it!', 'alarm', 1.6);
   return ch;
 }
 export function chainEnds(ch) { const b = ch.boss, h = ch.hero; return { ax: b.x + 70, ay: b.y - 120, bx: h.x, by: h.y - 44 }; }
@@ -259,10 +269,11 @@ export function chainTick(ch, dt) {
   const h = ch.hero;
   ch.t += dt; ch.tick -= dt;
   if (!h.alive || !ch.boss.alive || ch.t >= ch.max) { cutChain(ch, false); return; }
-  if (ch.tick <= 0) { ch.tick = 0.5; hurtHero(h, 18, ch.boss, { magic: true, pierce: true, block: false, dodge: false, numCol: '#C8F5E8', numSize: 15, numDur: 0.6 }); }
+  if (ch.tick <= 0) { ch.tick = 0.5; hurtHero(h, 24, ch.boss, { magic: true, pierce: true, block: false, dodge: false, numCol: '#C8F5E8', numSize: 15, numDur: 0.6 }); }
 }
 export function cutChain(ch, byWho) {
   if (ch.dead) return;
+  if (byWho && byWho.kind === 'hero' && byWho.role !== 'healer') return;
   ch.dead = true;
   if (ch.hero.st.chained === ch) ch.hero.st.chained = null;
   S.chains = S.chains.filter((c) => c !== ch);

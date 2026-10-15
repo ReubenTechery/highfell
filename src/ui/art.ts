@@ -7,7 +7,7 @@ import PORTRAITS from '../../art/portraits.json';
 import VALE from '../../art/vale.json';
 import VALE_ICONS from '../../art/vale_icons.json';
 import { COLLECTIBLES, ITEMS } from '../content';
-import { RARITY, ROLE_SLOTS } from '../content/gear';
+import { RARITY, ROLE_SLOTS, gearKey } from '../content/gear';
 import { heroArt } from '../content/folk';
 import { ROLES } from '../content/roles';
 import type { RoleId } from '../content/types';
@@ -24,7 +24,7 @@ export const tile = (name: string): string => TILES[name] || TILES.mend || '';
 /** The icon for anything with an id: regular gear, set pieces, uniques, collectibles. */
 export function iconOf(id: string): string {
   const it = ITEMS[id];
-  if (it) return tile(it.icon || ROLE_SLOTS[it.role][it.slot].icon);
+  if (it) return tile(it.icon || ROLE_SLOTS[gearKey(it)][it.slot].icon);
   const c = COLLECTIBLES[id];
   if (c) return tile(c.icon);
   return tile('mend');

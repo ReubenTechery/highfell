@@ -523,28 +523,10 @@ def race_icons():
     icon('c_elf', '#1F3D5E', [f'<g transform="translate(0 3) scale(1.15)">' + ''.join(eb + ef) + '</g>'], k=0.82, ground=34)
     # human: warm brown skin, bun and gold circlet
     icon('c_human', '#2D4568', [f'<g transform="translate(0 4) scale(1.15)">' + ''.join(heads.human_head(1.15, bun=True, circlet=True)) + '</g>'], k=0.84, ground=34)
-    # gnome: rosy cheeks, copper-blond hair tufts, big brass goggles on forehead
-    gn = [both('M-13 -1 C-18 -2 -20 3 -15 6 Z', '#F5C6A5', 2.8),
-          s('M-16 -4 C-22 -14 -16 -24 -8 -20 C-4 -26 4 -26 8 -20 C16 -24 22 -14 16 -4 Z', '#E8A44A', 3.2),
-          e(0, 3, 14, 13, '#F5C6A5', 3.2),
-          heads.eye(-5.4, 3, 3.6, 4, (0.5, 0.4), w=2.2), heads.eye(5.4, 3, 3.6, 4, (-0.5, 0.4), w=2.2),
-          c(0, 6.5, 3.6, '#E29E78', 2.5),
-          ln('M-4.5 11.2 C-1.8 13.5 1.8 13.5 4.5 11.2', K, 2.4),
-          s('M-15 -9 H15 V-4 H-15 Z', '#6B4528', 2.6),
-          c(-6.5, -7, 6, GOLD, 2.8), c(6.5, -7, 6, GOLD, 2.8),
-          c(-6.5, -7, 3.6, '#8FD6FF', 2), c(6.5, -7, 3.6, '#8FD6FF', 2)]
-    icon('c_gnome', '#3E3258', gn, k=0.92, ground=34)
+    # gnome: rosy cheeks, copper-blond hair, big brass goggles on forehead
+    icon('c_gnome', '#3E3258', [f'<g transform="translate(0 5) scale(1.02)">' + ''.join(heads.gnome_head(1.02, fem=False, goggles=True)) + '</g>'], k=0.88, ground=34)
     # goblin: wide notched ears, sharp green chin, gold eyes, grin with fang
-    gb = [both('M-11 -2 C-20 -6 -28 -4 -30 2 C-24 6 -17 6 -11 4 Z', '#6EA84A', 3),
-          ln('M-14 0 L-24 1 M14 0 L24 1', '#528534', 2),
-          s('M-12 -14 C-6 -20 6 -20 12 -14 C14 -2 10 11 0 16 C-10 11 -14 -2 -12 -14 Z', '#6EA84A', 3.2),
-          e(-5.5, -1, 3.8, 3.4, '#F2C230', 2.2) + c(-5, -1, 1.6, K, 0),
-          e(5.5, -1, 3.8, 3.4, '#F2C230', 2.2) + c(5, -1, 1.6, K, 0),
-          ln('M-10 -6 L-2 -4 M10 -6 L2 -4', K, 2.8),
-          s('M-2 2 L0 7 L3 5', '#528534', 2.2),
-          ln('M-6 10 C-2 12 2 12 6 10', K, 2.4),
-          s('M-4.5 10.5 L-3 7 L-1.5 10.8 Z', BONE, 1.8)]
-    icon('c_goblin', '#2B4634', gb, k=0.92, ground=34)
+    icon('c_goblin', '#2B4634', [f'<g transform="translate(0 4) scale(1.0)">' + ''.join(heads.goblin_head(1.0, fem=False)) + '</g>'], k=0.72, ground=34)
     # orc: broad olive-grey jaw, heavy brow, two lower tusks, fierce orange eyes
     orc = [both('M-13 -3 C-18 -6 -21 -2 -16 4 Z', '#6E8258', 2.8),
            s('M-14 -14 C-8 -20 8 -20 14 -14 C16 -2 14 13 0 16 C-14 13 -16 -2 -14 -14 Z', '#6E8258', 3.4),

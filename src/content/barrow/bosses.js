@@ -26,7 +26,7 @@ export function knightTick(m, dt) {
   if (m.wind > 0) return false;
   ab.sweep -= dt; ab.charge -= dt;
   if (ab.charge <= 0) {
-    ab.charge = m.phase === 2 ? 9 : 11;
+    ab.charge = m.phase === 2 ? 8 : 9.5;
     const v = (intro && S.player && S.player.alive ? S.player : null) || randomHero(true) || m.target;
     if (v) {
       const a = angTo(m, v), len = intro ? Math.min(dist(m, v) + 90, 210) : dist(m, v) + 150;
@@ -38,11 +38,11 @@ export function knightTick(m, dt) {
     }
   }
   if (ab.sweep <= 0 && (!intro || (S.hints.dodge && dist(m, m.target) <= 155))) {
-    ab.sweep = m.phase === 2 ? 7 : 8.5;
+    ab.sweep = m.phase === 2 ? 6.2 : 7.5;
     const a = angTo(m, m.target);
     m.act = { k: 'sweep', t: 0, dur: 1.55 };
     m.face = a; m.flip = Math.cos(a) < 0; m.pose = 'wind';
-    S.hazards.push({ shape: 'cone', x: m.x, y: m.y, a, r: 210, arc: 2.27, warn: 1.4, t: 0, dmg: 190, heavy: true, block: true, src: m, tankBuster: true,
+    S.hazards.push({ shape: 'cone', x: m.x, y: m.y, a, r: 210, arc: 2.27, warn: 1.4, t: 0, dmg: 280, heavy: true, block: true, src: m, tankBuster: true,
       onFire: () => { sfx('sweep'); shake(5); m.pose = null; m.lunge = 0.2; m.lungeA = a; fx({ type: 'slash', x: m.x, y: m.y - 60, a, r: 150, dur: 0.22, col: '#FFFFFF', wide: true }); } });
     if (intro) call('Heavy swing! Block it', 'alarm', 1.2);
     return true;
@@ -89,8 +89,8 @@ function knightAct(m, dt) {
       if (!h.alive || a.hit.has(h.id)) continue;
       if (dist(h, m) <= h.r + m.r + 8) {
         a.hit.add(h.id);
-        const got = hurtHero(h, 190, m, { heavy: true, block: true });
-        if (got > 40) { h.st.stun = Math.max(h.st.stun, 0.7); h.st.kx += Math.cos(a.a + 1.57 * (rng() < 0.5 ? 1 : -1)) * 320; h.st.ky += Math.sin(a.a) * 200; }
+        const got = hurtHero(h, 270 * m.dmgMul, m, { heavy: true, block: false, hazard: true });
+        if (got > 40) { h.st.stun = Math.max(h.st.stun, 0.8); h.st.kx += Math.cos(a.a + 1.57 * (rng() < 0.5 ? 1 : -1)) * 320; h.st.ky += Math.sin(a.a) * 200; }
         shake(5); sfx('thud');
       }
     }
@@ -115,7 +115,7 @@ export function keeperTick(m, dt) {
     m.phase = 2; m.act = { k: 'leap', t: 0 }; m.wind = 0; m.pose = null;
     ab.wisps = 3.5; ab.chain = 7; ab.smash = 11; ab.toss = 9;
     banner('Phase 2: lights out. Watch for wisps and chains.', 'warn', 2.6); sfx('roar');
-    S.hazards.push({ shape: 'circle', x: MAP.arena.x, y: MAP.arena.y, r: 150, warn: 1.2, t: 0, dmg: 120, src: m, onFire: () => { shake(9); sfx('slam'); } });
+    S.hazards.push({ shape: 'circle', x: MAP.arena.x, y: MAP.arena.y, r: 150, warn: 1.2, t: 0, dmg: 180, src: m, onFire: () => { shake(9); sfx('slam'); } });
     return true;
   }
   if (m.phase === 2 && m.hp < m.maxHp * 0.33 && !m.act) {
@@ -155,7 +155,7 @@ export function keeperTick(m, dt) {
   }
   if (P === 1 && ab.hands <= 0) {
     ab.hands = 12;
-    for (const h of S.heroes) if (h.alive) S.hazards.push({ shape: 'circle', kind: 'hand', x: h.x, y: h.y, r: 60, warn: 1.25, t: 0, dmg: 95, root: 1.5, src: m, onFire: (z) => { S.fx.push({ type: 'hand', x: z.x, y: z.y + 4, t: 0, dur: 1.1 }); bits(z.x, z.y, 'shard_dirt', 5, 120); } });
+    for (const h of S.heroes) if (h.alive) S.hazards.push({ shape: 'circle', kind: 'hand', x: h.x, y: h.y, r: 60, warn: 1.25, t: 0, dmg: 180, root: 1.5, src: m, onFire: (z) => { S.fx.push({ type: 'hand', x: z.x, y: z.y + 4, t: 0, dur: 1.1 }); bits(z.x, z.y, 'shard_dirt', 5, 120); } });
     sfx('rumble');
     m.act = { k: 'gesture', t: 0, dur: 0.6 };
     return true;
@@ -166,7 +166,7 @@ export function keeperTick(m, dt) {
     if (v) {
       const a = angTo(m, v);
       m.face = a; m.flip = Math.cos(a) < 0;
-      S.hazards.push({ shape: 'cone', x: m.x, y: m.y, a, r: 380, arc: 0.9, warn: 1.1, t: 0, dmg: 120, block: true, src: m, follow: m, onFire: (z) => { sfx('toss'); for (let i = 0; i < 8; i++) { const r = vrand(80, 360), aa = a + vrand(-0.4, 0.4); dots(m.x + Math.cos(aa) * r, m.y + Math.sin(aa) * r, '#6B4A3A', 2, 80, { size: 7 }); } } });
+      S.hazards.push({ shape: 'cone', x: m.x, y: m.y, a, r: 380, arc: 0.9, warn: 1.1, t: 0, dmg: 190, block: true, src: m, follow: m, onFire: (z) => { sfx('toss'); for (let i = 0; i < 8; i++) { const r = vrand(80, 360), aa = a + vrand(-0.4, 0.4); dots(m.x + Math.cos(aa) * r, m.y + Math.sin(aa) * r, '#6B4A3A', 2, 80, { size: 7 }); } } });
       m.act = { k: 'gesture', t: 0, dur: 1.15 };
       return true;
     }
@@ -186,8 +186,8 @@ function startSmash(m) {
       dots(zz.x, zz.y, '#6B4A3A', 16, 280, { size: 7 });
       for (const h of S.heroes) {
         if (!h.alive) continue;
-        if (h === t && distXY(h.x, h.y, zz.x, zz.y) <= zz.r + h.r) hurtHero(h, 520 * m.dmgMul, m, { heavy: true, block: true, pierce: true, smash: true });
-        else if (distXY(h.x, h.y, zz.x, zz.y) <= zz.r + h.r) hurtHero(h, 180 * m.dmgMul, m, { block: false });
+        if (h === t && distXY(h.x, h.y, zz.x, zz.y) <= zz.r + h.r) hurtHero(h, 560 * m.dmgMul, m, { heavy: true, block: true, pierce: true, smash: true });
+        else if (distXY(h.x, h.y, zz.x, zz.y) <= zz.r + h.r) hurtHero(h, 240 * m.dmgMul, m, { block: false, hazard: true });
       }
     } };
   S.hazards.push(z);
@@ -206,9 +206,9 @@ function startBurrow(m) {
       m.x = z.x; m.y = z.y; m.hidden = false; m.untargetable = false; m.home = { x: z.x, y: z.y };
       shake(10); sfx('erupt'); hitstop(0.05);
       bits(z.x, z.y, 'shard_dirt', 22, 340);
-      for (const h of S.heroes) if (h.alive && distXY(h.x, h.y, z.x, z.y) <= z.r + h.r) { const got = hurtHero(h, 220 * m.dmgMul, m, { block: false }); if (got > 0) h.st.air = 0.6; }
-      S.rings.push({ x: z.x, y: z.y, r: 40, speed: 270, w: 26, max: 620, hit: new Set(), dmg: 90, src: m });
-      S.timers.push({ t: 0.75, fn: () => { if (m.alive) S.rings.push({ x: z.x, y: z.y, r: 40, speed: 270, w: 26, max: 620, hit: new Set(), dmg: 90, src: m }); } });
+      for (const h of S.heroes) if (h.alive && distXY(h.x, h.y, z.x, z.y) <= z.r + h.r) { const got = hurtHero(h, 320 * m.dmgMul, m, { block: false, hazard: true }); if (got > 0) h.st.air = 0.6; }
+      S.rings.push({ x: z.x, y: z.y, r: 40, speed: 270, w: 26, max: 620, hit: new Set(), dmg: 130, src: m });
+      S.timers.push({ t: 0.75, fn: () => { if (m.alive) S.rings.push({ x: z.x, y: z.y, r: 40, speed: 270, w: 26, max: 620, hit: new Set(), dmg: 130, src: m }); } });
     } });
   return true;
 }

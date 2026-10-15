@@ -1,11 +1,11 @@
 /* ---------- heroes: moving, auto attacks, abilities, dodge, block ---------- */
 import { angDiff, angTo, dist, distXY, norm } from '../core/math';
 import { rng } from '../core/rng';
-import { AB, MEND } from '../content/roles';
+import { AB, MEND, abKey } from '../content/roles';
 import { HOOKS, S, emit } from './state.js';
 import { addThreat, aggro, banner, bits, dots, fx, fxText, healHero, hitstop, hurtMob, say, sfx, shake, taunt } from './entities.js';
 import { interruptCast } from './mobs.js';
-import { moveEnt } from './world.js';
+import { canStand, moveEnt } from './world.js';
 
 export const heroBy = (role) => S.heroes.find((h) => h.role === role) || null;
 export const aliveHeroes = () => S.heroes.filter((h) => h.alive);
@@ -53,6 +53,8 @@ export function autoTarget(h) {
 export function heroTick(h, dt) {
   for (const k in h.cd) if (h.cd[k] > 0) h.cd[k] = Math.max(0, h.cd[k] - dt);
   h.gcd -= dt; h.iframe -= dt; h.flash -= dt; h.hurtT -= dt; h.lunge -= dt; h.sayT -= dt; h.moving -= dt;
+  if (h.frenzyT > 0) h.frenzyT = Math.max(0, h.frenzyT - dt);
+  if (h.nightstalkerT > 0) h.nightstalkerT = Math.max(0, h.nightstalkerT - dt);
   if (h.swingT > 0) h.swingT = Math.max(0, h.swingT - dt);
   if (h.whirlT > 0) h.whirlT = Math.max(0, h.whirlT - dt);
   if (!h.alive) { h.deadT += dt; return; }
@@ -110,6 +112,15 @@ function tickHots(h, dt) {
   }
 }
 
+export function applyBleed(h, m, durOverride) {
+  if (!m || !m.alive || m.cage || m.M.wisp) return;
+  const chestMul = h.bonuses && h.bonuses.has('sv_chest') ? 1.3 : 1;
+  const per = Math.round(30 * chestMul);
+  const fullDur = 5.5 + (h.bonuses && h.bonuses.has('sv_chest') ? 1.0 : 0);
+  const dur = durOverride ? Math.max(m.bleed ? m.bleed.left : 0, durOverride) : fullDur;
+  m.bleed = { src: h, per, left: dur, next: m.bleed && m.bleed.left > 0 ? m.bleed.next : 0.5 };
+}
+
 function heroAuto(h, dt) {
   h.atkT -= dt;
   if (h.dodgeT > 0 || h.cast || h.dash) return;
@@ -123,14 +134,29 @@ function heroAuto(h, dt) {
     if (d <= h.r + t.r + 30 && h.atkT <= 0) {
       h.atkT = 1.0; h.face = angTo(h, t); h.lunge = 0.16; h.lungeA = h.face;
       const wide = h.traits.has('wide') ? 1 : 0.5;
-      hurtMob(t, 40, h, { knock: 70 });
-      for (const o of foesNear(h.x, h.y, 80, false)) if (o !== t && Math.abs(angDiff(h.face, angTo(h, o))) < 0.95) hurtMob(o, 40 * wide, h, { knock: 60, size: 18 });
+      hurtMob(t, 45, h, { knock: 70 });
+      for (const o of foesNear(h.x, h.y, 80, false)) if (o !== t && Math.abs(angDiff(h.face, angTo(h, o))) < 0.95) hurtMob(o, 45 * wide, h, { knock: 60, size: 18 });
       fx({ type: 'slash', x: h.x, y: h.y - 30, a: h.face, r: 54, dur: 0.18, col: '#FFFFFF' });
       sfx('swing');
       if (h.unique === 'gravedigger' && ++h.swings % 5 === 0) gravedig(h);
     }
   } else if (h.role === 'healer') {
     if (d <= 440 && h.atkT <= 0 && h.gcd <= 0) { h.atkT = 1.4; h.face = angTo(h, t); h.lunge = 0.1; h.lungeA = h.face; shoot(h, t, 'holy'); }
+  } else if (h.cls === 'rogue') {
+    if (d <= h.r + t.r + 34 && h.atkT <= 0) {
+      h.atkT = h.frenzyT > 0 ? 0.37 : 0.5;
+      h.face = angTo(h, t); h.lunge = 0.13; h.lungeA = h.face;
+      h.swings = (h.swings || 0) + 1;
+      const bleedHit = t.bleed && t.bleed.left > 0 ? 35 : 28;
+      hurtMob(t, bleedHit, h, { crit: 0.2, col: '#D7DEE6' });
+      if (t.alive && h.traits.has('twinvenom') && t.bleed && t.bleed.left > 0) t.bleed.left = Math.min(7.5, t.bleed.left + 1.5);
+      if (h.unique === 'cryptfangs' && h.swings % 4 === 0 && t.alive) {
+        hurtMob(t, 32, h, { crit: 0.25, col: '#7CF06A', size: 19 });
+        if (t.alive) applyBleed(h, t);
+      }
+      fx({ type: 'slash', x: h.x, y: h.y - 30, a: h.face + (h.swings % 2 ? 0.28 : -0.28), r: 46, dur: 0.14, col: '#7CF06A' });
+      sfx('swing', 0.65);
+    }
   } else {
     if (h.stillT >= 0.12 && d <= 480 && h.atkT <= 0) { h.atkT = 0.72; h.face = angTo(h, t); h.lunge = 0.1; h.lungeA = h.face; shoot(h, t, 'frost'); }
   }
@@ -147,25 +173,16 @@ function shoot(h, t, kind) {
   S.projs.push({ team: 'hero', kind, x: h.x + Math.cos(h.face) * 18, y: h.y + Math.sin(h.face) * 8, z: 52, sp: frost ? 'bolt_frost' : 'orb_holy', src: h, tgt: t, speed: frost ? 780 : 640, life: 2 });
   sfx(frost ? 'bolt' : 'holy', 0.6);
 }
-export const tal = (h, slot) => (h && h.talents && h.talents[slot]) || 0;
 export function abCd(h, slot) {
-  const def = AB[h.role][slot];
-  if (!def) return 0;
-  let cd = def.cd || 0;
-  if (tal(h, slot) >= 2) {
-    if (def.key === 'cleave' || def.key === 'smite' || def.key === 'icicle') cd -= 0.4;
-    else if (def.key === 'slam' || def.key === 'blizzard') cd -= 1.0;
-    else if (def.key === 'charge') cd -= 1.2;
-    else if (def.key === 'ward' || def.key === 'comet') cd -= 0.8;
-    else if (def.key === 'sunburst') cd -= 2.5;
-    else if (def.key === 'nova') cd -= 2.0;
-  }
-  return Math.max(0.5, cd);
+  const def = AB[abKey(h)][slot];
+  return def && def.cd ? def.cd : 0;
 }
 export function abMana(h, slot) {
-  const def = AB[h.role][slot];
+  const def = AB[abKey(h)][slot];
   if (!def || !def.mana) return 0;
-  return def.key === 'circle' && tal(h, 'a1') >= 2 ? Math.max(0, def.mana - 2) : def.mana;
+  let m = def.mana;
+  if (def.key === 'circle' && h.bonuses && h.bonuses.has('cw_chest')) m -= 3;
+  return Math.max(0, m);
 }
 
 export function projHit(p) {
@@ -177,25 +194,24 @@ export function projHit(p) {
     bits(t.x, t.y - 40, 'shard_ice', 2, 110);
   } else if (p.kind === 'icicle') {
     const frozen = t.st && t.st.freeze > 0;
-    const rk = tal(h, 'a4');
-    hurtMob(t, rk >= 1 ? 90 : 75, h, { shatter: 3, crit: 0.25 + (frozen && rk >= 2 ? 0.15 : 0), col: frozen ? '#8FD6FF' : '#DDF3FF' });
-    if (rk >= 1) {
-      const o = S.mobs.find((m) => m !== t && isFoe(m) && engaged(m) && !m.cage && dist(m, t) < 150);
-      if (o) hurtMob(o, 36, h, { col: '#DDF3FF', size: 17, noCrit: true });
+    const helmMul = h.bonuses.has('rb_helm') ? 1.25 : 1;
+    hurtMob(t, 72 * helmMul, h, { shatter: 3, crit: 0.25, col: frozen ? '#8FD6FF' : '#DDF3FF' });
+    if (h.bonuses.has('rb_helm')) {
+      const o = S.mobs.find((m) => m !== t && isFoe(m) && engaged(m) && !m.cage && dist(m, t) < 160);
+      if (o) hurtMob(o, 40, h, { col: '#DDF3FF', size: 17, noCrit: true });
     }
-    if (frozen && rk >= 2) h.cd.a3 = Math.max(0, h.cd.a3 - 0.5);
     if (frozen && h.isPlayer) fxText(t.x, t.y - 130, 'Shatter', '#8FD6FF', 22, { dur: 0.9 });
     bits(t.x, t.y - 40, 'shard_ice', frozen ? 7 : 3, 180);
   } else if (p.kind === 'smite') {
-    const rk = tal(h, 'a4');
-    const got = hurtMob(t, rk >= 1 ? 88 : 70, h, { col: '#FFE08A', size: 20 });
+    const helmMul = h.bonuses.has('cw_helm') ? 1.3 : 1;
+    const got = hurtMob(t, 74 * helmMul, h, { col: '#FFE08A', size: 20 });
     const low = mostHurt(h, null);
     if (got > 0 && low && low.hp < low.maxHp) { healHero(h, low, got, { size: 17, raw: true }); fx({ type: 'beam', x: t.x, y: t.y - 50, x2: low.x, y2: low.y - 40, col: '#FFE08A', dur: 0.22 }); }
     for (const z of S.zones) if (z.kind === 'heal') {
       fx({ type: 'ring', x: z.x, y: z.y, r0: 24, r1: z.r, col: '#FFE08A', dur: 0.28, w: 6, ground: true });
-      for (const a of S.heroes) if (a.alive && dist(a, z) <= z.r + a.r && a.hp < a.maxHp) healHero(h, a, rk >= 2 ? 48 : 32, { size: 15 });
+      for (const a of S.heroes) if (a.alive && dist(a, z) <= z.r + a.r && a.hp < a.maxHp) healHero(h, a, 35, { size: 15 });
     }
-    h.mana = Math.min(h.maxMana, h.mana + (rk >= 2 ? 5 : 3));
+    h.mana = Math.min(h.maxMana, h.mana + 3 + (h.bonuses.has('cw_helm') ? 3 : 0));
     dots(t.x, t.y - 50, '#FFE08A', 6, 120);
   } else {
     hurtMob(t, 18, h, { col: '#FFE08A', size: 17 });
@@ -210,7 +226,7 @@ export function mostHurt(h, except) {
 
 /* ---------- abilities ---------- */
 export function useAbility(h, slot, aim) {
-  const def = AB[h.role][slot];
+  const def = AB[abKey(h)][slot];
   if (!def || !h.alive || S.over || def.hold) return false;
   if (h.st.stun > 0 || h.st.caged || h.st.air > 0 || h.dodgeT > 0 || h.dash) return false;
   if (h.cd[slot] > 0) { if (h.isPlayer) HOOKS.nope(slot); return false; }
@@ -230,6 +246,10 @@ export function useAbility(h, slot, aim) {
     case 'nova': ok = abNova(h); break;
     case 'icicle': ok = abShot(h, aim, 'icicle'); break;
     case 'comet': ok = abComet(h, aim); return ok;
+    case 'viper': ok = abViper(h, aim); break;
+    case 'ambush': ok = abAmbush(h, aim); break;
+    case 'flurry': ok = abFlurry(h); break;
+    case 'shadowstep': ok = abShadowstep(h, aim); break;
   }
   if (ok) {
     h.cd[slot] = abCd(h, slot);
@@ -242,14 +262,16 @@ export function useAbility(h, slot, aim) {
 /* Slam: drag everything around you in, make it turn on you, and spin a 360° whirlwind through the pack */
 function abSlam(h) {
   let n = 0;
-  const rk = tal(h, 'a3'), R = rk >= 1 ? 240 : 200, wR = rk >= 1 ? 128 : 114;
+  const R = 210, wR = 118;
+  const chestMul = h.bonuses.has('bg_chest') ? 1.35 : 1;
   for (const m of S.mobs) {
     if (!isFoe(m) || m.cage || m.M.wisp || dist(m, h) > R + m.r || Math.abs(m.y - h.y) > 600) continue;
     taunt(m, h, 4);
-    hurtMob(m, rk >= 1 ? 52 : 42, h, { threat: rk >= 2 ? 3 : 2 });
+    hurtMob(m, 50 * chestMul, h, { threat: 2 });
     if (m.alive && !m.isBoss) yank(m, h, m.M.big ? 0.5 : 1.05);
     n++;
   }
+  if (n > 0 && h.bonuses.has('bg_chest')) healHero(h, h, 18 * n, { size: 17 });
   say(h, n ? (rng() < 0.5 ? 'Oi!' : 'Over here!') : 'Oi?', 0.9);
   // Inward vacuum ring + ground shockwave
   fx({ type: 'ring', x: h.x, y: h.y, r0: R + 12, r1: 24, col: '#F2C230', dur: 0.25, w: 9, ground: true });
@@ -257,7 +279,7 @@ function abSlam(h) {
   if (n) shake(4.5);
   sfx('slam', 0.7); sfx('taunt');
   // Stage 2: 360° Whirlwind cyclone spin
-  h.whirlDur = rk >= 2 ? 0.54 : 0.42;
+  h.whirlDur = 0.42;
   h.whirlT = h.whirlDur;
   fx({ type: 'whirl', h, x: h.x, y: h.y, r: wR, dur: h.whirlDur, col: '#F2C230' });
   const spinSlice = (finalSpin) => {
@@ -266,7 +288,7 @@ function abSlam(h) {
     let hitAny = false;
     for (const m of S.mobs) {
       if (!isFoe(m) || m.cage || m.M.wisp || dist(m, h) > wR + m.r) continue;
-      hurtMob(m, rk >= 1 ? 14 : 10, h, { noCrit: true, threat: rk >= 2 ? 3 : 2, knock: finalSpin ? 55 : 25, size: 17 });
+      hurtMob(m, 14 * chestMul, h, { noCrit: true, threat: 2, knock: finalSpin ? 55 : 25, size: 17 });
       hitAny = true;
     }
     if (hitAny) {
@@ -275,8 +297,7 @@ function abSlam(h) {
     }
   };
   later(0.18, () => spinSlice(false));
-  later(0.35, () => spinSlice(rk < 2));
-  if (rk >= 2) later(0.50, () => spinSlice(true));
+  later(0.35, () => spinSlice(true));
   return true;
 }
 /* pull a mob in towards the hero, to just outside arm's reach (knockback decays at 0.01 a second, so the
@@ -290,15 +311,17 @@ function yank(m, h, k) {
   fx({ type: 'beam', x: m.x, y: m.y - 30, x2: h.x, y2: h.y - 30, col: '#F2C230', dur: 0.16 });
   dots(m.x, m.y, '#C9B79A', 4, 90, { size: 5 });
 }
-/* Cleave: fast, wide crescent slash through everything in front of you; crushes stunned or clumped packs */
+/* Cleave: fast, wide crescent slash through everything in front of you; crushes stunned, clumped, or heavy foes */
 function abCleave(h, aim) {
   const t = aim && aim.kind === 'mob' && isFoe(aim) ? aim : autoTarget(h);
   if (t && dist(h, t) < 220) h.face = angTo(h, t);
-  const rk = tal(h, 'a1'), wide = rk >= 1 || h.traits.has('wide');
+  const wide = h.traits.has('wide');
   const hits = foesNear(h.x, h.y, 126, false).filter((m) => !m.cage && Math.abs(angDiff(h.face, angTo(h, m))) < (wide ? 1.42 : 1.25));
-  const crush = hits.length >= 2 || hits.some((m) => m.st && m.st.stun > 0);
-  const base = rk >= 1 ? 86 : 72, crushDmg = rk >= 2 ? 128 : rk >= 1 ? 108 : 90;
-  for (const m of hits) hurtMob(m, (crush || (m.st && m.st.stun > 0)) ? crushDmg : base, h, { knock: crush ? 105 : 85, crit: crush ? 0.28 : 0.2 });
+  const crush = hits.length >= 2 || hits.some((m) => m.M.big || (m.st && m.st.stun > 0));
+  const helmMul = h.bonuses.has('bg_helm') ? 1.25 : 1;
+  const base = 70 * helmMul, crushDmg = 92 * helmMul;
+  for (const m of hits) hurtMob(m, (crush || m.M.big || (m.st && m.st.stun > 0)) ? crushDmg : base, h, { knock: crush ? 105 : 85, crit: crush ? 0.28 : 0.2 });
+  if (hits.length > 0 && h.bonuses.has('bg_helm')) healHero(h, h, 24, { size: 17 });
   if (crush && h.isPlayer) {
     fxText(h.x + Math.cos(h.face) * 58, h.y + Math.sin(h.face) * 35 - 112, 'Crush!', '#FFE08A', 24, { dur: 0.85 });
     hitstop(0.038);
@@ -351,45 +374,44 @@ function dashTick(h, dt) {
   if (!moveEnt(h, (dx / dd) * step, (dy / dd) * step)) { chargeImpact(h, d); h.dash = null; }
 }
 function chargeImpact(h, d) {
-  const ring = h.traits.has('ringing'), rk = tal(h, 'a2'), dmg = rk >= 1 ? 100 : 80, stunDur = rk >= 2 ? 1.4 : 1.0;
+  const ring = h.traits.has('ringing');
+  const shMul = h.bonuses.has('bg_shoulders') ? 1.35 : 1;
+  const dmg = 92 * shMul, stunDur = 1.0;
   const hits = foesNear(h.x, h.y, 92, false).filter((m) => !m.cage);
   for (const m of hits) {
     aggro(m, h, 0);
-    hurtMob(m, dmg, h, { knock: 160 });
+    const hitDmg = m.M.big ? dmg * 1.15 : dmg;
+    hurtMob(m, hitDmg, h, { knock: 160 });
     // the mob you charged turns on you; Ringing Charge makes everything you hit turn
-    if (ring) hurtMob(m, dmg, h, { knock: 60 });
+    if (ring) hurtMob(m, hitDmg, h, { knock: 60 });
     if (ring || m === d.mob) taunt(m, h, 2.5);
     addThreat(m, h, 260);
     if (!m.isBoss) { m.st.stun = Math.max(m.st.stun, stunDur); m.wind = 0; if (m.cast) interruptCast(m); }
   }
-  if (rk >= 2) h.cd.a1 = 0;
-  else if (rk >= 1) h.cd.a1 = Math.max(0, h.cd.a1 - 1.5);
-  else if (h.isPlayer) h.cd.a1 = Math.max(0, h.cd.a1 - 0.8);
+  if (h.bonuses.has('bg_shoulders')) {
+    h.absorb = Math.max(h.absorb, Math.round(80 * h.power));
+    h.absorbT = Math.max(h.absorbT, 5);
+    if (h.isPlayer) fxText(h.x, h.y - 116, 'Skull Guard', '#FFE08A', 18);
+  }
+  if (h.unique === 'gravedigger') h.cd.a1 = 0;
+  else h.cd.a1 = Math.max(0, h.cd.a1 - 1.2);
   if (d.mob) h.picked = d.mob.alive ? d.mob : null;
   fx({ type: 'ring', x: h.x, y: h.y, r0: 16, r1: 108, col: '#F2C230', dur: 0.28, w: 9, ground: true });
   dots(h.x, h.y, '#C9B79A', 10, 180);
   bits(h.x, h.y - 20, 'shard_dirt', 6, 200);
   if (hits.length) { shake(5.5); sfx('thud'); if (h.isPlayer) hitstop(0.045); }
 }
-/* a perfect block hits back, and Barrowguard + Bulwark stack into a shield */
+/* a perfect block hits back, readies Cleave, and Barrowguard 2pc grants Bone shield */
 export function onPerfectBlock(h, src) {
-  const rk = tal(h, 'a4');
   if (src && src.kind === 'mob' && src.alive) {
-    hurtMob(src, rk >= 1 ? 195 : 150, h, { col: '#F2C230', size: 26, noCrit: true });
-    if (rk >= 1) {
-      for (const m of foesNear(h.x, h.y, 95, false)) {
-        if (m !== src && !m.cage && !m.isBoss && Math.abs(angDiff(h.face, angTo(h, m))) < 1.2) m.st.stun = Math.max(m.st.stun, 0.8);
-      }
-    }
+    hurtMob(src, 185, h, { col: '#F2C230', size: 26, noCrit: true });
     fx({ type: 'cleave', x: h.x + Math.cos(h.face) * 16, y: h.y - 34, a: h.face, r: 78, dur: 0.22, col: '#F2C230', crush: true });
   }
-  if (rk >= 2) h.cd.a1 = 0;
-  const bg = h.bonuses.has('barrowguard2') ? 150 : 0;
-  const bw = rk >= 2 ? 90 : 0;
-  if (bg + bw > 0) {
-    h.absorb = Math.max(h.absorb, Math.round((bg + bw) * h.power));
+  h.cd.a1 = 0;
+  if (h.bonuses.has('barrowguard2')) {
+    h.absorb = Math.max(h.absorb, Math.round(150 * h.power));
     h.absorbT = 6;
-    if (h.isPlayer) fxText(h.x, h.y - 120, bg && bw ? 'Bone Bulwark' : bg ? 'Bone shield' : 'Bulwark', '#FFE08A', 18);
+    if (h.isPlayer) fxText(h.x, h.y - 120, 'Bone shield', '#FFE08A', 18);
   }
 }
 
@@ -398,8 +420,8 @@ function abCircle(h, aim) {
   let p;
   if (aim && aim.x !== undefined && !aim.kind) p = clampRange(h, aim.x, aim.y, 520);
   else { const t = heroBy('tank'); p = t && t.alive && dist(t, h) < 520 ? { x: t.x, y: t.y } : { x: h.x, y: h.y }; }
-  const rk = tal(h, 'a1');
-  S.zones.push({ kind: 'heal', x: p.x, y: p.y, r: rk >= 1 ? 126 : 110, t: 0, dur: rk >= 2 ? 7.5 : 6, tick: 0.5, tickT: 0.2, val: rk >= 1 ? 43 : 36, src: h });
+  const chestMul = h.bonuses.has('cw_chest') ? 1.25 : 1;
+  S.zones.push({ kind: 'heal', x: p.x, y: p.y, r: 114, t: 0, dur: 6, tick: 0.5, tickT: 0.2, val: Math.round(38 * chestMul), src: h });
   sfx('circle');
   return true;
 }
@@ -411,9 +433,9 @@ function abWard(h, aim) {
     t = low && low.hp / low.maxHp < 0.7 ? low : tank && tank.alive && dist(tank, h) < MEND.range ? tank : low;
   }
   if (!t || dist(t, h) > MEND.range + 40) return false;
-  const rk = tal(h, 'a2');
-  t.absorb = Math.max(t.absorb, Math.round((rk >= 1 ? 275 : 220) * h.power)); t.absorbT = Math.max(t.absorbT, 8); t.wardBy = h;
-  if (rk >= 2) t.hots.push({ src: h, per: 20, left: 3, next: 1 });
+  const shMul = h.bonuses.has('cw_shoulders') ? 1.3 : 1;
+  t.absorb = Math.max(t.absorb, Math.round(230 * shMul * h.power)); t.absorbT = Math.max(t.absorbT, 8); t.wardBy = h;
+  if (h.bonuses.has('cw_shoulders')) healHero(h, t, 45, { size: 17 });
   fx({ type: 'ring', x: t.x, y: t.y - 40, r0: 10, r1: 52, col: '#DDF3FF', dur: 0.3, w: 5 });
   if (h.isPlayer || t.isPlayer) fxText(t.x, t.y - 96, 'Ward', '#DDF3FF', 18);
   fx({ type: 'beam', x: h.x, y: h.y - 50, x2: t.x, y2: t.y - 40, col: '#DDF3FF', dur: 0.25 });
@@ -421,14 +443,18 @@ function abWard(h, aim) {
   return true;
 }
 function abSunburst(h) {
-  const rk = tal(h, 'a3'), amt = rk >= 1 ? 250 : 200;
   for (const a of S.heroes) {
     if (!a.alive || dist(a, h) > 470) continue;
-    healHero(h, a, amt, { show: true });
+    healHero(h, a, 210, { show: true });
     a.st.root = 0; a.st.haunt = 0;
+    if (h.unique === 'longnight') {
+      a.absorb = Math.max(a.absorb, Math.round(75 * h.power));
+      a.absorbT = Math.max(a.absorbT, 6);
+      a.wardBy = h;
+    }
   }
-  if (rk >= 2) {
-    for (const m of foesNear(h.x, h.y, 170, false)) if (!m.cage) hurtMob(m, 85, h, { col: '#FFE08A', size: 19, noCrit: true });
+  if (h.unique === 'longnight') {
+    for (const m of foesNear(h.x, h.y, 180, false)) if (!m.cage) hurtMob(m, 90, h, { col: '#FFE08A', size: 19, noCrit: true });
   }
   fx({ type: 'ring', x: h.x, y: h.y - 30, r0: 30, r1: 470, col: '#F2C230', dur: 0.5, w: 9 });
   dots(h.x, h.y - 60, '#FFE08A', 16, 220);
@@ -476,23 +502,28 @@ function abBlizzard(h, aim) {
   else { const c = bestCluster(h, 120, 560); if (c) p = { x: c.x, y: c.y }; else { const t = autoTarget(h); if (t) p = { x: t.x, y: t.y }; } }
   if (!p) { if (h.isPlayer) fxText(h.x, h.y - 100, 'Nothing to freeze', '#DDF3FF', 16); return false; }
   p = clampRange(h, p.x, p.y, 520);
-  const rk = tal(h, 'a1');
-  S.zones.push({ kind: 'blizzard', x: p.x, y: p.y, r: rk >= 1 ? 138 : 120, t: 0, dur: rk >= 2 ? 6 : 5, tick: 0.5, tickT: 0.15, val: rk >= 1 ? 24 : 20, src: h, seed: Math.random() * 100 });
+  const chestMul = h.bonuses.has('rb_chest') ? 1.25 : 1;
+  S.zones.push({ kind: 'blizzard', x: p.x, y: p.y, r: 124, t: 0, dur: 5 + (h.bonuses.has('rb_chest') ? 1 : 0), tick: 0.5, tickT: 0.15, val: Math.round(20 * chestMul), src: h, seed: rng() * 100 });
   h.face = Math.atan2(p.y - h.y, p.x - h.x); h.lunge = 0.14; h.lungeA = h.face;
   sfx('blizzard');
   return true;
 }
 function abNova(h) {
-  const R = 155, rk = tal(h, 'a2');
+  const R = 155;
+  const shMul = h.bonuses.has('rb_shoulders') ? 1.4 : 1;
   for (const m of S.mobs) {
     if (!isFoe(m) || m.cage || dist(m, h) > R + m.r) continue;
     aggro(m, h, 0);
-    hurtMob(m, rk >= 1 ? 65 : 50, h, { col: '#DDF3FF' });
+    hurtMob(m, 50 * shMul, h, { col: '#DDF3FF' });
     if (!m.alive) continue;
     if (m.isBoss) { m.st.slow = 0.4; m.st.slowT = 3; }
-    else if (!m.M.wisp) { m.st.freeze = rk >= 1 ? 3.5 : 3; m.wind = 0; if (m.cast) interruptCast(m); }
+    else if (!m.M.wisp) { m.st.freeze = 3; m.wind = 0; if (m.cast) interruptCast(m); }
   }
-  if (rk >= 2) h.cd.a4 = 0;
+  if (h.bonuses.has('rb_shoulders')) h.cd.a3 = Math.max(0, h.cd.a3 - 1.5);
+  if (h.unique === 'gravefrost') {
+    h.cd.a4 = 0;
+    S.zones.push({ kind: 'blizzard', x: h.x, y: h.y, r: 125, t: 0, dur: 3, tick: 0.5, tickT: 0.15, val: 20, src: h, seed: rng() * 100 });
+  }
   fx({ type: 'nova', x: h.x, y: h.y, r: R, dur: 0.45 });
   bits(h.x, h.y - 20, 'shard_ice', 12, 300);
   sfx('nova'); shake(3);
@@ -509,7 +540,7 @@ function abComet(h, aim) {
 function finishCast(h) {
   const c = h.cast; h.cast = null;
   if (c.key !== 'comet') return;
-  const cd = abCd(h, 'a3'), rk = tal(h, 'a3');
+  const cd = abCd(h, 'a3');
   h.cd.a3 = cd;
   if (h.isPlayer) HOOKS.fired('a3');
   const t = c.target;
@@ -518,17 +549,113 @@ function finishCast(h) {
   sfx('whoosh');
   later(0.32, () => {
     const frozen = t.alive && t.st.freeze > 0;
-    if (t.alive) hurtMob(t, rk >= 1 ? 384 : 320, h, { shatter: h.traits.has('shatterlance') ? 3 : 2, crit: 0.15 + (rk >= 2 ? 0.1 : 0), col: frozen ? '#8FD6FF' : '#DDF3FF' });
+    if (t.alive) hurtMob(t, 315, h, { shatter: h.traits.has('shatterlance') ? 3 : 2, crit: 0.15, col: frozen ? '#8FD6FF' : '#DDF3FF' });
     if (frozen && h.isPlayer) fxText(tx, ty - 150, 'Shatter!', '#8FD6FF', 32, { dur: 1.2 });
     if (frozen && h.bonuses.has('rimebone2')) h.cd.a3 = Math.min(h.cd.a3, cd / 2);
     const splash = foesNear(tx, ty, 90, false).filter((o) => o !== t && !o.cage);
-    for (const o of splash) hurtMob(o, rk >= 1 ? 132 : 110, h, { size: 19 });
+    for (const o of splash) hurtMob(o, 114, h, { size: 19 });
     if (h.unique === 'gravefrost') for (const o of [t, ...splash]) { if (!o.alive) continue; if (o.isBoss) { o.st.slow = Math.max(o.st.slow, 0.4); o.st.slowT = 2; } else if (!o.M.wisp) { o.st.freeze = Math.max(o.st.freeze, 2); o.wind = 0; } }
     fx({ type: 'ring', x: tx, y: ty, r0: 20, r1: 110, col: '#DDF3FF', dur: 0.3, w: 8, ground: true });
     bits(tx, ty - 20, 'shard_ice', 14, 320);
     shake(frozen ? 7 : 4); sfx('comet');
     if (frozen && h.isPlayer) hitstop(0.08);
   });
+}
+
+/* ---------- rogue abilities: Viper Blades, Shadowstrike, Fan of Blades, Shadowstep ---------- */
+function rogueMeleeTarget(h, aim, maxRange) {
+  let t = aim && aim.kind === 'mob' && isFoe(aim) ? aim : autoTarget(h);
+  if (!t || dist(h, t) > h.r + t.r + maxRange) t = nearestFoe(h, maxRange, false);
+  return t && dist(h, t) <= h.r + t.r + maxRange ? t : null;
+}
+
+/* Viper Blades (a1): fast twin-dagger slash on a single foe that applies Viper Venom */
+function abViper(h, aim) {
+  const t = rogueMeleeTarget(h, aim, 78);
+  if (!t) { if (h.isPlayer) fxText(h.x, h.y - 100, 'Too far', '#7CF06A', 16); return false; }
+  h.face = angTo(h, t); h.lunge = 0.18; h.lungeA = h.face; h.swingT = 0.2;
+  const base = 58;
+  const dmg = hurtMob(t, base, h, { crit: 0.22, col: '#7CF06A' });
+  if (t.alive) applyBleed(h, t);
+  if (h.bonuses.has('shadeveil2') && dmg >= Math.round(base * h.power * 1.6) && t.alive) {
+    hurtMob(t, 55, h, { col: '#B79CFF', size: 19, noCrit: true });
+  }
+  fx({ type: 'cleave', x: h.x, y: h.y - 30, a: h.face, r: 68, dur: 0.2, col: '#7CF06A' });
+  dots(t.x, t.y - 40, '#7CF06A', 6, 130);
+  sfx('sweep', 0.75);
+  return true;
+}
+
+/* Shadowstrike (a2): single-target execution thrust; guaranteed crit + bonus damage on poisoned targets */
+function abAmbush(h, aim) {
+  const t = rogueMeleeTarget(h, aim, 84);
+  if (!t) { if (h.isPlayer) fxText(h.x, h.y - 100, 'Too far', '#FF6B6B', 16); return false; }
+  const bleeding = !!(t.bleed && t.bleed.left > 0);
+  h.face = angTo(h, t); h.lunge = 0.22; h.lungeA = h.face; h.swingT = 0.24;
+  const helmMul = h.bonuses.has('sv_helm') ? 1.25 : 1;
+  const nsMul = h.nightstalkerT > 0 ? 1.3 : 1;
+  h.nightstalkerT = 0;
+  const bleedMul = bleeding ? 1.6 : 1;
+  const base = 96 * helmMul * nsMul * bleedMul;
+  const critChance = bleeding ? 1.0 : 0.35;
+  const dmg = hurtMob(t, base, h, { crit: critChance, col: bleeding ? '#FF6B6B' : '#FFE08A' });
+  const didCrit = bleeding || dmg >= Math.round(base * h.power * 1.6);
+  if (bleeding && h.isPlayer) fxText(t.x, t.y - 135, 'Shadowstrike!', '#FF6B6B', 24, { dur: 0.9 });
+  if (bleeding && h.traits.has('arterial')) later(0, () => { h.cd.a2 = Math.max(0, h.cd.a2 - 1.2); });
+  if (didCrit && h.bonuses.has('sv_helm')) healHero(h, h, 25, { size: 16 });
+  if (didCrit && h.bonuses.has('shadeveil2') && t.alive) hurtMob(t, 55, h, { col: '#B79CFF', size: 19, noCrit: true });
+  fx({ type: 'cleave', x: h.x, y: h.y - 30, a: h.face, r: 78, dur: 0.22, col: '#FF6B6B', crush: bleeding });
+  dots(t.x, t.y - 44, '#FF6B6B', 8, 160);
+  sfx('thud', 0.8);
+  if (bleeding) shake(4);
+  return true;
+}
+
+/* Fan of Blades (a3): modest AoE spin that interrupts enemy casts and refreshes active venom */
+function abFlurry(h) {
+  const R = 140;
+  h.whirlDur = 0.28; h.whirlT = 0.28;
+  for (const m of S.mobs) {
+    if (!isFoe(m) || m.cage || dist(m, h) > R + m.r) continue;
+    aggro(m, h, 0);
+    if (m.cast) interruptCast(m);
+    hurtMob(m, 50, h, { col: '#D7DEE6', size: 18 });
+    if (m.alive && m.bleed && m.bleed.left > 0) applyBleed(h, m);
+  }
+  fx({ type: 'whirl', h, x: h.x, y: h.y, r: R, dur: 0.28, col: '#B79CFF' });
+  fx({ type: 'ring', x: h.x, y: h.y - 26, r0: 18, r1: R, col: '#D7DEE6', dur: 0.24, w: 5 });
+  sfx('sweep', 0.8);
+  return true;
+}
+
+/* Shadowstep (a4): blink through shadow behind target, interrupt casts, and gain +35% attack speed */
+function abShadowstep(h, aim) {
+  let t = aim && aim.kind === 'mob' && isFoe(aim) ? aim : autoTarget(h);
+  if (!t || dist(h, t) > 380) t = nearestFoe(h, 380, false);
+  if (!t || dist(h, t) > 380) { if (h.isPlayer) fxText(h.x, h.y - 100, 'No target', '#B79CFF', 16); return false; }
+  const ox = h.x, oy = h.y;
+  const backA = (t.face || 0) + Math.PI;
+  const reach = t.r + h.r + 8;
+  let nx = t.x + Math.cos(backA) * reach, ny = t.y + Math.sin(backA) * reach;
+  if (!canStand(nx, ny, h.r)) {
+    const a2 = angTo(t, h);
+    nx = t.x + Math.cos(a2) * reach; ny = t.y + Math.sin(a2) * reach;
+  }
+  if (canStand(nx, ny, h.r)) { h.x = nx; h.y = ny; }
+  h.face = angTo(h, t); h.lunge = 0.16; h.lungeA = h.face;
+  dots(ox, oy - 30, '#B79CFF', 8, 120);
+  fx({ type: 'swipe', x: ox, y: oy - 30, x2: h.x, y2: h.y - 30, col: '#B79CFF', dur: 0.22 });
+  dots(h.x, h.y - 30, '#7CF06A', 8, 140);
+  if (t.cast) interruptCast(t);
+  const shMul = h.bonuses.has('sv_shoulders') ? 1.35 : 1;
+  hurtMob(t, 70 * shMul, h, { crit: 0.25, col: '#B79CFF' });
+  h.frenzyT = 3.8;
+  if (h.traits.has('nightstalker')) h.nightstalkerT = 3.5;
+  if (h.unique === 'cryptfangs') h.cd.a2 = 0;
+  else h.cd.a2 = Math.max(0, h.cd.a2 - 2.0 - (h.bonuses.has('sv_shoulders') ? 1.5 : 0));
+  h.picked = t.alive ? t : null;
+  sfx('dodge', 0.8); sfx('swing', 0.7);
+  return true;
 }
 
 export function doDodge(h, dx, dy) {

@@ -1,6 +1,6 @@
 import { TAU, angTo, clamp, dist, lerp } from '../core/math';
 import { vrand } from '../core/rng';
-import { AB, ROLES } from '../content/roles';
+import { AB, ROLES, abKey } from '../content/roles';
 import { RARITY } from '../content/gear';
 import { S } from './state.js';
 import { BAKE_S, PAT, bakeAll, drawSpr, mkCanvas } from './art.js';
@@ -320,12 +320,32 @@ export const HERO_FIT = {
   healer_m: { weapon: [-30, -128], top: -117 },
   dps: { weapon: [28, -122], top: -145 },
   dps_m: { weapon: [28, -122], top: -145 },
+  rogue: { weapon: [-29, -50], top: -118 },
+  rogue_m: { weapon: [-29, -50], top: -118 },
+  gnome_tank: { weapon: [-37, -62], top: -95 },
+  gnome_tank_w: { weapon: [-37, -62], top: -95 },
+  gnome_healer: { weapon: [-25, -98], top: -95 },
+  gnome_healer_m: { weapon: [-25, -98], top: -95 },
+  gnome_dps: { weapon: [24, -94], top: -102 },
+  gnome_dps_m: { weapon: [24, -94], top: -102 },
+  gnome_rogue: { weapon: [-24, -36], top: -94 },
+  gnome_rogue_m: { weapon: [-24, -36], top: -94 },
+  goblin_tank: { weapon: [-37, -62], top: -95 },
+  goblin_tank_w: { weapon: [-37, -62], top: -95 },
+  goblin_healer: { weapon: [-25, -98], top: -95 },
+  goblin_healer_m: { weapon: [-25, -98], top: -95 },
+  goblin_dps: { weapon: [24, -94], top: -102 },
+  goblin_dps_m: { weapon: [24, -94], top: -102 },
+  goblin_rogue: { weapon: [-24, -36], top: -94 },
+  goblin_rogue_m: { weapon: [-24, -36], top: -94 },
   risen_tank: { weapon: [-33, -90], top: -130 },
   risen_tank_w: { weapon: [-33, -90], top: -130 },
   risen_healer: { weapon: [-30, -118], top: -125 },
   risen_healer_m: { weapon: [-30, -118], top: -125 },
   risen_dps: { weapon: [28, -122], top: -148 },
   risen_dps_m: { weapon: [28, -122], top: -148 },
+  risen_rogue: { weapon: [-29, -50], top: -118 },
+  risen_rogue_m: { weapon: [-29, -50], top: -118 },
 };
 export function heroFit(set, back) {
   const fit = HERO_FIT[set.replace(/_(gilded|rags|iron)$/g, '')] || { weapon: [0, -80], top: -112 };
@@ -369,12 +389,15 @@ export function drawHero(ctx, h) {
     drawSpr(ctx, name, x - Math.cos(h.face) * 17, y - Math.sin(h.face) * 10, { flip: h.flip, sx, sy, rot, alpha: 0.42, tint: 'gold', tintA: 0.35 });
   }
   if (h.st.stun > 0) rot += Math.sin(S.t * 12) * 0.06;
-  // gear glow behind the weapon
+  // gear glow behind the weapon (both hands for twin-dagger rogues)
   if (h.weaponRar >= 2) {
     const fx_ = h.flip ? -wx : wx;
     const col = RARITY[h.weaponRar].color;
     ctx.globalAlpha = 0.3 + Math.sin(S.t * 3) * 0.08; ctx.fillStyle = col;
-    ctx.beginPath(); ctx.arc(x + fx_, y + wy, h.weaponRar === 3 ? 24 : 17, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+    const rGlow = h.weaponRar === 3 ? (h.cls === 'rogue' ? 18 : 24) : (h.cls === 'rogue' ? 13 : 17);
+    ctx.beginPath(); ctx.arc(x + fx_, y + wy, rGlow, 0, TAU); ctx.fill();
+    if (h.cls === 'rogue') { ctx.beginPath(); ctx.arc(x - fx_, y + wy, rGlow, 0, TAU); ctx.fill(); }
+    ctx.globalAlpha = 1;
     if (h.weaponRar === 3 && S.frame % 7 === 0) S.parts.push({ x: h.x + fx_ + vrand(-14, 14), y: h.y, z: -wy + vrand(-14, 14), vx: 0, vy: 0, vz: 0, up: true, col: '#C9B2FF', size: vrand(2.5, 4.5), t: 0, dur: 0.7 });
   }
   // a brew from the Vale: little motes of its colour rising round your feet
@@ -618,7 +641,7 @@ export function drawTexts(ctx) {
 export function drawAim(ctx) {
   const a = AIM.get && AIM.get();
   if (!a || !S.player.alive) return;
-  const def = AB[S.player.role][a.slot];
+  const def = AB[abKey(S.player)][a.slot];
   const p = { x: a.x, y: a.y };
   const r = def.key === 'circle' ? 110 : 120;
   const col = def.key === 'circle' ? '#F2C230' : '#DDF3FF';

@@ -9,7 +9,7 @@ import { newGame, update } from '../src/dungeon/game.js';
 import { S } from '../src/dungeon/state.js';
 import { hurtHero, hurtMob, pickTarget } from '../src/dungeon/entities.js';
 import { abCd, onPerfectBlock, useAbility } from '../src/dungeon/heroes.js';
-import { makeCage, mashCage } from '../src/dungeon/mobs.js';
+import { cutChain, makeCage, makeChain, mashCage, spawnMob } from '../src/dungeon/mobs.js';
 import { HERO_FIT, heroFit } from '../src/dungeon/render.js';
 import { BARROW_ENGINE } from '../src/content/barrow/engine';
 import { allHeroArt } from '../src/content/folk';
@@ -157,24 +157,138 @@ test('intro: starts in the Ossuary, protects the party from dying, and spawns th
   assert.equal(s.over, 'victory');
 });
 
-test('combat & gear look: heroes start in visual _rags, step to _iron and heroic armour, Cleave is a1 (2.2s cd), and Bulwark stacks with Barrowguard', () => {
+test('combat & gear look: heroes start in visual _rags, step to _iron and heroic armour, Cleave is a1 (2.2s cd), Perfect Block resets Cleave, and Boss Weapons buff core abilities', () => {
   // Visual progression: Common -> _rags, Uncommon -> _iron, Rare/Epic -> full heroic armour
   assert.equal(heroSprite({ race: 'dwarf', cls: 'warrior', sex: 'm', regular: { weapon: { rar: 0 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'tank'), 'tank_rags');
   assert.equal(heroSprite({ race: 'dwarf', cls: 'warrior', sex: 'm', regular: { weapon: { rar: 1 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'tank'), 'tank_iron');
   assert.equal(heroSprite({ race: 'dwarf', cls: 'warrior', sex: 'm', regular: { weapon: { rar: 2 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'tank'), 'tank');
 
-  // Cleave is a1 with 2.2s base cooldown (1.8s at Rank 2)
-  const { s, tank } = game('tank');
+  const { s, tank, healer, dps } = game('tank');
   assert.equal(abCd(tank, 'a1'), 2.2);
-  tank.talents.a1 = 2;
-  assert.ok(Math.abs(abCd(tank, 'a1') - 1.8) < 1e-6);
 
-  // Bulwark (Shield Rank 2) stacks with Barrowguard 2-piece (150 + 90 = 240 absorb) and resets Cleave (a1)
+  // Baseline Perfect Block resets Cleave (a1) and Barrowguard 2-piece grants 150 absorb
   tank.cd.a1 = 2.0;
-  tank.talents.a4 = 2;
   tank.bonuses.add('barrowguard2');
   onPerfectBlock(tank, s.packs[0].mobs[0]);
-  assert.equal(tank.cd.a1, 0, 'Bulwark resets Cleave cooldown on Perfect Block');
-  assert.equal(tank.absorb, Math.round(240 * tank.power), 'Bulwark (+90) stacks with Barrowguard (+150)');
+  assert.equal(tank.cd.a1, 0, 'Perfect Block resets Cleave cooldown');
+  assert.equal(tank.absorb, Math.round(150 * tank.power), 'Barrowguard 2-piece grants 150 absorb on Perfect Block');
+
+  // Tank Boss Weapon (gravedigger): Charge (a2) resets Cleave cooldown on impact
+  const m = s.packs[0].mobs[0];
+  m.hp = m.maxHp = 50000;
+  tank.unique = 'gravedigger';
+  tank.x = m.x; tank.y = m.y + 120;
+  tank.cd.a1 = 2.0; tank.cd.a2 = 0; tank.gcd = 0;
+  assert.ok(useAbility(tank, 'a2', m));
+  step(0.35);
+  assert.equal(tank.cd.a1, 0, 'The Gravedigger makes Charge reset Cleave cooldown');
+
+  // Healer Boss Weapon (longnight): Sunburst (a3) sears nearby enemies and wards allies for 75
+  healer.unique = 'longnight';
+  healer.x = m.x + 40; healer.y = m.y;
+  healer.cd.a3 = 0; healer.gcd = 0;
+  const mHpBefore = m.hp;
+  assert.ok(useAbility(healer, 'a3', null));
+  assert.ok(m.hp < mHpBefore, 'Lantern of the Long Night makes Sunburst sear nearby foes');
+  assert.ok(healer.absorb >= Math.round(75 * healer.power), 'Lantern of the Long Night makes Sunburst ward allies');
+
+  // Mage Boss Weapon (gravefrost): Rime burst resets Icicle and spawns a frost storm
+  dps.unique = 'gravefrost';
+  dps.cd.a2 = 0; dps.cd.a4 = 5.0; dps.gcd = 0;
+  const zonesBefore = s.zones.length;
+  assert.ok(useAbility(dps, 'a2', null));
+  assert.equal(dps.cd.a4, 0, 'Gravefrost Staff makes Rime burst reset Icicle cooldown');
+  assert.equal(s.zones.length, zonesBefore + 1, 'Gravefrost Staff makes Rime burst leave a frost storm');
 });
+
+test('cooperative roles & lethal telegraphs: only healer can banish wisps and cut chains, and unblocked hazards ignore passive armor', () => {
+  const { s, tank, healer, dps } = game('tank');
+  // 1. Only Healer can damage/banish Wisps and cut Chains
+  const wisp = spawnMob('wisp', tank.x + 20, tank.y, null);
+  assert.equal(hurtMob(wisp, 50, tank), 0, 'Tank cannot damage wisps');
+  assert.equal(hurtMob(wisp, 50, dps), 0, 'DPS cannot damage wisps');
+  assert.ok(wisp.alive);
+  assert.ok(hurtMob(wisp, 50, healer) > 0, 'Healer banishes wisps');
+  assert.ok(!wisp.alive);
+
+  const ch = makeChain(s.packs[0].mobs[0], dps);
+  assert.equal(s.chains.length, 1);
+  cutChain(ch, tank);
+  cutChain(ch, dps);
+  assert.equal(s.chains.length, 1, 'Tank and DPS cannot cut chains');
+  cutChain(ch, healer);
+  assert.equal(s.chains.length, 0, 'Healer cuts chains');
+
+  // 2. Unblocked hazard telegraphs bypass passive armor, while blocked hazards get both block + armor reduction
+  const m = s.packs[0].mobs[0];
+  const hp0 = tank.hp;
+  hurtHero(tank, 200, m, { hazard: true, block: true });
+  assert.equal(hp0 - tank.hp, 300, 'Unblocked 200 hazard deals full 300 (1.5x tune) ignoring passive armor');
+  tank.hp = hp0;
+  tank.blocking = true;
+  tank.blockT = 1.0;
+  tank.face = Math.atan2(m.y - tank.y, m.x - tank.x);
+  hurtHero(tank, 200, m, { hazard: true, block: true });
+  assert.ok(hp0 - tank.hp < 50, 'Blocked hazard receives both block reduction and armor mitigation');
+});
+
+test('rogue: +10% movement speed always, glass cannon stats, twin-dagger autos, Viper Venom DoT, Shadowstrike guaranteed crit, Fan kick, Shadowstep blink, and Cryptfangs reset', () => {
+  newGame(BARROW_ENGINE, { role: 'dps', seed: 77, start: 'entrance', auto: false, quiet: true, noEvents: true, loadouts: { dps: { cls: 'rogue', sprite: 'rogue_rags' } } });
+  const s = S as any;
+  const rogue = s.heroes.find((h: any) => h.role === 'dps');
+  const tank = s.heroes.find((h: any) => h.role === 'tank');
+  assert.equal(rogue.cls, 'rogue');
+  assert.equal(rogue.maxHp, 720, 'glass cannon HP like mage');
+  assert.equal(rogue.armor, 0.15, 'glass cannon armor like mage');
+  assert.ok(Math.abs(rogue.speed - 186 * 1.1) < 1e-6, '+10% permanent movement speed');
+  assert.ok(rogue.speed > tank.speed, 'faster than tank');
+
+  const m = s.packs[0].mobs[0];
+  m.hp = m.maxHp = 100000;
+  rogue.x = m.x; rogue.y = m.y + 45;
+
+  // 1. Shadowstrike (a2) on unpoisoned target vs Viper Blades (a1) poisoned target
+  const hp0 = m.hp;
+  assert.ok(useAbility(rogue, 'a2', m));
+  const dryHit = hp0 - m.hp;
+  assert.ok(dryHit > 0);
+  rogue.cd.a2 = 0; rogue.gcd = 0;
+
+  // Apply Viper Blades (a1): immediate twin-dagger hit + 5s Viper Venom DoT
+  assert.ok(useAbility(rogue, 'a1', m));
+  assert.ok(m.bleed && m.bleed.left >= 5, 'Viper Blades applies 5s Viper Venom DoT');
+  const hpAfterViper = m.hp;
+  step(1.1);
+  assert.ok(m.hp < hpAfterViper, 'Viper Blades DoT ticks every 0.5s');
+
+  // Shadowstrike (a2) on poisoned target: guaranteed 100% crit + +25% crit damage
+  rogue.cd.a2 = 0; rogue.gcd = 0;
+  const hpBeforeCrit = m.hp;
+  assert.ok(useAbility(rogue, 'a2', m));
+  const bleedCritHit = hpBeforeCrit - m.hp;
+  assert.ok(bleedCritHit > dryHit * 1.8, `Shadowstrike on poisoned target (${bleedCritHit}) hits much harder than unpoisoned (${dryHit})`);
+
+  // 2. Shadowstep (a4): teleports behind target, grants Shadow Frenzy, shaves 2s off Shadowstrike cd (or resets it with The Cryptfangs)
+  rogue.cd.a2 = 5.0; rogue.gcd = 0;
+  rogue.x = m.x; rogue.y = m.y + 220;
+  assert.ok(useAbility(rogue, 'a4', m));
+  assert.ok(Math.hypot(rogue.x - m.x, rogue.y - m.y) < 80, 'Shadowstep blinks into melee behind target');
+  assert.ok(rogue.frenzyT >= 3.7, 'Shadowstep grants Shadow Frenzy attack speed buff');
+  assert.ok(rogue.cd.a2 <= 3.05, 'Shadowstep shaves 2s off Shadowstrike cooldown');
+
+  rogue.unique = 'cryptfangs';
+  rogue.cd.a2 = 5.0; rogue.cd.a4 = 0; rogue.gcd = 0;
+  assert.ok(useAbility(rogue, 'a4', m));
+  assert.equal(rogue.cd.a2, 0, 'The Cryptfangs makes Shadowstep completely reset Shadowstrike cooldown');
+
+  // 3. Fan of Blades (a3): modest AoE + interrupts kickable casts + refreshes Viper Venom duration
+  m.bleed.left = 1.2;
+  m.cast = { k: 'volley', t: 0.5, dur: 1.5, kick: true, fn: () => {} };
+  rogue.cd.a3 = 0; rogue.gcd = 0;
+  assert.ok(useAbility(rogue, 'a3', null));
+  assert.equal(m.cast, null, 'Fan of Blades interrupts enemy cast');
+  assert.ok(m.bleed.left >= 4.9, 'Fan of Blades refreshes Viper Blades duration');
+});
+
+
 

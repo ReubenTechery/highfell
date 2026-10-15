@@ -61,3 +61,44 @@ test('balance: heroic in Common gear gets buried', () => {
   assert.notEqual(r.over, 'victory', `cleared heroic in Common in ${r.clear}s`);
   assert.ok(r.wipes >= 3);
 });
+
+test('balance: rogue melts single-target bosses faster than mage and tank, clears cleanly with a party, and dies solo before Sir Rattlebones', () => {
+  const rogueLoadout = (rar: Rar) => ({
+    ...gear(rar),
+    dps: { ...plainLoadout('dps', rar, 'rogue'), cls: 'rogue', sprite: rar === 0 ? 'rogue_rags' : rar === 1 ? 'rogue_iron' : 'rogue' },
+  });
+
+  // 1. Single-target boss fight (Gravekeeper): Rogue melts the boss faster than Mage, and DPS deals more boss damage than Tank
+  const bossMage = simRun({ role: 'dps', seed: 303, start: 'keeper', loadouts: gear(2) });
+  const bossRogue = simRun({ role: 'dps', seed: 303, start: 'keeper', loadouts: rogueLoadout(2) });
+  assert.equal(bossRogue.over, 'victory');
+  const keeperMage = bossMage.packs.find((p) => p.id === 'G')!;
+  const keeperRogue = bossRogue.packs.find((p) => p.id === 'G')!;
+  const mageBossTime = keeperMage.cleared! - keeperMage.pulled;
+  const rogueBossTime = keeperRogue.cleared! - keeperRogue.pulled;
+  assert.ok(rogueBossTime < mageBossTime, `Rogue boss kill (${rogueBossTime.toFixed(1)}s) should be faster than Mage (${mageBossTime.toFixed(1)}s)`);
+  const rogueHero = bossRogue.heroes.find((h) => h.role === 'dps')!;
+  const tankHero = bossRogue.heroes.find((h) => h.role === 'tank')!;
+  assert.ok(rogueHero.dmg > tankHero.dmg * 1.25, `Rogue single-target boss damage (${rogueHero.dmg}) clearly beats Tank (${tankHero.dmg})`);
+
+  // 2. Full Barrow Crypt clear with a Common Rogue party: 0 wipes, ~4 minutes
+  const fullRogue = simRun({ role: 'dps', seed: 303, loadouts: rogueLoadout(0) });
+  assert.equal(fullRogue.over, 'victory');
+  assert.equal(fullRogue.wipes, 0);
+  assert.ok(fullRogue.clear! > 200 && fullRogue.clear! < 280, `Rogue Common clear in ${fullRogue.clear}s`);
+
+  // 3. Glass cannon: solo Rogue dies before Sir Rattlebones
+  const soloRogue = simRun({ role: 'dps', seed: 505, solo: true, loadouts: rogueLoadout(0) });
+  assert.equal(soloRogue.over, 'lost');
+  assert.ok(!soloRogue.packs.some((p) => p.id === 'K' && p.cleared != null));
+
+  // 4. All Rogue traits, Shadeveil 2pc, and The Cryptfangs unique run in a real clear
+  const rogueKit = {
+    ...gear(2),
+    dps: { cls: 'rogue', sprite: 'rogue', power: 1.2, traits: ['twinvenom', 'arterial', 'nightstalker'], bonuses: ['shadeveil2', 'sv_helm', 'sv_shoulders', 'sv_chest'], unique: 'cryptfangs', weaponRar: 3 },
+  };
+  const kitRun = simRun({ role: 'dps', seed: 606, loadouts: rogueKit });
+  assert.equal(kitRun.over, 'victory');
+  assert.equal(kitRun.wipes, 0);
+});
+

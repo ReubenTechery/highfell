@@ -101,13 +101,18 @@ function logPage(p: Profile, e: LogEntry): string {
     head = `<div class="cl-head plain"><div><p class="eyebrow">${esc(e.group)}</p><h3>${esc(e.name)}</h3><p class="cl-obt">Obtained: <b class="${state}">${got}/${e.items.length}</b></p><p class="fine">Pets, mounts, trophies, banners and looks that achievements and firsts give. Never power.</p></div></div>`;
   }
   const rateOf = (id: string): number | undefined => { if (e.vale) return e.vale.table.find((d) => d.id === id)?.rate; if (!e.dg || !e.boss) return undefined; return e.dg.loot.find((t) => t.boss === e.boss!.id)?.drops.find((d) => d.id === id)?.rate; };
-  const roleOfDrop = (id: string): RoleId | undefined => { if (!e.dg || !e.boss) return undefined; return e.dg.loot.find((t) => t.boss === e.boss!.id)?.drops.find((d) => d.id === id)?.role; };
+  const whoOfDrop = (id: string): string | undefined => {
+    if (!e.dg || !e.boss) return undefined;
+    const d = e.dg.loot.find((t) => t.boss === e.boss!.id)?.drops.find((x) => x.id === id);
+    if (!d?.role) return undefined;
+    return d.cls === 'rogue' ? 'Rogue' : d.role === 'dps' ? 'Mage' : ROLES[d.role].title;
+  };
   const grid = e.items.map((id) => {
     const c = p.collection[id];
     const isNew = c && !p.seen[id];
-    const role = roleOfDrop(id);
+    const who = whoOfDrop(id);
     const ach = !e.boss && !e.vale ? ACHIEVEMENT_LIST.find((a) => a.reward.collectible === id) : undefined;
-    const cap = c ? (c.kc ? `KC ${fmtN(c.kc)}` : 'Owned') : e.boss || e.vale ? `${fmtRate(rateOf(id))}${role ? ` · ${ROLES[role].title}` : ''}` : ach ? ach.name : COLLECTIBLES[id]?.source || '';
+    const cap = c ? (c.kc ? `KC ${fmtN(c.kc)}` : 'Owned') : e.boss || e.vale ? `${fmtRate(rateOf(id))}${who ? ` · ${who}` : ''}` : ach ? ach.name : COLLECTIBLES[id]?.source || '';
     return `<button type="button" class="cl-it ${c ? 'got' : 'miss'} ${isNew ? 'new' : ''}" data-act="item" data-id="${id}" title="${esc(nameOf(id))}" aria-label="${esc(nameOf(id))}${c ? `, obtained${c.n > 1 ? ' ' + c.n + ' times' : ''}` : ', not yet'}" style="--rc: ${colourOf(id)}">
       <span class="tile" aria-hidden="true">${iconOf(id)}</span>${c && c.n > 1 ? `<i class="q">${fmtN(c.n)}</i>` : ''}<span class="n">${esc(nameOf(id))}</span><span class="m">${esc(cap)}</span></button>`;
   }).join('');

@@ -22,7 +22,7 @@ export function newGame(dg, opts) {
     cp: 0, quiet: !!opts.quiet, auto: !!opts.auto, noEvents: !!opts.noEvents, cleared: 0, total: dg.packs.length, startedAt: 0,
     // how hard this dungeon is: hit (everything that hurts a hero), trashHp (health of everything but the
     // bosses), bossHp (the bosses' health). opts.heroic plays it at the dungeon's heroic tune instead.
-    tune: Object.assign({ hit: 1, trashHp: 1, bossHp: 1 }, opts.start === 'intro' ? { hit: 0.55, trashHp: 0.75, bossHp: 0.75 } : (opts.heroic && dg.heroic) || dg.tune || {}),
+    tune: Object.assign({ hit: 1, trashHp: 1, bossHp: 1 }, opts.start === 'intro' ? { hit: 0.55, trashHp: 0.65, bossHp: 0.6 } : (opts.heroic && dg.heroic) || dg.tune || {}),
   });
   S.props = dg.props.map((p) => Object.assign({}, p, { room: roomIndexOf(p.x, p.y), sp0: p.sp }));
   const roles = opts.solo ? ['dps'] : ORDER;
@@ -279,7 +279,7 @@ function tickHazards(dt) {
       z.tickT = (z.tickT === undefined ? 0 : z.tickT) - dt;
       if (z.tickT <= 0) {
         z.tickT = z.tick;
-        for (const h of S.heroes) if (h.alive && inHaz(z, h.x, h.y, h.r * 0.6)) hurtHero(h, z.dmg, z.src, { magic: z.magic, block: false, dodge: false, quiet: false });
+        for (const h of S.heroes) if (h.alive && inHaz(z, h.x, h.y, h.r * 0.6)) hurtHero(h, z.dmg, z.src, { magic: z.magic, block: false, dodge: false, quiet: false, hazard: true });
       }
     }
     const end = z.live ? z.warn + z.live : z.warn + 0.12;
@@ -292,9 +292,10 @@ function fireHazard(z) {
   const mul = (z.src && z.src.dmgMul) || 1;
   for (const h of S.heroes) {
     if (!h.alive || !inHaz(z, h.x, h.y, h.r)) continue;
-    const got = hurtHero(h, z.dmg * mul, z.src, { heavy: z.heavy, block: z.block === true, magic: z.magic, kind: z.kind });
+    const got = hurtHero(h, z.dmg * mul, z.src, { heavy: z.heavy, block: z.block === true, magic: z.magic, kind: z.kind, hazard: true });
     if (got > 0 && z.knock) { const a = Math.atan2(h.y - z.y, h.x - z.x); h.st.kx += Math.cos(a) * z.knock; h.st.ky += Math.sin(a) * z.knock; }
     if (got > 0 && z.root) { h.st.root = z.root; if (h.isPlayer) fxText(h.x, h.y - 112, 'Grabbed', '#C9B79A', 17); }
+    if (got > 0 && z.stun) { h.st.stun = Math.max(h.st.stun, z.stun); }
   }
 }
 function tickZones(dt) {

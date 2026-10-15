@@ -20,17 +20,19 @@ const later = (t, fn) => S.timers.push({ t, fn });
 export function makeHero(role, isPlayer, loadout) {
   const R = ROLES[role];
   const L = loadout || {};
+  const cls = L.cls || (role === 'tank' ? 'warrior' : role === 'healer' ? 'cleric' : 'mage');
+  const isRogue = cls === 'rogue';
   const power = L.power || 1;
   const maxHp = Math.round(R.hp * hpMultiplier(power));
   return {
-    id: 'h_' + role, kind: 'hero', role, name: L.name || R.name, sprite: L.sprite || R.sprite, isPlayer, x: 0, y: 0, r: R.r,
+    id: 'h_' + role, kind: 'hero', role, cls, name: L.name || R.name, sprite: L.sprite || (isRogue ? 'rogue' : R.sprite), isPlayer, x: 0, y: 0, r: R.r,
     face: -Math.PI / 2, back: true, flip: false, hp: maxHp, maxHp, armor: R.armor, power,
     traits: new Set(L.traits || []), bonuses: new Set(L.bonuses || []), unique: L.unique || null,
-    talents: Object.assign({ a1: 0, a2: 0, a3: 0, a4: 0 }, L.talents || {}),
-    weaponRar: L.weaponRar || 0, threatMod: R.threat, speed: R.speed * (L.brew === 'fizz' ? 1.12 : 1), alive: true,
+    weaponRar: L.weaponRar || 0, threatMod: R.threat, speed: R.speed * (isRogue ? 1.1 : 1) * (L.brew === 'fizz' ? 1.12 : 1), alive: true,
     // a brew from the Vale, drunk at the door: tonic, fizz, glow or elixir (see doDodge, hurtMob, hurtHero)
     brew: L.brew || null, brewCol: L.brewCol || null, brewUsed: false,
     mana: 100, maxMana: 100, cd: { a1: 0, a2: 0, a3: 0, a4: 0, dodge: 0 }, gcd: 0, atkT: 0.4,
+    frenzyT: 0, nightstalkerT: 0,
     target: null, picked: null, stillT: 1, dodgeT: 0, dodgeX: 0, dodgeY: -1, iframe: 0,
     blocking: false, blockT: 9, dash: null, cast: null,
     st: { stun: 0, root: 0, haunt: 0, air: 0, kx: 0, ky: 0, chained: null, caged: null },
@@ -122,9 +124,11 @@ export function hurtHero(h, amt, src, o) {
   if (o.ground && h.st.air > 0) return 0;
   // the dungeon's tuning: everything that hurts a hero hits this much harder
   let a = amt * S.tune.hit;
+  let blocked = false;
   if (o.block !== false && h.blocking && src) {
     const off = Math.abs(angDiff(h.face, Math.atan2(src.y - h.y, src.x - h.x)));
     if (off < 1.45) {
+      blocked = true;
       if (o.heavy && o.perfectable !== false && h.blockT <= PERFECT_WINDOW) {
         a = 0; h.stats.perfect++; S.stats.perfect++;
         const intro = S.opts && S.opts.start === 'intro';
@@ -151,7 +155,7 @@ export function hurtHero(h, amt, src, o) {
       }
     }
   }
-  if (!o.pierce) a *= 1 - h.armor * (o.magic ? 0.4 : 1);
+  if (!o.pierce && (!o.hazard || blocked)) a *= 1 - h.armor * (o.magic ? 0.4 : 1);
   // Starlight Elixir: once a run, a hit that would knock you down leaves you on half health
   if (h.brew === 'elixir' && !h.brewUsed && h.hp - Math.round(Math.max(0, a - h.absorb)) <= 0) {
     h.brewUsed = true; h.absorb = 0; h.hp = Math.round(h.maxHp * 0.5); h.flash = 0.12; h.iframe = Math.max(h.iframe, 0.6);
@@ -199,6 +203,8 @@ export function killHero(h) {
 export function hurtMob(m, amt, src, o) {
   o = o || {};
   if (!m.alive || m.untargetable || S.over) return 0;
+  // only the healer can banish wisps
+  if (m.M.wisp && src && src.role !== 'healer') return 0;
   if (m.cage) { m.hp -= 1; m.flash = 0.1; sfx('cagehit'); bits(m.x, m.y - 50, 'shard_bone', 1, 90); if (m.hp <= 0) breakCage(m, true, src); return 1; }
   let a = amt * (o.raw ? 1 : (src && src.power) || 1);
   let crit = false;

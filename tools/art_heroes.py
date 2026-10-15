@@ -8,9 +8,9 @@
 import math
 import art_sprites as A
 from art_sprites import K, LW, f, BONE, BONE_D, GRN, GRN_L, STEEL, STEEL_D, STEEL_L, GOLD, GOLD_D, BLUE, BLUE_D, WOOD, WOOD_D, \
-    RUST, PURP, PURP_D, FROST, FROST_L
+    RUST, PURP, PURP_D, FROST, FROST_L, RED, RED_D
 import art_heads as H
-from art_heads import tp, BEARD, BEARD_D, HSKIN, ESKIN, HBLUE
+from art_heads import tp, BEARD, BEARD_D, HSKIN, ESKIN, GSKIN, GBSKIN, HBLUE
 
 Z = 0.8
 HEROES = {}
@@ -730,6 +730,501 @@ def risen_mage_back(fem=True, key='risen_dps', tier=2):
     sprite(key + '_b', back_vb(RM_VB), o, 'Risen mage back')
 
 
+# ---------------------------------------------------------------- the rogue (human & elf shadowblade, dual daggers)
+RG_LEATHER, RG_LEATHER_D, RG_CLOAK, RG_STEEL = '#4A385C', '#2E223B', '#241B30', '#D7DEE6'
+RG_VENOM = '#7CF06A'
+RG_VB = (-56, -162, 112, 168)
+
+
+def twin_daggers(o, lx=-36, rx=36, y=-62, tier=2, risen=False):
+    """dual daggers held ready in both hands — bronze shivs (0), iron daggers (1), venom-tipped shadow stilettos (2)"""
+    col = BRONZE if tier == 0 else STEEL if tier == 1 else (BONE if risen else RG_STEEL)
+    guard = WOOD_D if tier == 0 else RIRON_D if tier == 1 else GOLD
+    for sx, hx in ((-1, lx), (1, rx)):
+        # pommel & crossguard
+        o.append(c(hx - sx * 2, y + 6, 3.2, guard, 2.4))
+        o.append(s(f'M{hx - 8} {y - 3} H{hx + 8} V{y + 2} H{hx - 8} Z', guard, 2.8))
+        if tier == 0:
+            o.append(s(f'M{hx - 4} {y - 3} L{hx + sx * 10} {y - 34} L{hx + 4} {y - 3} Z', col, 3.2))
+        elif tier == 1:
+            o.append(s(f'M{hx - 4.5} {y - 3} L{hx + sx * 14} {y - 44} L{hx + 4.5} {y - 3} Z', col, 3.3))
+        else:
+            o.append(s(f'M{hx - 5} {y - 3} C{hx - 2} {y - 24} {hx + sx * 6} {y - 40} {hx + sx * 16} {y - 52} C{hx + sx * 12} {y - 34} {hx + 6} {y - 18} {hx + 5} {y - 3} Z', col, 3.4))
+            o.append(ln(f'M{hx + sx * 3} {y - 20} L{hx + sx * 13} {y - 46}', RG_VENOM, 2.4))
+
+
+def rogue_spaulders(o, tier=2, risen=False):
+    if tier == 0:
+        o.append(both('M-11 -102 C-16 -110 -31 -110 -36 -96 L-34 -90 C-26 -94 -18 -96 -11 -95 Z', RAG_D))
+        return
+    pad = RIRON if risen else ('#6B4528' if tier == 1 else RG_LEATHER)
+    trim = RIRON_D if risen else ('#3B2818' if tier == 1 else RG_CLOAK)
+    o.append(both('M-11 -104 C-16 -116 -37 -118 -43 -98 L-41 -90 C-31 -95 -20 -97 -11 -96 Z', pad))
+    o.append(both('M-41 -90 C-31 -95 -20 -97 -11 -96 L-11 -91 C-21 -92 -31 -90 -40 -84 Z', trim, 3))
+    if tier >= 2:
+        o.append(both('M-28 -111 L-35 -126 L-21 -112 Z', BONE if risen else RG_STEEL, 2.8))
+        for x in (-26, 26):
+            o.append(c(x, -102, 2.6, RG_VENOM, 1.8))
+
+
+def rogue_hood_mask(o, back=False, fem=True, tier=2, risen=False):
+    if tier == 0:
+        if not back:
+            o.append(s('M-11 -115 H11 L9 -105 C3 -102 -3 -102 -9 -105 Z', RAG_D, 2.8))
+        return
+    hood_col = RCLOTH_D if risen else ('#4E3624' if tier == 1 else RG_CLOAK)
+    mask_col = '#1E1826' if tier >= 2 else RAG_D
+    if not back:
+        o.append(s('M-12 -116 H12 L10 -104 C4 -100 -4 -100 -10 -104 Z', mask_col, 3))
+        if tier >= 2:
+            o.append(ln('M-8 -111 H8', RG_LEATHER, 2))
+            o.append(s('M-16 -122 C-18 -142 -10 -154 0 -156 C10 -154 18 -142 16 -122 C11 -134 -11 -134 -16 -122 Z', hood_col, 3.4))
+            o.append(c(0, -138, 2.6, RG_VENOM, 1.8))
+    else:
+        if tier >= 2:
+            o.append(s('M-16 -116 C-19 -140 -10 -154 0 -156 C10 -154 19 -140 16 -116 L8 -102 L0 -96 L-8 -102 Z', hood_col, 3.4))
+
+
+def rogue_front(fem=True, key='rogue', tier=2):
+    o = []
+    vest = RAG if tier == 0 else '#6B4528' if tier == 1 else RG_LEATHER
+    dark = RAG_D if tier == 0 else '#3B2818' if tier == 1 else RG_LEATHER_D
+    if tier >= 1:
+        o.append(s('M-18 -102 C-24 -76 -26 -48 -24 -22 L-14 -28 L-6 -20 L0 -28 L6 -20 L14 -28 L24 -22 C26 -48 24 -76 18 -102 Z', RG_CLOAK))
+    # agile boots & fitted trousers
+    o.append(both('M-14 -16 H-4 V0 H-18 C-19 -5 -17 -12 -14 -16 Z', BOOT))
+    o.append(both('M-13 -66 L-15 -16 H-4 L-3 -66 Z', dark))
+    # fitted leather jerkin & twin cross-belts
+    o.append(s('M-15 -102 C-18 -88 -17 -76 -14 -66 H14 C17 -76 18 -88 15 -102 Z', vest))
+    o.append(ln('M-12 -96 L12 -70 M12 -96 L-12 -70', ROPE if tier == 0 else '#8C6239', 3.2))
+    o.append(s('M-16 -70 H16 V-62 H-16 Z', ROPE if tier == 0 else BOOT, 3.2) + c(0, -66, 3.4, BRONZE if tier <= 1 else GOLD, 2.2))
+    # sleeves & hands holding dual daggers
+    o.append(both('M-18 -98 C-27 -90 -33 -78 -36 -64 L-28 -60 C-26 -72 -22 -82 -14 -90 Z', dark))
+    rogue_spaulders(o, tier=tier, risen=False)
+    twin_daggers(o, -36, 36, -62, tier=tier, risen=False)
+    o.append(c(-36, -62, 5.2, HSKIN, 3.2) + c(36, -62, 5.2, HSKIN, 3.2))
+    o.append(s('M-5 -106 H5 V-99 H-5 Z', HSKIN, 2.8))
+    o.append(head(0, -118, H.human_head(Z, bun=fem, circlet=False, fem=fem)))
+    rogue_hood_mask(o, back=False, fem=fem, tier=tier, risen=False)
+    sprite(key + '_f', RG_VB, o, 'Rogue front')
+
+
+def rogue_back(fem=True, key='rogue', tier=2):
+    o = []
+    vest = RAG if tier == 0 else '#6B4528' if tier == 1 else RG_LEATHER
+    dark = RAG_D if tier == 0 else '#3B2818' if tier == 1 else RG_LEATHER_D
+    o.append(both('M-14 -16 H-4 V0 H-18 C-19 -5 -17 -12 -14 -16 Z', BOOT))
+    o.append(both('M-13 -66 L-15 -16 H-4 L-3 -66 Z', dark))
+    o.append(s('M-15 -102 C-18 -88 -17 -76 -14 -66 H14 C17 -76 18 -88 15 -102 Z', vest))
+    o.append(s('M-16 -70 H16 V-62 H-16 Z', ROPE if tier == 0 else BOOT, 3.2))
+    if tier >= 1:
+        o.append(s('M-18 -102 C-24 -76 -26 -48 -24 -22 L-14 -28 L-6 -20 L0 -28 L6 -20 L14 -28 L24 -22 C26 -48 24 -76 18 -102 Z', RG_CLOAK))
+    o.append(both('M-18 -98 C-27 -90 -33 -78 -36 -64 L-28 -60 C-26 -72 -22 -82 -14 -90 Z', dark))
+    rogue_spaulders(o, tier=tier, risen=False)
+    twin_daggers(o, -36, 36, -62, tier=tier, risen=False)
+    o.append(c(-36, -62, 5.2, HSKIN, 3.2) + c(36, -62, 5.2, HSKIN, 3.2))
+    o.append(head(0, -118, H.human_back(Z, bun=fem, circlet=False)))
+    rogue_hood_mask(o, back=True, fem=fem, tier=tier, risen=False)
+    sprite(key + '_b', back_vb(RG_VB), o, 'Rogue back')
+
+
+def risen_rogue_front(fem=True, key='risen_rogue', tier=2):
+    o = []
+    if tier >= 1:
+        o.append(s('M-18 -106 C-24 -80 -26 -50 -24 -24 L-14 -30 L-6 -22 L0 -30 L6 -22 L14 -30 L24 -24 C26 -50 24 -80 18 -106 Z', RCLOTH_D))
+    risen_legs(o, tier)
+    o.append(s('M-11 -66 C-13 -57 -7 -54 0 -55 C7 -54 13 -57 11 -66 Z', BONE, 3))
+    o.append(s('M-15 -70 H15 V-63 H-15 Z', ROPE if tier == 0 else RIRON_D, 3) + c(0, -66.5, 3.2, RG_VENOM if tier >= 2 else BONE, 2))
+    o.append(beam('M0 -76 V-70', BONE, 4.2, 3))
+    o.append(ribcage(0, -104, 24, 28))
+    o.append(ln('M-11 -98 L11 -72 M11 -98 L-11 -72', ROPE if tier == 0 else RIRON_D, 3))
+    o.append(bone_limb('M-26 -96 L-34 -78 L-36 -64', 4.2))
+    o.append(bone_limb('M26 -96 L34 -78 L36 -64', 4.2))
+    rogue_spaulders(o, tier=tier, risen=True)
+    twin_daggers(o, -36, 36, -62, tier=tier, risen=True)
+    o.append(bone_hand(-36, -62, 4.8) + bone_hand(36, -62, 4.8))
+    o.append(head(0, -124, H.risen_head(Z, fem=fem)))
+    rogue_hood_mask(o, back=False, fem=fem, tier=tier, risen=True)
+    sprite(key + '_f', RG_VB, o, 'Risen rogue front')
+
+
+def risen_rogue_back(fem=True, key='risen_rogue', tier=2):
+    o = []
+    risen_legs(o, tier)
+    o.append(beam('M0 -76 V-70', BONE, 4.2, 3))
+    o.append(ribcage(0, -104, 24, 28))
+    if tier >= 1:
+        o.append(s('M-18 -106 C-24 -80 -26 -50 -24 -24 L-14 -30 L-6 -22 L0 -30 L6 -22 L14 -30 L24 -24 C26 -50 24 -80 18 -106 Z', RCLOTH_D))
+    o.append(bone_limb('M-26 -96 L-34 -78 L-36 -64', 4.2))
+    o.append(bone_limb('M26 -96 L34 -78 L36 -64', 4.2))
+    rogue_spaulders(o, tier=tier, risen=True)
+    twin_daggers(o, -36, 36, -62, tier=tier, risen=True)
+    o.append(bone_hand(-36, -62, 4.8) + bone_hand(36, -62, 4.8))
+    o.append(head(0, -124, H.risen_back(Z)))
+    rogue_hood_mask(o, back=True, fem=fem, tier=tier, risen=True)
+    sprite(key + '_b', back_vb(RG_VB), o, 'Risen rogue back')
+
+
+# ---------------------------------------------------------------- the pint-sized heroes (gnome & goblin)
+SM_WAR_VB = (-74, -126, 140, 132)
+SM_CLR_VB = (-58, -138, 112, 144)
+SM_MAG_VB = (-48, -144, 102, 150)
+SM_ROG_VB = (-56, -128, 112, 134)
+
+
+def pint_face(race, fem=False, goggles=False):
+    return H.gnome_head(Z, fem=fem, goggles=goggles) if race == 'gnome' else H.goblin_head(Z, fem=fem)
+
+
+def pint_back_head(race, fem=False):
+    return H.gnome_back(Z, fem=fem) if race == 'gnome' else H.goblin_back(Z, fem=fem)
+
+
+def pint_skin(race):
+    return GSKIN if race == 'gnome' else GBSKIN
+
+
+def pint_warrior_front(race='gnome', fem=False, key='gnome_tank', tier=2):
+    o = []
+    skin = pint_skin(race)
+    o.append(both('M-20 -12 H-4 V0 H-24 C-25 -5 -24 -10 -20 -12 Z', BOOT))
+    if tier >= 1:
+        o.append(both('M-20 -12 H-4 V-8.5 H-21 Z', STEEL_D, 2.8))
+    o.append(both('M-17 -26 H-4 V-12 H-19 Z', RAG_D if tier == 0 else BOOT if tier == 1 else BLUE_D))
+    body_col = RAG if tier == 0 else STEEL_D if tier == 1 else STEEL
+    o.append(s('M-21 -64 C-24 -52 -23 -38 -19 -28 H19 C23 -38 24 -52 21 -64 Z', body_col))
+    if tier == 0:
+        o.append(s('M-15 -54 L-6 -52 L-7 -42 L-16 -44 Z', RAG_D, 2.2))
+        o.append(s('M-21 -32 H21 V-26 H-21 Z', ROPE, 2.8) + c(0, -29, 3.2, ROPE, 2.4))
+    elif tier == 1:
+        o.append(s('M-22 -33 H22 V-25 H-22 Z', BOOT, 3.2) + s('M-6 -34 H6 V-24 H-6 Z', STEEL, 2.6))
+    else:
+        o.append(ln('M-14 -58 C-16 -49 -15 -41 -13 -35', STEEL_L, 2.8))
+        belt_col = RED if race == 'goblin' else BLUE
+        o.append(s('M-22 -33 H22 V-25 H-22 Z', belt_col, 3.2) + s('M-6.5 -34.5 H6.5 V-23.5 H-6.5 Z', GOLD, 2.8) + c(0, -29, 2.6, FROST if race == 'gnome' else GRN, 1.8))
+        o.append(c(0, -48, 5.2, GOLD, 2.6) + c(0, -48, 2.2, FROST if race == 'gnome' else RED, 0))
+    if race == 'goblin':
+        o.append(s('M11 -31 C10 -24 18 -24 17 -31 Z', '#8A5A34', 2.4) + c(14, -27, 1.6, GOLD, 0))
+    arm_col = RAG_D if tier == 0 else BOOT if tier == 1 else BLUE_DD
+    o.append(s('M-23 -56 C-31 -51 -35 -45 -36 -39 L-28 -37 C-27 -42 -25 -47 -19 -50 Z', arm_col))
+    o.append(s('M23 -56 C31 -52 35 -47 36 -42 L29 -39 C28 -44 25 -48 19 -50 Z', arm_col))
+    round_shield(o, 34, -43, tier=tier)
+    if tier == 0:
+        o.append(both('M-11 -64 C-15 -73 -34 -74 -39 -59 L-37 -52 C-29 -56 -19 -58 -11 -57 Z', RAG_D))
+        o.append(ln('M-30 -65 L-25 -60 M30 -65 L25 -60', ROPE, 2.0))
+    elif tier == 1:
+        o.append(both('M-11 -65 C-15 -77 -38 -79 -44 -61 L-42 -53 C-33 -58 -21 -60 -11 -58 Z', STEEL_D))
+    else:
+        trim = RED if race == 'goblin' else BLUE
+        o.append(both('M-11 -66 C-15 -80 -42 -82 -48 -62 L-46 -53 C-36 -59 -22 -61 -11 -59 Z', STEEL))
+        o.append(both('M-46 -53 C-36 -59 -22 -61 -11 -59 L-11 -54 C-22 -56 -35 -54 -45 -48 Z', trim, 3.2))
+        if race == 'goblin':
+            o.append(both('M-34 -74 L-41 -86 L-27 -75 Z', BONE, 2.8))
+        else:
+            for x in (-36, 36):
+                o.append(c(x, -64, 3.2, GOLD, 2.2))
+    o.append(beam('M-36 -2 L-39 -86' if tier == 0 else 'M-36 -2 L-39 -94', WOOD if tier <= 1 else BLUE_D, 5.0))
+    if tier == 0:
+        o.append(s('M-38 -82 C-50 -88 -58 -78 -55 -66 C-48 -70 -43 -70 -38 -68 Z', BRONZE))
+    else:
+        o.append(s('M-38 -90 C-55 -101 -66 -82 -62 -64 C-53 -71 -45 -71 -39 -67 Z', STEEL if tier == 1 else STEEL_L))
+        o.append(ln('M-44 -86 C-53 -90 -58 -82 -58 -73', '#FFFFFF', 2.0))
+        if tier >= 2 and race == 'gnome':
+            o.append(c(-45, -78, 3.8, GOLD, 2.2))
+    o.append(c(-36, -34, 6.6, skin if tier == 0 else STEEL_D if tier == 1 else STEEL))
+    o.append(head(0, -77, pint_face(race, fem=fem, goggles=(race == 'gnome' and tier == 0))))
+    if tier == 1:
+        if not fem:
+            o.append(s('M-15.5 -86.5 C-15.5 -102 15.5 -102 15.5 -86.5 Z', STEEL_D))
+        o.append(s('M-16.5 -90.5 H16.5 V-85.5 H-16.5 Z', STEEL, 3.2))
+    elif tier >= 2:
+        if not fem:
+            o.append(s('M-15.5 -86.5 C-15.5 -104 15.5 -104 15.5 -86.5 Z', STEEL))
+        o.append(s('M-16.5 -90.5 L-8 -88.5 L0 -96 L8 -88.5 L16.5 -90.5 V-85.5 H-16.5 Z', GOLD if fem else STEEL_D, 3.2))
+        o.append(both('M-13 -93 C-24 -95 -30 -105 -27 -115 C-22 -107 -17 -103 -10 -100 Z', GOLD if race == 'gnome' else BONE, 3.2))
+        o.append(c(0, -90.5, 2.8, FROST if race == 'gnome' else RED, 2.0))
+    sprite(key + '_f', SM_WAR_VB, o, f'{race.capitalize()} warrior front')
+
+
+def pint_warrior_back(race='gnome', fem=False, key='gnome_tank', tier=2):
+    o = []
+    skin = pint_skin(race)
+    o.append(both('M-20 -12 H-4 V0 H-24 C-25 -5 -24 -10 -20 -12 Z', BOOT))
+    o.append(both('M-17 -26 H-4 V-12 H-19 Z', RAG_D if tier == 0 else BOOT if tier == 1 else BLUE_D))
+    body_col = RAG if tier == 0 else STEEL_D if tier == 1 else STEEL
+    o.append(s('M-21 -64 C-24 -52 -23 -38 -19 -28 H19 C23 -38 24 -52 21 -64 Z', body_col))
+    if tier >= 1:
+        cape_col = RAG_D if tier == 1 else (RED_D if race == 'goblin' else BLUE)
+        o.append(s('M-17 -64 C-21 -50 -21 -36 -18 -20 L-9 -24 L0 -19 L9 -24 L18 -20 C21 -36 21 -50 17 -64 Z', cape_col))
+    arm_col = RAG_D if tier == 0 else BOOT if tier == 1 else BLUE_DD
+    round_shield(o, -34, -43, back=True, tier=tier)
+    o.append(s(m('M23 -56 C31 -52 35 -47 36 -42 L29 -39 C28 -44 25 -48 19 -50 Z'), arm_col))
+    o.append(s(m('M-23 -56 C-31 -51 -35 -45 -36 -39 L-28 -37 C-27 -42 -25 -47 -19 -50 Z'), arm_col))
+    if tier == 0:
+        o.append(both('M-11 -64 C-15 -73 -34 -74 -39 -59 L-37 -52 C-29 -56 -19 -58 -11 -57 Z', RAG_D))
+    elif tier == 1:
+        o.append(both('M-11 -65 C-15 -77 -38 -79 -44 -61 L-42 -53 C-33 -58 -21 -60 -11 -58 Z', STEEL_D))
+    else:
+        trim = RED if race == 'goblin' else BLUE
+        o.append(both('M-11 -66 C-15 -80 -42 -82 -48 -62 L-46 -53 C-36 -59 -22 -61 -11 -59 Z', STEEL))
+        o.append(both('M-46 -53 C-36 -59 -22 -61 -11 -59 L-11 -54 C-22 -56 -35 -54 -45 -48 Z', trim, 3.2))
+        if race == 'goblin':
+            o.append(both('M-34 -74 L-41 -86 L-27 -75 Z', BONE, 2.8))
+    o.append(beam('M36 -2 L39 -86' if tier == 0 else 'M36 -2 L39 -94', WOOD if tier <= 1 else BLUE_D, 5.0))
+    if tier == 0:
+        o.append(s(m('M-38 -82 C-50 -88 -58 -78 -55 -66 C-48 -70 -43 -70 -38 -68 Z'), BRONZE))
+    else:
+        o.append(s(m('M-38 -90 C-55 -101 -66 -82 -62 -64 C-53 -71 -45 -71 -39 -67 Z'), STEEL if tier == 1 else STEEL_L))
+    o.append(c(36, -34, 6.6, skin if tier == 0 else STEEL_D if tier == 1 else STEEL))
+    o.append(head(0, -77, pint_back_head(race, fem=fem)))
+    if tier == 1:
+        if not fem:
+            o.append(s('M-15.5 -86.5 C-15.5 -102 15.5 -102 15.5 -86.5 Z', STEEL_D))
+        o.append(s('M-16.5 -90.5 H16.5 V-85.5 H-16.5 Z', STEEL, 3.2))
+    elif tier >= 2:
+        if not fem:
+            o.append(s('M-15.5 -86.5 C-15.5 -104 15.5 -104 15.5 -86.5 Z', STEEL))
+        o.append(s('M-16.5 -90.5 H16.5 V-85.5 H-16.5 Z', GOLD if fem else STEEL_D, 3.2))
+        o.append(both('M-13 -93 C-24 -95 -30 -105 -27 -115 C-22 -107 -17 -103 -10 -100 Z', GOLD if race == 'gnome' else BONE, 3.2))
+    sprite(key + '_b', back_vb(SM_WAR_VB), o, f'{race.capitalize()} warrior back')
+
+
+def pint_cleric_front(race='gnome', fem=True, key='gnome_healer', tier=2):
+    o = []
+    skin = pint_skin(race)
+    robe_col = RAG if tier == 0 else '#EAE2D0' if tier == 1 else ROBE
+    trim_col = RAG_D if tier == 0 else HBLUE if tier == 1 else GOLD
+    o.append(both('M-13 -6 H-3 V0 H-16 C-17 -3 -16 -5 -13 -6 Z', WOOD_D, 3.2))
+    o.append(s('M-13 -44 C-18 -30 -24 -15 -27 -2 H27 C24 -15 18 -30 13 -44 Z', robe_col))
+    if tier == 0:
+        o.append(s('M-17 -26 L-8 -24 L-9 -14 L-18 -16 Z', RAG_D, 2.2))
+    else:
+        o.append(s('M-6 -43 L-9 -4 H9 L6 -43 Z', HBLUE, 2.8))
+    o.append(s('M-27 -7 C-9 -4 9 -4 27 -7 L28 -2 C9 1 -9 1 -28 -2 Z', trim_col, 3.2))
+    o.append(s('M-14 -66 C-17 -58 -16 -50 -13 -44 H13 C16 -50 17 -58 14 -66 Z', robe_col))
+    o.append(s('M-8 -65 L0 -53 L8 -65 Z', RAG_D if tier == 0 else HBLUE, 2.6))
+    o.append(s('M-15 -47 H15 V-40 H-15 Z', ROPE if tier == 0 else WOOD_D if tier == 1 else GOLD, 3.2))
+    if race == 'goblin':
+        o.append(s('M9 -45 C8 -38 16 -38 15 -45 Z', '#8A5A34', 2.2) + c(12, -41, 1.5, GOLD, 0))
+    o.append(s('M-17 -63 C-26 -57 -31 -48 -33 -38 C-28 -34 -22 -34 -18 -38 C-18 -46 -16 -53 -12 -58 Z', robe_col))
+    o.append(s('M17 -63 C25 -58 30 -50 32 -42 C28 -38 22 -38 18 -41 C17 -48 15 -54 12 -58 Z', robe_col))
+    o.append(halo(26, -35, 11, '#F4B942', 0.38) + c(26, -35, 4.8, skin, 3.2))
+    o.append(s('M26 -48 Q26 -42 32 -42 Q26 -42 26 -36 Q26 -42 20 -42 Q26 -42 26 -48 Z', '#FFE08A', 1.6))
+    if tier == 0:
+        o.append(both('M-8 -66 C-12 -74 -26 -75 -31 -62 L-29 -57 C-22 -60 -15 -62 -8 -61 Z', RAG_D))
+    elif tier == 1:
+        o.append(both('M-8 -67 C-13 -77 -30 -79 -35 -64 L-33 -57 C-25 -61 -15 -63 -8 -62 Z', ROBE))
+        o.append(both('M-33 -57 C-25 -61 -15 -63 -8 -62 L-8 -58 C-16 -59 -25 -57 -32 -52 Z', HBLUE, 2.8))
+    else:
+        o.append(both('M-8 -67 C-13 -79 -33 -81 -38 -65 L-36 -57 C-27 -62 -16 -64 -8 -63 Z', ROBE))
+        o.append(both('M-36 -57 C-27 -62 -16 -64 -8 -63 L-8 -58 C-17 -60 -27 -57 -35 -52 Z', GOLD, 3.0))
+        for x in (-23, 23):
+            o.append(c(x, -69, 4.5, GOLD, 2.6) + c(x, -69, 1.8, HBLUE, 0))
+    o.append(beam('M-31 2 L-31 -106' if tier == 0 else 'M-31 2 L-31 -114', WOOD_D if tier == 0 else WOOD, 5.0))
+    o.append(sun(-31, -122, r=8.5, tier=tier))
+    o.append(c(-31, -34, 4.8, skin, 3.2))
+    o.append(head(0, -79, pint_face(race, fem=fem, goggles=(race == 'gnome' and tier <= 1))))
+    if tier >= 2:
+        o.append(s('M-12.5 -90.5 L-6 -94.5 L0 -100 L6 -94.5 L12.5 -90.5 L11.5 -87.5 C5 -90.5 -5 -90.5 -11.5 -87.5 Z', GOLD, 2.6))
+        o.append(c(0, -92, 2.6, HBLUE, 1.8))
+    sprite(key + '_f', SM_CLR_VB, o, f'{race.capitalize()} cleric front')
+
+
+def pint_cleric_back(race='gnome', fem=True, key='gnome_healer', tier=2):
+    o = []
+    skin = pint_skin(race)
+    robe_col = RAG if tier == 0 else '#EAE2D0' if tier == 1 else ROBE
+    trim_col = RAG_D if tier == 0 else HBLUE if tier == 1 else GOLD
+    o.append(both('M-13 -6 H-3 V0 H-16 C-17 -3 -16 -5 -13 -6 Z', WOOD_D, 3.2))
+    o.append(s('M-13 -44 C-18 -30 -24 -15 -27 -2 H27 C24 -15 18 -30 13 -44 Z', robe_col))
+    o.append(s('M-27 -7 C-9 -4 9 -4 27 -7 L28 -2 C9 1 -9 1 -28 -2 Z', trim_col, 3.2))
+    if tier >= 2:
+        o.append(sun(0, -24, 6.0, spin=0))
+    o.append(s('M-14 -66 C-17 -58 -16 -50 -13 -44 H13 C16 -50 17 -58 14 -66 Z', robe_col))
+    o.append(s('M-15 -47 H15 V-40 H-15 Z', ROPE if tier == 0 else WOOD_D if tier == 1 else GOLD, 3.2))
+    o.append(s(m('M17 -63 C25 -58 30 -50 32 -42 C28 -38 22 -38 18 -41 C17 -48 15 -54 12 -58 Z'), robe_col))
+    o.append(halo(-26, -35, 11, '#F4B942', 0.38) + c(-26, -35, 4.8, skin, 3.2))
+    o.append(s(m('M-17 -63 C-26 -57 -31 -48 -33 -38 C-28 -34 -22 -34 -18 -38 C-18 -46 -16 -53 -12 -58 Z'), robe_col))
+    if tier == 0:
+        o.append(both('M-8 -66 C-12 -74 -26 -75 -31 -62 L-29 -57 C-22 -60 -15 -62 -8 -61 Z', RAG_D))
+    elif tier == 1:
+        o.append(both('M-8 -67 C-13 -77 -30 -79 -35 -64 L-33 -57 C-25 -61 -15 -63 -8 -62 Z', ROBE))
+    else:
+        o.append(both('M-8 -67 C-13 -79 -33 -81 -38 -65 L-36 -57 C-27 -62 -16 -64 -8 -63 Z', ROBE))
+        o.append(both('M-36 -57 C-27 -62 -16 -64 -8 -63 L-8 -58 C-17 -60 -27 -57 -35 -52 Z', GOLD, 3.0))
+    o.append(beam('M31 2 L31 -106' if tier == 0 else 'M31 2 L31 -114', WOOD_D if tier == 0 else WOOD, 5.0))
+    o.append(sun(31, -122, r=8.5, tier=tier))
+    o.append(c(31, -34, 4.8, skin, 3.2))
+    o.append(head(0, -79, pint_back_head(race, fem=fem)))
+    if tier >= 2:
+        o.append(ln('M-12 -87.5 C-5 -85.5 5 -85.5 12 -87.5', GOLD, 2.8))
+    sprite(key + '_b', back_vb(SM_CLR_VB), o, f'{race.capitalize()} cleric back')
+
+
+def pint_frost_staff(o, x=30, tier=2):
+    if tier == 0:
+        o.append(beam(f'M{x + 1} 2 L{x} -96', WOOD_D, 4.2) + halo(x, -103, 10, FROST, 0.25) + c(x, -103, 4.5, FROST_L, 2.4))
+        return
+    if tier == 1:
+        o.append(beam(f'M{x + 1} 2 L{x} -104', WOOD, 4.6) + halo(x, -112, 14, FROST, 0.28) + c(x, -112, 7, FROST, 2.8))
+        return
+    o.append(beam(f'M{x + 1} 2 L{x} -106', WOOD, 4.8) + halo(x, -118, 19, FROST, 0.32))
+    o.append(s(f'M{x} -134 L{x + 9} -118 L{x} -102 L{x - 9} -118 Z', FROST, 3.2) + ln(f'M{x - 2} -127 L{x - 5} -119', '#FFFFFF', 2.2) + s(f'M{x - 6} -106 H{x + 6} V-101 H{x - 6} Z', GOLD, 2.4))
+
+
+def pint_hat(o, col=IROBE, back=False, tier=2, goggles=False):
+    if tier == 0:
+        return
+    cone = 'M-12.5 -95 C-10.5 -109 -3 -123 9.5 -131 C6.5 -120 8.5 -107 12.5 -95 Z'
+    band = 'M-13 -96 C-4 -93 4 -93 13 -96 L12 -101 C4 -98 -4 -98 -12 -101 Z'
+    o.append(e(0, -93, 18.5, 4.8, col, 3.4))
+    o.append(s(m(cone) if back else cone, col) + s(band, ROPE if tier == 1 else GOLD, 2.8))
+    if not back and goggles:
+        for sx in (-1, 1):
+            gx = 5.6 * sx
+            o.append(c(gx, -98.5, 4.8, GOLD, 2.4) + c(gx, -98.5, 2.9, FROST_L, 1.6))
+    elif not back and tier >= 2:
+        o.append(ln('M2.5 -115 V-107 M-1 -113 L6 -109 M-1 -109 L6 -113', '#FFFFFF', 1.8))
+
+
+def pint_mage_front(race='gnome', fem=True, key='gnome_dps', tier=2):
+    o = []
+    skin = pint_skin(race)
+    robe_col = MRAG if tier == 0 else IROBE_D if tier == 1 else IROBE
+    dark_col = MRAG_D if tier == 0 else '#22496E' if tier == 1 else IROBE_D
+    o.append(both('M-10 -5 H-3 V0 H-13 C-14 -3 -13 -5 -10 -5 Z', dark_col, 3))
+    o.append(s('M-11 -45 C-15 -30 -20 -15 -22 -2 H22 C20 -15 15 -30 11 -45 Z', robe_col))
+    if tier == 0:
+        o.append(s('M-14 -26 L-5 -24 L-7 -14 L-16 -16 Z', MRAG_D, 2.2))
+    else:
+        o.append(s('M-4.5 -44 L-7 -3 H7 L4.5 -44 Z', ROPE if tier == 1 else GOLD, 2.8))
+    o.append(s('M-22 -7 C-7 -4 7 -4 22 -7 L23 -2 C7 1 -7 1 -23 -2 Z', dark_col, 3))
+    o.append(s('M-12 -66 C-15 -58 -14 -50 -11 -45 H11 C14 -50 15 -58 12 -66 Z', robe_col))
+    o.append(s('M-7.5 -65 L0 -53 L7.5 -65 Z', dark_col, 2.4))
+    o.append(s('M-13 -48 H13 V-42 H-13 Z', ROPE if tier == 0 else dark_col, 2.8))
+    if tier >= 2:
+        o.append(s('M-3.2 -49 H3.2 V-41 H-3.2 Z', FROST_L, 2.0))
+    o.append(s('M-15 -63 C-22 -57 -26 -50 -27 -42 C-23 -39 -19 -40 -17 -43 C-17 -50 -15 -56 -11 -59 Z', robe_col) + c(-22, -39, 4.4, skin, 3))
+    o.append(halo(-23, -50, 11, FROST, 0.42) + c(-23, -50, 5.5, FROST_L, 2.8))
+    o.append(s('M15 -63 C22 -58 26 -52 28 -45 C25 -42 21 -42 18 -45 C17 -52 15 -56 11 -59 Z', robe_col))
+    if tier == 0:
+        o.append(both('M-10 -65 C-16 -68 -24 -66 -27 -60 C-21 -59 -15 -60 -10 -61 Z', MRAG_D, 2.8))
+    elif tier == 1:
+        o.append(both('M-10 -66 C-17 -70 -26 -68 -30 -60 C-23 -59 -16 -60 -10 -62 Z', dark_col, 3.0))
+    else:
+        o.append(s('M-13 -65 C-13 -73 -9 -77 -5.5 -71 L0 -68 L5.5 -71 C9 -77 13 -73 13 -65 C7 -62 -7 -62 -13 -65 Z', '#FFFFFF' if fem else IROBE_D, 3.2))
+        o.append(both('M-10 -67 L-15 -82 L-21 -70 L-30 -77 L-33 -62 C-26 -60 -17 -60 -10 -62 Z', FROST, 3.2))
+    pint_frost_staff(o, 30, tier=tier)
+    o.append(c(27, -43, 4.4, skin, 3))
+    o.append(head(0, -79, pint_face(race, fem=fem, goggles=(race == 'gnome' and tier == 0))))
+    pint_hat(o, col=robe_col, tier=tier, goggles=(race == 'gnome' and tier >= 1))
+    sprite(key + '_f', SM_MAG_VB, o, f'{race.capitalize()} mage front')
+
+
+def pint_mage_back(race='gnome', fem=True, key='gnome_dps', tier=2):
+    o = []
+    skin = pint_skin(race)
+    robe_col = MRAG if tier == 0 else IROBE_D if tier == 1 else IROBE
+    dark_col = MRAG_D if tier == 0 else '#22496E' if tier == 1 else IROBE_D
+    o.append(both('M-10 -5 H-3 V0 H-13 C-14 -3 -13 -5 -10 -5 Z', dark_col, 3))
+    o.append(s('M-11 -45 C-15 -30 -20 -15 -22 -2 H22 C20 -15 15 -30 11 -45 Z', robe_col) + s('M-22 -7 C-7 -4 7 -4 22 -7 L23 -2 C7 1 -7 1 -23 -2 Z', dark_col, 3))
+    o.append(s('M-12 -66 C-15 -58 -14 -50 -11 -45 H11 C14 -50 15 -58 12 -66 Z', robe_col) + s('M-13 -48 H13 V-42 H-13 Z', ROPE if tier == 0 else dark_col, 2.8))
+    o.append(s(m('M15 -63 C22 -58 26 -52 28 -45 C25 -42 21 -42 18 -45 C17 -52 15 -56 11 -59 Z'), robe_col))
+    o.append(s(m('M-15 -63 C-22 -57 -26 -50 -27 -42 C-23 -39 -19 -40 -17 -43 C-17 -50 -15 -56 -11 -59 Z'), robe_col) + c(22, -39, 4.4, skin, 3))
+    o.append(halo(23, -50, 11, FROST, 0.42) + c(23, -50, 5.5, FROST_L, 2.8))
+    if tier >= 2:
+        o.append(s('M-13 -65 C-13 -73 13 -73 13 -65 C7 -62 -7 -62 -13 -65 Z', '#FFFFFF' if fem else IROBE_D, 3.2))
+        o.append(both('M-10 -67 L-15 -82 L-21 -70 L-30 -77 L-33 -62 C-26 -60 -17 -60 -10 -62 Z', FROST, 3.2))
+    pint_frost_staff(o, -30, tier=tier)
+    o.append(c(-27, -43, 4.4, skin, 3))
+    o.append(head(0, -79, pint_back_head(race, fem=fem)))
+    pint_hat(o, col=robe_col, back=True, tier=tier)
+    sprite(key + '_b', back_vb(SM_MAG_VB), o, f'{race.capitalize()} mage back')
+
+
+def pint_rogue_hood_mask(o, race='gnome', back=False, fem=True, tier=2):
+    if tier == 0:
+        if not back:
+            o.append(s('M-12.5 -71.5 Q0 -69.5 12.5 -71.5 L11 -63.5 C4 -60.5 -4 -60.5 -11 -63.5 Z', RAG_D, 2.6))
+        return
+    hood_col = '#4E3624' if tier == 1 else RG_CLOAK
+    mask_col = '#1E1826' if tier >= 2 else RAG_D
+    if not back:
+        o.append(s('M-13.5 -72.0 Q0 -70.0 13.5 -72.0 L11.5 -63.0 C4 -60.0 -4 -60.0 -11.5 -63.0 Z', mask_col, 2.8))
+        if tier >= 2:
+            o.append(ln('M-8.5 -67.5 H8.5', RG_LEATHER, 1.8))
+            o.append(s('M-16.5 -79 C-18.5 -99 -10.5 -108 0 -110 C10.5 -108 18.5 -99 16.5 -79 C12 -89.5 -12 -89.5 -16.5 -79 Z', hood_col, 3.2))
+            if race == 'gnome':
+                for sx in (-1, 1):
+                    o.append(c(6.2 * sx, -93.5, 4.6, GOLD, 2.2) + c(6.2 * sx, -93.5, 2.6, RG_VENOM, 0))
+            else:
+                o.append(c(0, -95, 2.5, RG_VENOM, 1.8))
+    else:
+        if tier >= 2:
+            o.append(s('M-16.5 -77 C-19 -97 -10.5 -108 0 -110 C10.5 -108 19 -97 16.5 -77 L8 -65 L0 -60 L-8 -65 Z', hood_col, 3.2))
+
+
+def pint_rogue_front(race='gnome', fem=True, key='gnome_rogue', tier=2):
+    o = []
+    skin = pint_skin(race)
+    vest = RAG if tier == 0 else '#6B4528' if tier == 1 else RG_LEATHER
+    dark = RAG_D if tier == 0 else '#3B2818' if tier == 1 else RG_LEATHER_D
+    if tier >= 1:
+        o.append(s('M-15 -66 C-20 -48 -22 -30 -20 -14 L-12 -19 L-5 -12 L0 -19 L5 -12 L12 -19 L20 -14 C22 -30 20 -48 15 -66 Z', RG_CLOAK))
+    o.append(both('M-13 -12 H-3.5 V0 H-17 C-18 -4 -16 -9 -13 -12 Z', BOOT))
+    o.append(both('M-12 -42 L-14 -12 H-4 L-3 -42 Z', dark))
+    o.append(s('M-14 -66 C-17 -56 -16 -48 -13 -42 H13 C16 -48 17 -56 14 -66 Z', vest))
+    o.append(ln('M-10 -62 L10 -44 M10 -62 L-10 -44', ROPE if tier == 0 else '#8C6239', 2.8))
+    o.append(s('M-15 -45 H15 V-39 H-15 Z', ROPE if tier == 0 else BOOT, 2.8) + c(0, -42, 3.0, BRONZE if tier <= 1 else GOLD, 2.0))
+    if race == 'goblin':
+        o.append(s('M9 -43 C8 -36 16 -36 15 -43 Z', '#8A5A34', 2.2) + c(12, -39, 1.5, GOLD, 0))
+    o.append(both('M-15 -63 C-23 -57 -28 -49 -30 -40 L-23 -37 C-21 -45 -18 -52 -12 -58 Z', dark))
+    if tier == 0:
+        o.append(both('M-10 -65 C-15 -72 -27 -72 -31 -60 L-29 -55 C-23 -58 -16 -60 -10 -59 Z', RAG_D))
+    else:
+        pad = '#6B4528' if tier == 1 else RG_LEATHER
+        trim = '#3B2818' if tier == 1 else RG_CLOAK
+        o.append(both('M-10 -66 C-15 -76 -32 -77 -37 -61 L-35 -55 C-27 -59 -17 -61 -10 -60 Z', pad))
+        o.append(both('M-35 -55 C-27 -59 -17 -61 -10 -60 L-10 -56 C-18 -57 -27 -55 -34 -50 Z', trim, 2.8))
+        if tier >= 2:
+            o.append(both('M-24 -72 L-30 -84 L-18 -73 Z', RG_STEEL, 2.6))
+            for x in (-22, 22):
+                o.append(c(x, -65, 2.2, RG_VENOM, 1.6))
+    twin_daggers(o, -30, 30, -40, tier=tier, risen=False)
+    o.append(c(-30, -40, 4.8, skin, 3.0) + c(30, -40, 4.8, skin, 3.0))
+    o.append(head(0, -78, pint_face(race, fem=fem, goggles=(race == 'gnome' and tier <= 1))))
+    pint_rogue_hood_mask(o, race=race, back=False, fem=fem, tier=tier)
+    sprite(key + '_f', SM_ROG_VB, o, f'{race.capitalize()} rogue front')
+
+
+def pint_rogue_back(race='gnome', fem=True, key='gnome_rogue', tier=2):
+    o = []
+    skin = pint_skin(race)
+    vest = RAG if tier == 0 else '#6B4528' if tier == 1 else RG_LEATHER
+    dark = RAG_D if tier == 0 else '#3B2818' if tier == 1 else RG_LEATHER_D
+    o.append(both('M-13 -12 H-3.5 V0 H-17 C-18 -4 -16 -9 -13 -12 Z', BOOT))
+    o.append(both('M-12 -42 L-14 -12 H-4 L-3 -42 Z', dark))
+    o.append(s('M-14 -66 C-17 -56 -16 -48 -13 -42 H13 C16 -48 17 -56 14 -66 Z', vest))
+    o.append(s('M-15 -45 H15 V-39 H-15 Z', ROPE if tier == 0 else BOOT, 2.8))
+    if tier >= 1:
+        o.append(s('M-15 -66 C-20 -48 -22 -30 -20 -14 L-12 -19 L-5 -12 L0 -19 L5 -12 L12 -19 L20 -14 C22 -30 20 -48 15 -66 Z', RG_CLOAK))
+    o.append(both('M-15 -63 C-23 -57 -28 -49 -30 -40 L-23 -37 C-21 -45 -18 -52 -12 -58 Z', dark))
+    if tier == 0:
+        o.append(both('M-10 -65 C-15 -72 -27 -72 -31 -60 L-29 -55 C-23 -58 -16 -60 -10 -59 Z', RAG_D))
+    else:
+        pad = '#6B4528' if tier == 1 else RG_LEATHER
+        trim = '#3B2818' if tier == 1 else RG_CLOAK
+        o.append(both('M-10 -66 C-15 -76 -32 -77 -37 -61 L-35 -55 C-27 -59 -17 -61 -10 -60 Z', pad))
+        o.append(both('M-35 -55 C-27 -59 -17 -61 -10 -60 L-10 -56 C-18 -57 -27 -55 -34 -50 Z', trim, 2.8))
+        if tier >= 2:
+            o.append(both('M-24 -72 L-30 -84 L-18 -73 Z', RG_STEEL, 2.6))
+    twin_daggers(o, -30, 30, -40, tier=tier, risen=False)
+    o.append(c(-30, -40, 4.8, skin, 3.0) + c(30, -40, 4.8, skin, 3.0))
+    o.append(head(0, -78, pint_back_head(race, fem=fem)))
+    pint_rogue_hood_mask(o, race=race, back=True, fem=fem, tier=tier)
+    sprite(key + '_b', back_vb(SM_ROG_VB), o, f'{race.capitalize()} rogue back')
+
+
 def build():
     for tier, suf in ((0, '_rags'), (1, '_iron'), (2, '')):
         dwarf_front(False, 'tank' + suf, tier); dwarf_back(False, 'tank' + suf, tier)
@@ -738,16 +1233,30 @@ def build():
         cleric_front(False, 'healer_m' + suf, tier); cleric_back(False, 'healer_m' + suf, tier)
         elf_front(True, 'dps' + suf, tier); elf_back(True, 'dps' + suf, tier)
         elf_front(False, 'dps_m' + suf, tier); elf_back(False, 'dps_m' + suf, tier)
+        rogue_front(True, 'rogue' + suf, tier); rogue_back(True, 'rogue' + suf, tier)
+        rogue_front(False, 'rogue_m' + suf, tier); rogue_back(False, 'rogue_m' + suf, tier)
         risen_warrior_front(False, 'risen_tank' + suf, tier); risen_warrior_back(False, 'risen_tank' + suf, tier)
         risen_warrior_front(True, 'risen_tank_w' + suf, tier); risen_warrior_back(True, 'risen_tank_w' + suf, tier)
         risen_cleric_front(True, 'risen_healer' + suf, tier); risen_cleric_back(True, 'risen_healer' + suf, tier)
         risen_cleric_front(False, 'risen_healer_m' + suf, tier); risen_cleric_back(False, 'risen_healer_m' + suf, tier)
         risen_mage_front(True, 'risen_dps' + suf, tier); risen_mage_back(True, 'risen_dps' + suf, tier)
         risen_mage_front(False, 'risen_dps_m' + suf, tier); risen_mage_back(False, 'risen_dps_m' + suf, tier)
+        risen_rogue_front(True, 'risen_rogue' + suf, tier); risen_rogue_back(True, 'risen_rogue' + suf, tier)
+        risen_rogue_front(False, 'risen_rogue_m' + suf, tier); risen_rogue_back(False, 'risen_rogue_m' + suf, tier)
+        for race in ('gnome', 'goblin'):
+            pint_warrior_front(race, False, f'{race}_tank' + suf, tier); pint_warrior_back(race, False, f'{race}_tank' + suf, tier)
+            pint_warrior_front(race, True, f'{race}_tank_w' + suf, tier); pint_warrior_back(race, True, f'{race}_tank_w' + suf, tier)
+            pint_cleric_front(race, True, f'{race}_healer' + suf, tier); pint_cleric_back(race, True, f'{race}_healer' + suf, tier)
+            pint_cleric_front(race, False, f'{race}_healer_m' + suf, tier); pint_cleric_back(race, False, f'{race}_healer_m' + suf, tier)
+            pint_mage_front(race, True, f'{race}_dps' + suf, tier); pint_mage_back(race, True, f'{race}_dps' + suf, tier)
+            pint_mage_front(race, False, f'{race}_dps_m' + suf, tier); pint_mage_back(race, False, f'{race}_dps_m' + suf, tier)
+            pint_rogue_front(race, True, f'{race}_rogue' + suf, tier); pint_rogue_back(race, True, f'{race}_rogue' + suf, tier)
+            pint_rogue_front(race, False, f'{race}_rogue_m' + suf, tier); pint_rogue_back(race, False, f'{race}_rogue_m' + suf, tier)
     # Gilded Bones: every Risen sprite again with its bones in gold
     for n in [k for k in HEROES if k.startswith('risen_')]:
         sp = HEROES[n]
         HEROES[n.rsplit('_', 1)[0] + '_gilded_' + n.rsplit('_', 1)[1]] = {
             'svg': sp['svg'].replace(BONE, GOLD).replace(BONE_D, GOLD_D), 'vb': sp['vb'], 'note': sp['note'] + ', gilded'}
     return HEROES
+
 

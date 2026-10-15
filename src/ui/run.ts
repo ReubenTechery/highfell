@@ -11,7 +11,7 @@ import { BARROW } from '../content/barrow';
 import { BARROW_HEROIC } from '../content/barrow/heroic';
 import type { DungeonInfo } from '../content/types';
 import { BARROW_ENGINE } from '../content/barrow/engine';
-import { AB, MEND, ROLES } from '../content/roles';
+import { AB, MEND, ROLES, abKey } from '../content/roles';
 import type { Rar, RoleId } from '../content/types';
 import { newGame, respawn, update } from '../dungeon/game.js';
 import { S, setHooks } from '../dungeon/state.js';
@@ -247,13 +247,13 @@ export class RunScene implements InputUI {
     const role: RoleId = intro ? 'tank' : h ? roleOf(h) : o.role || 'tank';
     this.heroId = h ? h.id : null;
     this.role = role;
-    const test = o.testRar !== null || !h;
+    const test = o.testRar != null || !h;
     this.practice = o.start !== 'entrance' || test;
-    const rar: Rar = intro ? 3 : o.testRar !== null ? o.testRar : h ? partyRar(p, h) : 0;
+    const rar: Rar = intro ? 3 : o.testRar != null ? o.testRar : h ? partyRar(p, h) : 0;
     const tierSuffix = rar <= 0 ? '_rags' : rar === 1 ? '_iron' : '';
     const loadouts: Record<string, unknown> = {};
     for (const r of ['tank', 'healer', 'dps'] as RoleId[]) {
-      const base = r === role ? (test || !h ? plainLoadout(r, rar) : loadoutFor(p, h)) : plainLoadout(r, rar);
+      const base = r === role ? (test || !h ? plainLoadout(r, rar, h?.cls) : loadoutFor(p, h)) : plainLoadout(r, rar);
       loadouts[r] = { ...base, sprite: `${ROLES[r].sprite}${tierSuffix}` };
     }
     if (intro) loadouts.tank = { ...(loadouts.tank as object), unique: 'gravedigger', bonuses: ['barrowguard2'], name: 'Brannoc', sprite: 'tank' };
@@ -262,7 +262,7 @@ export class RunScene implements InputUI {
     this.brew = brew;
     if (h) {
       const spr = test ? `${heroArt(h.race, h.cls, h.sex) || ROLES[role].sprite}${tierSuffix}` : heroSprite(h, role, p);
-      loadouts[role] = { ...(loadouts[role] as object), name: h.name, sprite: spr, ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) };
+      loadouts[role] = { ...(loadouts[role] as object), cls: h.cls, name: h.name, sprite: spr, ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) };
     }
     if (brew && this.practice) app.store.save();
     const looks = Object.keys(p.collection).filter((id) => COLLECTIBLES[id] && (COLLECTIBLES[id].kind === 'cosmetic') && !p.settings.looksOff.includes(id));
@@ -510,9 +510,9 @@ export class RunScene implements InputUI {
 
   /* ---------------------------------------------------------------- HUD */
   private buildHud(): void {
-    const p = S.player, A = AB[p.role as RoleId];
+    const p = S.player, A = AB[abKey(p)];
     $('frames').innerHTML = S.heroes.map((h: any) => `<li class="fr${h.isPlayer ? ' me' : ''}" data-heal="${h.role}" data-role="${h.role}">
-      <span class="fr-top"><span class="fi">${tile(ROLE_ICON[h.role])}</span><span class="fr-n">${h.isPlayer ? 'You' : h.name}</span><i class="ag" aria-hidden="true"></i></span>
+      <span class="fr-top"><span class="fi">${tile(h.cls === 'rogue' ? 'viper' : ROLE_ICON[h.role])}</span><span class="fr-n">${h.isPlayer ? 'You' : h.name}</span><i class="ag" aria-hidden="true"></i></span>
       <span class="fb"><i class="hpf"></i><i class="abf"></i></span>${h.role === 'healer' ? '<span class="fb mp"><i class="mpf"></i></span>' : ''}</li>`).join('');
     $('frames').querySelectorAll<HTMLElement>('.fr').forEach((li) => li.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (S.player.role === 'healer') mend(S.player, heroBy(li.dataset.role)); }));
     const btn = (slot: string) => {
@@ -520,7 +520,7 @@ export class RunScene implements InputUI {
       const mana = slot === 'dodge' ? 0 : abMana(p, slot);
       const tip = def.combo ? `${def.name}: ${def.desc} (${def.combo})` : `${def.name}: ${def.desc}`;
       const tag = slot === 'dodge' ? 'Roll' : def.hold ? 'Block' : '';
-      const kind = slot === 'dodge' ? ' roll' : def.hold ? ' hold' : slot === 'a1' && p.role === 'tank' ? ' main' : '';
+      const kind = slot === 'dodge' ? ' roll' : def.hold ? ' hold' : slot === 'a1' && (p.role === 'tank' || p.cls === 'rogue') ? ' main' : '';
       return `<button type="button" class="ab${kind}" data-slot="${slot}" aria-label="${esc(def.name)}" title="${esc(tip)} (${KEY[slot]})">
         <span class="face">${tile(def.key)}</span><span class="sweep"></span><span class="cdn"></span><kbd>${KEY[slot]}</kbd>${mana ? `<span class="cost">${mana}</span>` : ''}${tag ? `<span class="ab-tag">${tag}</span>` : ''}<span class="c-tag" aria-hidden="true"></span><span class="glow"></span></button>`;
     };
@@ -544,7 +544,7 @@ export class RunScene implements InputUI {
       const p = S.player;
       if (p.st.caged) { mashCage(p, this); return; }
       if (slot === 'dodge') { doDodge(p, p.intent.mx, p.intent.my); return; }
-      const def = AB[p.role as RoleId][slot as 'a1'];
+      const def = AB[abKey(p)][slot as 'a1'];
       if (def.hold) {
         IN.block = true; b.classList.add('held');
         try { b.setPointerCapture(e.pointerId); } catch { /* fine */ }
@@ -603,7 +603,7 @@ export class RunScene implements InputUI {
       $('bb-sub').textContent = (act ? act + ' · ' : '') + (enr ? (left > 0 ? 'Enrage in ' + fmtT(left) : 'Enraged') : '');
       $('bb-sub').classList.toggle('hot', !!act || (enr > 0 && left <= 30));
     } else if (!bb.hidden) bb.hidden = true;
-    const A = AB[p.role as RoleId];
+    const A = AB[abKey(p)];
     this.root.querySelectorAll<HTMLElement>('.ab').forEach((b) => {
       const slot = b.dataset.slot!;
       let cd = 0, max = 1, usable = p.alive && !p.st.stun && !p.st.caged;
@@ -644,7 +644,7 @@ function setW(el: Element | null, k: number): void { if (!el) return; const v = 
 
 /** a gold glow and combo prompt label on a button when a combo chain or reactive window is live */
 function comboFor(p: any, slot: string): string {
-  const def = slot === 'dodge' ? null : AB[p.role as RoleId][slot as 'a1'];
+  const def = slot === 'dodge' ? null : AB[abKey(p)][slot as 'a1'];
   if (!def) return S.hazards.some((z: any) => !z.noDmg && !(z.tankBuster && p.role === 'tank') && z.t > 0.2 && inHaz(z, p.x, p.y, p.r)) || S.rings.some((g: any) => !g.hit.has(p.id) && Math.abs(dist(p, g) - g.r) < 90) ? 'DODGE!' : '';
   const loose = () => S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && !m.cage && m.forcedT <= 0 && dist(m, p) < 220);
   switch (def.key) {
@@ -663,6 +663,10 @@ function comboFor(p: any, slot: string): string {
     case 'nova': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 150 + m.r) ? 'KICK!' : S.mobs.filter((m: any) => isFoe(m) && !m.isBoss && !m.cage && m.state === 'fight' && dist(m, p) < 150 + m.r).length >= 2 ? 'FREEZE!' : '';
     case 'comet': { const t = p.picked || p.target; return (t && t.alive && t.st && t.st.freeze > 0.6) ? 'SHATTER 2×!' : ''; }
     case 'icicle': return S.mobs.some((m: any) => isFoe(m) && m.st && m.st.freeze > 0.3 && dist(m, p) < 500) ? 'SHATTER 3×!' : '';
+    case 'viper': { const t = p.picked || p.target; return (t && t.alive && !t.cage && (!t.bleed || t.bleed.left < 1.8) && dist(t, p) < 110 + t.r) ? 'VENOM!' : ''; }
+    case 'ambush': { const t = p.picked || p.target; return (t && t.alive && t.bleed && t.bleed.left > 0 && dist(t, p) < 110 + t.r) ? 'CRIT!' : ''; }
+    case 'flurry': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 135 + m.r) ? 'KICK!' : S.mobs.filter((m: any) => isFoe(m) && !m.cage && m.state === 'fight' && dist(m, p) < 135 + m.r).length >= 2 ? 'FLURRY!' : '';
+    case 'shadowstep': { const t = p.picked || p.target; return (t && t.alive && dist(t, p) > 105 + t.r && dist(t, p) <= 340 + t.r) ? 'BLINK!' : ''; }
   }
   return '';
 }
