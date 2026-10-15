@@ -33,6 +33,7 @@ export interface InputUI {
   hintDone(key: string): void;
   holdBtn(slot: string, on: boolean): void;
   pause(): void;
+  onTutInput?(slot: string): boolean;
 }
 
 /** read the controls into the player's hero, every frame (HOOKS.playerIntent) */
@@ -92,7 +93,15 @@ function onMechanic(x: number, y: number): boolean {
 
 export function bindInput(layer: HTMLElement, ui: InputUI): void {
   layer.addEventListener('pointerdown', (e) => {
-    if (!S || S.over || S.paused) return;
+    if (!S || S.over) return;
+    if (S.paused) {
+      if (ui.onTutInput) {
+        const p = localXY(e);
+        IN.gest.set(e.pointerId, { pts: [{ x: p.x, y: p.y, t: performance.now() }], sliced: false });
+        try { layer.setPointerCapture(e.pointerId); } catch { /* fine */ }
+      }
+      return;
+    }
     e.preventDefault();
     const p = localXY(e);
     // caged: every touch anywhere is a tap on the bars. A touch on a mate's cage hits it, wherever it is.
@@ -116,7 +125,7 @@ export function bindInput(layer: HTMLElement, ui: InputUI): void {
     if (!g) return;
     const last = g.pts[g.pts.length - 1];
     g.pts.push({ x: p.x, y: p.y, t: performance.now() });
-    if (trySlice(last, p, ui)) g.sliced = true;
+    if (!S?.paused && trySlice(last, p, ui)) g.sliced = true;
   });
   const end = (e: PointerEvent) => {
     if (IN.stick && IN.stick.id === e.pointerId) { IN.stick = null; ui.stick(null); return; }
@@ -126,6 +135,7 @@ export function bindInput(layer: HTMLElement, ui: InputUI): void {
     if (!S || S.over) return;
     const a = g.pts[0], b = g.pts[g.pts.length - 1];
     const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy), dur = b.t - a.t;
+    if (S.paused) { if (len > 34 && dur < 500) ui.onTutInput?.('dodge'); return; }
     if (g.sliced) return;
     if (len > 34 && dur < 340) { if (doDodge(S.player, dx, dy)) ui.hintDone('dodge'); return; }
     if (len < 16 && dur < 420) tapWorld(toWorld(b.x, b.y), ui);
@@ -142,6 +152,11 @@ export function bindInput(layer: HTMLElement, ui: InputUI): void {
     const c = e.code;
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(c) && !S.over) e.preventDefault();
     if (c === 'Escape' || c === 'KeyP') { ui.pause(); return; }
+    if (S.paused && ui.onTutInput) {
+      if (c === 'Space' || c === 'ShiftLeft' || c === 'ShiftRight') { if (ui.onTutInput('dodge')) return; }
+      if (c === 'Digit1' || c === 'Digit2' || c === 'Digit3' || c === 'Digit4') { if (ui.onTutInput('a' + c.slice(5))) return; }
+      if (c === 'Enter') { if (ui.onTutInput('any')) return; }
+    }
     if (S.paused || S.over) return;
     if (e.repeat && c !== 'Digit2') return;
     IN.keys[c] = true;

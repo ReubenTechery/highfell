@@ -11,13 +11,13 @@ import { MAP } from './map.js';
 export function knightTick(m, dt) {
   const ab = m.ab;
   const intro = S.opts && S.opts.start === 'intro';
-  if (!ab.init) { ab.init = true; ab.t = 0; ab.sweep = intro ? 5.2 : 3.5; ab.charge = intro ? 1.8 : 7; }
+  if (!ab.init) { ab.init = true; ab.t = 0; ab.sweep = intro ? 4.4 : 3.5; ab.charge = intro ? 1.6 : 7; }
   ab.t += dt;
   if (!ab.enraged && ab.t > m.M.enrage) { ab.enraged = true; m.dmgMul = 2.5; m.speed *= 1.3; banner('Sir Rattlebones has had enough of you!', 'warn', 2.4); sfx('roar'); }
+  if (intro && m.phase === 1 && (!S.hints.dodge || !S.hints.block) && m.hp < m.maxHp * 0.52) m.hp = Math.ceil(m.maxHp * 0.52);
   if (m.phase === 1 && m.hp < m.maxHp * 0.5) {
     m.phase = 2; m.act = { k: 'rally', t: 0 }; m.wind = 0;
     banner('Phase 2: he calls up his guard. Grab them, then hit him!', 'warn', 2.6); sfx('roar'); shake(6);
-    if (intro) HOOKS.hint('slam');
     return true;
   }
   m.armorUp = m.phase === 2 && S.mobs.some((o) => o.alive && o.rally) ? 0.6 : 0;
@@ -34,7 +34,6 @@ export function knightTick(m, dt) {
       m.face = a; m.flip = Math.cos(a) < 0;
       S.hazards.push({ shape: 'rect', x: m.x, y: m.y, a, len, w: 86, warn: 1.6, t: 0, noDmg: true, src: m });
       call('Charge! Get out of the line', 'alarm', 1.2);
-      if (intro && !S.hints.dodge) { S.hints.dodge = 1; HOOKS.hint('dodge'); }
       return true;
     }
   }
@@ -45,13 +44,14 @@ export function knightTick(m, dt) {
     m.face = a; m.flip = Math.cos(a) < 0; m.pose = 'wind';
     S.hazards.push({ shape: 'cone', x: m.x, y: m.y, a, r: 210, arc: 2.27, warn: 1.4, t: 0, dmg: 190, heavy: true, block: true, src: m, tankBuster: true,
       onFire: () => { sfx('sweep'); shake(5); m.pose = null; m.lunge = 0.2; m.lungeA = a; fx({ type: 'slash', x: m.x, y: m.y - 60, a, r: 150, dur: 0.22, col: '#FFFFFF', wide: true }); } });
-    if (intro) { call('BLOCK!', 'alarm', 1.0); if (!S.hints.block) { S.hints.block = 1; HOOKS.hint('block'); } }
+    if (intro) call('BLOCK!', 'alarm', 1.0);
     return true;
   }
   return false;
 }
 function knightAct(m, dt) {
   const a = m.act; a.t += dt;
+  const intro = S.opts && S.opts.start === 'intro';
   if (a.k === 'rally') {
     m.pose = 'wind';
     if (!a.done && a.t > 1.0) {
@@ -64,13 +64,23 @@ function knightAct(m, dt) {
         aggro(r, v, 60);
       });
       shake(6); sfx('rise');
+      if (intro) { S.hints.slam = 1; HOOKS.hint('slam'); }
     }
     if (a.t > 1.9) m.act = null;
     return true;
   }
-  if (a.k === 'sweep') { if (a.t >= a.dur) { m.act = null; m.pose = null; m.atkT = 0.8; } return true; }
+  if (a.k === 'sweep') {
+    if (intro && !S.hints.block && a.t >= 1.02) { S.hints.block = 1; HOOKS.hint('block'); }
+    if (a.t >= a.dur) { m.act = null; m.pose = null; m.atkT = 0.8; }
+    return true;
+  }
   if (a.k === 'charge') {
-    if (a.phase === 'wind') { m.pose = 'wind'; if (a.t >= 1.6) { a.phase = 'go'; m.pose = null; sfx('charge'); } return true; }
+    if (a.phase === 'wind') {
+      m.pose = 'wind';
+      if (intro && !S.hints.dodge && a.t >= 0.55) { S.hints.dodge = 1; HOOKS.hint('dodge'); }
+      if (a.t >= 1.6) { a.phase = 'go'; m.pose = null; sfx('charge'); }
+      return true;
+    }
     const step = 1150 * dt;
     const ok = moveEnt(m, Math.cos(a.a) * step, Math.sin(a.a) * step);
     a.went += step; m.moving = 0.1; m.walkT += dt * 20;

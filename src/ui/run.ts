@@ -43,8 +43,7 @@ const KEY: Record<string, string> = { a1: '1', a2: '2', a3: '3', a4: '4', dodge:
 const ROLE_ICON: Record<string, string> = { tank: 'shield', healer: 'mend', dps: 'blizzard' };
 const HINTS: Record<string, [string, string, string, number?]> = {
   move: ['Drag on the left side of the screen to move.', 'WASD or the arrow keys to move.', 'Move', 8],
-  introMove: ['You are Brannoc, a full-Epic Tank. Drag on the left to walk into the pack—you swing in range and Maren & Ivy follow.', 'You are Brannoc, a full-Epic Tank. WASD or arrows to walk into the pack—you swing in range and Maren & Ivy follow.', 'Prologue · Full Epic', 9],
-  introAb: ['Press Cleave or Slam when they glow gold. Every fifth swing with The Gravedigger stuns the pack!', 'Press Cleave (4) or Slam (1) when they glow gold. Every fifth swing with The Gravedigger stuns the pack!', 'Smash abilities', 8],
+  introMove: ['Drag on the left to walk up into the skeletons.', 'Use WASD or the arrow keys to walk up into the skeletons.', 'Walk into the pack', 12],
   introChest: ['The lantern flared gold and the chest knocked twice: a unique is inside! Walk to the chest to open it.', 'The lantern flared gold and the chest knocked twice: a unique is inside! Walk to the chest to open it.', 'The walkout', 8],
   dodge: ['Swipe anywhere to dodge-roll out of the red.', 'Space to dodge-roll out of the red.', 'Dodge', 6],
   block: ['Hold the shield button. Block right before it lands to stun him and hit back.', 'Hold 2 to block. Block right before it lands to stun him and hit back.', 'Block it', 6],
@@ -60,6 +59,42 @@ const HINTS: Record<string, [string, string, string, number?]> = {
   wild: ['Mobs that aren’t on the tank go wild after a few seconds. Tanks, grab them.', 'Mobs that aren’t on the tank go wild after a few seconds. Tanks, grab them.', 'Wild', 7],
   pulled: ['You pulled one off the tank. Let the tank hit first, then go.', 'You pulled one off the tank. Let the tank hit first, then go.', 'Aggro', 6],
   rings: ['Dodge-roll through the rings as they reach you.', 'Space through the rings as they reach you.', 'Rings', 6],
+};
+
+interface TutStep { slot: string; eyebrow: string; title: string; touch: string; desk: string; btn: string }
+const TUT_STEPS: Record<string, TutStep> = {
+  introAb: {
+    slot: 'a4',
+    eyebrow: 'Step 1 of 4',
+    title: 'Smash Cleave!',
+    touch: 'You swing on your own in range. Tap the glowing Cleave button to hit the whole pack!',
+    desk: 'You swing on your own in range. Press the glowing Cleave button (or 4) to hit the whole pack!',
+    btn: 'Use Cleave',
+  },
+  slam: {
+    slot: 'a1',
+    eyebrow: 'Step 2 of 4',
+    title: 'Pull monsters off your party!',
+    touch: 'A skeleton is running at Ivy! Tap the glowing Slam button to grab everything back onto you.',
+    desk: 'A skeleton is running at Ivy! Press the glowing Slam button (or 1) to grab everything back onto you.',
+    btn: 'Use Slam',
+  },
+  dodge: {
+    slot: 'dodge',
+    eyebrow: 'Step 3 of 4',
+    title: 'Roll out of the red!',
+    touch: 'Sir Rattlebones is charging down that red line! Tap the glowing Dodge button to roll aside.',
+    desk: 'Sir Rattlebones is charging down that red line! Press the glowing Dodge button (or Space) to roll aside.',
+    btn: 'Dodge roll',
+  },
+  block: {
+    slot: 'a2',
+    eyebrow: 'Step 4 of 4',
+    title: 'Block the big swing!',
+    touch: 'Tap the glowing Shield button right before he swings to block it, stun him and hit back!',
+    desk: 'Press the glowing Shield button (or 2) right before he swings to block it, stun him and hit back!',
+    btn: 'Raise shield',
+  },
 };
 
 export class RunScene implements InputUI {
@@ -83,6 +118,7 @@ export class RunScene implements InputUI {
   private lootRng = makeRng();
   private hintKey: string | null = null;
   private hintT = 0;
+  private tutKey: string | null = null;
   private hintsDone = new Set<string>();
   private trail = 1;
   private lastRoom = -1;
@@ -107,12 +143,79 @@ export class RunScene implements InputUI {
   }
   hintDone(key: string): void { this.hintsDone.add(key); if (this.hintKey === key) { $('hint').hidden = true; this.hintKey = null; } }
   holdBtn(slot: string, on: boolean): void { this.root.querySelector(`.ab[data-slot="${slot}"]`)?.classList.toggle('held', on); }
+
+  /** freeze the game in the prologue to explain a mechanic and highlight the button to press */
+  showTut(key: string): void {
+    const step = TUT_STEPS[key];
+    if (!step || !S || S.over) return;
+    this.tutKey = key;
+    this.hintKey = null;
+    S.paused = true;
+    const p = S.player;
+    if (step.slot === 'dodge') p.cd.dodge = 0;
+    else p.cd[step.slot] = 0;
+    p.gcd = 0;
+    this.root.classList.add('tut-pause');
+    this.root.querySelectorAll('.tut-spot').forEach((el) => el.classList.remove('tut-spot'));
+    this.root.querySelector(`.ab[data-slot="${step.slot}"]`)?.classList.add('tut-spot');
+    if (key === 'slam') $('frames').classList.add('tut-spot');
+    const h = $('hint');
+    h.className = 'hint glass tut-card';
+    h.innerHTML = `<span class="eyebrow">${esc(step.eyebrow)}</span>
+      <b>${esc(step.title)}</b>
+      <span>${esc(this.app.touch ? step.touch : step.desk)}</span>
+      <div class="tut-acts"><button type="button" class="btn gold" id="tut-act">${esc(step.btn)}</button></div>`;
+    h.hidden = false;
+    $('tut-act').addEventListener('click', (e) => { e.stopPropagation(); SFX.play('ui'); this.onTutInput('any'); });
+    this.hudTick(0);
+  }
+
+  private clearTut(): void {
+    this.tutKey = null;
+    this.root.classList.remove('tut-pause');
+    this.root.querySelectorAll('.tut-spot').forEach((el) => el.classList.remove('tut-spot'));
+    const h = $('hint');
+    h.className = 'hint glass';
+    h.hidden = true;
+  }
+
+  onTutInput(slot: string): boolean {
+    if (!this.tutKey || !S) return false;
+    const step = TUT_STEPS[this.tutKey];
+    if (!step || (slot !== 'any' && slot !== step.slot)) return false;
+    const key = this.tutKey;
+    this.clearTut();
+    this.hintsDone.add(key);
+    S.paused = false;
+    const p = S.player;
+    if (step.slot === 'dodge') {
+      const z = S.hazards.find((x: any) => x.shape === 'rect');
+      const a = z ? z.a + Math.PI / 2 : 0;
+      p.cd.dodge = 0;
+      doDodge(p, Math.cos(a), Math.sin(a));
+    } else if (step.slot === 'a2') {
+      IN.block = true;
+      p.intent.block = true;
+      p.blockStart = S.t;
+      this.holdBtn('a2', true);
+      setTimeout(() => { IN.block = false; this.holdBtn('a2', false); }, 650);
+    } else {
+      p.cd[step.slot] = 0;
+      p.gcd = 0;
+      useAbility(p, step.slot, null);
+    }
+    return true;
+  }
+
   private hint(key: string): void {
-    if (!S || S.quiet || this.hintsDone.has(key)) return;
+    if (!S || S.quiet || S.auto || this.hintsDone.has(key)) return;
+    if (this.intro && TUT_STEPS[key]) { this.showTut(key); return; }
     const t = HINTS[key];
     if (!t) return;
-    $('hint').innerHTML = `<b>${esc(t[2])}</b><span>${esc(this.app.touch ? t[0] : t[1])}</span>`;
-    $('hint').hidden = false;
+    const h = $('hint');
+    h.className = 'hint glass';
+    h.innerHTML = `<b>${esc(t[2])}</b><span>${esc(this.app.touch ? t[0] : t[1])}</span>`;
+    h.hidden = false;
     this.hintKey = key; this.hintT = t[3] || 6;
   }
 
@@ -147,7 +250,7 @@ export class RunScene implements InputUI {
     if (!this.bound) { bindInput($('touch'), this); this.bound = true; }
     setHooks({
       nope: (slot: string) => { flash(this.root.querySelector(`.ab[data-slot="${slot}"]`), 'nope', 260); SFX.play('nope'); },
-      fired: (slot: string) => { flash(this.root.querySelector(`.ab[data-slot="${slot}"]`), 'fired', 300); if (this.intro) this.hintDone('introAb'); },
+      fired: (slot: string) => { flash(this.root.querySelector(`.ab[data-slot="${slot}"]`), 'fired', 300); },
       hint: (key: string) => this.hint(key),
       pulseFrame: (role: string) => this.root.querySelectorAll(`[data-heal="${role}"]`).forEach((el) => flash(el, 'fired', 260)),
       onWipe: () => this.showWipe(),
@@ -162,6 +265,7 @@ export class RunScene implements InputUI {
     this.kills = []; this.clear = null; this.unlocked = [];
     this.off = bus.on((e) => this.onEvent(e));
     resetInput();
+    this.clearTut();
     this.hintsDone = new Set(); this.hintKey = null; $('hint').hidden = true;
     $('ov-msg').hidden = true;
     $('practice-tag').hidden = !this.practice || intro;
@@ -177,11 +281,16 @@ export class RunScene implements InputUI {
     updateCam(0, true);
     this.lastRoom = -1;
     this.live = true; this.acc = 0;
-    setTimeout(() => this.hint(intro ? 'introMove' : 'move'), 500);
-    if (role === 'healer') setTimeout(() => this.hint('heal'), 9000);
+    if (intro) {
+      this.showWelcome();
+    } else {
+      setTimeout(() => this.hint('move'), 500);
+      if (role === 'healer') setTimeout(() => this.hint('heal'), 9000);
+    }
   }
   stop(): void {
     this.live = false;
+    this.clearTut();
     if (this.off) { this.off(); this.off = null; }
     this.app.root.classList.remove('in-run');
     $('ov-msg').hidden = true;
@@ -194,6 +303,20 @@ export class RunScene implements InputUI {
     this.app.store.save();
     if (activeHero(this.app.p)) this.app.showHearth();
     else this.app.showCreate();
+  }
+  private showWelcome(): void {
+    if (!S) return;
+    S.paused = true;
+    this.msg({
+      eyebrow: 'First time here?',
+      title: 'Welcome to Highfell',
+      text: 'Play a quick one-minute tutorial, or jump straight to making your hero.',
+      big: true,
+      buttons: [
+        ['Play tutorial (1 min)', () => { S.paused = false; $('ov-msg').hidden = true; this.hint('introMove'); }],
+        [activeHero(this.app.p) ? 'Back to the hearth' : 'Make my hero', () => this.skipIntro()],
+      ],
+    });
   }
 
   /* ---------------------------------------------------------------- the meta glue */
@@ -254,18 +377,18 @@ export class RunScene implements InputUI {
   }
 
   /* ---------------------------------------------------------------- menus */
-  private msg(o: { eyebrow: string; title: string; text: string; buttons: [string, () => void][] }): void {
+  private msg(o: { eyebrow: string; title: string; text: string; big?: boolean; buttons: [string, () => void][] }): void {
     $('msg-eyebrow').textContent = o.eyebrow;
     $('msg-title').textContent = o.title;
     $('msg-text').textContent = o.text;
-    $('msg-actions').innerHTML = o.buttons.map((b, i) => `<button type="button" class="btn ${i ? '' : 'gold'}" data-i="${i}">${esc(b[0])}</button>`).join('');
+    $('msg-actions').innerHTML = o.buttons.map((b, i) => `<button type="button" class="btn ${o.big ? 'big ' : ''}${i ? '' : 'gold'}" data-i="${i}">${esc(b[0])}</button>`).join('');
     $('msg-actions').querySelectorAll<HTMLElement>('button').forEach((el) => el.addEventListener('click', () => { SFX.play('ui'); o.buttons[+el.dataset.i!][1](); }));
     $('ov-msg').hidden = false;
     ($('msg-actions').querySelector('button') as HTMLElement | null)?.focus({ preventScroll: true });
   }
   pause(): void {
     if (!S || !this.live || S.over) return;
-    if (S.paused) { S.paused = false; $('ov-msg').hidden = true; return; }
+    if (S.paused && !$('ov-msg').hidden) { S.paused = !!this.tutKey; $('ov-msg').hidden = true; return; }
     S.paused = true;
     if (this.intro) {
       this.msg({ eyebrow: 'Prologue', title: 'Paused', text: 'You are playing Brannoc in full Epic gear to get a feel for tanking, dodging, blocking and teamwork.', buttons: [
@@ -304,9 +427,12 @@ export class RunScene implements InputUI {
   /** let the bots play your seat and run the clock forward until `until` says stop */
   autoplay(seconds: number, until?: (s: any) => boolean): number {
     if (!S) return 0;
+    if (this.intro && S.paused) { S.paused = false; $('ov-msg').hidden = true; this.clearTut(); }
     S.auto = true;
     let n = Math.round(seconds / STEP), i = 0;
-    for (; i < n && this.live && S && !S.paused; i++) {
+    for (; i < n && this.live && S; i++) {
+      if (this.intro && S.paused) { S.paused = false; this.clearTut(); }
+      if (S.paused) break;
       update(STEP);
       if (S.over === 'wipe' && S.timers.length === 0) { $('ov-msg').hidden = true; respawn(); }
       if (until && until(S)) break;
@@ -354,7 +480,9 @@ export class RunScene implements InputUI {
   private bindAbility(b: HTMLElement, slot: string): void {
     b.addEventListener('pointerdown', (e) => {
       e.preventDefault(); e.stopPropagation();
-      if (!S || S.over || S.paused) return;
+      if (!S || S.over) return;
+      if (this.tutKey && this.onTutInput(slot)) return;
+      if (S.paused) return;
       const p = S.player;
       if (p.st.caged) { mashCage(p, this); return; }
       if (slot === 'dodge') { doDodge(p, p.intent.mx, p.intent.my); this.hintDone('dodge'); return; }
@@ -428,7 +556,7 @@ export class RunScene implements InputUI {
       const sw = b.querySelector<HTMLElement>('.sweep')!; const v = pr.toFixed(3); if (sw.dataset.p !== v) { sw.style.setProperty('--p', v); sw.dataset.p = v; }
       const cdn = b.querySelector('.cdn')!; const txt = cd > 0.95 ? String(Math.ceil(cd)) : ''; if (cdn.textContent !== txt) cdn.textContent = txt;
       b.classList.toggle('dim', !usable);
-      b.classList.toggle('proc', usable && cd <= 0 && procFor(p, slot));
+      b.classList.toggle('proc', usable && cd <= 0 && (procFor(p, slot) || (!!this.tutKey && TUT_STEPS[this.tutKey]?.slot === slot)));
     });
     const bn = $('banner');
     const btxt = S.banner ? S.banner.str : '';
@@ -437,11 +565,16 @@ export class RunScene implements InputUI {
     const ctxt = S.call ? S.call.str : '';
     if (cl.textContent !== ctxt) { cl.textContent = ctxt; cl.className = 'call' + (S.call ? ' show ' + S.call.kind : ''); if (ctxt) flash(cl, 'pop', 260); }
     $('hurt').style.opacity = String(clamp(S.hurtFlash, 0, 0.9));
-    if (this.hintKey) { this.hintT -= dt; if (this.hintT <= 0) { $('hint').hidden = true; this.hintsDone.add(this.hintKey); this.hintKey = null; } }
-    if (!this.live) return;
-    if (this.intro && S.inCombat && !this.hintsDone.has('introAb')) { this.hintDone('introMove'); this.hint('introAb'); }
+    if (this.hintKey && !this.tutKey) { this.hintT -= dt; if (this.hintT <= 0) { $('hint').hidden = true; this.hintsDone.add(this.hintKey); this.hintKey = null; } }
+    if (!this.live || S.paused) return;
+    if (this.intro && S.inCombat && !this.hintsDone.has('introAb') && S.mobs.some((m: any) => m.alive && m.state === 'fight' && dist(m, p) < 120)) { this.hintDone('introMove'); this.hint('introAb'); }
+    if (this.intro && this.hintsDone.has('introAb') && !this.hintsDone.has('slam')) {
+      const loose = S.mobs.find((m: any) => m.alive && m.state === 'fight' && m.pack === 'C' && dist(m, p) < 160);
+      const sq = heroBy('dps') || heroBy('healer');
+      if (loose && sq && loose.target === p) { loose.target = sq; loose.threat[sq.id] = (loose.threat[p.id] || 0) + 500; }
+    }
     if (!this.hintsDone.has('dodge') && S.hazards.some((z: any) => !z.noDmg && inHaz(z, p.x, p.y, p.r))) this.hint('dodge');
-    if (p.role === 'tank' && !this.hintsDone.has('slam') && S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp)) this.hint('slam');
+    if (p.role === 'tank' && !this.hintsDone.has('slam') && S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && dist(m, p) < 190)) this.hint('slam');
     if (p.role === 'dps' && !this.hintsDone.has('aim') && S.inCombat && S.mobs.filter((m: any) => m.alive && m.state === 'fight').length >= 3) this.hint('aim');
     if (p.role === 'dps' && this.hintsDone.has('aim') && !this.hintsDone.has('shatter') && S.mobs.some((m: any) => m.alive && m.st && m.st.freeze > 0.5)) this.hint('shatter');
     const ri = roomIndexOf(p.x, p.y);
