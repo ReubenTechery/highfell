@@ -15,10 +15,10 @@ export const ROLES: Record<RoleId, RoleDef> = {
 
 export const AB: Record<RoleId, Record<AbilitySlot, AbilityDef>> = {
   tank: {
-    a1: { key: 'cleave', name: 'Cleave', cd: 2.2, desc: 'Fast, wide axe sweep through foes in front of you. Crushes stunned or clumped packs for heavy bonus damage.', combo: '② Spammable finisher: Crush! bonus damage on stunned or 2+ clumped foes' },
+    a1: { key: 'cleave', name: 'Cleave', cd: 2.2, desc: 'Fast, wide axe sweep through foes in front of you. Crushes heavy foes, stunned targets, or clumped packs for bonus damage.', combo: '② Spammable finisher: Crush! bonus damage on heavy foes, stunned targets, or 2+ packs' },
     a2: { key: 'charge', name: 'Charge', cd: 6.5, desc: 'Rush a mob and shoulder-slam it. Stuns nearby foes and readies Cleave.', combo: '① Charge stuns pack & readies Cleave ➔ ② Cleave crushes' },
     a3: { key: 'slam', name: 'Slam', cd: 6, desc: 'Drag every nearby foe in, force them onto you, and spin a 360° whirlwind through the pack.', combo: '① Drag pack in + Whirlwind ➔ ② Cleave crushes the clump' },
-    a4: { key: 'shield', name: 'Shield', cd: 0, hold: true, desc: 'Hold to block from the front. Block right before a big hit to stun it and counter-strike.', combo: '① Perfect block stuns ➔ ② Cleave crushes for bonus damage' },
+    a4: { key: 'shield', name: 'Shield', cd: 0, hold: true, desc: 'Hold to block from the front. Block right before a big hit to stun it, counter-strike, and reset Cleave.', combo: '① Perfect block stuns & resets Cleave ➔ ② Cleave crushes' },
   },
   healer: {
     a1: { key: 'circle', name: 'Prayer circle', cd: 5, mana: 14, aim: true, range: 520, desc: 'Allies standing in it heal fast.', combo: '① Drop Circle ➔ ② Smite pulses bonus healing inside it' },

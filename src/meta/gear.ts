@@ -35,19 +35,25 @@ export function worn(p: Profile, h: Hero): Record<SlotId, Worn> {
   return out;
 }
 
+/** True Epic drops (dungeon set pieces & boss weapons) sit a tier above regular ladder gear in item level and power. */
+export const itemScore = (def: ItemDef): number => RARITY[def.rar].score + (def.kind !== 'gear' ? 4 : 0);
+
 export function loadoutOf(items: Worn[]): Loadout {
   const scores = {} as Record<SlotId, number>;
   const traits: string[] = [];
+  const bonuses: string[] = [];
   const sets: Record<string, number> = {};
   let unique: string | null = null, weaponRar: Rar = 0;
   for (const w of items) {
-    scores[w.slot] = RARITY[w.def.rar].score;
+    scores[w.slot] = itemScore(w.def);
     if (w.trait) traits.push(w.trait);
     if (w.def.setId) sets[w.def.setId] = (sets[w.def.setId] || 0) + 1;
-    if (w.def.effect) unique = w.def.effect;
+    if (w.def.effect) {
+      if (w.slot === 'weapon') unique = w.def.effect;
+      else if (!bonuses.includes(w.def.effect)) bonuses.push(w.def.effect);
+    }
     if (w.slot === 'weapon') weaponRar = w.def.rar;
   }
-  const bonuses: string[] = [];
   for (const [id, n] of Object.entries(sets)) { const s = SETS[id]; if (!s) continue; if (n >= 2) bonuses.push(s.bonus2.id); if (n >= 3) bonuses.push(s.bonus3.id); }
   const score = weightedScore(scores);
   return { power: powerFromScore(score), traits, bonuses, weaponRar, unique, sets, score };
@@ -76,8 +82,9 @@ export const healthPct = (l: Loadout): number => Math.round((hpMultiplier(l.powe
 /** What one item adds on its own: its share of power and of health, in percent. */
 export function itemShare(def: ItemDef): { power: number; health: number; ilvl: number } {
   const w = SLOTS.find((s) => s.id === def.slot)?.weight ?? 0;
-  const power = (w * 0.45 * (RARITY[def.rar].score - 10)) / 12;
-  return { power: Math.round(power * 1000) / 10, health: Math.round(power * 0.6 * 1000) / 10, ilvl: RARITY[def.rar].score };
+  const sc = itemScore(def);
+  const power = (w * 0.45 * (sc - 10)) / 12;
+  return { power: Math.round(power * 1000) / 10, health: Math.round(power * 0.6 * 1000) / 10, ilvl: sc };
 }
 
 /** Something gear does beyond its numbers: a unique's effect, an Epic weapon's trait or a set bonus. */
@@ -87,6 +94,10 @@ export function effectsOf(l: Loadout, role: RoleId): Effect[] {
   const out: Effect[] = [];
   const u = l.unique ? Object.values(ITEMS).find((d) => d.effect === l.unique) : undefined;
   if (u && l.unique) out.push({ kind: 'unique', id: l.unique, name: u.name, desc: u.effectDesc || '' });
+  for (const b of l.bonuses) {
+    const piece = Object.values(ITEMS).find((d) => d.kind === 'set' && d.effect === b && !d.id.endsWith('.gilded'));
+    if (piece && piece.effectDesc) out.push({ kind: 'unique', id: b, name: piece.name, desc: piece.effectDesc });
+  }
   for (const t of l.traits) { const d = traitDef(role, t); if (d) out.push({ kind: 'trait', id: d.id, name: d.name, desc: d.desc }); }
   for (const s of Object.values(SETS)) {
     if (l.bonuses.includes(s.bonus2.id)) out.push({ kind: 'set', id: s.bonus2.id, name: `${s.name}, 2 pieces`, desc: s.bonus2.desc });
@@ -110,7 +121,7 @@ export function compareOn(now: Record<SlotId, Worn>, role: RoleId, def: ItemDef)
   const ea = effectsOf(a, role), eb = effectsOf(b, role);
   const has = (list: Effect[], e: Effect): boolean => list.some((x) => x.kind === e.kind && x.id === e.id);
   const gains = eb.filter((e) => !has(ea, e)), loses = ea.filter((e) => !has(eb, e));
-  const ilvl: [number, number] = [RARITY[cur.def.rar].score, RARITY[def.rar].score];
+  const ilvl: [number, number] = [itemScore(cur.def), itemScore(def)];
   const pct = (x: number): number => Math.round(x * 1000) / 10 + 0;
   const plus = ilvl[1] > ilvl[0] || gains.some((e) => !e.later), minus = ilvl[1] < ilvl[0] || loses.length > 0;
   return {

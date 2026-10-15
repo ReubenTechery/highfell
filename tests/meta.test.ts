@@ -521,28 +521,28 @@ test('loot: each role sees its own set and weapon, with what anyone can get, and
 
 test('gear: a drop held up against what its role wears says plainly if it is better, and what it adds or takes away', () => {
   const { p, h } = withHero('tank');
-  // a new tank in Common: the set helm is 12 item levels, 9% damage and 5.4% health better, and starts the set
+  // a new tank in Common: the set helm is 16 item levels, 12% damage and 7.2% health better, brings its own perk, and starts the set
   let c = compareFor(p, h, 'barrowguard.helm')!;
   assert.equal(c.verdict, 'better');
-  assert.deepEqual(c.ilvl, [10, 22]);
-  assert.equal(c.power, 9);
-  assert.equal(c.health, 5.4);
+  assert.deepEqual(c.ilvl, [10, 26]);
+  assert.equal(c.power, 12);
+  assert.equal(c.health, 7.2);
   assert.deepEqual(c.set, [0, 1]);
-  assert.deepEqual([c.gains, c.loses], [[], []]);
+  assert.deepEqual([c.gains.map((e) => e.id), c.loses], [['bg_helm'], []]);
   p.collection['barrowguard.helm'] = { n: 1, kc: 1, at: 0 };
   equip(p, h, 'helm', 'barrowguard.helm');
   assert.equal(compareFor(p, h, 'barrowguard.helm')!.verdict, 'wearing');
-  // a second piece turns the set's first bonus on
+  // a second piece adds its own perk and turns the set's 2-piece bonus on
   c = compareFor(p, h, 'barrowguard.chest')!;
   assert.deepEqual(c.set, [1, 2]);
-  assert.deepEqual(c.gains.map((e) => e.id), ['barrowguard2']);
+  assert.deepEqual(c.gains.map((e) => e.id), ['bg_chest', 'barrowguard2']);
   // a plain Uncommon helm in its place is worse
   assert.equal(compareOn(worn(p, h), 'tank', ITEMS[gearId('tank', 'helm', 1)]).verdict, 'worse');
-  // as much power and no bonus yet: the same
+  // a set chest still beats a plain Epic regular chest because of its higher item level and piece perk
   equip(p, h, 'helm', null); h.regular.chest = { rar: 3 };
   c = compareFor(p, h, 'barrowguard.chest')!;
-  assert.equal(c.verdict, 'same');
-  assert.equal(c.power, 0);
+  assert.equal(c.verdict, 'better');
+  assert.equal(c.power, 3);
   // the unique axe keeps your unlocked weapon trait active, so it is a pure upgrade over a Rare/Epic regular axe
   h.regular.weapon = { rar: 2, trait: 'wide' };
   c = compareFor(p, h, 'gravekeeper.tank')!;

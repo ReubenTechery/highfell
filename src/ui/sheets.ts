@@ -440,7 +440,7 @@ export class Sheets {
     const dp = Math.round((share.power - now.power) * 10) / 10, dh = Math.round((share.health - now.health) * 10) / 10, dil = share.ilvl - now.ilvl;
     const delta = (v: number, u = '') => v > 0 ? `<b class="cmp-d up">${GLYPH.rise}+${v}${u}</b>` : v < 0 ? `<b class="cmp-d down">${GLYPH.fall}−${Math.abs(v)}${u}</b>` : `<b class="cmp-d">Same</b>`;
     let extra = '';
-    if (d.effectDesc) extra += `<p class="tip-eq"><b>+ Unique effect:</b> ${esc(d.effectDesc)}</p>`;
+    if (d.effectDesc) extra += `<p class="tip-eq"><b>+ ${d.kind === 'set' ? 'Piece perk' : 'Unique effect'}:</b> ${esc(d.effectDesc)}</p>`;
     const trait = wt.kind === 'regular' ? wt.piece.trait : undefined;
     const tr = trait ? traitDef(role, trait) : undefined;
     if (tr) extra += `<p class="tip-tr"><b>+ Weapon trait (${esc(tr.name)}):</b> ${esc(tr.desc)}</p>`;
@@ -471,7 +471,7 @@ export class Sheets {
     if (share.power > 0) lines.push(`<li>+${share.power}% ${esc(ROLE_STAT[role].main)}</li><li>+${share.health}% health</li>`);
     else lines.push(`<li class="dim">Starter gear: no bonus yet</li>`);
     let extra = '';
-    if (d.effectDesc) extra += `<p class="tip-eq">When worn: ${esc(d.effectDesc)}</p>`;
+    if (d.effectDesc) extra += `<p class="tip-eq"><b>When worn:</b> ${esc(d.effectDesc)}</p>`;
     const tr = it.trait ? traitDef(role, it.trait) : undefined;
     if (tr) extra += `<p class="tip-tr"><b>Trait: ${esc(tr.name)}.</b> ${esc(tr.desc)}</p>`;
     if (d.setId && SETS[d.setId]) {

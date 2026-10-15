@@ -241,8 +241,9 @@ Most of today's other traits fold into talents. Four of them carry straight WoW 
 ### How sets work
 
 - Each dungeon drops three sets, one per role, in the Helm, Shoulders and Chest slots.
-- Set pieces are uniques from the drop table below, always at Epic power.
-- **2 pieces**: a perk that leans into one talent path.
+- Set pieces are uniques from the drop table below at Epic Item Level 26 (+12% damage/healing and +7.2% health per piece), and each piece has its own immediate When-Worn ability perk even at 1 of 3 pieces.
+- **1 piece (per-piece perk)**: each Helm, Shoulders and Chest piece immediately buffs one of your core abilities when worn.
+- **2 pieces**: a set bonus that leans into your role's signature mechanic.
 - **3 pieces**: changes how one button works, a new way to play. Switched on in a later update, once summons exist.
 - One set at a time: swap sets to swap builds. Raid tier sets come later, with 4 pieces and 2 + 2 mixing.
 
