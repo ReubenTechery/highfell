@@ -9,7 +9,7 @@ import { newGame, update } from '../src/dungeon/game.js';
 import { S } from '../src/dungeon/state.js';
 import { hurtHero, hurtMob, pickTarget } from '../src/dungeon/entities.js';
 import { abCd, onPerfectBlock, useAbility } from '../src/dungeon/heroes.js';
-import { makeCage, mashCage } from '../src/dungeon/mobs.js';
+import { cutChain, makeCage, makeChain, mashCage, spawnMob } from '../src/dungeon/mobs.js';
 import { HERO_FIT, heroFit } from '../src/dungeon/render.js';
 import { BARROW_ENGINE } from '../src/content/barrow/engine';
 import { allHeroArt } from '../src/content/folk';
@@ -177,4 +177,36 @@ test('combat & gear look: heroes start in visual _rags, step to _iron and heroic
   assert.equal(tank.cd.a1, 0, 'Bulwark resets Cleave cooldown on Perfect Block');
   assert.equal(tank.absorb, Math.round(240 * tank.power), 'Bulwark (+90) stacks with Barrowguard (+150)');
 });
+
+test('cooperative roles & lethal telegraphs: only healer can banish wisps and cut chains, and unblocked hazards ignore passive armor', () => {
+  const { s, tank, healer, dps } = game('tank');
+  // 1. Only Healer can damage/banish Wisps and cut Chains
+  const wisp = spawnMob('wisp', tank.x + 20, tank.y, null);
+  assert.equal(hurtMob(wisp, 50, tank), 0, 'Tank cannot damage wisps');
+  assert.equal(hurtMob(wisp, 50, dps), 0, 'DPS cannot damage wisps');
+  assert.ok(wisp.alive);
+  assert.ok(hurtMob(wisp, 50, healer) > 0, 'Healer banishes wisps');
+  assert.ok(!wisp.alive);
+
+  const ch = makeChain(s.packs[0].mobs[0], dps);
+  assert.equal(s.chains.length, 1);
+  cutChain(ch, tank);
+  cutChain(ch, dps);
+  assert.equal(s.chains.length, 1, 'Tank and DPS cannot cut chains');
+  cutChain(ch, healer);
+  assert.equal(s.chains.length, 0, 'Healer cuts chains');
+
+  // 2. Unblocked hazard telegraphs bypass passive armor, while blocked hazards get both block + armor reduction
+  const m = s.packs[0].mobs[0];
+  const hp0 = tank.hp;
+  hurtHero(tank, 200, m, { hazard: true, block: true });
+  assert.equal(hp0 - tank.hp, 300, 'Unblocked 200 hazard deals full 300 (1.5x tune) ignoring passive armor');
+  tank.hp = hp0;
+  tank.blocking = true;
+  tank.blockT = 1.0;
+  tank.face = Math.atan2(m.y - tank.y, m.x - tank.x);
+  hurtHero(tank, 200, m, { hazard: true, block: true });
+  assert.ok(hp0 - tank.hp < 50, 'Blocked hazard receives both block reduction and armor mitigation');
+});
+
 

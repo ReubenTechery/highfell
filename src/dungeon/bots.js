@@ -1,8 +1,8 @@
 import { angDiff, dist, distXY, lerp, norm, TAU } from '../core/math';
 import { rand, rng } from '../core/rng';
 import { MEND } from '../content/roles';
-import { S } from './state.js';
-import { fx } from './entities.js';
+import { S, emit } from './state.js';
+import { fx, killMob } from './entities.js';
 import { bestCluster, doDodge, heroBy, isFoe, mend, useAbility } from './heroes.js';
 import { chainEnds, cutChain, mashCage } from './mobs.js';
 import { canStand, freeSpot, navPoint } from './world.js';
@@ -205,12 +205,26 @@ export function combatGoal(h) {
 
 export function botMechanics(h) {
   const B = h.bot;
-  if (!B.chainAt) B.chainAt = new Map();
-  for (const ch of S.chains) {
-    if (!B.chainAt.has(ch.id)) B.chainAt.set(ch.id, ch.t + rand(1.0, 2.2) + (h.role === 'tank' ? 0.6 : 0) + (ch.hero === h ? 0.3 : 0));
-    if (ch.t >= B.chainAt.get(ch.id) && !h.st.caged && !h.st.stun) {
-      if (rng() < 0.94) { const e = chainEnds(ch); fx({ type: 'swipe', x: lerp(e.ax, e.bx, 0.4) - 40, y: lerp(e.ay, e.by, 0.4) - 30, x2: lerp(e.ax, e.bx, 0.6) + 40, y2: lerp(e.ay, e.by, 0.6) + 30, dur: 0.25 }); cutChain(ch, h); }
-      else B.chainAt.set(ch.id, ch.t + 1.2);
+  // Cooperative role responsibility: only the healer can swipe chains and wisps
+  if (h.role === 'healer') {
+    if (!B.chainAt) B.chainAt = new Map();
+    for (const ch of S.chains) {
+      if (!B.chainAt.has(ch.id)) B.chainAt.set(ch.id, ch.t + rand(0.9, 1.8) + (ch.hero === h ? 0.25 : 0));
+      if (ch.t >= B.chainAt.get(ch.id) && !h.st.caged && !h.st.stun) {
+        if (rng() < 0.95) { const e = chainEnds(ch); fx({ type: 'swipe', x: lerp(e.ax, e.bx, 0.4) - 40, y: lerp(e.ay, e.by, 0.4) - 30, x2: lerp(e.ax, e.bx, 0.6) + 40, y2: lerp(e.ay, e.by, 0.6) + 30, col: '#FFE08A', dur: 0.25 }); cutChain(ch, h); }
+        else B.chainAt.set(ch.id, ch.t + 1.0);
+      }
+    }
+    if (!B.wispAt) B.wispAt = new Map();
+    for (const m of S.mobs) {
+      if (!m.alive || !m.M.wisp) continue;
+      if (!B.wispAt.has(m.id)) B.wispAt.set(m.id, S.t + rand(0.8, 1.7));
+      if (S.t >= B.wispAt.get(m.id) && !h.st.caged && !h.st.stun) {
+        fx({ type: 'swipe', x: m.x - 32, y: m.y - 58, x2: m.x + 32, y2: m.y - 22, col: '#FFE08A', dur: 0.25 });
+        killMob(m, h);
+        S.stats.slices = (S.stats.slices || 0) + 1;
+        emit({ type: 'wisp.sliced', player: !!h.isPlayer });
+      }
     }
   }
   if (!B.ringDone) B.ringDone = new Set();
@@ -230,13 +244,12 @@ export function tankBlockLogic(h) {
   let soon = null, src = null;
   for (const z of S.hazards) {
     if (z.fired) continue;
-    const heavyZ = z.tankBuster || (z.shape === 'rect' && z.src && z.src.type === 'knight');
+    const heavyZ = z.tankBuster;
     if (!heavyZ) continue;
     if (!(z.followT === h || inHaz(z, h.x, h.y, h.r))) continue;
     const tti = z.warn - z.t;
     if (tti >= -0.05 && (soon === null || tti < soon)) { soon = tti; src = z.src; }
   }
-  for (const m of S.mobs) if (m.alive && m.act && m.act.k === 'charge' && m.act.phase === 'go' && dist(m, h) < 220) { soon = 0; src = m; }
   if (soon !== null) {
     if (!B.plan) B.plan = { lead: rand(0.2, 0.72), ok: rng() < 0.93 };
     if (soon <= B.plan.lead && B.plan.ok) { h.intent.block = true; B.blockHold = 0.22; if (src) h.picked = h.picked || (src.kind === 'mob' ? src : null); }
@@ -289,10 +302,8 @@ export function healerActions(h) {
 export function dpsActions(h) {
   const tank = heroBy('tank');
   let tgt = null;
-  const wisps = S.mobs.filter((m) => m.alive && m.M.wisp && dist(m, h) < 560);
-  if (wisps.length) { wisps.sort((a, b) => (a.target ? dist(a, a.target) : 999) - (b.target ? dist(b, b.target) : 999)); tgt = wisps[0]; }
   const cage = S.mobs.find((m) => m.alive && m.cage && m.hero !== h && dist(m, h) < 540);
-  if (!tgt && cage) tgt = cage;
+  if (cage) tgt = cage;
   const foes = fightingFoes();
   if (!tgt) { const caster = foes.find((m) => m.cast && m.cast.kick && dist(m, h) < 520); if (caster) tgt = caster; }
   if (!tgt) {

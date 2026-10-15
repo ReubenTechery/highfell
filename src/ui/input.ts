@@ -79,9 +79,9 @@ function chainHalves(ch: any): [{ x: number; y: number }, { x: number; y: number
 }
 /** a mate's cage under this world point */
 const cageAt = (w: { x: number; y: number }) => S.mobs.find((m: any) => m.alive && m.cage && m.hero !== S.player && distXY(w.x, w.y, m.x, m.y - 50) < 80) || null;
-/** is there a chain or a wisp under this screen point? Those touches are swipes, never the stick */
+/** is there a chain or a wisp under this screen point? Only the healer can swipe them; for others it is the stick/dodge */
 function onMechanic(x: number, y: number): boolean {
-  if (!S) return false;
+  if (!S || !S.player || S.player.role !== 'healer') return false;
   const w = toWorld(x, y);
   for (const m of S.mobs) if (m.alive && m.M.wisp && distXY(w.x, w.y, m.x, m.y - 40) < 70) return true;
   for (const ch of S.chains) {
@@ -185,9 +185,9 @@ export function bindInput(layer: HTMLElement, ui: InputUI): void {
   window.addEventListener('blur', () => { IN.keys = {}; IN.block = false; IN.stick = null; ui.stick(null); });
 }
 
-/** a swipe that crosses a wisp or a chain cuts it */
+/** a swipe by the healer that crosses a wisp or a chain cuts it */
 export function trySlice(a: { x: number; y: number }, b: { x: number; y: number }, ui: InputUI): boolean {
-  if (!S || !S.player.alive || S.player.st.caged) return false;
+  if (!S || !S.player.alive || S.player.st.caged || S.player.role !== 'healer') return false;
   const p = toWorld(a.x, a.y), q = toWorld(b.x, b.y);
   let hit = false;
   for (const m of S.mobs) {

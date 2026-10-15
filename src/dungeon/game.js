@@ -279,7 +279,7 @@ function tickHazards(dt) {
       z.tickT = (z.tickT === undefined ? 0 : z.tickT) - dt;
       if (z.tickT <= 0) {
         z.tickT = z.tick;
-        for (const h of S.heroes) if (h.alive && inHaz(z, h.x, h.y, h.r * 0.6)) hurtHero(h, z.dmg, z.src, { magic: z.magic, block: false, dodge: false, quiet: false });
+        for (const h of S.heroes) if (h.alive && inHaz(z, h.x, h.y, h.r * 0.6)) hurtHero(h, z.dmg, z.src, { magic: z.magic, block: false, dodge: false, quiet: false, hazard: true });
       }
     }
     const end = z.live ? z.warn + z.live : z.warn + 0.12;
@@ -292,9 +292,10 @@ function fireHazard(z) {
   const mul = (z.src && z.src.dmgMul) || 1;
   for (const h of S.heroes) {
     if (!h.alive || !inHaz(z, h.x, h.y, h.r)) continue;
-    const got = hurtHero(h, z.dmg * mul, z.src, { heavy: z.heavy, block: z.block === true, magic: z.magic, kind: z.kind });
+    const got = hurtHero(h, z.dmg * mul, z.src, { heavy: z.heavy, block: z.block === true, magic: z.magic, kind: z.kind, hazard: true });
     if (got > 0 && z.knock) { const a = Math.atan2(h.y - z.y, h.x - z.x); h.st.kx += Math.cos(a) * z.knock; h.st.ky += Math.sin(a) * z.knock; }
     if (got > 0 && z.root) { h.st.root = z.root; if (h.isPlayer) fxText(h.x, h.y - 112, 'Grabbed', '#C9B79A', 17); }
+    if (got > 0 && z.stun) { h.st.stun = Math.max(h.st.stun, z.stun); }
   }
 }
 function tickZones(dt) {

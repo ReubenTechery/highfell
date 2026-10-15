@@ -122,9 +122,11 @@ export function hurtHero(h, amt, src, o) {
   if (o.ground && h.st.air > 0) return 0;
   // the dungeon's tuning: everything that hurts a hero hits this much harder
   let a = amt * S.tune.hit;
+  let blocked = false;
   if (o.block !== false && h.blocking && src) {
     const off = Math.abs(angDiff(h.face, Math.atan2(src.y - h.y, src.x - h.x)));
     if (off < 1.45) {
+      blocked = true;
       if (o.heavy && o.perfectable !== false && h.blockT <= PERFECT_WINDOW) {
         a = 0; h.stats.perfect++; S.stats.perfect++;
         const intro = S.opts && S.opts.start === 'intro';
@@ -151,7 +153,7 @@ export function hurtHero(h, amt, src, o) {
       }
     }
   }
-  if (!o.pierce) a *= 1 - h.armor * (o.magic ? 0.4 : 1);
+  if (!o.pierce && (!o.hazard || blocked)) a *= 1 - h.armor * (o.magic ? 0.4 : 1);
   // Starlight Elixir: once a run, a hit that would knock you down leaves you on half health
   if (h.brew === 'elixir' && !h.brewUsed && h.hp - Math.round(Math.max(0, a - h.absorb)) <= 0) {
     h.brewUsed = true; h.absorb = 0; h.hp = Math.round(h.maxHp * 0.5); h.flash = 0.12; h.iframe = Math.max(h.iframe, 0.6);
@@ -199,6 +201,8 @@ export function killHero(h) {
 export function hurtMob(m, amt, src, o) {
   o = o || {};
   if (!m.alive || m.untargetable || S.over) return 0;
+  // only the healer can banish wisps
+  if (m.M.wisp && src && src.role !== 'healer') return 0;
   if (m.cage) { m.hp -= 1; m.flash = 0.1; sfx('cagehit'); bits(m.x, m.y - 50, 'shard_bone', 1, 90); if (m.hp <= 0) breakCage(m, true, src); return 1; }
   let a = amt * (o.raw ? 1 : (src && src.power) || 1);
   let crit = false;

@@ -57,10 +57,10 @@ Every role gets three core buttons, one Ult and the swipe dodge, and each role's
 - **Charge** makes the mob you hit turn on you; Ringing Blow makes everything it hits turn.
 - A mob that isn't on the tank for 3 seconds goes **wild**: it hits harder and faster. A DPS or healer who pulls one gets told to let the tank hit first.
 - In the Gravekeeper's last phase **only the tank is caged**. Inside, nothing can target him and every mob forgets half his threat, so the boss turns on someone else until he mashes out (or a mate breaks him out) and Slams it back. The bars pop and the game says so.
-- **Chains** have no button any more: the game calls "Cut the chain!" and you swipe across it (drag the mouse on desktop). A touch on a chain, a wisp or a cage counts even in the move-stick corner.
+- **Chains and Wisps (Healer role mechanic):** only the **Healer** can swipe across chains to sever them or swipe/smite Wisps to banish them. Tank and DPS swipes always trigger their dodge roll cleanly and rely on the Healer to clear chains and wisps.
 - **Numbers:** you see only your own (your hits, your heals, what hits you). Your mates' spell effects still show.
 
-**Difficulty (built 14 Oct):** a dungeon has a `tune`. Barrow Crypt's: everything that hurts a hero hits 1.5 times as hard as written, and every mob but the bosses has 1.3 times the health. With no healing at all a party now wipes; with a tank who never Slams or Charges, the DPS takes about six times the damage. Clears went from 3:57 to about 4:10.
+**Difficulty (built 14 Oct):** a dungeon has a `tune`. Barrow Crypt's: everything that hurts a hero hits 1.5 times as hard as written, and every mob but the bosses has 1.3 times the health. Ground hazards and boss telegraphs (`hazard: true`) bypass passive armor unless actively blocked, so standing in red or yellow circles without dodging or blocking is lethal even with a healer. With no healing at all a party now wipes; with a tank who never Slams or Charges, the DPS takes about six times the damage. Clears went from 3:57 to about 4:10.
 
 | Role | 1 | 2 | 3 | 4 (new) |
 | --- | --- | --- | --- | --- |
