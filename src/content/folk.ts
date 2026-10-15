@@ -6,16 +6,19 @@
  * fixed when the hero is made. You can have up to six. A combo is makeable once it has in-game art
  * (HERO_ART); the races and classes pass fills the rest.
  */
-import type { RoleId } from './types';
+import type { AbilitySlot, RoleId } from './types';
 
 export type RaceId = 'dwarf' | 'elf' | 'human' | 'gnome' | 'goblin' | 'risen' | 'orc';
 export type ClassId = 'warrior' | 'cleric' | 'mage' | 'rogue';
+export type SexId = 'm' | 'f';
 
 export interface RaceDef {
   id: RaceId;
   name: string;
   plural: string;
   hometown: string;
+  /** 64x64 face medallion tile id */
+  icon: string;
   /** the hometown's light: the glow behind your hero */
   light: string;
   height: string;
@@ -23,6 +26,7 @@ export interface RaceDef {
   look: string;
   trick: { name: string; desc: string };
   first: string[];
+  firstBySex: Record<SexId, string[]>;
   family: string[];
   /** earned in its own dungeon: locked until an achievement (that dungeon's whole log) gives it */
   earned?: boolean;
@@ -34,6 +38,12 @@ export interface ClassDef {
   role: RoleId;
   /** what the seat is called on the hero card */
   roleName: string;
+  /** 64x64 crest tile id */
+  icon: string;
+  /** short 1-line purpose of the role/class */
+  job: string;
+  /** 1-2 signature abilities shown on the hero maker */
+  signature: AbilitySlot[];
   blurb: string;
   /** has a kit in the game today */
   ready: boolean;
@@ -41,62 +51,69 @@ export interface ClassDef {
 
 export const RACES: Record<RaceId, RaceDef> = {
   dwarf: {
-    id: 'dwarf', name: 'Dwarf', plural: 'Dwarves', hometown: 'Emberdeep', light: '#FF8A4C', height: 'About 3 heads tall',
+    id: 'dwarf', name: 'Dwarf', plural: 'Dwarves', hometown: 'Emberdeep', icon: 'c_dwarf', light: '#FF8A4C', height: 'About 3 heads tall',
     lore: 'They dug too deep once and woke the cold. Emberdeep’s forges have burned day and night ever since, just in case.',
-    look: 'Wide as a door. Big beard, bigger hands, short legs, no neck.',
+    look: 'Wide as a door. Big beard or copper braids, bigger hands, short legs, no neck.',
     trick: { name: 'Stubborn', desc: 'Once a raid, stay standing through one hit that should have knocked you out.' },
     first: ['Brannoc', 'Hollis', 'Gruna', 'Thalbrek', 'Dunna', 'Orvik', 'Bera', 'Kettil', 'Morra', 'Haldric'],
+    firstBySex: { m: ['Brannoc', 'Hollis', 'Thalbrek', 'Orvik', 'Kettil', 'Haldric'], f: ['Gruna', 'Dunna', 'Bera', 'Morra', 'Astrid', 'Hilda'] },
     family: ['Ashvale', 'Coalbeard', 'Emberhand', 'Deepforge', 'Stonepint', 'Anvilsong', 'Soothammer', 'Brassbelly'],
   },
   gnome: {
-    id: 'gnome', name: 'Gnome', plural: 'Gnomes', hometown: 'Bramblewick', light: '#9BD068', height: 'About 2½ heads tall',
+    id: 'gnome', name: 'Gnome', plural: 'Gnomes', hometown: 'Bramblewick', icon: 'c_gnome', light: '#9BD068', height: 'About 2½ heads tall',
     lore: 'Inventors who live inside hollow hills. Half their inventions work; the other half are on fire, which they’d argue is also working.',
     look: 'Tiny body, huge head, ears like sails, nose like a turnip.',
     trick: { name: 'Pocket gadget', desc: 'Once a raid, reroll one action that failed.' },
     first: ['Wren', 'Pip', 'Tibbet', 'Fennick', 'Dottle', 'Quill', 'Nib', 'Bramble'],
+    firstBySex: { m: ['Pip', 'Tibbet', 'Fennick', 'Quill', 'Bramble'], f: ['Wren', 'Dottle', 'Nib', 'Tansy', 'Clover'] },
     family: ['Copperkettle', 'Sparkwhistle', 'Gearpatch', 'Tinkerwick', 'Burrowfield', 'Thimblesprocket'],
     earned: true,
   },
   goblin: {
-    id: 'goblin', name: 'Goblin', plural: 'Goblins', hometown: 'The Rattlecoin Warrens', light: '#B5D640', height: 'About 2 heads tall',
+    id: 'goblin', name: 'Goblin', plural: 'Goblins', hometown: 'The Rattlecoin Warrens', icon: 'c_goblin', light: '#B5D640', height: 'About 2 heads tall',
     lore: 'Small, green, loud and always selling something. Most of it used to be yours, and they will sell it back at a very fair price.',
     look: 'Knee-high, all ears and teeth, pockets on the pockets.',
     trick: { name: 'Finders keepers', desc: 'Once a raid, pick up something nobody else saw.' },
     first: ['Snik', 'Grubb', 'Pazz', 'Nettle', 'Rikka', 'Fizzwick', 'Dob', 'Mott'],
+    firstBySex: { m: ['Snik', 'Grubb', 'Fizzwick', 'Dob', 'Mott'], f: ['Pazz', 'Nettle', 'Rikka', 'Zib', 'Skrit'] },
     family: ['Coinbiter', 'Ratchetgrin', 'Mudpocket', 'Sparkfinger', 'Junkwhistle', 'Tinbuckle'],
     earned: true,
   },
   elf: {
-    id: 'elf', name: 'Elf', plural: 'Elves', hometown: 'Moonmere', light: '#8FD6FF', height: 'About 4 heads tall',
+    id: 'elf', name: 'Elf', plural: 'Elves', hometown: 'Moonmere', icon: 'c_elf', light: '#8FD6FF', height: 'About 4 heads tall',
     lore: 'They remember the last time the Frost King woke. They won’t say how it ended, which is never a good sign.',
     look: 'Tall and narrow, long ears, long hair, very calm about everything.',
     trick: { name: 'Old magic', desc: 'Once a raid, add three seconds to one live window for the whole party.' },
     first: ['Ivy', 'Sorrel', 'Ilaris', 'Nyth', 'Caelen', 'Wynreth', 'Aelis', 'Lirien', 'Orrin'],
+    firstBySex: { m: ['Sorrel', 'Caelen', 'Orrin', 'Theron', 'Aelric'], f: ['Ivy', 'Ilaris', 'Nyth', 'Wynreth', 'Aelis', 'Lirien'] },
     family: ['Stillwater', 'Moonmere', 'Hollowbrook', 'Nightfern', 'Mistvale', 'Larkreed'],
   },
   human: {
-    id: 'human', name: 'Human', plural: 'Humans', hometown: 'Highfell', light: '#F4B942', height: 'About 4 heads tall',
+    id: 'human', name: 'Human', plural: 'Humans', hometown: 'Highfell', icon: 'c_human', light: '#F4B942', height: 'About 4 heads tall',
     lore: 'Everyone ends up in Highfell eventually. It’s the market town at the foot of the hills, and the Last Lantern never closes.',
     look: 'Middle height, any shape, any face. The everyday hero.',
     trick: { name: 'Seen it all', desc: 'Once a raid, for one round, see what another class sees.' },
     first: ['Maren', 'Tomas', 'Edda', 'Corwin', 'Pell', 'Isolde', 'Rook', 'Annis', 'Garret', 'Wynna'],
+    firstBySex: { m: ['Tomas', 'Corwin', 'Pell', 'Rook', 'Garret', 'Alden'], f: ['Maren', 'Edda', 'Isolde', 'Annis', 'Wynna', 'Clara'] },
     family: ['Brightwell', 'Thatcher', 'Fairweather', 'Lanternby', 'Holloway', 'Ashby', 'Millward', 'Crane'],
   },
   risen: {
-    id: 'risen', name: 'Risen', plural: 'Risen', hometown: 'The Barrow', light: '#9BE15D', height: 'As tall as they ever were',
+    id: 'risen', name: 'Risen', plural: 'Risen', hometown: 'The Barrow', icon: 'c_risen', light: '#9BE15D', height: 'As tall as they ever were',
     lore: 'Heroes who went down into the Barrow and didn’t come back up. Then, one night, they did. They’re on your side now, and they’d like their old room back.',
     look: 'Bones in their old armour, a skull under the helm, two green lights for eyes.',
     trick: { name: 'Not again', desc: 'Once a raid, get back up for six seconds after you go down.' },
     first: ['Morrow', 'Sable', 'Grisel', 'Hollin', 'Wick', 'Vesper', 'Rattick', 'Dusk', 'Tallow', 'Brine'],
+    firstBySex: { m: ['Morrow', 'Hollin', 'Wick', 'Rattick', 'Tallow', 'Brine'], f: ['Sable', 'Grisel', 'Vesper', 'Dusk', 'Nyx', 'Brier'] },
     family: ['Gravesend', 'Coffinwood', 'Barrowmoor', 'Dustmantle', 'Stillheart', 'Lanternless', 'Ashgrave', 'Bonewright'],
     earned: true,
   },
   orc: {
-    id: 'orc', name: 'Orc', plural: 'Orcs', hometown: 'Thunderhorn Hold', light: '#D9603A', height: 'About 5 heads tall, mostly shoulders',
+    id: 'orc', name: 'Orc', plural: 'Orcs', hometown: 'Thunderhorn Hold', icon: 'c_orc', light: '#D9603A', height: 'About 5 heads tall, mostly shoulders',
     lore: 'Built like a castle wall and twice as stubborn. In the Hold they count a friend by the fights you have been in together.',
     look: 'Huge shoulders, little tusks, a jaw like an anvil. Very gentle with small animals.',
     trick: { name: 'War cry', desc: 'Once a raid, shout the party back to their feet for a moment.' },
     first: ['Grokka', 'Thar', 'Uzra', 'Brakk', 'Morga', 'Durn', 'Hasha', 'Korl'],
+    firstBySex: { m: ['Thar', 'Brakk', 'Durn', 'Korl', 'Grom'], f: ['Grokka', 'Uzra', 'Morga', 'Hasha', 'Varka'] },
     family: ['Ironhorn', 'Stonejaw', 'Redhand', 'Thunderhide', 'Skullsplit', 'Ashbrow'],
     earned: true,
   },
@@ -105,13 +122,21 @@ export const RACES: Record<RaceId, RaceDef> = {
 export const RACE_ORDER: RaceId[] = ['dwarf', 'elf', 'human', 'gnome', 'goblin', 'risen', 'orc'];
 
 export const CLASSES: Record<ClassId, ClassDef> = {
-  warrior: { id: 'warrior', name: 'Warrior', role: 'tank', roleName: 'Tank', ready: true,
+  warrior: { id: 'warrior', name: 'Warrior', role: 'tank', roleName: 'Tank', icon: 'shield', ready: true,
+    job: 'Holds the pack & blocks big hits so the party stays safe.',
+    signature: ['a1', 'a2'],
     blurb: 'Holds the boss’s attention, mostly by insulting it. Blocks the big hits and swings at everything else.' },
-  cleric: { id: 'cleric', name: 'Cleric', role: 'healer', roleName: 'Healer', ready: true,
+  cleric: { id: 'cleric', name: 'Cleric', role: 'healer', roleName: 'Healer', icon: 'mend', ready: true,
+    job: 'Keeps everyone standing with healing light & protective wards.',
+    signature: ['a1', 'a2'],
     blurb: 'Sees everyone’s health and has opinions about all of it. Keeps the party standing.' },
-  mage: { id: 'mage', name: 'Mage', role: 'dps', roleName: 'DPS', ready: true,
+  mage: { id: 'mage', name: 'Mage', role: 'dps', roleName: 'DPS', icon: 'comet', ready: true,
+    job: 'Freezes enemies solid & shatters them with heavy spells.',
+    signature: ['a2', 'a3'],
     blurb: 'Hits the hardest and freezes the rest. Stands still to cast and would like everyone to stop shouting.' },
-  rogue: { id: 'rogue', name: 'Rogue', role: 'dps', roleName: 'DPS', ready: false,
+  rogue: { id: 'rogue', name: 'Rogue', role: 'dps', roleName: 'DPS', icon: 'i_dagger', ready: false,
+    job: 'Interrupts enemy casts & strikes fast from the shadows.',
+    signature: [],
     blurb: 'The only one who can interrupt a spell, and the first to the chest.' },
 };
 export const CLASS_ORDER: ClassId[] = ['warrior', 'cleric', 'mage', 'rogue'];
@@ -125,17 +150,36 @@ export const HERO_ART: Partial<Record<`${RaceId}.${ClassId}`, string>> = {
   'risen.cleric': 'risen_healer',
   'risen.mage': 'risen_dps',
 };
-export const heroArt = (race: string, cls: string): string | null => HERO_ART[`${race}.${cls}` as `${RaceId}.${ClassId}`] || null;
+export const HERO_ART_SEX: Partial<Record<`${RaceId}.${ClassId}.${SexId}`, string>> = {
+  'dwarf.warrior.m': 'tank',
+  'dwarf.warrior.f': 'tank_w',
+  'human.cleric.f': 'healer',
+  'human.cleric.m': 'healer_m',
+  'elf.mage.f': 'dps',
+  'elf.mage.m': 'dps_m',
+  'risen.warrior.m': 'risen_tank',
+  'risen.warrior.f': 'risen_tank_w',
+  'risen.cleric.f': 'risen_healer',
+  'risen.cleric.m': 'risen_healer_m',
+  'risen.mage.f': 'risen_dps',
+  'risen.mage.m': 'risen_dps_m',
+};
+export const defaultSex = (_race: string, cls: string): SexId => (cls === 'cleric' || cls === 'mage' ? 'f' : 'm');
+export const heroArt = (race: string, cls: string, sex?: string): string | null => {
+  const s: SexId = sex === 'm' || sex === 'f' ? sex : defaultSex(race, cls);
+  return HERO_ART_SEX[`${race}.${cls}.${s}` as `${RaceId}.${ClassId}.${SexId}`] || HERO_ART[`${race}.${cls}` as `${RaceId}.${ClassId}`] || null;
+};
+export const allHeroArt = (): string[] => [...new Set([...Object.values(HERO_ART), ...Object.values(HERO_ART_SEX)].filter((x): x is string => !!x))];
 /** A hero can be made from a combo with a kit and art. */
 export const canMake = (race: string, cls: string): boolean => !!heroArt(race, cls) && !!CLASSES[cls as ClassId]?.ready;
 
 export const MAX_HEROES = 6;
 
 /** The founding six from the Look Book: the reference cast, and who fills the bot seats. */
-export const FOUNDERS: Record<RoleId, { name: string; race: RaceId; cls: ClassId }> = {
-  tank: { name: 'Brannoc Ashvale', race: 'dwarf', cls: 'warrior' },
-  healer: { name: 'Sister Maren', race: 'human', cls: 'cleric' },
-  dps: { name: 'Ivy', race: 'elf', cls: 'mage' },
+export const FOUNDERS: Record<RoleId, { name: string; race: RaceId; cls: ClassId; sex: SexId }> = {
+  tank: { name: 'Brannoc Ashvale', race: 'dwarf', cls: 'warrior', sex: 'm' },
+  healer: { name: 'Sister Maren', race: 'human', cls: 'cleric', sex: 'f' },
+  dps: { name: 'Ivy', race: 'elf', cls: 'mage', sex: 'f' },
 };
 
 /** A name a person typed: letters, spaces, apostrophes and hyphens, 2 to 24 long. */

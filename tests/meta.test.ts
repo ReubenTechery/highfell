@@ -4,10 +4,10 @@ import assert from 'node:assert/strict';
 import { makeRng } from '../src/core/rng';
 import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, SETS, checkContent, heroicVersion } from '../src/content';
 import { BARROW } from '../src/content/barrow';
-import { activeHero, createHero, dungeonRecord, finishHearthTour, finishIntroRun, freshProfile, migrate, nameProblem, needsHearthTour, needsIntroRun, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, startHearthTour, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
+import { activeHero, createHero, dungeonRecord, finishHearthTour, finishIntroRun, freshProfile, heroLevel, migrate, nameProblem, needsHearthTour, needsIntroRun, PROFILE_VERSION, removeHero, renameHero, resetTalents, roleOf, setActive, spendTalent, startHearthTour, talentPointsLeft, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
 import { DUPE_MARKS, heroicOpen, heroicProgress, resolveRun, rollTable } from '../src/meta/loot';
 import { bestRegular, buyTrait, compareFor, compareOn, equip, floorWorn, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, wearerOf, worn } from '../src/meta/gear';
-import { FOUNDERS, HERO_ART, MAX_HEROES, canMake, cleanName } from '../src/content/folk';
+import { CLASSES, FOUNDERS, HERO_ART, MAX_HEROES, RACES, allHeroArt, canMake, cleanName, defaultSex, heroArt } from '../src/content/folk';
 import { SLOT_IDS, gearId } from '../src/content/gear';
 import { INGREDIENTS, RECIPES } from '../src/content/vale';
 import { Achiever, progress } from '../src/meta/achievements';
@@ -65,7 +65,7 @@ test('profile: a v2 save becomes one hero, named for the founder of the role you
   const h = p.roster[0];
   assert.equal(p.active, h.id);
   assert.equal(h.name, FOUNDERS.healer.name);
-  assert.equal(h.race, 'human'); assert.equal(h.cls, 'cleric');
+  assert.equal(h.race, 'human'); assert.equal(h.cls, 'cleric'); assert.equal(h.sex, 'f');
   assert.equal(h.named, false, 'the game named it, so it can be renamed once');
   assert.equal(h.clears, 12);
   assert.equal(h.title, 'title.quick');
@@ -82,21 +82,32 @@ test('profile: a v2 save becomes one hero, named for the founder of the role you
   assert.equal(migrate({ v: 2, rev: 1, role: 'tank', heroes: {} }).roster.length, 0);
 });
 
-test('heroes: race and class are fixed, names are yours, up to six, the last one stays', () => {
+test('heroes: race and class are fixed, male or female look is saved, names are yours, up to six, the last one stays', () => {
   assert.ok(canMake('dwarf', 'warrior') && canMake('human', 'cleric') && canMake('elf', 'mage'));
   assert.ok(!canMake('gnome', 'warrior'), 'not drawn yet');
   assert.ok(!canMake('elf', 'rogue'), 'no kit yet');
+  assert.equal(defaultSex('dwarf', 'warrior'), 'm');
+  assert.equal(defaultSex('human', 'cleric'), 'f');
+  assert.equal(defaultSex('elf', 'mage'), 'f');
+  assert.equal(heroArt('dwarf', 'warrior', 'm'), 'tank');
+  assert.equal(heroArt('dwarf', 'warrior', 'f'), 'tank_w');
+  assert.equal(heroArt('human', 'cleric', 'f'), 'healer');
+  assert.equal(heroArt('human', 'cleric', 'm'), 'healer_m');
+  assert.equal(heroArt('elf', 'mage', 'f'), 'dps');
+  assert.equal(heroArt('elf', 'mage', 'm'), 'dps_m');
   assert.equal(cleanName('  Wren   Copperkettle '), 'Wren Copperkettle');
   assert.equal(cleanName('x'), null);
   assert.equal(cleanName('<b>Bob</b>'), null);
   const p = freshProfile();
-  const a = newHero(p, { name: 'Hollis Coalbeard', race: 'dwarf', cls: 'warrior' }, 10)!;
+  const a = newHero(p, { name: 'Gruna Coalbeard', race: 'dwarf', cls: 'warrior', sex: 'f' }, 10)!;
   assert.ok(a);
+  assert.equal(a.sex, 'f');
   assert.equal(p.active, a.id, 'your first hero is the one you play');
-  assert.equal(newHero(p, { name: 'hollis coalbeard', race: 'elf', cls: 'mage' }), null, 'names are unique');
-  assert.ok(nameProblem(p, 'Hollis Coalbeard'));
+  assert.equal(newHero(p, { name: 'gruna coalbeard', race: 'elf', cls: 'mage' }), null, 'names are unique');
+  assert.ok(nameProblem(p, 'Gruna Coalbeard'));
   assert.equal(newHero(p, { name: 'Pip', race: 'gnome', cls: 'warrior' }), null, 'only combos that are drawn');
-  const b = newHero(p, { name: 'Ivy Stillwater', race: 'elf', cls: 'mage' }, 20)!;
+  const b = newHero(p, { name: 'Sorrel Stillwater', race: 'elf', cls: 'mage', sex: 'm' }, 20)!;
+  assert.equal(b.sex, 'm');
   assert.equal(p.active, a.id, 'making an alt does not switch to it');
   assert.ok(setActive(p, b.id, 30));
   assert.equal(activeHero(p)!.id, b.id);
@@ -106,6 +117,12 @@ test('heroes: race and class are fixed, names are yours, up to six, the last one
   for (const h of p.roster.slice(1)) assert.ok(removeHero(p, h.id));
   assert.equal(p.active, a.id, 'removing the active hero hands over to the oldest');
   assert.equal(removeHero(p, a.id), false, 'the last hero stays');
+  // a v6 save with existing heroes migrates to v7 and gives each hero its default sex
+  const v6 = { v: 6, rev: 12, roster: [{ id: 'h1', name: 'Brannoc', race: 'dwarf', cls: 'warrior' }, { id: 'h2', name: 'Maren', race: 'human', cls: 'cleric' }], active: 'h1' };
+  const m7 = migrate(v6);
+  assert.equal(m7.v, PROFILE_VERSION);
+  assert.equal(m7.roster[0].sex, 'm');
+  assert.equal(m7.roster[1].sex, 'f');
 });
 
 test('heroes: a new hero starts in shared gear, and the uniques the roster owns wait to be put on', () => {
@@ -134,8 +151,8 @@ test('loot: each line rolls at its own rate and role locks hold', () => {
     const exp = N * rate, sd = Math.sqrt(N * rate * (1 - rate));
     assert.ok(Math.abs((hits[id] || 0) - exp) < 4 * sd + 2, `${id}: got ${hits[id] || 0}, expected about ${exp.toFixed(0)}`);
   };
-  near('barrowguard.helm', 1 / 50);
-  near('gravekeeper.tank', 1 / 100);
+  near('barrowguard.helm', 1 / 35);
+  near('gravekeeper.tank', 1 / 50);
   near('mount.gravehound', 1 / 1000);
   near('pet.pint_gravekeeper', 1 / 5000);
   assert.equal(hits['candlewake.helm'] || 0, 0);
@@ -160,7 +177,7 @@ test('loot: a clear counts kills, gives marks, a ladder piece and a spare piece'
   assert.ok(r.firstClear);
   assert.equal(r.pb, 290);
   const reg = r.drops.find((d) => d.source === 'regular')!;
-  assert.ok(reg && reg.rar! >= 1);
+  assert.ok(reg && reg.rar! === 1);
   assert.ok(reg.toEquip);
   assert.equal(h.regular[reg.slot!].rar, 0, 'the new piece is not put on for you');
   assert.equal(h.bag[reg.slot!]!.rar, reg.rar, 'it waits in the bag');
@@ -181,19 +198,17 @@ test('loot: practice runs give nothing', () => {
   assert.equal(p.bosses['barrow.keeper'], undefined);
 });
 
-test('loot: the ladder reaches full Epic in about ten clears, then offers traits', () => {
-  const runs: number[] = [];
-  for (let seed = 1; seed <= 200; seed++) {
+test('loot: the regular ladder reaches full Rare in eight clears, then offers traits while Epic comes from sets and weapons', () => {
+  for (let seed = 1; seed <= 40; seed++) {
     const { p, h } = withHero('tank');
     const rng = makeRng(seed);
     let n = 0;
-    while (SLOT_IDS.some((s) => bestRegular(h, s).rar < 3)) { resolveRun(p, BARROW, clear(h), rng); n++; if (seed % 2) for (const s of SLOT_IDS) putOn(p, h, s); }
-    runs.push(n);
+    while (SLOT_IDS.some((s) => bestRegular(h, s).rar < 2)) { resolveRun(p, BARROW, clear(h), rng); n++; if (seed % 2) for (const s of SLOT_IDS) putOn(p, h, s); }
+    assert.equal(n, 8, 'four slots stepping Common -> Uncommon -> Rare takes 8 clears');
+    assert.ok(bestRegular(h, 'weapon').trait, 'reaching Rare on the weapon rolls a trait');
     const r = resolveRun(p, BARROW, clear(h), rng);
     assert.ok(r.drops.find((d) => d.source === 'regular')!.offerTrait);
   }
-  const avg = runs.reduce((a, b) => a + b, 0) / runs.length;
-  assert.ok(avg > 8 && avg < 12, `average clears to full Epic: ${avg}`);
 });
 
 test('loot: shared gear lifts every hero of a role, now and later, up to Rare', () => {
@@ -205,7 +220,7 @@ test('loot: shared gear lifts every hero of a role, now and later, up to Rare', 
     assert.equal(p.warband.tank[s].rar, WARBAND_CAP, 'your own ladder raises your role\'s shared gear');
     assert.equal(bestRegular(alt, s).rar, WARBAND_CAP, 'and your alts of that role can put it on');
     assert.equal(alt.regular[s].rar, 0, 'but nobody puts it on for them');
-    assert.equal(bestRegular(h, s).rar, 3, 'Epic stays with the hero who earned it');
+    assert.equal(bestRegular(h, s).rar, WARBAND_CAP, 'regular gear caps at Rare; Epic is earned from sets and boss weapons');
     assert.equal(p.warband.healer[s].rar, WARBAND_CAP);
   }
   const later = newHero(p, { name: 'Edda Thatcher', race: 'human', cls: 'cleric' })!;
@@ -528,12 +543,12 @@ test('gear: a drop held up against what its role wears says plainly if it is bet
   c = compareFor(p, h, 'barrowguard.chest')!;
   assert.equal(c.verdict, 'same');
   assert.equal(c.power, 0);
-  // the unique axe against an Epic axe with a trait: its effect for the trait is a trade
-  h.regular.weapon = { rar: 3, trait: 'wide' };
+  // the unique axe keeps your unlocked weapon trait active, so it is a pure upgrade over a Rare/Epic regular axe
+  h.regular.weapon = { rar: 2, trait: 'wide' };
   c = compareFor(p, h, 'gravekeeper.tank')!;
-  assert.equal(c.verdict, 'mixed');
+  assert.equal(c.verdict, 'better');
   assert.deepEqual(c.gains.map((e) => e.id), ['gravedigger']);
-  assert.deepEqual(c.loses.map((e) => e.id), ['wide']);
+  assert.deepEqual(c.loses.map((e) => e.id), []);
   assert.equal(compareFor(p, h, 'rimebone.helm'), null, 'not for this hero');
   // another role's drop goes against your hero of that role, or what a new one would start in
   assert.equal(wearerOf(p, ITEMS['rimebone.helm']), null);
@@ -557,9 +572,10 @@ test('art: every icon and sprite the content names exists', async () => {
   for (const n of ['lantern', 'lantern_gold', 'lantern_out', 'pet_keeper', 'pet_keeper_reach', 'fireplace', 'fire_a', 'fire_b', 'rug', 'stall']) if (!sprites[n]) missing.push('sprite ' + n);
   for (const t of THINGS) if (!sprites[t.sprite]) missing.push('sprite ' + t.sprite + ' for ' + t.id);
   for (const n of ['bunk_a', 'bunk_b', 'bunk_c', 'bricked_arch', 'weapon_rack', 'table', 'stool', 'woodpile', 'torch', 'candles', 'skullpile', 'gfire_a', 'gfire_b', 'coffin', 'tomb1', 'bones', 'wisp']) if (!sprites[n]) missing.push('sprite ' + n);
-  // every hero a race and class can be drawn as, front and back, and gilded for the Risen
-  for (const art of Object.values(HERO_ART)) for (const v of ['_f', '_b', ...(art.startsWith('risen') ? ['_gilded_f', '_gilded_b'] : [])]) if (!sprites[art + v]) missing.push('sprite ' + art + v);
-  for (const n of ['c_risen']) if (!tiles[n]) missing.push('icon ' + n);
+  // every hero a race and class can be drawn as (male and female), front and back, and gilded for the Risen
+  for (const art of allHeroArt()) for (const v of ['_f', '_b', ...(art.startsWith('risen') ? ['_gilded_f', '_gilded_b'] : [])]) if (!sprites[art + v]) missing.push('sprite ' + art + v);
+  for (const r of Object.values(RACES)) if (!tiles[r.icon]) missing.push('icon ' + r.icon + ' for race ' + r.id);
+  for (const c of Object.values(CLASSES)) if (!tiles[c.icon]) missing.push('icon ' + c.icon + ' for class ' + c.id);
   for (const n of ['npc_gnome', 'cauldron', 'burrow', 'burrow_red', 'windmill', 'windmill_sails', 'fence', 'cabbages', 'node_moonpetal', 'node_moonpetal_shim', 'node_glowcap', 'node_bramble', 'goggles', 'crow', 'spark', 'kettle_walk', 'pet_rootling_calm', 'goat']) if (!sprites[n]) missing.push('sprite ' + n);
   for (const x of [...Object.values(INGREDIENTS), ...Object.values(RECIPES)]) if (!tiles[x.icon]) missing.push('icon ' + x.icon + ' for ' + x.id);
   for (const n of ['s_gather', 's_brew']) if (!tiles[n]) missing.push('icon ' + n);
@@ -585,5 +601,26 @@ test('onboarding: a fresh profile plays the intro run once, existing heroes skip
   assert.equal(needsHearthTour(p), true);
   finishHearthTour(p);
   assert.equal(needsHearthTour(p), false);
+});
+
+test('hero levels & ability tree: dungeon clears grant XP, unlock ability points, and each spent point adds mastery power', () => {
+  const { p, h } = withHero('tank');
+  assert.equal(heroLevel(h), 1);
+  assert.equal(talentPointsLeft(h), 0);
+  const basePower = loadoutFor(p, h).power;
+  const res = resolveRun(p, BARROW, clear(h), makeRng(1));
+  assert.equal(res.xpGained, 100, '35 XP from mini-boss + 65 XP from clear = 100 XP');
+  assert.equal(res.levelBefore, 1);
+  assert.equal(res.levelAfter, 2);
+  assert.equal(heroLevel(h), 2);
+  assert.equal(talentPointsLeft(h), 1);
+  assert.equal(spendTalent(h, 'a1'), true);
+  assert.equal(h.talents.a1, 1);
+  assert.equal(talentPointsLeft(h), 0);
+  assert.equal(spendTalent(h, 'a1'), false, 'no points left');
+  assert.ok(loadoutFor(p, h).power > basePower, 'spent talent point increases hero mastery power');
+  assert.equal(resetTalents(h), true);
+  assert.equal(h.talents.a1, 0);
+  assert.equal(talentPointsLeft(h), 1);
 });
 

@@ -1,11 +1,11 @@
 /** What a hero is wearing, what it adds up to, and changing it. Nothing goes on by itself: new pieces
  *  wait in the hero's bag (regular gear) or as fresh uniques until you put them on. */
-import type { ItemDef, Rar, RoleId, SlotId } from '../content/types';
+import type { AbilitySlot, ItemDef, Rar, RoleId, SlotId } from '../content/types';
 import type { RegularSlot } from './profile';
 import { ITEMS, SETS } from '../content';
 import { EPIC, RARITY, SLOTS, SLOT_IDS, TRAITS, gearId, hpMultiplier, powerFromScore, traitDef, weightedScore } from '../content/gear';
 import type { ClassId, RaceId } from '../content/folk';
-import { activeHero, createHero, roleOf, type Hero, type Profile } from './profile';
+import { activeHero, createHero, roleOf, talentPointsSpent, type Hero, type Profile } from './profile';
 import { heroesFor } from './party';
 
 export interface Worn { slot: SlotId; def: ItemDef; trait?: string; unique: boolean }
@@ -17,17 +17,20 @@ export interface Loadout {
   unique: string | null;
   sets: Record<string, number>;
   score: number;
+  talents?: Record<AbilitySlot, number>;
 }
 
-/** The four things a hero has on right now. */
+/** The four things a hero has on right now. A weapon trait unlocked at Rare+ stays active even when wearing a unique weapon. */
 export function worn(p: Profile, h: Hero): Record<SlotId, Worn> {
   const role = roleOf(h);
   const out = {} as Record<SlotId, Worn>;
+  const regW = bestRegular(h, 'weapon');
+  const wepTrait = regW.rar >= 2 ? regW.trait : undefined;
   for (const slot of SLOT_IDS) {
     const uid = h.equip[slot];
     const u = uid && ITEMS[uid] && p.collection[uid] && ITEMS[uid].role === role && ITEMS[uid].slot === slot ? ITEMS[uid] : null;
-    if (u) out[slot] = { slot, def: u, unique: true };
-    else { const reg = h.regular[slot]; out[slot] = { slot, def: ITEMS[gearId(role, slot, reg.rar)], trait: reg.rar === EPIC ? reg.trait : undefined, unique: false }; }
+    if (u) out[slot] = { slot, def: u, trait: slot === 'weapon' ? wepTrait : undefined, unique: true };
+    else { const reg = h.regular[slot]; out[slot] = { slot, def: ITEMS[gearId(role, slot, reg.rar)], trait: slot === 'weapon' && reg.rar >= 2 ? reg.trait : undefined, unique: false }; }
   }
   return out;
 }
@@ -50,7 +53,11 @@ export function loadoutOf(items: Worn[]): Loadout {
   return { power: powerFromScore(score), traits, bonuses, weaponRar, unique, sets, score };
 }
 
-export const loadoutFor = (p: Profile, h: Hero): Loadout => loadoutOf(Object.values(worn(p, h)));
+export function loadoutFor(p: Profile, h: Hero): Loadout {
+  const l = loadoutOf(Object.values(worn(p, h)));
+  const pts = talentPointsSpent(h);
+  return { ...l, power: Math.round((l.power + pts * 0.015) * 1000) / 1000, talents: { ...h.talents } };
+}
 
 /** Plain regular gear at one rarity: what the bots in your party wear, and test gear. */
 export function plainLoadout(role: RoleId, rar: Rar, trait?: string): Loadout {
@@ -98,7 +105,7 @@ export interface Compare { slot: SlotId; now: Worn; ilvl: [number, number]; powe
  *  ready yet is listed but doesn't make a piece better. */
 export function compareOn(now: Record<SlotId, Worn>, role: RoleId, def: ItemDef): Compare {
   const slot = def.slot, cur = now[slot];
-  const next: Record<SlotId, Worn> = { ...now, [slot]: { slot, def, unique: def.kind !== 'gear' } };
+  const next: Record<SlotId, Worn> = { ...now, [slot]: { slot, def, trait: slot === 'weapon' ? cur.trait : undefined, unique: def.kind !== 'gear' } };
   const a = loadoutOf(Object.values(now)), b = loadoutOf(Object.values(next));
   const ea = effectsOf(a, role), eb = effectsOf(b, role);
   const has = (list: Effect[], e: Effect): boolean => list.some((x) => x.kind === e.kind && x.id === e.id);
@@ -122,7 +129,7 @@ export function compareFor(p: Profile, h: Hero, id: string): Compare | null {
 /** What a new hero of a role starts in: the shared gear, nothing unique on. */
 export function floorWorn(p: Profile, role: RoleId): Record<SlotId, Worn> {
   const out = {} as Record<SlotId, Worn>;
-  for (const slot of SLOT_IDS) { const r = p.warband[role][slot]; out[slot] = { slot, def: ITEMS[gearId(role, slot, r.rar)], trait: r.rar === EPIC ? r.trait : undefined, unique: false }; }
+  for (const slot of SLOT_IDS) { const r = p.warband[role][slot]; out[slot] = { slot, def: ITEMS[gearId(role, slot, r.rar)], trait: r.rar >= 2 ? r.trait : undefined, unique: false }; }
   return out;
 }
 /** Who a piece would go on: your hero if it fits their role, or else your hero of its role you played last. */
@@ -196,19 +203,19 @@ export function ownedFor(p: Profile, h: Hero, slot: SlotId): ItemDef[] {
 
 /** Make a hero: it starts wearing the shared gear for its role, and the uniques the roster owns for
  *  that role wait for it to put them on. */
-export function newHero(p: Profile, o: { name: string; race: RaceId; cls: ClassId; free?: boolean }, now = Date.now()): Hero | null {
+export function newHero(p: Profile, o: { name: string; race: RaceId; cls: ClassId; sex?: 'm' | 'f'; free?: boolean }, now = Date.now()): Hero | null {
   const h = createHero(p, o, now);
   if (h) for (const slot of SLOT_IDS) for (const u of ownedFor(p, h, slot)) h.fresh.push(u.id);
   return h;
 }
 
 export const REROLL_COST = 5;
-/** Spend marks to set the trait on an Epic regular weapon to the one you pick (the one in the bag, if that is the Epic one). */
+/** Spend marks to set the trait on a Rare+ regular weapon to the one you pick (the one in the bag, if that is the best one). */
 export function buyTrait(p: Profile, h: Hero, dungeon: string, trait: string): boolean {
   const role = roleOf(h);
   const reg = bestRegular(h, 'weapon');
   const rec = p.dungeons[dungeon];
-  if (reg.rar !== EPIC || !rec || rec.marks < REROLL_COST || reg.trait === trait || !TRAITS[role].some((t) => t.id === trait)) return false;
+  if (reg.rar < 2 || !rec || rec.marks < REROLL_COST || reg.trait === trait || !TRAITS[role].some((t) => t.id === trait)) return false;
   rec.marks -= REROLL_COST;
   reg.trait = trait;
   return true;

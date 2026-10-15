@@ -7,9 +7,11 @@
  * trim and lanterns, the green burning higher), and with every room in it the frame turns to stone and
  * slate too. What you can tap, and what it does, lives in the scene (hearth.ts) and the
  * house's plan (content/house.ts). House units: x across, y down, the ground floor's floor at y = 0.
+ * What moves (the fire, the smoke, the wisps) is drawn as bits (houseBits), so the house never redraws for
+ * it. See-through shapes use fill-opacity, not opacity, which would make the browser draw each one apart.
  */
 import { FLOORS, HOUSE_W, LOOK_ROOMS } from '../content/house';
-import { placeSprite } from './art';
+import { placeSprite, spriteBit, type Bit } from './art';
 import { L, P, SKY_STOPS, cloud, house as cottage, tree } from './valeart';
 
 const K = '#1E1A1A';
@@ -17,7 +19,7 @@ const f = (n: number): string => (Math.round(n * 10) / 10).toString();
 const R = (x: number, y: number, w: number, h: number, fill: string, sw = 4): string => P(`M${f(x)} ${f(y)} h${f(w)} v${f(h)} h${f(-w)} Z`, fill, sw);
 const F = (d: string, fill: string): string => `<path d="${d}" style="fill: ${fill}"/>`;
 const C = (x: number, y: number, r: number, fill: string, w = 4): string => `<circle cx="${f(x)}" cy="${f(y)}" r="${f(r)}" style="fill: ${fill}${w ? `; stroke: ${K}; stroke-width: ${w}` : ''}"/>`;
-const glow = (x: number, y: number, r: number, id: string, op = 1): string => `<circle cx="${f(x)}" cy="${f(y)}" r="${f(r)}" style="fill: url(#${id}); opacity: ${op}; pointer-events: none"/>`;
+const glow = (x: number, y: number, r: number, id: string, op = 1): string => `<circle cx="${f(x)}" cy="${f(y)}" r="${f(r)}" style="fill: url(#${id}); fill-opacity: ${op}; pointer-events: none"/>`;
 /** a line with an ink edge, like a beam or a mullion */
 const beam = (d: string, col: string, w = 5): string => L(d, K, w + 5) + L(d, col, w);
 function rnd(seed: number): () => number {
@@ -69,45 +71,61 @@ const GC = FLOORS.hall + BEAM, GW = at(FLOORS.ground), CC = FLOORS.ground + BEAM
 const arch = (x: number, top: number, bot: number, w: number): string => `M${f(x - w / 2)} ${f(bot)} V${f(top + w / 2)} A${f(w / 2)} ${f(w / 2)} 0 0 1 ${f(x + w / 2)} ${f(top + w / 2)} V${f(bot)} Z`;
 const disc = (x: number, y: number, r: number): string => `M${f(x - r)} ${f(y)} A${f(r)} ${f(r)} 0 1 1 ${f(x + r)} ${f(y)} A${f(r)} ${f(r)} 0 1 1 ${f(x - r)} ${f(y)} Z`;
 
-/** Gradients, the outside (drawn once, shown round the house and through every window) and the windows' clips. */
+/** The gradients, and the clip for the one window low enough to show the hill. Every layer of the house uses
+ *  the same viewBox (HOUSE_BOUNDS), so h-sky, in user space, is the same sky in all of them. */
 export function houseDefs(): string {
   return `<linearGradient id="h-sky" x1="0" y1="-3000" x2="0" y2="40" gradientUnits="userSpaceOnUse">${SKY_STOPS}</linearGradient>
     <radialGradient id="h-warm"><stop offset="0" stop-color="#FFC870" stop-opacity="0.42"/><stop offset="1" stop-color="#FFC870" stop-opacity="0"/></radialGradient>
     <radialGradient id="h-fire"><stop offset="0" stop-color="#FF9A4C" stop-opacity="0.4"/><stop offset="0.55" stop-color="#FF8A4C" stop-opacity="0.12"/><stop offset="1" stop-color="#FF8A4C" stop-opacity="0"/></radialGradient>
     <radialGradient id="h-green"><stop offset="0" stop-color="#9BE15D" stop-opacity="0.5"/><stop offset="1" stop-color="#9BE15D" stop-opacity="0"/></radialGradient>
     <radialGradient id="h-gfire"><stop offset="0" stop-color="#9BE15D" stop-opacity="0.44"/><stop offset="0.55" stop-color="#9BE15D" stop-opacity="0.14"/><stop offset="1" stop-color="#9BE15D" stop-opacity="0"/></radialGradient>
-    <g id="h-out">${outside()}</g>
-    ${WINDOWS.map((w) => `<clipPath id="${w.id}"><path d="${w.d}"/></clipPath>`).join('')}`;
+    ${WINDOWS.filter((w) => w.low).map((w) => `<clipPath id="${w.id}"><path d="${w.d}"/></clipPath>`).join('')}`;
 }
 
+/** the stars over Highfell, in the sky and in any window they fall inside */
+const STARS: { x: number; y: number; r: number; o: number }[] = (() => {
+  const r = rnd(17);
+  return Array.from({ length: 260 }, () => ({ x: -3200 + r() * 7600, y: -3500 + r() * 2000, r: 2 + r() * 3, o: 0.4 + r() * 0.6 }));
+})();
+const star = (s: { x: number; y: number; r: number; o: number }): string => `<circle cx="${f(s.x)}" cy="${f(s.y)}" r="${f(s.r)}" style="fill: #FFF3C4; fill-opacity: ${f(s.o)}"/>`;
+/** the far hills, behind the house and through the brewing room's window */
+const BACK_HILL = 'M-3400 -150 C-2600 -300 -2100 -120 -1700 -110 C-1300 -260 -900 -200 -560 -270 C-200 -340 160 -250 520 -300 C880 -350 1240 -260 1560 -320 C1900 -380 2300 -260 2900 -300 C3400 -340 3900 -200 4600 -260 V300 H-3400 Z';
 /** the dusk sky, the far hills and Highfell's lights */
 function outside(): string {
-  const r = rnd(17);
-  const o: string[] = [`<rect x="-3400" y="-3600" width="8000" height="3900" style="fill: url(#h-sky)"/>`];
-  for (let i = 0; i < 260; i++) o.push(`<circle cx="${f(-3200 + r() * 7600)}" cy="${f(-3500 + r() * 2000)}" r="${f(2 + r() * 3)}" style="fill: #FFF3C4; opacity: ${f(0.4 + r() * 0.6)}"/>`);
-  o.push(C(1760, -2560, 120, '#FFF3C4', 0).replace('fill: #FFF3C4', 'fill: #FFF3C4; opacity: 0.16') + C(1760, -2560, 54, '#FFF3C4', 4.5) + C(1782, -2576, 44, '#4A3A6E', 0));
+  const o: string[] = [`<rect x="-3400" y="-3600" width="8000" height="3900" style="fill: url(#h-sky)"/>`, ...STARS.map(star)];
+  o.push(C(1760, -2560, 120, '#FFF3C4', 0).replace('fill: #FFF3C4', 'fill: #FFF3C4; fill-opacity: 0.16') + C(1760, -2560, 54, '#FFF3C4', 4.5) + C(1782, -2576, 44, '#4A3A6E', 0));
   for (const [x, y, k] of [[-760, -2050, 1.6], [1780, -1720, 1.9], [-560, -1180, 1.3], [1960, -940, 1.4], [-980, -620, 1.2], [1500, -2260, 1.1]] as [number, number, number][]) o.push(cloud(x, y, k, '#F6C9A8'));
-  o.push(P('M-3400 -150 C-2600 -300 -2100 -120 -1700 -110 C-1300 -260 -900 -200 -560 -270 C-200 -340 160 -250 520 -300 C880 -350 1240 -260 1560 -320 C1900 -380 2300 -260 2900 -300 C3400 -340 3900 -200 4600 -260 V300 H-3400 Z', '#8E6290', 4));
+  o.push(P(BACK_HILL, '#8E6290', 4));
   // Highfell on its hill, and the Last Lantern at the top
   o.push(P('M1500 -60 C1620 -360 2140 -380 2280 -60 Z', '#6E4E7E', 4));
   const roofs = ['#B3553F', '#4F6FA8', '#8A5A34'];
   [[1640, -200, 48], [1710, -262, 54], [1790, -300, 44], [1870, -308, 56], [1950, -290, 46], [2030, -250, 52], [2110, -190, 44]].forEach(([x, y, w], i) => o.push(cottage(x, y, w, roofs[i % 3])));
-  o.push(R(1872, -470, 22, 160, '#E7CFA6', 3.5) + C(1883, -486, 40, '#FFD36A', 0).replace('fill: #FFD36A', 'fill: #FFD36A; opacity: 0.35') + C(1883, -486, 12, '#FFD36A', 3.5));
+  o.push(R(1872, -470, 22, 160, '#E7CFA6', 3.5) + C(1883, -486, 40, '#FFD36A', 0).replace('fill: #FFD36A', 'fill: #FFD36A; fill-opacity: 0.35') + C(1883, -486, 12, '#FFD36A', 3.5));
   o.push(P('M-3400 -60 C-2700 -150 -2200 -40 -1700 -20 C-1200 -120 -760 -60 -400 -110 C40 -170 600 -70 1100 -120 C1600 -170 2200 -60 2900 -110 C3500 -160 4000 -50 4600 -100 V300 H-3400 Z', '#5E4A7A', 4));
   return o.join('');
 }
 
-/** a window: its opening, its frame, and the bars across it in the trim of its room's look */
-interface Win { id: string; room: string; d: string; frame: string; bars: (trim: string) => string }
+/** a window: its opening, its frame, and the bars across it in the trim of its room's look. `has` says if a
+ *  circle is wholly inside the opening; `low` windows reach down to the far hill. */
+interface Win { id: string; room: string; d: string; frame: string; bars: (trim: string) => string; has: (x: number, y: number, r: number) => boolean; low: boolean }
 function archWin(id: string, room: string, x: number, top: number, bot: number, w: number): Win {
+  const cy = top + w / 2;
   return {
     id, room, d: arch(x, top, bot, w), frame: arch(x, top - 12, bot + 6, w + 26),
     bars: (trim) => beam(`M${x} ${f(top + 4)} V${bot} M${f(x - w / 2)} ${f((top + bot) / 2 + 14)} H${f(x + w / 2)}`, trim) + R(x - w / 2 - 18, bot, w + 36, 14, trim, 3.5),
+    has: (sx, sy, sr) => sy + sr <= bot && (sy >= cy ? Math.abs(sx - x) <= w / 2 - sr : Math.hypot(sx - x, sy - cy) <= w / 2 - sr),
+    low: bot > -400,
   };
 }
 function roundWin(id: string, room: string, x: number, y: number, r: number): Win {
-  return { id, room, d: disc(x, y, r), frame: disc(x, y, r + 13), bars: (trim) => beam(`M${f(x - r)} ${y} H${f(x + r)} M${x} ${f(y - r)} V${f(y + r)}`, trim, 4) };
+  return {
+    id, room, d: disc(x, y, r), frame: disc(x, y, r + 13), bars: (trim) => beam(`M${f(x - r)} ${y} H${f(x + r)} M${x} ${f(y - r)} V${f(y + r)}`, trim, 4),
+    has: (sx, sy, sr) => Math.hypot(sx - x, sy - y) <= r - sr, low: false,
+  };
 }
+/** what you see through a window: the sky at that height, its stars, and the hill if it's low enough */
+const view = (w: Win): string => `<path d="${w.d}" style="fill: url(#h-sky)"/>` + STARS.filter((s) => w.has(s.x, s.y, s.r)).map(star).join('')
+  + (w.low ? `<g clip-path="url(#${w.id})">${P(BACK_HILL, '#8E6290', 4)}</g>` : '');
 const WINDOWS: Win[] = [
   roundWin('hw-l1', 'loft', 330, -2190, 34), roundWin('hw-l2', 'loft', 870, -2190, 34),
   archWin('hw-a1', 'armory', 1062, -1630, -1478, 104),
@@ -118,12 +136,12 @@ const WINDOWS: Win[] = [
 /** everything behind what you can tap: the outside, the ground, the rooms, the frame, the roof, the furniture */
 export function houseBack(look: LookAt): string {
   const fr = frameOf(look);
-  const o: string[] = ['<use href="#h-out"/>', ground()];
+  const o: string[] = [outside(), ground()];
   for (const id of LOOK_ROOMS) o.push(roomArt(look(id), id).wall());
   o.push(frame(fr));
   for (const w of WINDOWS) {
     const trim = TRIM[look(w.room)] || T.trim;
-    o.push(P(w.frame, trim, 4.5) + `<g clip-path="url(#${w.id})"><use href="#h-out"/></g><path d="${w.d}" style="fill: none; stroke: ${K}; stroke-width: 4"/>` + w.bars(trim));
+    o.push(P(w.frame, trim, 4.5) + view(w) + `<path d="${w.d}" style="fill: none; stroke: ${K}; stroke-width: 4"/>` + w.bars(trim));
   }
   o.push(roof(fr));
   for (const id of LOOK_ROOMS) o.push(roomArt(look(id), id).furnish());
@@ -138,6 +156,13 @@ export function houseFront(look: LookAt): string {
   o.push(R(-WALL, FLOORS.ground + BEAM, WALL, FLOORS.cellar - FLOORS.ground - BEAM, fr.stone, 4) + R(W, FLOORS.ground + BEAM, WALL, FLOORS.cellar - FLOORS.ground - BEAM, fr.stone, 4));
   for (const id of LOOK_ROOMS) o.push(roomArt(look(id), id).light());
   return o.join('');
+}
+
+/** what moves: the smoke from the chimney, and each room's own (the fire, the wisps) */
+export function houseBits(look: LookAt): Bit[] {
+  const out = [smoke()];
+  for (const id of LOOK_ROOMS) out.push(...(roomArt(look(id), id).bits?.() || []));
+  return out;
 }
 
 /** the yard, the grass, and the earth the cellar is dug into */
@@ -202,13 +227,21 @@ function roof(fr: Frame): string {
     o.push(L(`M${f(ax)} ${f(ay)} L${W / 2} ${f(py)} L${f(W - ax)} ${f(ay)}`, fr.roofLine, 4));
   }
   o.push(R(536, ROOF.peak - 120, 128, 150, fr.stone, 4) + R(520, ROOF.peak - 140, 160, 24, fr.stoneLine, 4));
-  o.push(`<g class="smoke">${[0, 1, 2].map((i) => C(600 + (i % 2 ? 24 : -18), ROOF.peak - 200 - i * 70, 26 + i * 10, '#C9BCD6', 3.5).replace('fill: #C9BCD6', `fill: #C9BCD6; opacity: ${f(0.85 - i * 0.2)}`)).join('')}</g>`);
   for (const x of [-70, W + 70]) {
     // where the roof is under the pole
     const y0 = ROOF.y0 + (ROOF.peak - ROOF.y0) * ((x < W / 2 ? x - ROOF.x0 : W - ROOF.x0 - x) / (W / 2 - ROOF.x0));
     o.push(beam(`M${x} ${f(y0)} V-2400`, fr.timber, 8) + C(x, -2410, 10, '#F2C230', 3.5) + R(x - 58, -2384, 116, 12, fr.trim, 3.5));
   }
   return o.join('');
+}
+
+/** the smoke over the chimney: three puffs drifting up together */
+function smoke(): Bit {
+  const puffs = [0, 1, 2].map((i) => ({ x: 600 + (i % 2 ? 24 : -18), y: ROOF.peak - 200 - i * 70, r: 26 + i * 10, o: 0.85 - i * 0.2 }));
+  const x0 = Math.min(...puffs.map((p) => p.x - p.r)) - 3, x1 = Math.max(...puffs.map((p) => p.x + p.r)) + 3;
+  const y0 = Math.min(...puffs.map((p) => p.y - p.r)) - 3, y1 = Math.max(...puffs.map((p) => p.y + p.r)) + 3;
+  const body = puffs.map((p) => C(p.x, p.y, p.r, '#C9BCD6', 3.5).replace('fill: #C9BCD6', `fill: #C9BCD6; opacity: ${f(p.o)}`)).join('');
+  return { box: [x0, y0, x1 - x0, y1 - y0], body, cls: 'float' };
 }
 
 /* ---------------------------------------------------------------- pieces both looks use */
@@ -235,12 +268,11 @@ function shelves(board: string, bracket: string): string {
 /** the cushion in the loft, for a pet */
 const cushion = (base: string, top: string): string => `<ellipse cx="250" cy="${FLOORS.loft - 16}" rx="76" ry="16" style="fill: ${base}; stroke: ${K}; stroke-width: 3.5"/><ellipse cx="250" cy="${FLOORS.loft - 26}" rx="62" ry="13" style="fill: ${top}; stroke: ${K}; stroke-width: 3"/>`;
 const bunks = (): string => placeSprite('bunk_a', 100, UW) + placeSprite('bunk_b', 260, UW) + placeSprite('bunk_c', 420, UW);
-/** the hall's fire in its fireplace: orange in the tavern, the Gravekeeper's green in Barrow Hall */
-function hearthFire(fire: 'fire' | 'gfire'): string {
-  const fk = 0.92;
-  return placeSprite('fireplace', 600, HW, { k: fk }) + placeSprite('logs', 600, HW - 6 * fk, { k: fk })
-    + placeSprite(`${fire}_a`, 600, HW - 12 * fk, { k: fk, cls: 'fire-a' }) + placeSprite(`${fire}_b`, 600, HW - 12 * fk, { k: fk, cls: 'fire-b' });
-}
+/** the hall's fireplace and logs; the flames are bits (fireBits) */
+const FK = 0.92;
+const hearthFire = (): string => placeSprite('fireplace', 600, HW, { k: FK }) + placeSprite('logs', 600, HW - 6 * FK, { k: FK });
+/** the hall's fire, two frames taking turns: orange in the tavern, the Gravekeeper's green in Barrow Hall */
+const fireBits = (fire: 'fire' | 'gfire'): Bit[] => [spriteBit(`${fire}_a`, 600, HW - 12 * FK, { k: FK, cls: 'fire-a' }), spriteBit(`${fire}_b`, 600, HW - 12 * FK, { k: FK, cls: 'fire-b' })].filter((b): b is Bit => !!b);
 /** the rest of the hall: the rug, torches each side of the fire, the table and its stools */
 const hallThings = (): string => placeSprite('rug', 600, FLOORS.hall - 26, { k: 0.82 })
   + [384, 816].map((x) => glow(x, -900, 90, 'h-warm') + placeSprite('torch', x, -860)).join('')
@@ -269,8 +301,8 @@ function wainscot(x0: number, x1: number, bottom: number, h: number, step0: numb
   return o.join('');
 }
 
-/** one room in one look: its back wall and floor, its furniture, and its light */
-interface RoomArt { wall: () => string; furnish: () => string; light: () => string }
+/** one room in one look: its back wall and floor, its furniture, its light, and anything in it that moves */
+interface RoomArt { wall: () => string; furnish: () => string; light: () => string; bits?: () => Bit[] }
 
 const TAVERN: Record<string, RoomArt> = {
   loft: {
@@ -301,8 +333,9 @@ const TAVERN: Record<string, RoomArt> = {
     wall: () => R(0, HC, W, HW - HC, T.plaster, 0)
       + [[24, 396], [804, 1176]].map(([a, b]) => `<rect x="${a}" y="${HC + 28}" width="${b - a}" height="${HW - HC - 170}" rx="8" style="fill: ${T.panel}"/>`).join('')
       + wainscot(0, W, HW, 112, 22) + boards(0, W, FLOORS.hall),
-    furnish: () => hearthFire('fire') + placeSprite('woodpile', 140, FLOORS.hall - 30) + hallThings(),
+    furnish: () => hearthFire() + placeSprite('woodpile', 140, FLOORS.hall - 30) + hallThings(),
     light: () => glow(600, -760, 760, 'h-fire'),
+    bits: () => fireBits('fire'),
   },
   stable: {
     wall: () => R(0, GC, 640, GW - GC, T.stable, 0) + Array.from({ length: 14 }, (_, i) => L(`M${40 + 46 * i} ${GC} V${GW}`, T.stableLine, 3)).join('') + boards(0, 640, FLOORS.ground),
@@ -397,8 +430,9 @@ function crypt(c: Crypt): Record<string, RoomArt> {
         + [[24, 396], [804, 1176]].map(([a, b]) => `<rect x="${a}" y="${HC + 28}" width="${b - a}" height="${HW - HC - 170}" rx="10" style="fill: ${c.trim}; stroke: ${K}; stroke-width: 3.5"/><rect x="${a + 12}" y="${HC + 40}" width="${b - a - 24}" height="${HW - HC - 194}" rx="6" style="fill: ${B.panel}; stroke: ${K}; stroke-width: 3"/>`).join('')
         + niches(0, W, HW, 112, 7, c.bone) + flags(0, W, FLOORS.hall),
       // the fire burns green, and the woodpile is a pile of skulls
-      furnish: () => hearthFire('gfire') + placeSprite('skullpile', 140, FLOORS.hall - 26, { k: 1.25 }) + hallThings(),
+      furnish: () => hearthFire() + placeSprite('skullpile', 140, FLOORS.hall - 26, { k: 1.25 }) + hallThings(),
       light: () => glow(600, -760, 760 * c.burn, 'h-gfire'),
+      bits: () => fireBits('gfire'),
     },
     stable: {
       wall: () => brick(0, GC, 640, GW) + flags(0, 640, FLOORS.ground),
@@ -413,10 +447,10 @@ function crypt(c: Crypt): Record<string, RoomArt> {
     },
     cellar: {
       wall: () => brick(0, CC, W, CW) + flags(0, W, FLOORS.cellar),
-      // wisps drift under the ceiling
-      furnish: () => arches() + candles(82, FLOORS.cellar) + placeSprite('skullpile', 924, FLOORS.cellar - 22)
-        + placeSprite('wisp', 560, 190, { cls: 'bob' }) + placeSprite('wisp', 1000, 240, { k: 0.8, cls: 'bob' }),
+      furnish: () => arches() + candles(82, FLOORS.cellar) + placeSprite('skullpile', 924, FLOORS.cellar - 22),
       light: () => green(300, 280, 460, 0.95),
+      // wisps drift under the ceiling
+      bits: () => [spriteBit('wisp', 560, 190, { cls: 'bob' }), spriteBit('wisp', 1000, 240, { k: 0.8, cls: 'bob' })].filter((b): b is Bit => !!b),
     },
   };
 }

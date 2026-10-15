@@ -19,7 +19,10 @@ export interface RoleDef {
 export interface AbilityDef {
   key: string; name: string; desc: string;
   cd: number; mana?: number; hold?: boolean; aim?: boolean; range?: number; cast?: number;
+  combo?: string;
 }
+
+export interface TalentRankDef { name: string; desc: string }
 
 export interface RarityDef { key: string; name: string; score: number; color: string; ink: string }
 export interface SlotDef { id: SlotId; weight: number }

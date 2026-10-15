@@ -41,7 +41,7 @@ export function itemSheet(p: Profile, id: string, hasBack: boolean): { head: str
     const d: ItemDef = t.def;
     const look = rarLook(id);
     kind = d.kind === 'unique' ? `Unique ${ROLE_SLOTS[d.role][d.slot].name.toLowerCase()} · ${ROLES[d.role].title}` : d.kind === 'set' ? `Epic · ${SETS[d.setId!].name} set · ${ROLES[d.role].title} ${d.slot}` : `${look.name} ${d.slot}`;
-    const cmp = d.kind === 'gear' ? null : held(p, d);
+    const cmp = held(p, d);
     if (cmp) { vs = cmp.html; act = cmp.act; }
     // what the piece gives on its own, next to its picture
     const share = itemShare(d);

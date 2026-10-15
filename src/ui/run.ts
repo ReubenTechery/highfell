@@ -11,12 +11,12 @@ import { BARROW } from '../content/barrow';
 import { BARROW_HEROIC } from '../content/barrow/heroic';
 import type { DungeonInfo } from '../content/types';
 import { BARROW_ENGINE } from '../content/barrow/engine';
-import { AB, MEND } from '../content/roles';
+import { AB, MEND, ROLES } from '../content/roles';
 import type { Rar, RoleId } from '../content/types';
 import { newGame, respawn, update } from '../dungeon/game.js';
 import { S, setHooks } from '../dungeon/state.js';
 import { banner } from '../dungeon/entities.js';
-import { bestCluster, doDodge, heroBy, isFoe, mend, useAbility } from '../dungeon/heroes.js';
+import { abCd, abMana, bestCluster, doDodge, heroBy, isFoe, mend, useAbility } from '../dungeon/heroes.js';
 import { inHaz } from '../dungeon/bots.js';
 import { render, resizeView, updateCam, VIEW } from '../dungeon/render.js';
 import { roomIndexOf } from '../dungeon/world.js';
@@ -30,7 +30,7 @@ import { RECIPES } from '../content/vale';
 import { drinkForRun } from '../meta/vale';
 import type { App } from './app';
 import { $, esc, flash, fmtT } from './dom';
-import { nameOf, tile } from './art';
+import { heroSprite, nameOf, tile } from './art';
 import { IN, aimPoint, bindInput, mashCage, playerIntent, resetInput, type InputUI } from './input';
 import { SFX } from './sound';
 
@@ -46,8 +46,8 @@ const HINTS: Record<string, [string, string, string, number?]> = {
   introMove: ['Drag on the left to walk up into the skeletons.', 'Use WASD or the arrow keys to walk up into the skeletons.', 'Walk into the pack', 12],
   introChest: ['The lantern flared gold and the chest knocked twice: a unique is inside! Walk to the chest to open it.', 'The lantern flared gold and the chest knocked twice: a unique is inside! Walk to the chest to open it.', 'The walkout', 8],
   dodge: ['Swipe anywhere to dodge-roll out of the red.', 'Space to dodge-roll out of the red.', 'Dodge', 6],
-  block: ['Hold the shield button. Block right before it lands to stun him and hit back.', 'Hold 2 to block. Block right before it lands to stun him and hit back.', 'Block it', 6],
-  slam: ['Slam grabs everything near you. Use it when mobs run at your mates.', 'Slam (1) grabs everything near you. Use it when mobs run at your mates.', 'Slam', 6],
+  block: ['Hold the shield button. Block right before it lands to stun him and hit back.', 'Hold 4 to block. Block right before it lands to stun him and hit back.', 'Block it', 6],
+  slam: ['Slam grabs everything near you. Use it when mobs run at your mates.', 'Slam (3) grabs everything near you. Use it when mobs run at your mates.', 'Slam', 6],
   heal: ['Tap a name, or tap a hero, to heal them. Smite when everyone is fine.', 'Click a name, or press Z, X or C, to heal. Smite (4) when everyone is fine.', 'Heal', 7],
   aim: ['Drag Blizzard to aim it. A quick tap aims it for you.', 'Blizzard (1) lands where your mouse is.', 'Aim', 6],
   shatter: ['Frozen? Icicle (4) and Comet hit frozen mobs much harder.', 'Frozen? Icicle (4) and Comet hit frozen mobs much harder.', 'Shatter', 6],
@@ -64,19 +64,19 @@ const HINTS: Record<string, [string, string, string, number?]> = {
 interface TutStep { slot: string; eyebrow: string; title: string; touch: string; desk: string; btn: string }
 const TUT_STEPS: Record<string, TutStep> = {
   introAb: {
-    slot: 'a4',
+    slot: 'a1',
     eyebrow: 'Step 1 of 5',
     title: 'Smash Cleave!',
     touch: 'You swing on your own in range. Tap the glowing Cleave button to hit the whole pack!',
-    desk: 'You swing on your own in range. Press the glowing Cleave button (or 4) to hit the whole pack!',
+    desk: 'You swing on your own in range. Press the glowing Cleave button (or 1) to hit the whole pack!',
     btn: 'Use Cleave',
   },
   slam: {
-    slot: 'a1',
+    slot: 'a3',
     eyebrow: 'Step 2 of 5',
     title: 'Pull monsters off your party!',
     touch: 'A skeleton is running at Ivy! Tap the glowing Slam button to grab everything back onto you.',
-    desk: 'A skeleton is running at Ivy! Press the glowing Slam button (or 1) to grab everything back onto you.',
+    desk: 'A skeleton is running at Ivy! Press the glowing Slam button (or 3) to grab everything back onto you.',
     btn: 'Use Slam',
   },
   dodge: {
@@ -88,19 +88,19 @@ const TUT_STEPS: Record<string, TutStep> = {
     btn: 'Dodge roll',
   },
   block: {
-    slot: 'a2',
+    slot: 'a4',
     eyebrow: 'Step 4 of 5',
     title: 'Raise your shield to block!',
     touch: 'Gold cones are heavy tank hits—don’t roll away! Tap Raise Shield right before he swings.',
-    desk: 'Gold cones are heavy tank hits—don’t roll away! Press Raise Shield (or 2) right before he swings.',
+    desk: 'Gold cones are heavy tank hits—don’t roll away! Press Raise Shield (or 4) right before he swings.',
     btn: 'Raise shield',
   },
   stagger: {
-    slot: 'a3',
+    slot: 'a2',
     eyebrow: 'Step 5 of 5',
     title: 'Perfect Block stagger!',
     touch: 'Blocking right before impact takes zero damage, strikes back, and staggers the boss! Tap Charge to punish him.',
-    desk: 'Blocking right before impact takes zero damage, strikes back, and staggers the boss! Press Charge (or 3) to punish him.',
+    desk: 'Blocking right before impact takes zero damage, strikes back, and staggers the boss! Press Charge (or 2) to punish him.',
     btn: 'Use Charge',
   },
 };
@@ -206,7 +206,7 @@ export class RunScene implements InputUI {
       doDodge(p, Math.cos(a), Math.sin(a));
       if (z) z.t = Math.max(z.t, 1.38);
       if (S.boss && S.boss.act && S.boss.act.k === 'charge') S.boss.act.t = Math.max(S.boss.act.t, 1.38);
-    } else if (step.slot === 'a2') {
+    } else if (step.slot === 'a4') {
       const z = S.hazards.find((x: any) => x.shape === 'cone');
       if (z && !inHaz(z, p.x, p.y, p.r)) {
         p.x = z.x + Math.cos(z.a) * 90;
@@ -218,14 +218,14 @@ export class RunScene implements InputUI {
       p.blocking = true;
       p.blockT = 0;
       p.blockStart = S.t;
-      this.holdBtn('a2', true);
+      this.holdBtn('a4', true);
       if (z) z.t = Math.max(z.t, 1.28);
       if (S.boss && S.boss.act && S.boss.act.k === 'sweep') S.boss.act.t = Math.max(S.boss.act.t, 1.28);
-      setTimeout(() => { IN.block = false; p.intent.block = false; this.holdBtn('a2', false); }, 550);
+      setTimeout(() => { IN.block = false; p.intent.block = false; this.holdBtn('a4', false); }, 550);
     } else {
       IN.block = false;
       p.intent.block = false;
-      this.holdBtn('a2', false);
+      this.holdBtn('a4', false);
       p.cd[step.slot] = 0;
       p.gcd = 0;
       useAbility(p, step.slot, key === 'stagger' && S.boss ? S.boss : null);
@@ -259,13 +259,20 @@ export class RunScene implements InputUI {
     const test = o.testRar !== null || !h;
     this.practice = o.start !== 'entrance' || test;
     const rar: Rar = intro ? 3 : o.testRar !== null ? o.testRar : h ? partyRar(p, h) : 0;
+    const tierSuffix = rar <= 0 ? '_rags' : rar === 1 ? '_iron' : '';
     const loadouts: Record<string, unknown> = {};
-    for (const r of ['tank', 'healer', 'dps'] as RoleId[]) loadouts[r] = r === role ? (test || !h ? plainLoadout(r, rar) : loadoutFor(p, h)) : plainLoadout(r, rar);
+    for (const r of ['tank', 'healer', 'dps'] as RoleId[]) {
+      const base = r === role ? (test || !h ? plainLoadout(r, rar) : loadoutFor(p, h)) : plainLoadout(r, rar);
+      loadouts[r] = { ...base, sprite: `${ROLES[r].sprite}${tierSuffix}` };
+    }
     if (intro) loadouts.tank = { ...(loadouts.tank as object), unique: 'gravedigger', bonuses: ['barrowguard2'], name: 'Brannoc', sprite: 'tank' };
     // a brew from the Vale, drunk at the door: practice uses it but keeps the bottle
     const brew = h ? drinkForRun(p, !this.practice) : null;
     this.brew = brew;
-    if (h) loadouts[role] = { ...(loadouts[role] as object), name: h.name, sprite: heroArt(h.race, h.cls) || undefined, ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) };
+    if (h) {
+      const spr = test ? `${heroArt(h.race, h.cls, h.sex) || ROLES[role].sprite}${tierSuffix}` : heroSprite(h, role, p);
+      loadouts[role] = { ...(loadouts[role] as object), name: h.name, sprite: spr, ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) };
+    }
     if (brew && this.practice) app.store.save();
     const looks = Object.keys(p.collection).filter((id) => COLLECTIBLES[id] && (COLLECTIBLES[id].kind === 'cosmetic') && !p.settings.looksOff.includes(id));
     const wornSet = !!h && Object.values(worn(p, h)).some((w) => w.def.setId && SETS[w.def.setId]);
@@ -488,10 +495,13 @@ export class RunScene implements InputUI {
       <span class="fb"><i class="hpf"></i><i class="abf"></i></span>${h.role === 'healer' ? '<span class="fb mp"><i class="mpf"></i></span>' : ''}</li>`).join('');
     $('frames').querySelectorAll<HTMLElement>('.fr').forEach((li) => li.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (S.player.role === 'healer') { mend(S.player, heroBy(li.dataset.role)); this.hintDone('heal'); } }));
     const btn = (slot: string) => {
-      const def = slot === 'dodge' ? { key: 'dodge', name: 'Dodge', desc: 'Roll out of trouble.' } as { key: string; name: string; desc: string; mana?: number; hold?: boolean } : A[slot as 'a1'];
+      const def = slot === 'dodge' ? { key: 'dodge', name: 'Dodge', desc: 'Roll out of trouble.' } as { key: string; name: string; desc: string; mana?: number; hold?: boolean; combo?: string } : A[slot as 'a1'];
+      const mana = slot === 'dodge' ? 0 : abMana(p, slot);
+      const tip = def.combo ? `${def.name}: ${def.desc} (${def.combo})` : `${def.name}: ${def.desc}`;
       const tag = slot === 'dodge' ? 'Roll' : def.hold ? 'Block' : '';
-      return `<button type="button" class="ab${def.hold ? ' hold' : ''}${slot === 'dodge' ? ' roll' : ''}" data-slot="${slot}" aria-label="${esc(def.name)}" title="${esc(def.name + ': ' + def.desc)} (${KEY[slot]})">
-        <span class="face">${tile(def.key)}</span><span class="sweep"></span><span class="cdn"></span><kbd>${KEY[slot]}</kbd>${def.mana ? `<span class="cost">${def.mana}</span>` : ''}${tag ? `<span class="ab-tag">${tag}</span>` : ''}<span class="glow"></span></button>`;
+      const kind = slot === 'dodge' ? ' roll' : def.hold ? ' hold' : slot === 'a1' && p.role === 'tank' ? ' main' : '';
+      return `<button type="button" class="ab${kind}" data-slot="${slot}" aria-label="${esc(def.name)}" title="${esc(tip)} (${KEY[slot]})">
+        <span class="face">${tile(def.key)}</span><span class="sweep"></span><span class="cdn"></span><kbd>${KEY[slot]}</kbd>${mana ? `<span class="cost">${mana}</span>` : ''}${tag ? `<span class="ab-tag">${tag}</span>` : ''}<span class="c-tag" aria-hidden="true"></span><span class="glow"></span></button>`;
     };
     $('abar').innerHTML = ['a1', 'a2', 'a3', 'a4', 'dodge'].map(btn).join('');
     $('abar').querySelectorAll<HTMLElement>('.ab').forEach((b) => this.bindAbility(b, b.dataset.slot!));
@@ -578,12 +588,14 @@ export class RunScene implements InputUI {
       const slot = b.dataset.slot!;
       let cd = 0, max = 1, usable = p.alive && !p.st.stun && !p.st.caged;
       if (slot === 'dodge') { cd = p.cd.dodge; max = 1.6; }
-      else { const def = A[slot as 'a1']; cd = p.cd[slot]; max = def.cd || 1; if (def.key === 'comet' && p.cast) cd = 0; if (def.mana && p.mana < def.mana) usable = false; }
+      else { const def = A[slot as 'a1'], mana = abMana(p, slot); cd = p.cd[slot]; max = abCd(p, slot) || 1; if (def.key === 'comet' && p.cast) cd = 0; if (mana && p.mana < mana) usable = false; }
       const pr = cd > 0 ? cd / max : 0;
       const sw = b.querySelector<HTMLElement>('.sweep')!; const v = pr.toFixed(3); if (sw.dataset.p !== v) { sw.style.setProperty('--p', v); sw.dataset.p = v; }
       const cdn = b.querySelector('.cdn')!; const txt = cd > 0.95 ? String(Math.ceil(cd)) : ''; if (cdn.textContent !== txt) cdn.textContent = txt;
+      const ctag = usable && cd <= 0 ? comboFor(p, slot) : '';
+      const tagEl = b.querySelector('.c-tag'); if (tagEl && tagEl.textContent !== ctag) tagEl.textContent = ctag;
       b.classList.toggle('dim', !usable);
-      b.classList.toggle('proc', usable && cd <= 0 && (procFor(p, slot) || (!!this.tutKey && TUT_STEPS[this.tutKey]?.slot === slot)));
+      b.classList.toggle('proc', !!ctag || (usable && cd <= 0 && !!this.tutKey && TUT_STEPS[this.tutKey]?.slot === slot));
     });
     const bn = $('banner');
     const btxt = S.banner ? S.banner.str : '';
@@ -611,24 +623,28 @@ export class RunScene implements InputUI {
 
 function setW(el: Element | null, k: number): void { if (!el) return; const v = (clamp(k, 0, 1) * 100).toFixed(1) + '%'; const s = (el as HTMLElement).style; if (s.width !== v) s.width = v; }
 
-/** a gold glow on a button when now is a good time to press it */
-function procFor(p: any, slot: string): boolean {
+/** a gold glow and combo prompt label on a button when a combo chain or reactive window is live */
+function comboFor(p: any, slot: string): string {
   const def = slot === 'dodge' ? null : AB[p.role as RoleId][slot as 'a1'];
-  if (!def) return S.hazards.some((z: any) => !z.noDmg && !(z.tankBuster && p.role === 'tank') && z.t > 0.2 && inHaz(z, p.x, p.y, p.r)) || S.rings.some((g: any) => !g.hit.has(p.id) && Math.abs(dist(p, g) - g.r) < 90);
+  if (!def) return S.hazards.some((z: any) => !z.noDmg && !(z.tankBuster && p.role === 'tank') && z.t > 0.2 && inHaz(z, p.x, p.y, p.r)) || S.rings.some((g: any) => !g.hit.has(p.id) && Math.abs(dist(p, g) - g.r) < 90) ? 'DODGE!' : '';
   const loose = () => S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && !m.cage && m.forcedT <= 0 && dist(m, p) < 220);
   switch (def.key) {
-    case 'slam': return loose() || S.mobs.filter((m: any) => isFoe(m) && !m.cage && m.state === 'fight' && dist(m, p) < 200 + m.r).length >= 3;
-    case 'shield': return S.hazards.some((z: any) => (z.tankBuster || (z.shape === 'rect' && z.src && z.src.type === 'knight')) && !z.fired && (z.followT === p || inHaz(z, p.x, p.y, p.r)) && z.warn - z.t < 0.9);
-    case 'charge': return S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && !m.cage && dist(m, p) > 200 && dist(m, p) < 420);
-    case 'cleave': return S.mobs.filter((m: any) => isFoe(m) && !m.cage && m.state === 'fight' && dist(m, p) < 115 + m.r).length >= 2;
-    case 'sunburst': return S.heroes.filter((a: any) => a.alive && a.hp < a.maxHp * 0.6).length >= 2;
-    case 'ward': { const t = heroBy('tank'); return !!(t && t.alive && t.absorb <= 0 && S.hazards.some((z: any) => z.tankBuster && !z.fired && (z.followT === t || inHaz(z, t.x, t.y, t.r)))); }
-    case 'smite': return S.inCombat && S.heroes.every((a: any) => !a.alive || a.hp > a.maxHp * 0.8) && !!(heroBy('tank')?.target);
-    case 'blizzard': { const c = bestCluster(p, 120, 560); return !!(c && c.score >= 3); }
-    case 'nova': return S.mobs.filter((m: any) => isFoe(m) && !m.isBoss && !m.cage && m.state === 'fight' && dist(m, p) < 150 + m.r).length >= 2 || S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 150 + m.r);
-    case 'comet': { const t = p.picked || p.target; return !!(t && t.alive && t.st && t.st.freeze > 0.6); }
-    case 'icicle': return S.mobs.some((m: any) => isFoe(m) && m.st && m.st.freeze > 0.3 && dist(m, p) < 500);
+    case 'slam': return loose() ? 'TAUNT!' : S.mobs.filter((m: any) => isFoe(m) && !m.cage && m.state === 'fight' && dist(m, p) < 200 + m.r).length >= 3 ? 'PULL!' : '';
+    case 'shield': return S.hazards.some((z: any) => (z.tankBuster || (z.shape === 'rect' && z.src && z.src.type === 'knight')) && !z.fired && (z.followT === p || inHaz(z, p.x, p.y, p.r)) && z.warn - z.t < 0.9) ? 'BLOCK!' : '';
+    case 'charge': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 420) ? 'KICK!' : S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && !m.cage && dist(m, p) > 200 && dist(m, p) < 420) ? 'PEEL!' : '';
+    case 'cleave': {
+      const near = S.mobs.filter((m: any) => isFoe(m) && !m.cage && m.state === 'fight' && dist(m, p) < 115 + m.r);
+      return near.some((m: any) => m.st && m.st.stun > 0) || near.length >= 3 ? 'CRUSH!' : near.length >= 2 ? 'CLEAVE!' : '';
+    }
+    case 'circle': return S.heroes.filter((a: any) => a.alive && a.hp < a.maxHp * 0.78).length >= 2 ? 'CIRCLE!' : '';
+    case 'sunburst': return S.heroes.some((a: any) => a.alive && (a.st.root > 0 || a.st.haunt > 0)) ? 'CLEANSE!' : S.heroes.filter((a: any) => a.alive && a.hp < a.maxHp * 0.6).length >= 2 ? 'BURST!' : '';
+    case 'ward': { const t = heroBy('tank'); return (t && t.alive && t.absorb <= 0 && S.hazards.some((z: any) => z.tankBuster && !z.fired && (z.followT === t || inHaz(z, t.x, t.y, t.r)))) ? 'SHIELD!' : ''; }
+    case 'smite': return S.inCombat && !!(heroBy('tank')?.target) && S.zones.some((z: any) => z.kind === 'heal') ? 'PULSE!' : S.inCombat && S.heroes.every((a: any) => !a.alive || a.hp > a.maxHp * 0.8) && !!(heroBy('tank')?.target) ? 'SMITE!' : '';
+    case 'blizzard': { const c = bestCluster(p, 120, 560); return (c && c.score >= 3) ? 'STORM!' : ''; }
+    case 'nova': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 150 + m.r) ? 'KICK!' : S.mobs.filter((m: any) => isFoe(m) && !m.isBoss && !m.cage && m.state === 'fight' && dist(m, p) < 150 + m.r).length >= 2 ? 'FREEZE!' : '';
+    case 'comet': { const t = p.picked || p.target; return (t && t.alive && t.st && t.st.freeze > 0.6) ? 'SHATTER 2×!' : ''; }
+    case 'icicle': return S.mobs.some((m: any) => isFoe(m) && m.st && m.st.freeze > 0.3 && dist(m, p) < 500) ? 'SHATTER 3×!' : '';
   }
-  return false;
+  return '';
 }
 

@@ -303,11 +303,11 @@ function tickZones(dt) {
     z.t += dt; z.tickT -= dt;
     if (z.tickT <= 0) {
       z.tickT = z.tick;
-      if (z.kind === 'heal') { for (const h of S.heroes) if (h.alive && distXY(h.x, h.y, z.x, z.y) <= z.r + h.r * 0.5) healHero(z.src, h, 36, { size: 16 }); }
+      if (z.kind === 'heal') { for (const h of S.heroes) if (h.alive && distXY(h.x, h.y, z.x, z.y) <= z.r + h.r * 0.5) healHero(z.src, h, z.val || 36, { size: 16 }); }
       else if (z.kind === 'blizzard') {
         for (const m of S.mobs) {
           if (!isFoe(m) || m.cage || distXY(m.x, m.y, z.x, z.y) > z.r + m.r * 0.5) continue;
-          hurtMob(m, 20, z.src, { crit: 0.06, size: 17, col: '#DDF3FF' });
+          hurtMob(m, z.val || 20, z.src, { crit: 0.06, size: 17, col: '#DDF3FF' });
           if (m.alive && !m.isBoss) { m.st.slow = Math.max(m.st.slow, 0.4); m.st.slowT = 0.8; }
         }
       } else if (z.kind === 'ice') {

@@ -253,15 +253,15 @@ export function tankActions(h) {
   const near = loose.filter((m) => dist(m, h) <= 240 + m.r);
   const fresh = foes.filter((m) => m.fightT < 1.6 && dist(m, h) <= 240 + m.r);
   const around = foes.filter((m) => !m.cage && dist(m, h) <= 190 + m.r);
-  if (h.cd.a1 <= 0 && (near.length >= 1 || fresh.length >= 3 || around.length >= 2 || (S.boss && around.includes(S.boss)))) { useAbility(h, 'a1'); return; }
-  if (h.cd.a3 <= 0) {
+  if (h.cd.a3 <= 0 && (near.length >= 1 || fresh.length >= 3 || around.length >= 2 || (S.boss && around.includes(S.boss)))) { useAbility(h, 'a3'); return; }
+  if (h.cd.a2 <= 0) {
     const far = loose.find((m) => { const d = dist(m, h); return d > 200 && d < 420; });
-    if (far) { useAbility(h, 'a3', far); return; }
+    if (far) { useAbility(h, 'a2', far); return; }
   }
   // Cleave whenever something is in reach in front of you
-  if (h.cd.a4 <= 0) {
+  if (h.cd.a1 <= 0) {
     const t = h.picked && isFoe(h.picked) ? h.picked : h.target;
-    if (t && isFoe(t) && !t.cage && dist(h, t) <= 105 + t.r) { useAbility(h, 'a4', t); return; }
+    if (t && isFoe(t) && !t.cage && dist(h, t) <= 105 + t.r) { useAbility(h, 'a1', t); return; }
   }
 }
 export function healerActions(h) {

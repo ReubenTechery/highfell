@@ -5,19 +5,22 @@
  * the big book in the loft (the collection log), the cauldron and the larder. Your hero stands by the
  * fire and your other heroes wait by their beds upstairs. Pets, mounts, trophies and banners go in
  * spots all over the house; Decorate shows the empty ones. One big button, always there: Dungeons.
+ * The house is drawn in layers the camera moves as one picture: the back (the outside, rooms and
+ * furniture) and the front (the lights) are built only when a look changes; between them are what you
+ * tap (things, spots, heroes) and the bits that move, each its own small picture (art.ts), and the pips.
  */
 import { COLLECTIBLES, DUNGEONS } from '../content';
 import { CLASSES, MAX_HEROES, RACES, type ClassId, type RaceId } from '../content/folk';
-import { BUNK_SLOTS, FLOORS, HOUSE_SPOTS, ROOMS, THINGS, roomAt, type HouseAction, type HouseSpot, type ThingDef } from '../content/house';
+import { BUNK_SLOTS, FLOORS, HOUSE_SPOTS, LOOK_ROOMS, ROOMS, THINGS, roomAt, type HouseAction, type HouseSpot, type ThingDef } from '../content/house';
 import { lookOf, ownedOfKind } from '../meta/hearth';
 import { loadoutFor, waiting } from '../meta/gear';
-import { activeHero, finishHearthTour, needsHearthTour, roleOf, type Hero } from '../meta/profile';
+import { activeHero, finishHearthTour, heroLevel, needsHearthTour, roleOf, talentPointsLeft, type Hero } from '../meta/profile';
 import type { App } from './app';
 import { actions, esc, GLYPH } from './dom';
-import { ART, heroSprite, placeSprite, tile } from './art';
+import { ART, bitsHtml, heroSprite, placeSprite, spriteBit, tile, type Bit } from './art';
 import { SFX } from './sound';
 import { Camera } from './camera';
-import { HOUSE_BOUNDS, HOUSE_FIT, houseBack, houseDefs, houseFront } from './houseart';
+import { HOUSE_BOUNDS, HOUSE_FIT, houseBack, houseBits, houseDefs, houseFront } from './houseart';
 
 /** how big each kind of thing is drawn in a spot, its tap area, and how it moves */
 const SPOT_LOOK: Record<string, { k: number; w: number; h: number; anim: string }> = {
@@ -30,6 +33,10 @@ const SPOT_LOOK: Record<string, { k: number; w: number; h: number; anim: string 
 const HERO_AT = { x: 360, y: FLOORS.hall - 20, k: 2.2 };
 /** the room the camera starts in */
 const HOME_ROOM = 'hall';
+/** the world's top left: every layer of the house is drawn from here, in world units */
+const [X0, Y0] = HOUSE_BOUNDS;
+/** what a scene draws besides the layer you tap: the bits that move (y-sorted like the layer) and the pips */
+interface Extras { bits: { y: number; bit: Bit }[]; pips: Bit[] }
 
 /** the 3-step guided tour shown after making your first hero */
 const TOUR_STEPS: { room: string; thing?: string; eyebrow: string; title: string; text: string; next: string }[] = [
@@ -63,6 +70,14 @@ export class Hearth {
   fresh = new Set<string>();
   private cam: Camera;
   private svg: SVGSVGElement;
+  private back: SVGSVGElement;
+  private front: SVGSVGElement;
+  private fx: HTMLElement;
+  private bits: HTMLElement;
+  private pips: HTMLElement;
+  /** the looks the back and front were last built for, and the markup each layer was last given */
+  private looks = '';
+  private drawn = new Map<Element, string>();
   private signs: HTMLElement;
   private top: HTMLElement;
   private bottom: HTMLElement;
@@ -76,13 +91,22 @@ export class Hearth {
   private fitZ = 0.2;
 
   constructor(private app: App, private root: HTMLElement) {
-    root.innerHTML = `<svg class="room house" role="group" aria-label="Your house"></svg>
+    const [, , x1, y1] = HOUSE_BOUNDS, size = `viewBox="${X0} ${Y0} ${x1 - X0} ${y1 - Y0}" width="${x1 - X0}" height="${y1 - Y0}"`;
+    root.innerHTML = `<div class="h-cam"><div class="h-world" style="width: ${x1 - X0}px; height: ${y1 - Y0}px">
+        <svg class="h-back" ${size} aria-hidden="true"></svg><svg class="room house" ${size} role="group" aria-label="Your house"></svg>
+        <div class="h-fx" aria-hidden="true"></div><div class="h-bits" aria-hidden="true"></div>
+        <svg class="h-front" ${size} aria-hidden="true"></svg><div class="h-pips" aria-hidden="true"></div></div></div>
       <div class="h-signs no-cam"></div><div class="h-top no-cam"></div><div class="h-bottom no-cam"></div>`;
     this.svg = root.querySelector('svg.house')!;
+    this.back = root.querySelector('svg.h-back')!;
+    this.front = root.querySelector('svg.h-front')!;
+    this.fx = root.querySelector('.h-fx')!;
+    this.bits = root.querySelector('.h-bits')!;
+    this.pips = root.querySelector('.h-pips')!;
     this.signs = root.querySelector('.h-signs')!;
     this.top = root.querySelector('.h-top')!;
     this.bottom = root.querySelector('.h-bottom')!;
-    this.cam = new Camera(root, () => this.svg, { bounds: HOUSE_BOUNDS, onChange: () => this.onView() });
+    this.cam = new Camera(root, root.querySelector('.h-cam')!, root.querySelector('.h-world')!, { bounds: HOUSE_BOUNDS, onChange: () => this.onView() });
     actions(root, {
       dungeon: () => { SFX.play('ui'); if (this.tourStep !== null) this.endTour(true); else app.sheets.open({ kind: 'dungeon' }); },
       gear: () => { SFX.play('ui'); if (this.tourStep !== null) this.endTour(false); this.act('gear'); },
@@ -94,7 +118,8 @@ export class Hearth {
       tournext: () => { SFX.play('ui'); this.nextTour(); },
       tourskip: () => { SFX.play('ui'); this.endTour(false); },
     });
-    this.svg.addEventListener('click', (e) => this.tap(e));
+    // taps anywhere in the scene, past the house's edges too; the buttons over it look after themselves
+    root.addEventListener('click', (e) => { if (!(e.target as Element).closest('.no-cam')) this.tap(e); });
     this.svg.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter' && e.key !== ' ') return;
       const el = (e.target as Element).closest('[data-thing], [data-spot], [data-hero], [data-new]');
@@ -130,8 +155,7 @@ export class Hearth {
     if (this.tourStep < TOUR_STEPS.length - 1) {
       this.tourStep++;
       const step = TOUR_STEPS[this.tourStep];
-      this.svg.innerHTML = this.scene(activeHero(this.app.p)!);
-      this.hud(activeHero(this.app.p)!);
+      this.render();
       this.goRoom(step.room);
     } else {
       this.endTour(true);
@@ -154,7 +178,18 @@ export class Hearth {
       this.decorating = false;
       this.want = TOUR_STEPS[0].room;
     }
-    this.svg.innerHTML = this.scene(h);
+    const look = (room: string): string => lookOf(p, room, this.app.dev.allOpen);
+    const looks = LOOK_ROOMS.map(look).join(' ');
+    if (looks !== this.looks) {
+      this.looks = looks;
+      this.back.innerHTML = `<defs>${houseDefs()}</defs>${houseBack(look)}`;
+      this.front.innerHTML = houseFront(look);
+      this.fx.innerHTML = bitsHtml(houseBits(look), X0, Y0);
+    }
+    const extra: Extras = { bits: [], pips: [] };
+    this.draw(this.svg, this.scene(h, extra));
+    this.draw(this.bits, bitsHtml(extra.bits.sort((a, b) => a.y - b.y).map((b) => b.bit), X0, Y0));
+    this.draw(this.pips, bitsHtml(extra.pips, X0, Y0));
     this.svg.classList.toggle('deco', this.decorating);
     this.root.classList.toggle('decorating', this.decorating);
     this.hud(h);
@@ -162,8 +197,16 @@ export class Hearth {
     if (this.fresh.size) setTimeout(() => this.fresh.clear(), 1200);
   }
 
+  /** give a layer new markup, unless it already has exactly that (most saves change nothing you can see) */
+  private draw(el: Element, html: string): void {
+    if (this.drawn.get(el) === html) return;
+    this.drawn.set(el, html);
+    el.innerHTML = html;
+  }
+
   /** fit the camera to the screen: on the first look, start in the hall */
   layout(): void {
+    const w0 = this.cam.w, h0 = this.cam.h;
     this.cam.measure();
     if (this.cam.w < 2) return;
     const wasFar = this.placed && this.far();
@@ -174,6 +217,7 @@ export class Hearth {
     this.cam.zMax = this.roomZ * 2.4;
     if (this.want) { const r = this.want; this.want = null; this.placed = true; this.goRoom(r, !this.root.offsetParent); return; }
     if (!this.placed) { this.placed = true; this.goRoom(HOME_ROOM, true); return; }
+    if (this.cam.w === w0 && this.cam.h === h0) return;
     if (wasFar) this.overview(true);
     else this.cam.set(this.cam.cx, this.cam.cy, this.cam.z);
   }
@@ -204,14 +248,16 @@ export class Hearth {
 
   /** after every move of the camera: room signs follow their rooms, and show only when you're zoomed out */
   private onView(): void {
-    const far = this.far();
-    this.root.classList.toggle('far', far);
-    for (const el of this.signs.querySelectorAll<HTMLElement>('.h-sign')) {
-      const r = ROOMS.find((x) => x.id === el.dataset.room);
-      if (!r) continue;
-      const [ax, ay] = r.sign || r.focus;
-      const [sx, sy] = this.cam.toScreen(ax, ay);
-      el.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px) translate(-50%, -50%)`;
+    const far = this.far(), wasFar = this.root.classList.contains('far');
+    if (far !== wasFar) this.root.classList.toggle('far', far);
+    if (far || wasFar) {
+      for (const el of this.signs.querySelectorAll<HTMLElement>('.h-sign')) {
+        const r = ROOMS.find((x) => x.id === el.dataset.room);
+        if (!r) continue;
+        const [ax, ay] = r.sign || r.focus;
+        const [sx, sy] = this.cam.toScreen(ax, ay);
+        el.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px) translate(-50%, -50%)`;
+      }
     }
     const z = this.root.querySelector<HTMLElement>('[data-act="zoom"]');
     if (z) {
@@ -271,36 +317,36 @@ export class Hearth {
   }
 
   /* ---------------------------------------------------------------- the picture */
-  private scene(h: Hero): string {
+  /** the layer you tap: things, spots and heroes in painter's order; what moves in them goes into `extra` */
+  private scene(h: Hero, extra: Extras): string {
     const p = this.app.p;
     const race = RACES[h.race as RaceId];
     const light = race?.light || '#F4B942';
     const layer: { y: number; svg: string }[] = [];
-    for (const t of THINGS) layer.push({ y: t.y, svg: this.thing(t, h) });
-    for (const s of HOUSE_SPOTS) layer.push({ y: s.kind === 'pet' || s.kind === 'mount' ? s.y : -9999, svg: this.spot(s) });
-    layer.push(...this.heroes(h));
+    for (const t of THINGS) layer.push({ y: t.y, svg: this.thing(t, h, extra) });
+    for (const s of HOUSE_SPOTS) layer.push({ y: spotY(s), svg: this.spot(s, extra) });
+    layer.push(...this.heroes(h, extra));
     layer.sort((a, b) => a.y - b.y);
-    const unseen = Object.keys(p.collection).some((id) => !p.seen[id]);
-    const look = (room: string): string => lookOf(p, room, this.app.dev.allOpen);
-    return `<defs>${houseDefs()}<radialGradient id="h-hero"><stop offset="0" stop-color="${light}" stop-opacity="0.38"/><stop offset="0.6" stop-color="${light}" stop-opacity="0.12"/><stop offset="1" stop-color="${light}" stop-opacity="0"/></radialGradient></defs>
-      ${houseBack(look)}${layer.map((l) => l.svg).join('')}${houseFront(look)}${unseen ? pip(600, -1940, '!') : ''}`;
+    if (Object.keys(p.collection).some((id) => !p.seen[id])) extra.pips.push(pip(600, -1940, '!'));
+    return `<defs><radialGradient id="h-hero"><stop offset="0" stop-color="${light}" stop-opacity="0.38"/><stop offset="0.6" stop-color="${light}" stop-opacity="0.12"/><stop offset="1" stop-color="${light}" stop-opacity="0"/></radialGradient></defs>
+      ${layer.map((l) => l.svg).join('')}`;
   }
 
-  private thing(t: ThingDef, h: Hero): string {
+  private thing(t: ThingDef, h: Hero, extra: Extras): string {
     const k = t.k ?? 1, a = ART[t.sprite];
     if (!a) return '';
     const [vx, vy, w, hh] = a.vb;
     const top = t.y + vy * k;
-    let extra = '';
-    if (t.id === 'signpost') extra = `<text class="sign" x="${t.x + 4 * k}" y="${t.y - 162 * k}" style="font-size: ${Math.round(30 * k)}px">Ride out</text>`;
-    if (t.action === 'gear') { const up = waiting(this.app.p, h).length; if (up) extra = pip(t.x + 60, top + 20, String(up)); }
-    if (t.action === 'dungeons') extra = `<text class="lbl" x="${t.x}" y="${t.y + 44}">Dungeons</text>`;
+    let label = '';
+    if (t.id === 'signpost') label = `<text class="sign" x="${t.x + 4 * k}" y="${t.y - 162 * k}" style="font-size: ${Math.round(30 * k)}px">Ride out</text>`;
+    if (t.action === 'gear') { const up = waiting(this.app.p, h).length + talentPointsLeft(h); if (up) extra.pips.push(pip(t.x + 60, top + 20, String(up))); }
+    if (t.action === 'dungeons') label = `<text class="lbl" x="${t.x}" y="${t.y + 44}">Dungeons</text>`;
     const hl = this.tourStep !== null && TOUR_STEPS[this.tourStep]?.thing === t.id ? ' tour-hl' : '';
     return `<g class="thing a-${t.action}${hl}" data-thing="${t.id}" data-x="${t.x}" data-y="${t.y}" tabindex="0" role="button" aria-label="${esc(t.label)}">
-      ${placeSprite(t.sprite, t.x, t.y, { k })}${extra}<rect class="hl" x="${(t.x + vx * k).toFixed(1)}" y="${top.toFixed(1)}" width="${(w * k).toFixed(1)}" height="${(hh * k).toFixed(1)}" rx="16"/></g>`;
+      ${placeSprite(t.sprite, t.x, t.y, { k })}${label}<rect class="hl" x="${(t.x + vx * k).toFixed(1)}" y="${top.toFixed(1)}" width="${(w * k).toFixed(1)}" height="${(hh * k).toFixed(1)}" rx="16"/></g>`;
   }
 
-  private spot(s: HouseSpot): string {
+  private spot(s: HouseSpot, extra: Extras): string {
     const p = this.app.p, look = SPOT_LOOK[s.kind];
     const id = p.hearth.spots[s.id];
     const def = id ? COLLECTIBLES[id] : null;
@@ -310,7 +356,9 @@ export class Hearth {
     if (def && def.sprite) {
       const anim = this.fresh.has(id!) ? 'new-pop' : look.anim;
       if (s.kind === 'pet' || s.kind === 'mount') body += `<ellipse cx="${s.x}" cy="${s.y}" rx="${s.kind === 'mount' ? 104 : 38}" ry="${s.kind === 'mount' ? 20 : 10}" style="fill: rgba(18, 12, 28, 0.35)"/>`;
-      body += placeSprite(def.sprite, s.x, s.y, { k, cls: anim, flip: !!s.flip });
+      const bit = anim ? spriteBit(def.sprite, s.x, s.y, { k, cls: anim, flip: !!s.flip }) : null;
+      if (bit) extra.bits.push({ y: spotY(s), bit });
+      else body += placeSprite(def.sprite, s.x, s.y, { k, flip: !!s.flip });
     } else if (s.kind === 'banner') {
       body += (this.decorating ? placeSprite('banner_rod', s.x, s.y) : '') + `<rect class="mark" x="${s.x - 42}" y="${s.y + 14}" width="84" height="110" rx="10"/>` + plus(s.x, s.y + 68);
     } else if (s.kind === 'trophy') {
@@ -326,24 +374,25 @@ export class Hearth {
   }
 
   /** you by the fire; everyone else by their beds upstairs, and a bed for a new hero */
-  private heroes(h: Hero): { y: number; svg: string }[] {
+  private heroes(h: Hero, extra: Extras): { y: number; svg: string }[] {
     const p = this.app.p, out: { y: number; svg: string }[] = [];
     const { x, y, k } = HERO_AT;
     const hl = this.tourStep === 0 ? ' tour-hl' : '';
+    const me = spriteBit(heroSprite(h, roleOf(h), p) + '_f', x, y, { k, cls: 'breathe' });
+    if (me) extra.bits.push({ y, bit: me });
     out.push({ y, svg: `<g class="hero me${hl}" data-hero="${esc(h.id)}" data-x="${x}" data-y="${y}" tabindex="0" role="button" aria-label="${esc(h.name)}: gear">
       <circle cx="${x}" cy="${y - 150 * k * 0.45}" r="${120 * k}" style="fill: url(#h-hero)"/>
       <ellipse cx="${x}" cy="${y}" rx="${34 * k}" ry="${10 * k}" style="fill: rgba(18, 12, 28, 0.45)"/>
-      ${placeSprite(heroSprite(h, roleOf(h), p) + '_f', x, y, { k, cls: 'breathe' })}
       <rect class="hl" x="${x - 46 * k}" y="${y - 140 * k}" width="${92 * k}" height="${146 * k}" rx="20"/></g>` });
     const others = p.roster.filter((x2) => x2.id !== p.active);
     others.forEach((o, i) => {
       const [bx, by] = BUNK_SLOTS[i], bk = 1.45, role = roleOf(o);
-      const up = waiting(p, o).length;
+      const up = waiting(p, o).length + talentPointsLeft(o);
+      if (up) extra.pips.push(pip(bx + 34, by - 170, String(up)));
       out.push({ y: by, svg: `<g class="hero" data-hero="${esc(o.id)}" data-x="${bx}" data-y="${by}" tabindex="0" role="button" aria-label="${esc(o.name)}, ${esc(CLASSES[o.cls as ClassId]?.name || o.cls)}">
         <ellipse cx="${bx}" cy="${by}" rx="${30 * bk}" ry="${9 * bk}" style="fill: rgba(18, 12, 28, 0.4)"/>
         ${placeSprite(heroSprite(o, role, p) + '_f', bx, by, { k: bk })}
         <text class="lbl small" x="${bx}" y="${FLOORS.upper + 26}">${esc(o.name.split(' ')[0])}</text>
-        ${up ? pip(bx + 34, by - 170, String(up)) : ''}
         <rect class="hl" x="${bx - 48}" y="${by - 200}" width="96" height="210" rx="16"/></g>` });
     });
     if (p.roster.length < MAX_HEROES) {
@@ -358,13 +407,13 @@ export class Hearth {
 
   /* ---------------------------------------------------------------- the buttons over the house */
   private hud(h: Hero): void {
-    const p = this.app.p, role = roleOf(h);
+    const p = this.app.p, role = roleOf(h), lv = heroLevel(h);
     const cls = CLASSES[h.cls as ClassId], race = RACES[h.race as RaceId];
     const rec = p.dungeons.barrow, dg = DUNGEONS.barrow;
-    const up = waiting(p, h).length;
+    const up = waiting(p, h).length + talentPointsLeft(h);
     this.top.innerHTML = `
-      <button type="button" class="h-tag" data-act="gear" style="--light: ${race?.light || '#F4B942'}" aria-label="${esc(h.name)}, item level ${ilvl(loadoutFor(p, h).score)}: gear${up ? `, ${up} new to put on` : ''}">
-        <i class="rdot ${role}" aria-hidden="true"></i><span><b>${esc(h.name)}</b><small><span class="long">${esc(race?.name || h.race)} ${esc(cls?.name || h.cls)} · </span>Item level ${ilvl(loadoutFor(p, h).score)}</small></span>
+      <button type="button" class="h-tag" data-act="gear" style="--light: ${race?.light || '#F4B942'}" aria-label="${esc(h.name)}, level ${lv}, item level ${ilvl(loadoutFor(p, h).score)}: gear${up ? `, ${up} new to put on` : ''}">
+        <i class="rdot ${role}" aria-hidden="true"></i><span><b>${esc(h.name)}</b><small><span class="long">Lv ${lv} ${esc(race?.name || h.race)} ${esc(cls?.name || h.cls)} · </span>Item level ${ilvl(loadoutFor(p, h).score)}</small></span>
         ${up ? `<i class="badge" aria-hidden="true">${up}</i>` : ''}
       </button>
       <div class="right">
@@ -400,7 +449,9 @@ export class Hearth {
 /** Item level: the weighted gear score, where the weapon counts twice. */
 export const ilvl = (score: number): string => (Math.round(score * 10) / 10).toString();
 const plus = (x: number, y: number): string => `<path class="plus" d="M${x - 10} ${y} H${x + 10} M${x} ${y - 10} V${y + 10}"/>`;
-/** a little red count, like the one on a button */
-const pip = (x: number, y: number, t: string): string => `<g class="pip" aria-hidden="true"><circle cx="${x}" cy="${y}" r="24"/><text x="${x}" y="${y + 9}">${esc(t)}</text></g>`;
+/** a little red count, like the one on a button, bobbing over what it counts */
+const pip = (x: number, y: number, t: string): Bit => ({ box: [x - 27, y - 27, 54, 54], body: `<circle cx="${x}" cy="${y}" r="24"/><text x="${x}" y="${y + 9}">${esc(t)}</text>`, cls: 'pip' });
+/** where a spot sorts in the layer: pets and mounts by where they stand, the rest at the back */
+const spotY = (s: HouseSpot): number => (s.kind === 'pet' || s.kind === 'mount' ? s.y : -9999);
 /** the house, for the zoom-out button */
 const HOUSE_GLYPH = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21 V9 L12 3 L20 9 V21 Z M4 13 H20 M4 17 H20 M12 13 V21" style="fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round"/></svg>';

@@ -315,14 +315,20 @@ export function drawObjects(ctx, v) {
  *  behind puts the weapon in the other hand. */
 export const HERO_FIT = {
   tank: { weapon: [-48, -75], top: -107 },
+  tank_w: { weapon: [-48, -75], top: -107 },
   healer: { weapon: [-30, -128], top: -117 },
+  healer_m: { weapon: [-30, -128], top: -117 },
   dps: { weapon: [28, -122], top: -145 },
+  dps_m: { weapon: [28, -122], top: -145 },
   risen_tank: { weapon: [-33, -90], top: -130 },
+  risen_tank_w: { weapon: [-33, -90], top: -130 },
   risen_healer: { weapon: [-30, -118], top: -125 },
+  risen_healer_m: { weapon: [-30, -118], top: -125 },
   risen_dps: { weapon: [28, -122], top: -148 },
+  risen_dps_m: { weapon: [28, -122], top: -148 },
 };
 export function heroFit(set, back) {
-  const fit = HERO_FIT[set.replace('_gilded', '')] || { weapon: [0, -80], top: -112 };
+  const fit = HERO_FIT[set.replace(/_(gilded|rags|iron)$/g, '')] || { weapon: [0, -80], top: -112 };
   return { wx: back ? -fit.weapon[0] : fit.weapon[0], wy: fit.weapon[1], top: fit.top };
 }
 export function drawHero(ctx, h) {
@@ -339,9 +345,29 @@ export function drawHero(ctx, h) {
   else { sy = 1 + Math.sin(S.t * 2.3 + h.r) * 0.014; }
   sx = 2 - sy;
   if (h.lunge > 0) { const k = h.lunge / 0.16; x += Math.cos(h.lungeA) * 10 * k; y += Math.sin(h.lungeA) * 6 * k; }
+  if (h.swingT > 0) {
+    const sk = Math.sin((1 - h.swingT / 0.24) * Math.PI);
+    rot += (h.flip ? -1 : 1) * sk * 0.28;
+    sx *= 1 + sk * 0.1;
+  }
+  let spinFlip = h.flip;
+  if (h.whirlT > 0) {
+    const wk = 1 - h.whirlT / (h.whirlDur || 0.42);
+    const c = Math.cos(wk * TAU * 2);
+    spinFlip = c < 0 ? !h.flip : h.flip;
+    sx *= 0.76 + 0.34 * Math.abs(c);
+    sy *= 0.95;
+    rot = (c >= 0 ? 1 : -1) * 0.16;
+    y -= Math.sin(wk * Math.PI) * 7;
+  }
   if (h.dodgeT > 0) { const k = 1 - h.dodgeT / 0.3; rot = (h.dodgeX >= 0 ? 1 : -1) * k * TAU; y -= 26; sy *= 0.9; }
   if (h.st.air > 0) y -= Math.sin((h.st.air / 0.6) * Math.PI) * 60;
-  if (h.dash) { rot = (h.dash.mob ? Math.cos(angTo(h, h.dash.mob)) : 1) * 0.25; }
+  if (h.dash) {
+    rot = (h.dash.mob ? Math.cos(angTo(h, h.dash.mob)) : (h.flip ? -1 : 1)) * 0.34;
+    sx = 1.12; sy = 0.9;
+    drawSpr(ctx, name, x - Math.cos(h.face) * 34, y - Math.sin(h.face) * 20, { flip: h.flip, sx, sy, rot, alpha: 0.22, tint: 'gold', tintA: 0.5 });
+    drawSpr(ctx, name, x - Math.cos(h.face) * 17, y - Math.sin(h.face) * 10, { flip: h.flip, sx, sy, rot, alpha: 0.42, tint: 'gold', tintA: 0.35 });
+  }
   if (h.st.stun > 0) rot += Math.sin(S.t * 12) * 0.06;
   // gear glow behind the weapon
   if (h.weaponRar >= 2) {
@@ -362,7 +388,7 @@ export function drawHero(ctx, h) {
   const yy = h.dodgeT > 0 ? y + 26 : y;
   // the Barrow dyes on your set: the Gravegold Dye (heroic) wins over the Ghostly one
   const gold = h.isPlayer && S.opts.gilded, ghost = !gold && h.isPlayer && S.opts.ghostly;
-  drawSpr(ctx, name, x, yy, { flip: h.flip, sx, sy, rot: rot, alpha: ghost ? 0.78 : 1, tint: h.flash > 0 ? 'flash' : gold ? 'gold' : ghost ? 'ghost' : null, tintA: h.flash > 0 ? Math.max(0, h.flash) / 0.12 : gold ? 0.4 : 0.45 });
+  drawSpr(ctx, name, x, yy, { flip: spinFlip, sx, sy, rot: rot, alpha: ghost ? 0.78 : 1, tint: h.flash > 0 ? 'flash' : gold ? 'gold' : ghost ? 'ghost' : null, tintA: h.flash > 0 ? Math.max(0, h.flash) / 0.12 : gold ? 0.4 : 0.45 });
   if (h.blocking) {
     const a = h.face, cx = h.x + Math.cos(a) * 24, cy = h.y - 34 + Math.sin(a) * 12;
     ctx.lineWidth = 11; ctx.strokeStyle = K; ctx.beginPath(); ctx.arc(cx - Math.cos(a) * 14, cy - Math.sin(a) * 8, 34, a - 1.05, a + 1.05); ctx.stroke();
@@ -478,6 +504,56 @@ export function drawFx(ctx, f) {
     ctx.lineWidth = f.wide ? 16 : 10; ctx.strokeStyle = K; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, a0, a1); ctx.stroke();
     ctx.lineWidth = f.wide ? 9 : 5.5; ctx.strokeStyle = f.col; ctx.stroke();
     ctx.globalAlpha = 1;
+  } else if (f.type === 'cleave') {
+    const ease = 1 - Math.pow(1 - k, 2.2);
+    const span = 2.45;
+    const a0 = f.a - span * 0.52 + ease * 0.38;
+    const a1 = f.a - span * 0.1 + span * 0.65 * Math.min(1, ease * 1.45);
+    const rr = f.r * (0.82 + 0.22 * ease);
+    ctx.save();
+    ctx.lineCap = 'round';
+    // Outer shockwave trail
+    ctx.globalAlpha = (1 - k) * 0.35;
+    ctx.lineWidth = f.crush ? 34 : 26;
+    ctx.strokeStyle = f.crush ? '#FF8A4C' : '#F2C230';
+    ctx.beginPath(); ctx.arc(f.x, f.y, rr * 0.94, a0, a1); ctx.stroke();
+    // Main inked blade crescent
+    ctx.globalAlpha = 1 - k * 0.85;
+    ctx.lineWidth = f.crush ? 22 : 18;
+    ctx.strokeStyle = K;
+    ctx.beginPath(); ctx.arc(f.x, f.y, rr, a0, a1); ctx.stroke();
+    ctx.lineWidth = f.crush ? 13 : 10;
+    ctx.strokeStyle = f.col || '#F2C230';
+    ctx.stroke();
+    // Inner white-hot razor edge
+    ctx.lineWidth = 4.5;
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.beginPath(); ctx.arc(f.x, f.y, rr + 2, a0 + 0.18, a1); ctx.stroke();
+    ctx.restore();
+  } else if (f.type === 'whirl') {
+    const wx = f.h ? f.h.x : f.x, wy = (f.h ? f.h.y : f.y) - 28;
+    const spin = k * TAU * 2.1;
+    const fade = k < 0.8 ? 1 : (1 - k) / 0.2;
+    ctx.save();
+    ctx.translate(wx, wy);
+    ctx.scale(1, 0.64);
+    ctx.lineCap = 'round';
+    for (let arm = 0; arm < 2; arm++) {
+      const a0 = spin + arm * Math.PI;
+      const a1 = a0 + 2.05;
+      const rr = f.r * (0.86 + 0.14 * Math.sin(k * Math.PI));
+      ctx.globalAlpha = fade * 0.3;
+      ctx.lineWidth = 28; ctx.strokeStyle = '#FF8A4C';
+      ctx.beginPath(); ctx.arc(0, 0, rr * 0.92, a0, a1); ctx.stroke();
+      ctx.globalAlpha = fade * 0.92;
+      ctx.lineWidth = 17; ctx.strokeStyle = K;
+      ctx.beginPath(); ctx.arc(0, 0, rr, a0, a1); ctx.stroke();
+      ctx.lineWidth = 9.5; ctx.strokeStyle = f.col || '#F2C230';
+      ctx.stroke();
+      ctx.lineWidth = 3.5; ctx.strokeStyle = '#FFFFFF';
+      ctx.beginPath(); ctx.arc(0, 0, rr + 2, a0 + 0.35, a1); ctx.stroke();
+    }
+    ctx.restore();
   } else if (f.type === 'beam') {
     ctx.globalAlpha = 1 - k;
     ctx.lineWidth = 9; ctx.strokeStyle = K; ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(f.x2, f.y2); ctx.stroke();

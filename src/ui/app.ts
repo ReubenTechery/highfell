@@ -49,6 +49,8 @@ export class App {
   touch = false;
   dev: Dev = { walkout: 'off', valeFree: false, valeLuck: false, allOpen: false };
   private last = 0;
+  /** the frame loop, which only runs while a run is showing */
+  private raf = 0;
 
   constructor(readonly root: HTMLElement) {
     root.innerHTML = SHELL;
@@ -95,7 +97,6 @@ export class App {
     if (sheet && this.p.roster.length) this.sheets.open(sheet);
     $('loading').hidden = true;
     void this.store.connect();
-    requestAnimationFrame((t) => this.frame(t));
   }
 
   private onResize(): void {
@@ -105,19 +106,23 @@ export class App {
   }
 
   private frame(ts: number): void {
-    requestAnimationFrame((t) => this.frame(t));
+    if (this.scene !== 'run') { this.raf = 0; return; }
+    this.raf = requestAnimationFrame((t) => this.frame(t));
     const now = ts / 1000;
     let dt = this.last ? now - this.last : 1 / 60;
     this.last = now;
     if (dt > 0.25) dt = 0.25;
-    if (this.scene === 'run') this.run.frame(dt);
+    this.run.frame(dt);
   }
 
   show(id: SceneId): void {
     this.scene = id;
     for (const s of SCENES) $('sc-' + s).hidden = s !== id;
     if (id === 'hearth') { this.hearth.render(); }
-    if (id === 'run') resizeView();
+    if (id === 'run') {
+      resizeView();
+      if (!this.raf) { this.last = 0; this.raf = requestAnimationFrame((t) => this.frame(t)); }
+    }
   }
   /** home: the house, opening on the hall (or a room you name, like the bunk room). With no heroes yet, the prologue or hero maker instead. */
   showHearth(room?: string): void {

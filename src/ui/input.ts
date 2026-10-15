@@ -158,7 +158,7 @@ export function bindInput(layer: HTMLElement, ui: InputUI): void {
       if (c === 'Enter') { if (ui.onTutInput('any')) return; }
     }
     if (S.paused || S.over) return;
-    if (e.repeat && c !== 'Digit2') return;
+    if (e.repeat && c !== 'Digit4') return;
     IN.keys[c] = true;
     const h = S.player;
     if (h.st.caged && (c === 'Space' || c.startsWith('Digit') || c.startsWith('Key'))) { mashCage(h, ui); return; }
@@ -177,7 +177,10 @@ export function bindInput(layer: HTMLElement, ui: InputUI): void {
   });
   window.addEventListener('keyup', (e) => {
     IN.keys[e.code] = false;
-    if (S && e.code === 'Digit2' && S.player && AB[S.player.role as 'tank'].a2.hold) { IN.block = false; ui.holdBtn('a2', false); }
+    if (S && (e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3' || e.code === 'Digit4') && S.player) {
+      const slot = 'a' + e.code.slice(5);
+      if (AB[S.player.role as 'tank'][slot as 'a1']?.hold) { IN.block = false; ui.holdBtn(slot, false); }
+    }
   });
   window.addEventListener('blur', () => { IN.keys = {}; IN.block = false; IN.stick = null; ui.stick(null); });
 }

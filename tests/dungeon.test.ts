@@ -8,11 +8,12 @@ import assert from 'node:assert/strict';
 import { newGame, update } from '../src/dungeon/game.js';
 import { S } from '../src/dungeon/state.js';
 import { hurtHero, hurtMob, pickTarget } from '../src/dungeon/entities.js';
-import { useAbility } from '../src/dungeon/heroes.js';
+import { abCd, onPerfectBlock, useAbility } from '../src/dungeon/heroes.js';
 import { makeCage, mashCage } from '../src/dungeon/mobs.js';
 import { HERO_FIT, heroFit } from '../src/dungeon/render.js';
 import { BARROW_ENGINE } from '../src/content/barrow/engine';
-import { HERO_ART } from '../src/content/folk';
+import { allHeroArt } from '../src/content/folk';
+import { heroSprite } from '../src/ui/art';
 import SPRITES from '../art/sprites.json';
 
 const game = (role: string, start = 'entrance') => {
@@ -45,11 +46,12 @@ test('threat: hit harder than the tank and it comes for you; Slam grabs it back 
   hurtMob(m, 400, dps, { quiet: true, noCrit: true });
   m.target = pickTarget(m);
   assert.equal(m.target, dps);
-  // Slam from 150 away: it turns back, can't be pulled off for a while, and slides in to the tank
+  // Slam (a3) from 150 away: it turns back, can't be pulled off for a while, slides in, and gets sliced by the whirlwind
   m.x = tank.x + 150; m.y = tank.y; m.st.kx = m.st.ky = 0;
-  assert.ok(useAbility(tank, 'a1', null));
+  assert.ok(useAbility(tank, 'a3', null));
   assert.equal(pickTarget(m), tank);
   assert.ok(m.forcedT > 3);
+  assert.ok(tank.whirlT > 0.3, 'Slam starts the 360° whirlwind spin');
   const far = Math.hypot(m.x - tank.x, m.y - tank.y);
   step(0.6);
   const near = Math.hypot(m.x - tank.x, m.y - tank.y);
@@ -111,12 +113,14 @@ test('cages: a bot tank in a cage mashes its own way out', () => {
   assert.ok(tank.alive);
 });
 
-test('heroes: every one the game can draw knows where its weapon is and how tall it stands, front and back', () => {
+test('heroes: every one the game can draw knows where its weapon is and how tall it stands, front and back, across all gear tiers', () => {
   const sprites = SPRITES as Record<string, { vb: number[] }>;
-  for (const set of new Set(Object.values(HERO_ART))) {
+  for (const set of allHeroArt()) {
     assert.ok((HERO_FIT as Record<string, unknown>)[set], `no fit for ${set}`);
-    for (const g of set.startsWith('risen') ? ['', '_gilded'] : ['']) for (const back of [false, true]) {
+    const tiers = ['_rags', '_iron', '', ...(set.startsWith('risen') ? ['_gilded'] : [])];
+    for (const g of tiers) for (const back of [false, true]) {
       const name = set + g + (back ? '_b' : '_f');
+      assert.ok(sprites[name], `missing sprite ${name}`);
       const [vx, vy, w] = sprites[name].vb;
       const { wx, wy, top } = heroFit(set + g, back);
       assert.ok(wx > vx && wx < vx + w && wy > vy && wy < 0, `${name}: the weapon is on the sprite`);
@@ -124,7 +128,7 @@ test('heroes: every one the game can draw knows where its weapon is and how tall
     }
   }
   // from behind, the weapon is in the other hand
-  assert.equal(heroFit('tank', true).wx, -heroFit('tank', false).wx);
+  assert.equal(heroFit('tank_rags', true).wx, -heroFit('tank_rags', false).wx);
 });
 
 test('intro: starts in the Ossuary, protects the party from dying, and spawns the walkout and chest when Sir Rattlebones falls', () => {
@@ -151,5 +155,26 @@ test('intro: starts in the Ossuary, protects the party from dying, and spawns th
   assert.ok(s.walkout && s.walkout.tell === 'unique', 'the unique lantern walkout played');
   assert.ok(s.chest && s.chest.open, 'the chest spawned in the tomb and opened');
   assert.equal(s.over, 'victory');
+});
+
+test('combat & gear look: heroes start in visual _rags, step to _iron and heroic armour, Cleave is a1 (2.2s cd), and Bulwark stacks with Barrowguard', () => {
+  // Visual progression: Common -> _rags, Uncommon -> _iron, Rare/Epic -> full heroic armour
+  assert.equal(heroSprite({ race: 'dwarf', cls: 'warrior', sex: 'm', regular: { weapon: { rar: 0 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'tank'), 'tank_rags');
+  assert.equal(heroSprite({ race: 'dwarf', cls: 'warrior', sex: 'm', regular: { weapon: { rar: 1 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'tank'), 'tank_iron');
+  assert.equal(heroSprite({ race: 'dwarf', cls: 'warrior', sex: 'm', regular: { weapon: { rar: 2 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'tank'), 'tank');
+
+  // Cleave is a1 with 2.2s base cooldown (1.8s at Rank 2)
+  const { s, tank } = game('tank');
+  assert.equal(abCd(tank, 'a1'), 2.2);
+  tank.talents.a1 = 2;
+  assert.ok(Math.abs(abCd(tank, 'a1') - 1.8) < 1e-6);
+
+  // Bulwark (Shield Rank 2) stacks with Barrowguard 2-piece (150 + 90 = 240 absorb) and resets Cleave (a1)
+  tank.cd.a1 = 2.0;
+  tank.talents.a4 = 2;
+  tank.bonuses.add('barrowguard2');
+  onPerfectBlock(tank, s.packs[0].mobs[0]);
+  assert.equal(tank.cd.a1, 0, 'Bulwark resets Cleave cooldown on Perfect Block');
+  assert.equal(tank.absorb, Math.round(240 * tank.power), 'Bulwark (+90) stacks with Barrowguard (+150)');
 });
 

@@ -24,7 +24,7 @@ export const tile = (name: string): string => TILES[name] || TILES.mend || '';
 /** The icon for anything with an id: regular gear, set pieces, uniques, collectibles. */
 export function iconOf(id: string): string {
   const it = ITEMS[id];
-  if (it) return tile(it.kind === 'gear' ? ROLE_SLOTS[it.role][it.slot].icon : it.icon);
+  if (it) return tile(it.icon || ROLE_SLOTS[it.role][it.slot].icon);
   const c = COLLECTIBLES[id];
   if (c) return tile(c.icon);
   return tile('mend');
@@ -71,6 +71,21 @@ export function placeSprite(name: string, x: number, y: number, o: { k?: number;
   const body = `<svg x="${(x + vx * k).toFixed(1)}" y="${(y + vy * k).toFixed(1)}" width="${(w * k).toFixed(1)}" height="${(h * k).toFixed(1)}" viewBox="${vx} ${vy} ${w} ${h}" overflow="visible">${o.flip ? `<g transform="scale(-1 1) translate(${-(2 * vx + w)} 0)">${innerOf(name)}</g>` : innerOf(name)}</svg>`;
   return `<g class="${o.cls || ''}" ${o.attrs || ''}>${body}</g>`;
 }
+/** Something in the house that moves (your hero breathing, a pet bobbing, the fire): drawn as its own small
+ *  picture, so the browser moves it without redrawing the whole house. Box and body are in world units. */
+export interface Bit { box: [number, number, number, number]; body: string; cls: string }
+/** A sprite as a bit, with its ground point at (x, y). */
+export function spriteBit(name: string, x: number, y: number, o: { k?: number; flip?: boolean; cls: string }): Bit | null {
+  const s = ART[name];
+  if (!s) return null;
+  const k = o.k ?? 1;
+  const [vx, vy, w, h] = s.vb;
+  return { box: [x + vx * k, y + vy * k, w * k, h * k], body: placeSprite(name, x, y, { k, flip: o.flip }), cls: o.cls };
+}
+/** Bits as markup, placed in a layer whose top left is the world point (x0, y0). */
+export function bitsHtml(bits: Bit[], x0: number, y0: number): string {
+  return bits.map(({ box: [x, y, w, h], body, cls }) => `<svg class="bit ${cls}" viewBox="${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" overflow="visible" style="left: ${(x - x0).toFixed(1)}px; top: ${(y - y0).toFixed(1)}px">${body}</svg>`).join('');
+}
 export const portrait = (role: RoleId): string => PORTRAIT[role] || '';
 
 /** A hero riding a mount, side on, for a parent SVG with the mount's feet at (x, y). The hero sits
@@ -85,11 +100,27 @@ export function riderSvg(heroSprite: string, mountId: string, x: number, y: numb
 
 /** Gilded Bones (the heroic Barrow log's reward) is yours and switched on: the Risen are drawn in gold. */
 export const gildedBones = (p: Profile): boolean => !!p.collection['cosmetic.gilded_bones'] && !p.settings.looksOff.includes('cosmetic.gilded_bones');
-/** The sprite set a hero is drawn with: its race and class art (gilded for a Risen hero when Gilded
- *  Bones is on, given the save), or its seat's art if this build has none. */
-export function heroSprite(h: { race: string; cls: string }, role: RoleId, p?: Profile): string {
-  const art = heroArt(h.race, h.cls) || ROLES[role].sprite;
-  return p && h.race === 'risen' && gildedBones(p) ? `${art}_gilded` : art;
+/** The sprite set a hero is drawn with: its race and class art, visually stepped from starter rags
+ *  (`_rags` at Common) to iron/apprentice gear (`_iron` at Uncommon) to full heroic plate/robes (Rare+),
+ *  or gilded for a Risen hero when Gilded Bones is on. */
+export function heroSprite(
+  h: { race: string; cls: string; sex?: string; regular?: Record<string, { rar: number }>; equip?: Partial<Record<string, string | null>> },
+  role: RoleId,
+  p?: Profile,
+): string {
+  const art = heroArt(h.race, h.cls, h.sex) || ROLES[role].sprite;
+  if (p && h.race === 'risen' && gildedBones(p)) return `${art}_gilded`;
+  let maxRar = 0;
+  if (h.regular) {
+    for (const s of Object.values(h.regular)) if (s && s.rar > maxRar) maxRar = s.rar;
+  }
+  if (h.equip) {
+    for (const uid of Object.values(h.equip)) {
+      if (uid && ITEMS[uid] && (!p || p.collection[uid])) maxRar = Math.max(maxRar, ITEMS[uid].rar);
+    }
+  }
+  const suffix = maxRar <= 0 ? '_rags' : maxRar === 1 ? '_iron' : '';
+  return ART[ `${art}${suffix}_f`] ? `${art}${suffix}` : art;
 }
 /** A hero's front sprite as an <img>, sized by its own height (against HERO_H) so a dwarf stands shorter
  *  than an elf. */
