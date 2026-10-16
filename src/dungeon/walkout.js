@@ -12,7 +12,7 @@ import { S } from './state.js';
 import { dots, fx, fxText, sfx, shake } from './entities.js';
 
 export const WALKOUT_LEN = { normal: 2.6, unique: 3.4, pet: 6.4 };
-const SPLIT = 1.1; // when the tells start to differ
+export const SPLIT = 1.1; // when the tells start to differ
 
 export function startWalkout(tell, x, y) {
   S.walkout = { tell: tell || 'normal', t: 0, x, y, lift: 0, glow: 1, gold: 0, done: false, beats: new Set(), pet: null };

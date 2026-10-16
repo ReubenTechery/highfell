@@ -25,6 +25,7 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 16 
 | Logs | The collection log as a wardrobe: a page per dungeon's log (Normal, or Heroic in gold) with its prize on a plinth, the count and the kill counts; each set on an armour stand (found pieces on it, missing ones as dashed ghosts); a trophy shelf for the trophy and the bonus pet, mount and dye; a set's page with Try it on; rarity, drop rate and the kill count you got it at on every slot; the garden's and other rewards' pages; achievements; stats |  |
 | The Garden | 3 planter beds (`bed.0`, `bed.1`, `bed.2`) in the Hearth's outdoor yard; seeds drop from dungeon bosses (Gravekeeper drops Glowcap seeds at 1/5 Normal, 1/3 Heroic) and grow over 3 dungeon clears (`GROW_CLEARS = 3`); harvesting uses the `snip`/`pluck` close-up toys and yields 8–10+ herbs plus Gathering XP; first harvest gives the Hill Goat; every harvest rolls `GARDEN_TABLE` for trophies, kettle, bunting, hare and pets | New seeds from future dungeons |
 | Brews | The cauldron by your fire, 4 party-wide brews, 1 bottle poured at the dungeon door (`pourFor`) buffs all 3 seats for faster clears | More recipes as new dungeon seeds open |
+| Sound & music | 77 real effects made with ElevenLabs (every fight sound, the walkout, the chest and the cards, putting gear on, the buttons), embedded, each with its old synthesised sound as the fallback; your own crits get a sound; three music loops (the house, the dungeon, a boss) streamed from the live page's own files, the victory sting when the last boss falls, and a Music slider in Settings | Real garden and brewing sounds (still synthesised) |
 | Onboarding | Create your first hero first, then run a 60-second role-tailored Crypt Trial against the Ossuary and Sir Rattlebones (teaching your class's 4 abilities, dodging red lanes, and punishing Exposed windows); its chest holds a real Uncommon weapon + shared Warband piece (given when the hero is made, so skipping loses nothing) and two example uniques for the gold lantern. A save's first run never drops a seed. Then a 3-step Hearth tour (`hall` your hero's gear → `bunks` the empty bed → `cellar` Dungeons), and a one-step Garden tip only when your first seed drops |  |
 
 ## Core Loop & Dungeon Rules
@@ -311,6 +312,17 @@ Each dungeon has 12 achievements that pop mid-run and pay out in looks, titles, 
 | Meta | Master of the Barrow | All 12 above | Title: the Barrow-born + a lantern-ghost pet |
 
 Hidden: **Bravely Stupid** (go in solo as DPS and die to the first pack), **Last One Standing** (win a boss fight as the only one alive), **Lucky Dig** (get the boss pet).
+
+## Sound and music
+
+Short, dry and punchy, a TV cartoon's fantasy rather than stock fantasy, so every sound sits well on a phone's speaker.
+
+- **Effects:** 77 real effects made with ElevenLabs: every combat sound, the walkout, the chest and the cards, a log slot filling, putting gear on and the buttons. They are embedded in the page (`audio/sfx.json`, about 320 KB, 40 kbps mono MP3) and each keeps its old synthesised sound (`SOUNDS` in `src/ui/sound.ts`) as its fallback, so a sound that can't be decoded still plays. The garden and brewing sounds are still synthesised only.
+- **Your own crits** get their own sound (`crit`), the way only your own numbers show.
+- **Music:** three loops made with Eleven Music: the house (a cosy tavern, 46 s), the dungeon (low and tense, 42 s) and a boss (driving, 26 s). They are too big to embed (about 1 MB together), so each one streams from the live page's own files (`music/*.mp3`, published next to the page from `audio/music`) the first time it's wanted, and loops without a gap (`src/ui/music.ts`; `runMusic` picks the loop from a run's state). The boss's loop loads during the dungeon. The reveal is quiet, so every drop's sound lands.
+- **The victory sting** (`fanfare`) plays as the last boss falls, at the music's volume (with the music off, the victory jingle plays instead). Under the lantern's tells the music ducks, and for the pet it cuts out with every other sound.
+- **Settings:** Sound on or off (off silences the music too), and a Music slider kept on this device (`highfell.music` in local storage), never in the save.
+- **Making sounds:** `tools/audio.py` asks ElevenLabs for takes, trims each to its first sound and natural end, takes out rumble, levels its loudness against the others and compresses it; `tools/audio_list.py` holds every prompt and which take went in.
 
 ## Making it fair
 

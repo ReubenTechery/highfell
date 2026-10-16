@@ -32,6 +32,7 @@ import type { App } from './app';
 import { $, esc, flash, fmtT } from './dom';
 import { heroImg, heroSprite, nameOf, tile } from './art';
 import { IN, aimPoint, bindInput, mashCage, playerIntent, resetInput, type InputUI } from './input';
+import { MUSIC, runMusic } from './music';
 import { SFX } from './sound';
 
 /** A run plays the hero you are playing. `role` is for testing: it picks one of your heroes in that seat,
@@ -527,6 +528,7 @@ export class RunScene implements InputUI {
     } else this.acc = 0;
     updateCam(dt);
     this.hudTick(dt);
+    const m = runMusic(S); MUSIC.want(m.track); MUSIC.duck(m.duck);
     render();
   }
 

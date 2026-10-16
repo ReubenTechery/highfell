@@ -535,6 +535,14 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .card { width: 100%; max-width: 560px; box-sizing: border-box; background: var(--panel); color: var(--ink); border: 3px solid var(--ink); border-radius: 22px; box-shadow: 0 6px 0 var(--ink); padding: 22px clamp(16px, 4vw, 28px) 24px; display: flex; flex-direction: column; gap: 14px; }
 .card h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clamp(28px, 6vw, 40px); line-height: 1; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+/* the music's volume in Settings: a chunky slider beside the Sound button */
+.vol { display: flex; align-items: center; gap: 10px; flex: 1 1 170px; min-width: 0; max-width: 340px; font-family: var(--f-display); font-size: 15px; color: var(--ink); }
+.vol input { -webkit-appearance: none; appearance: none; flex: 1; min-width: 0; height: 32px; margin: 0; background: transparent; cursor: pointer; }
+.vol input::-webkit-slider-runnable-track { height: 12px; border: 3px solid var(--ink); border-radius: 999px; background: var(--panel-2); }
+.vol input::-moz-range-track { height: 6px; border: 3px solid var(--ink); border-radius: 999px; background: var(--panel-2); }
+.vol input::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 26px; height: 26px; margin-top: -10px; border: 3px solid var(--ink); border-radius: 50%; background: var(--gold); box-shadow: 0 2px 0 var(--ink); }
+.vol input::-moz-range-thumb { width: 20px; height: 20px; border: 3px solid var(--ink); border-radius: 50%; background: var(--gold); box-shadow: 0 2px 0 var(--ink); }
+.vol input:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; border-radius: 999px; }
 
 .overlay.welcome { align-items: center; padding: calc(var(--pad-t) + 16px) 16px calc(var(--pad-b) + 16px); background: rgba(16, 12, 24, 0.86); }
 .overlay.welcome .card { max-width: 470px; min-height: min(700px, calc(100vh - 36px)); justify-content: space-between; text-align: center; padding: 22px 18px 20px; gap: 14px; border-width: 3.5px; box-shadow: 0 0 0 3px var(--gold), 0 8px 0 var(--ink); }

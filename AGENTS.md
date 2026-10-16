@@ -89,7 +89,7 @@ power as Normal, with gilded looks and its own log. Teamwork between roles is th
 | Dwarf, elf and human from the start; the other races are earned in dungeons; four classes | Races are the flex you earn; four classes keep it to four buttons |
 | A log's big prize can be a race, a race and class combo, or something else | There will be a lot of dungeons |
 | Every dungeon gets a Heroic: harder, the same drops gilded at the same power, its own log | Something to do after the gear cap, never more power |
-| One self-contained HTML file, no frameworks, no runtime dependencies | It has to run anywhere, including inside claude.ai |
+| One self-contained HTML file, no frameworks, no runtime dependencies; only the music streams, from the live page's own files, and the game is whole without it | It has to run anywhere, including inside claude.ai |
 | A save never loses data: change its shape only with a version bump and a migration | People's progress is sacred |
 
 How every system works as built, with its numbers and the code that runs it (loot, gear and sets, threat and
@@ -117,11 +117,15 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons
   (`dungeonsheet.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
   (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`), settings (`settingssheet.ts`), the gear doll, satchel and spot
-  picker. Toasts, sound. `styles.css` is inlined by the build.
+  picker. Toasts, sound (`sound.ts`: the embedded effects, each with its synthesised fallback) and music
+  (`music.ts`: the streamed loops and the victory sting). `styles.css` is inlined by the build.
+- `audio/`: the sounds, made by `tools/audio.py` from `tools/audio_list.py`: `sfx/*.mp3` and `sfx.json` (the
+  build embeds it), `music/*.mp3` and `music.json` (streamed from the live page's own files, never embedded).
 - `src/sim` and `scripts/sim.mjs`: headless bot runs of the real engine (the balance numbers).
 - `tools/`: the art pipeline (Python writes SVG into `art/*.json`; the log's armour stands are in `art_wardrobe.py`; the heroes are in `art_heroes.py`, their
   faces in `art_heads.py`), `art_sheet.py` (look at your art), `pw_check.py` (screenshot the built game),
-  `pw_perf.py` (measure the house's speed on a slowed-down phone).
+  `pw_perf.py` (measure the house's speed on a slowed-down phone), `audio.py` (the sounds: ElevenLabs takes,
+  trimmed, levelled and compressed; needs ffmpeg).
 - `tests/`: `balance.test.ts` (bot clears must stay in their bands), `dungeon.test.ts` (threat, cages,
   curses, numbers, tuning, where each hero's weapon and head are), `input.test.ts` (the touch controls, driven
   without a browser), `meta.test.ts`, `vale.test.ts`.
@@ -137,6 +141,9 @@ python3 tools/pw_check.py shot.png --w 390 --h 844 --touch    # a phone screensh
 python3 tools/pw_check.py shot.png --w 1440 --h 900           # a desktop screenshot
 python3 tools/pw_perf.py                                      # how heavy the house is on a slowed-down phone
 python3 tools/art_sheet.py shots/art.png art/vale.json        # a contact sheet of the art
+python3 tools/audio.py takes crit --n 3     # new takes of a sound (needs ELEVENLABS_API_KEY), into .cache/audio
+python3 tools/audio.py page shots/takes.html crit   # a page to listen to every take of it
+python3 tools/audio.py make crit            # the take picked in tools/audio_list.py -> audio/sfx (and the pack)
 ```
 
 **First time on a new computer** (once):
@@ -152,8 +159,8 @@ python3 tools/art_sheet.py shots/art.png art/vale.json        # a contact sheet 
 
 In the page, `window.highfell` is the running app: `highfell.startRun({ start, testRar, role?, heroic? })`,
 `highfell.run.autoplay(seconds)`, `highfell.reveal.preview('normal' | 'unique' | 'pet' | 'log')`, `highfell.garden.open(bed)`,
-`highfell.showBrew()`, `highfell.showHearth('bunks')` (any room's id), and `highfell.p` is the live save (change it, then
-`highfell.save()`). A fresh browser opens on the hero maker: click `#cr-go` to make the rolled hero, then `#intro-skip` to skip the Crypt Trial.
+`highfell.showBrew()`, `highfell.showHearth('bunks')` (any room's id), `highfell.music.now()` (what's playing),
+`highfell.sfx.clips` (the decoded effects), and `highfell.p` is the live save (change it, then `highfell.save()`). A fresh browser opens on the hero maker: click `#cr-go` to make the rolled hero, then `#intro-skip` to skip the Crypt Trial.
 Settings has testing switches (walkout and log-complete previews, instant garden growth, lucky ×50,
 "Everything open": the log rewards and Heroic before they're earned, and buttons to replay the Crypt Trial and Hearth tour).
 
