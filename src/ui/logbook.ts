@@ -26,7 +26,7 @@ import { SWATCH } from './lookssheet';
 export interface LogView { tryOn: boolean; peek: string | null; flip: boolean }
 
 /** who stands on a log's plinth: the Barrow's Risen (gilded for its heroic log), Thimblebriar's Gnome */
-export const PRIZE_ART: Record<string, string> = { 'barrow.log': 'risen_tank_f', 'barrow-heroic.log': 'risen_tank_gilded_f', 'thimblebriar.log': 'gnome_tank_f' };
+export const PRIZE_ART: Record<string, string> = { 'barrow.log': 'risen_tank_f', 'barrow-heroic.log': 'risen_tank_gilded_f', 'thimblebriar.log': 'gnome_tank_f', 'thimblebriar-heroic.log': 'gnome_tank_gilded_f' };
 
 type Page = { kind: 'dungeon'; dg: DungeonInfo } | { kind: 'set'; dg: DungeonInfo; stand: Stand } | { kind: 'garden' } | { kind: 'other' };
 const SLOT_WORD: Record<string, string> = { helm: 'Helm', shoulders: 'Shoulders', chest: 'Chest', weapon: 'Weapon' };

@@ -80,7 +80,7 @@ New colours are fine when a thing needs one; keep them flat and in this family (
 
 | Tool | Draws | Writes |
 | --- | --- | --- |
-| `tools/art_heroes.py`, `tools/art_heads.py` | the heroes, front and back (the Risen too, gilded as well); their faces and the backs of their heads | `art/sprites.json` (through `art_sprites.py`) |
+| `tools/art_heroes.py`, `tools/art_heads.py` | the heroes, front and back (the Risen and the Gnomes too, gilded as well); their faces and the backs of their heads | `art/sprites.json` (through `art_sprites.py`) |
 | `tools/art_sprites.py` | mobs, bosses, dungeon props, effects, and `gild()`; builds the heroes in with them | `art/sprites.json` |
 | `tools/art_icons.py` | ability icons, gear icons, the set pieces' icons (cut from the wardrobe) | `art/icons.json` |
 | `tools/art_wardrobe.py` | the wardrobe: the bare stand and every set piece and boss weapon as a layer, plain and gilded | `art/wardrobe.json` |

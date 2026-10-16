@@ -21,11 +21,13 @@ import { THIMBLEBRIAR_HEROIC, THIMBLEBRIAR_KITS } from '../src/content/thimblebr
 import { THIMBLEBRIAR_ITEMS } from '../src/content/thimblebriar/items';
 import { TINKER, TOADSTOOL } from '../src/content/thimblebriar/bosses.js';
 import { SIGNATURE } from '../src/content/thimblebriar/signature.js';
-import { ACHIEVEMENTS, DUNGEONS, ITEMS, checkContent } from '../src/content';
+import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, checkContent } from '../src/content';
+import { heroArt } from '../src/content/folk';
 import { KIT_RATE, gilded } from '../src/content/kits';
 import { Achiever } from '../src/meta/achievements';
-import { freshProfile } from '../src/meta/profile';
-import { loadoutOf, plainLoadout } from '../src/meta/gear';
+import { freshProfile, setActive } from '../src/meta/profile';
+import { loadoutOf, newHero, plainLoadout } from '../src/meta/gear';
+import { heroSprite } from '../src/ui/art';
 import { simRun } from '../src/sim/run';
 import type { RoleId } from '../src/content/types';
 
@@ -60,6 +62,28 @@ test('thimblebriar: Heroic follows the kit rule (Normal loot, then a gilding kit
   assert.equal(THIMBLEBRIAR_HEROIC.bonus!.length, 3);
   assert.deepEqual(THIMBLEBRIAR_HEROIC.seeds, [{ boss: 'tinker', seed: 'bramble', rate: 1 / 3 }]);
   assert.equal(ACHIEVEMENTS['thimblebriar-heroic.log'].reward.look, 'workshop-gilded');
+});
+
+test('thimblebriar: Heroic’s log gives Gilded Gnomes as its big prize, and it draws your Gnomes, only them, in gold', () => {
+  const p = freshProfile();
+  const gnome = newHero(p, { name: 'Wren Gearpatch', race: 'gnome', cls: 'warrior', free: true })!;
+  const dwarf = newHero(p, { name: 'Brask Ironhew', race: 'dwarf', cls: 'warrior' })!;
+  setActive(p, gnome.id);
+  const gold = `${heroArt(gnome.race, gnome.cls, gnome.sex)}_gilded`;
+  assert.equal(COLLECTIBLES['cosmetic.gilded_gnomes'].gilds, 'gnome');
+  assert.equal(ACHIEVEMENTS['thimblebriar-heroic.log'].reward.collectible, 'cosmetic.gilded_gnomes');
+  const ach = new Achiever(p, { dungeon: 'thimblebriar', role: 'tank', practice: false, testGear: false });
+  const kits = THIMBLEBRIAR_KITS.map((k) => k.id);
+  for (const id of kits.slice(1)) p.collection[id] = { n: 1, kc: 1, at: 1 };
+  assert.notEqual(heroSprite(gnome, 'tank', p), gold, 'not before the log is full');
+  p.collection[kits[0]] = { n: 1, kc: 1, at: 1 };
+  assert.deepEqual(ach.collected(kits[0]), ['thimblebriar-heroic.log'], 'done without the bonus slots');
+  assert.ok(p.collection['cosmetic.gilded_gnomes'] && p.titles.includes('title.archtinker'));
+  assert.equal(heroSprite(gnome, 'tank', p), gold);
+  assert.ok(!heroSprite(dwarf, 'tank', p).endsWith('_gilded'), 'a dwarf stays a dwarf');
+  // a look like any other: switched off, your Gnomes are back in their gear
+  p.settings.looksOff.push('cosmetic.gilded_gnomes');
+  assert.notEqual(heroSprite(gnome, 'tank', p), gold);
 });
 
 test('thimblebriar: a winding burrow of seven round chambers, every one reachable on foot', () => {

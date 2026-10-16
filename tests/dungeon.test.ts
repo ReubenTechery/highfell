@@ -123,7 +123,7 @@ test('heroes: every one the game can draw knows where its weapon is and how tall
   const sprites = SPRITES as Record<string, { vb: number[] }>;
   for (const set of allHeroArt()) {
     assert.ok((HERO_FIT as Record<string, unknown>)[set], `no fit for ${set}`);
-    const tiers = ['_rags', '_iron', '', ...(set.startsWith('risen') ? ['_gilded'] : [])];
+    const tiers = ['_rags', '_iron', '', ...(set.startsWith('risen') || set.startsWith('gnome') ? ['_gilded'] : [])];
     for (const g of tiers) for (const back of [false, true]) {
       const name = set + g + (back ? '_b' : '_f');
       assert.ok(sprites[name], `missing sprite ${name}`);

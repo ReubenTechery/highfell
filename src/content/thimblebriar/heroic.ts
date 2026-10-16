@@ -2,7 +2,8 @@
  * Heroic Thimblebriar Hollow, by the kit rule (`makeHeroicDungeon`): the same burrow, harder (its tune is in
  * engine.ts) and made for Thimblebriar's own epics. A Heroic kill rolls the Hollow's own tables first, then the
  * Tinker King rolls a gilding kit for each of the sixteen uniques (any seat, 1 in 20 each), and the gilded
- * twins of the cap, the beetle and the pet. Its log is the kits; the twins are a bonus. No Heroic-only puzzle.
+ * twins of the cap, the beetle and the pet. Its log is the kits; the twins are a bonus. Filling it gives the
+ * Gilded Toadstool Workshop, the Arch-Tinker and Gilded Gnomes (your Gnomes in gold). No Heroic-only puzzle.
  */
 import type { CollectibleDef } from '../types';
 import { gilded } from '../kits';
@@ -29,7 +30,9 @@ const BUNDLE = makeHeroicDungeon({
     look: 'workshop-gilded',
     titleId: 'title.archtinker',
     titleText: 'the Arch-Tinker',
-    rewardText: 'Gilded Toadstool Workshop for your house, and the title the Arch-Tinker',
+    // the big prize: the Hollow's own race in gold, as Gilded Bones is for the Barrow's Risen
+    collectible: { id: 'cosmetic.gilded_gnomes', kind: 'cosmetic', name: 'Gilded Gnomes', desc: 'Your Gnome heroes turn to gold.', icon: 'c_gilded_gnomes', source: 'Achievement: Gilded Gears', gilds: 'gnome' },
+    rewardText: 'Gilded Toadstool Workshop for your house, the title the Arch-Tinker, and gold for your Gnomes',
   },
 });
 

@@ -143,18 +143,20 @@ export function riderSvg(heroSprite: string, mountId: string, x: number, y: numb
   return `<g class="${o.cls || ''}">${placeSprite(heroSprite + '_f', hx, hy, { k: sd.k * k, cls: 'rider-h' })}${placeSprite(c?.sprite || 'mount_goat', x, y, { k, flip: o.flip, cls: 'rider-m' })}</g>`;
 }
 
-/** Gilded Bones (the heroic Barrow log's reward) is yours and switched on: the Risen are drawn in gold. */
-export const gildedBones = (p: Profile): boolean => !!p.collection['cosmetic.gilded_bones'] && !p.settings.looksOff.includes('cosmetic.gilded_bones');
+/** A race's gold look (a heroic log's prize: Gilded Bones for the Risen, Gilded Gnomes) is yours and switched on:
+ *  that race is drawn in gold. */
+export const gildedRace = (p: Profile, race: string): boolean =>
+  Object.values(COLLECTIBLES).some((c) => c.gilds === race && !!p.collection[c.id] && !p.settings.looksOff.includes(c.id));
 /** The sprite set a hero is drawn with: its race and class art, visually stepped from starter rags
  *  (`_rags` at Common) to iron/apprentice gear (`_iron` at Uncommon) to full heroic plate/robes (Rare+),
- *  or gilded for a Risen hero when Gilded Bones is on. */
+ *  or gilded when its race's gold look is on (Gilded Bones, Gilded Gnomes). */
 export function heroSprite(
   h: { race: string; cls: string; sex?: string; regular?: Record<string, { rar: number }>; equip?: Partial<Record<string, string | null>> },
   role: RoleId,
   p?: Profile,
 ): string {
   const art = heroArt(h.race, h.cls, h.sex) || ROLES[role].sprite;
-  if (p && h.race === 'risen' && gildedBones(p)) return `${art}_gilded`;
+  if (p && gildedRace(p, h.race)) return `${art}_gilded`;
   let maxRar = 0;
   if (h.regular) {
     for (const s of Object.values(h.regular)) if (s && s.rar > maxRar) maxRar = s.rar;

@@ -65,6 +65,8 @@ export interface CollectibleDef {
   saddle?: { x: number; y: number; k: number };
   /** doesn't drop any more: kept, and still works, for whoever has it; hidden from everyone else */
   retired?: boolean;
+  /** a heroic log's prize that draws a whole race in gold, switched on or off like any look (Gilded Bones: 'risen') */
+  gilds?: string;
 }
 
 /** A gilding kit, Heroic's own drop: the gilded look of one unique (a set piece or a boss weapon), for good

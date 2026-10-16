@@ -1257,6 +1257,17 @@ def build():
         sp = HEROES[n]
         HEROES[n.rsplit('_', 1)[0] + '_gilded_' + n.rsplit('_', 1)[1]] = {
             'svg': sp['svg'].replace(BONE, GOLD).replace(BONE_D, GOLD_D), 'vb': sp['vb'], 'note': sp['note'] + ', gilded'}
+    # Gilded Gnomes: every gnome again in its best gear, turned to a gold statue: skin, hair and metal (the game
+    # draws only that tier gilded)
+    for n in [k for k in HEROES if k.startswith('gnome_') and '_rags_' not in k and '_iron_' not in k]:
+        sp = HEROES[n]
+        HEROES[n.rsplit('_', 1)[0] + '_gilded_' + n.rsplit('_', 1)[1]] = {
+            'svg': A.gild(sp['svg'], GNOME_GILD), 'vb': sp['vb'], 'note': sp['note'] + ', gilded'}
     return HEROES
+
+
+# a gnome in gold: skin, cheeks and hair (A.gild turns the metal)
+GNOME_GILD = {GSKIN: GOLD, H.GSKIN_D: GOLD_D, '#FFE4D0': '#FFE9A8', H.GBLUSH: '#E8A33A', H.GHAIR_M: '#FFE08A', H.GHAIR_MD: GOLD_D,
+              H.GHAIR_F: '#FFE08A', H.GHAIR_FD: GOLD_D, H.GHAIR_FL: '#FFF3C4'}
 
 

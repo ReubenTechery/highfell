@@ -207,6 +207,8 @@ What changed on the way in, and the numbers it landed on (`src/content/thimblebr
   Mushroom Picker (200 Waddlecaps), Unstuck (25 Sticky Bombs, healer), Safe and Sound, Clockstopper (tank), Patch-up
   Job (healer), Kaboom (2,500 crit, DPS), Puffball Pitcher, Right Back at You (10 bat-backs, tank), Wound Up Tight
   (under 2:30), Not a Scratch; Master of the Hollow gives the Puffling pet; three hidden ones.
+- Heroic's log gives **Gilded Gnomes** as its big prize (the owner's pick, 16 Oct): your Gnome heroes in gold, skin,
+  hair and metal, as Gilded Bones is for the Risen.
 - Set and weapon numbers are in `docs/design.md` (Thimblebriar Hollow sets). Arcspark's 2 pieces arc back into a
   boss on his own, so the set does something in the Tinker King's fight.
 
