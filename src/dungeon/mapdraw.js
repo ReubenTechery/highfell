@@ -1,7 +1,8 @@
 /* ---------- drawing the map: floors, walls and doors, for any layout ----------
    A box room has its north wall face (with torches and banners), caps round its edges, and a gap wherever a
    door is, on any side. A round room is a drum: its far half rises as a wall face. A north-south corridor
-   has caps down both sides; an east-west one has a wall face along its north side. Layouts: layout.js. */
+   has caps down both sides; an east-west one has a wall face along its north side. Layouts: layout.js.
+   Wall decor is [sprite, x, room]: a torch or a lamp (a name ending in _lamp) glows; a banner hangs from the top. */
 import { TAU } from '../core/math';
 import { S } from './state.js';
 import { PAT, drawSpr } from './art.js';
@@ -49,13 +50,14 @@ export function drawMap(ctx, v) {
     for (const w of S.dg.walldecor) {
       if (w[2] !== i) continue;
       const top = (r.round ? roundTop(r, w[1]) : r.y0) - r.wall;
-      if (w[0] === 'torch') {
+      // a light (a torch, or a lamp: a name ending in _lamp) flickers and glows; anything else hangs from the top
+      if (w[0] === 'torch' || w[0].endsWith('_lamp')) {
         const fl = 0.75 + Math.sin(S.t * 9 + w[1]) * 0.12 + Math.sin(S.t * 23 + w[1] * 2) * 0.06;
         ctx.globalAlpha = 0.16 * fl; ctx.fillStyle = '#FF8A4C';
         ctx.beginPath(); ctx.arc(w[1], top + r.wall * 0.45, 70, 0, TAU); ctx.fill();
         ctx.globalAlpha = 1;
-        drawSpr(ctx, 'torch', w[1], top + r.wall * 0.72, { sy: 0.96 + fl * 0.05 });
-      } else drawSpr(ctx, 'banner', w[1], top + 10, {});
+        drawSpr(ctx, w[0], w[1], top + r.wall * 0.72, { sy: 0.96 + fl * 0.05 });
+      } else drawSpr(ctx, w[0], w[1], top + 10, {});
     }
   }
   for (const c of M.corridors) {

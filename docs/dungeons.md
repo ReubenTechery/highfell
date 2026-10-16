@@ -26,7 +26,7 @@ All 3 Free Trial dungeons are **open from Clear 0** (no artificial lock icons), 
 | **Tier 2** | **Thimblebriar Hollow** (`thimblebriar`) | **Barrow Epic Sets & Weapons (`ilvl 22–26`)** (Rare gear wipes there: the owner's pick, 16 Oct) | **Tier 2 Epic Sets & Weapons (`ilvl 34`)** | **Gnome mushroom & brass-clockwork burrow,** a winding line of round chambers. Signature: **bombs you knock back** (in full below). | **Bombs & gadgets:** a perfect block drops a lit bomb (*Clockguard*), Ward leaves a patch-up turret (*Sporebloom*), Comet splits into bombs (*Arcspark*), daggers stick a bomb on (*Gearshade*). | **Race:** *Gnome*<br>**Look:** *Toadstool Workshop*<br>**Title:** *the Clockwork Knight* | **Bramble** (the Tinker King `1/5`, Heroic `1/3`) |
 | **Tier 3** | **Moonmere Sanctum** (`moonmere`) | **Thimblebriar Epic Sets & Weapons (`ilvl 30–34`)** | **Tier 3 Epic Sets & Weapons (`ilvl 42`)** | **Woodland Elf Twilight Glade & Sunken Moon-Ruins.** Emerald moss (`#2D4C3E`), silver moon-shallows, Starlight Conduits, Living Briar Ambush, Lunar Eclipse Ring. | **Starlight & Living Wilds:** Entangling Thorn-Ward (*Sylvanguard*), Moonwell Tidal Blooms (*Moonweaver*), Starfall Lunar Beams (*Starcaller*), Silverbark Bleed (*Nightbough*). | **Form/Mount:** *Starlight Form / Great Silverstag*<br>**Look:** *Moonmere Glade*<br>**Title:** *the Starcaller* | **Moon-Lotus** (planned) |
 
-### Thimblebriar Hollow, in full (agreed 16 Oct, not built yet)
+### Thimblebriar Hollow, in full (agreed 16 Oct, built 16 Oct: see "As built" at the end)
 
 **What:** dungeon 2, Tier II. A gnome family's burrow under Bramblewick, half mushroom cellar, half brass
 workshop, where the inventions went wrong. Built from the template (`src/content/_template/`).
@@ -184,6 +184,42 @@ whatever lands there). Harder, and made for Thimblebriar's own epics. No Heroic-
 - On your phone: knock a bomb into the Tinker King and see the big number; as the healer, swipe a Sticky Bomb
   off; see the cuckoo pop twice for a unique; with the testing switch, fill the log and see a Gnome on the
   plinth.
+
+#### As built
+
+What changed on the way in, and the numbers it landed on (`src/content/thimblebriar/`, `src/dungeon/bombs.js`,
+`src/dungeon/gadgets.js`, `src/dungeon/cuckoo.js`; how it all works is in `docs/design.md`):
+
+- **A hit knocks a bomb back at whoever threw it** (it lands on them), not just "260 away from you": it's 260 away
+  from you only when the thrower is gone. That's what makes "knock them back into him" work on a phone without
+  aiming. Your own swings and shots go for a red bomb in reach first, so standing next to one smacks it.
+- A bomb thrown at the tank shows a gold circle under him (gold means "tank, block this", as everywhere): a
+  perfect block bats it back before it lands, and staggers its thrower.
+- A gold blast knocks any red bomb in it on (the hidden achievement Chain Reaction). A bomb pulls a third of its
+  threat, so knocking one into a boss doesn't turn him on you. Only a bomb knocked or batted back opens a boss up;
+  a gadget's bomb (the sets and weapons) never does.
+- Bombwrights stick Sticky Bombs too (on the tank's mates), so the healer learns the swipe on the trash first.
+- Old Toadstool's Puffball Volley lands a puffball at each hero's feet; the Tinker King's Barrage lands two near
+  the party and two round the workshop. He wakes when someone is well inside his workshop, not in its doorway.
+- The Tinker King's clockwork arms swing fast and light (no one-shots on a mate he turns on), so his fight is a
+  race for the healer's mana. That is the gear check: in the Barrow's epics it lasts, in Rare it runs dry.
+- The 12 achievements are drafts, for the owner to look over: Down the Burrow, Return to Sender (100 bombs),
+  Mushroom Picker (200 Waddlecaps), Unstuck (25 Sticky Bombs, healer), Safe and Sound, Clockstopper (tank), Patch-up
+  Job (healer), Kaboom (2,500 crit, DPS), Puffball Pitcher, Right Back at You (10 bat-backs, tank), Wound Up Tight
+  (under 2:30), Not a Scratch; Master of the Hollow gives the Puffling pet; three hidden ones.
+- Set and weapon numbers are in `docs/design.md` (Thimblebriar Hollow sets). Arcspark's 2 pieces arc back into a
+  boss on his own, so the set does something in the Tinker King's fight.
+
+| Bots (60 runs unless said) | Clear | Boss fights | Wipes |
+| --- | --- | --- | --- |
+| Power 1.72 (Epic, the Barrow's epics) | 3:33 / 3:39 / 3:49 (10th / 50th / 90th percentile) | Old Toadstool ~40s, the Tinker King ~76s | none in 60 |
+| Rare (1.48) | most wipe, then clear after a few tries (4:17 / 7:00 / 9:54); 15 of 60 give up after six wipes | the Tinker King ~88s | 49 of 60 runs wipe at least once, all at the Tinker King |
+| Full Barrow epics (sets, weapons, traits: 1.96) | ~2:17 (12 runs) | ~24s and ~46s | none |
+| Thimblebriar's own full kit (2.44) | ~2:04 (12 runs), 57% of 1.72's | ~21s and ~40s | none |
+| Heroic, in its own full kit | ~4:00 (12 runs) | the Tinker King ~104s | none |
+
+Full Barrow epics land near 2:15, not the 3:00 this spec guessed: the Barrow's 3-piece summons and the Gravefrost
+Staff are strong. The own kit is still the fastest, and 1.72 is where the dungeon is made to be met.
 
 #### Plan
 

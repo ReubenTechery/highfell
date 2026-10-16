@@ -7,6 +7,7 @@
                    With `charge`, the boss runs the lane itself, and if it hits nobody it crashes, Exposed.
      circle(m, o)  a circle on the boss's target, on `at`, or under every hero (`all`). With `block`, it is
                    the tank's to block: it follows its target for a moment and only a perfect block opens him up.
+                   With `count`, each one counts as a smash for the achievements (perfect-block every one).
      adds(m, o)    mobs join the fight. They go when the boss does; with `expose`, the last one down opens
                    the boss up for that many seconds.
      pulse(m, o)   a hit on the whole party that nobody can dodge: the healer heals through it.
@@ -65,7 +66,9 @@ export function circle(m, o = {}) {
     // a blockable circle follows its target for a moment, so the tank stands and blocks rather than steps out
     const follow = t.kind === 'hero' && (block || o.follow) ? { followT: t, followFor: Math.min(o.follow ?? 0.9, warn - 0.3) } : {};
     S.hazards.push({ shape: 'circle', x: t.x, y: t.y, r: o.r ?? 90, warn, t: 0, dmg: o.dmg ?? 220, heavy: block, block, tankBuster: block, src: m, ...follow,
+      ...(o.count ? { counted: true } : {}),
       onFire: (z) => {
+        if (o.count && S.bossFight) S.bossFight.smashes++;
         fx({ type: 'ring', x: z.x, y: z.y, r0: 20, r1: z.r + 30, col, dur: 0.35, w: 10, ground: true });
         dots(z.x, z.y, col, 12, 220);
         if (block) { m.pose = null; m.lunge = 0.25; m.lungeA = angTo(m, z); sfx('smash'); shake(8); } else { sfx('thud'); shake(4); }

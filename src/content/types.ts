@@ -179,6 +179,8 @@ export interface DungeonInfo {
   heroicOf?: string;
   /** its door, as the Dungeons sheet draws it with your party in front (a heroic dungeon uses its normal one's) */
   stage?: DungeonStage;
+  /** the chest's headline after a clear (the Barrow's: "The Gravekeeper is buried") */
+  clearTitle?: string;
 }
 
 /** A sprite on a dungeon's stage, placed by its ground point; k scales it and flip mirrors it. */

@@ -256,9 +256,16 @@ SETS = {
 SLOTS = ('helm', 'shoulders', 'chest', 'weapon')
 
 
+def all_sets():
+    """every dungeon's sets: the Barrow's here, Thimblebriar's in art_wardrobe_tb.py (imported here, not at the
+    top: it imports this file's helpers)"""
+    import art_wardrobe_tb
+    return {**SETS, **art_wardrobe_tb.SETS}
+
+
 def parts(set_id):
     """a set's pieces as (silhouette, details) lists, by slot"""
-    return SETS[set_id][0]()
+    return all_sets()[set_id][0]()
 
 
 def _bbox(svg):
@@ -303,7 +310,7 @@ def box_of(sil, det, pad=8):
 
 def build():
     pieces, boxes = {}, {}
-    for set_id, (draw, weapon) in SETS.items():
+    for set_id, (draw, weapon) in all_sets().items():
         for slot, (sil, det) in draw().items():
             pid = weapon if slot == 'weapon' else f'{set_id}.{slot}'
             pieces[pid] = pc(slot, sil, det)
@@ -333,7 +340,7 @@ def ghost(piece):
 
 def assemble(w, set_id, have=SLOTS, gilded=False):
     """one stand as a sprite ({svg, vb}): the pieces in `have` on it, the rest as ghosts"""
-    weapon = SETS[set_id][1]
+    weapon = all_sets()[set_id][1]
     def piece(slot):
         pid = (weapon if slot == 'weapon' else f'{set_id}.{slot}') + ('.gilded' if gilded else '')
         g = w['pieces'][pid]
@@ -350,7 +357,7 @@ if __name__ == '__main__':
     json.dump(w, open(OUT + 'wardrobe.json', 'w'))
     # for the art loop: every set done, half found, empty and gilded, as sprites tools/art_sheet.py can lay out
     sheet = {}
-    for sid in SETS:
+    for sid in all_sets():
         sheet[f'stand_{sid}'] = assemble(w, sid)
         sheet[f'stand_{sid}_part'] = assemble(w, sid, ('helm', 'chest'))
         sheet[f'stand_{sid}_none'] = assemble(w, sid, ())

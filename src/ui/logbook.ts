@@ -25,8 +25,8 @@ import { SWATCH } from './lookssheet';
  *  and whether this draw is the one just after the Normal or Heroic toggle flipped (its thumb slides over) */
 export interface LogView { tryOn: boolean; peek: string | null; flip: boolean }
 
-/** who stands on a log's plinth: the Barrow's Risen, gilded for its heroic log */
-export const PRIZE_ART: Record<string, string> = { 'barrow.log': 'risen_tank_f', 'barrow-heroic.log': 'risen_tank_gilded_f' };
+/** who stands on a log's plinth: the Barrow's Risen (gilded for its heroic log), Thimblebriar's Gnome */
+export const PRIZE_ART: Record<string, string> = { 'barrow.log': 'risen_tank_f', 'barrow-heroic.log': 'risen_tank_gilded_f', 'thimblebriar.log': 'gnome_tank_f' };
 
 type Page = { kind: 'dungeon'; dg: DungeonInfo } | { kind: 'set'; dg: DungeonInfo; stand: Stand } | { kind: 'garden' } | { kind: 'other' };
 const SLOT_WORD: Record<string, string> = { helm: 'Helm', shoulders: 'Shoulders', chest: 'Chest', weapon: 'Weapon' };

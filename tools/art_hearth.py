@@ -595,6 +595,8 @@ def house_props():
 
 def build():
     lanterns(); pets(); hound(); trophies(); fireplace(); fire(); rug(); paddock_props(); workbench(); window(); door(); furniture(); house_props(); heroic_drops()
+    import art_hearth_tb  # Thimblebriar Hollow's pets, mount, trophies and dye (here: it imports art_sprites' helpers)
+    art_hearth_tb.build(sprite, icon)
     return SP
 
 

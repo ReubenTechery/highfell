@@ -10,6 +10,12 @@ import { BARROW_ITEMS, BARROW_SETS } from './barrow/items';
 import { BARROW_COLLECTIBLES, BARROW_TITLES } from './barrow/collectibles';
 import { BARROW_ACHIEVEMENTS } from './barrow/achievements';
 import { BARROW_HEROIC, HEROIC_ACHIEVEMENTS, HEROIC_COLLECTIBLES, HEROIC_KITS, HEROIC_TITLES } from './barrow/heroic';
+import { THIMBLEBRIAR } from './thimblebriar';
+import { THIMBLEBRIAR_ENGINE } from './thimblebriar/engine';
+import { THIMBLEBRIAR_ITEMS, THIMBLEBRIAR_SETS } from './thimblebriar/items';
+import { THIMBLEBRIAR_COLLECTIBLES, THIMBLEBRIAR_TITLES } from './thimblebriar/collectibles';
+import { THIMBLEBRIAR_ACHIEVEMENTS } from './thimblebriar/achievements';
+import { THIMBLEBRIAR_HEROIC, THIMBLEBRIAR_HEROIC_ACHIEVEMENTS, THIMBLEBRIAR_HEROIC_COLLECTIBLES, THIMBLEBRIAR_HEROIC_TITLES, THIMBLEBRIAR_KITS } from './thimblebriar/heroic';
 import { GARDEN_ACHIEVEMENTS, GARDEN_COLLECTIBLES, GARDEN_TITLES } from './vale/garden';
 import { FIRST_HARVEST_GIFT, GARDEN_TABLE, INGREDIENTS, PLANTS, RECIPES } from './vale';
 import { LOOKS } from './house';
@@ -25,17 +31,19 @@ const byId = <T extends { id: string }>(list: T[]): Record<string, T> => {
 };
 
 /** every dungeon, the heroic ones too (a heroic one names the dungeon it is the harder version of) */
-export const DUNGEONS: Record<string, DungeonInfo> = byId([BARROW, BARROW_HEROIC]);
+export const DUNGEONS: Record<string, DungeonInfo> = byId([BARROW, BARROW_HEROIC, THIMBLEBRIAR, THIMBLEBRIAR_HEROIC]);
+/** a playable dungeon as the engine sees it (map, mobs, packs, script) */
+export type DungeonEngine = typeof BARROW_ENGINE | typeof THIMBLEBRIAR_ENGINE;
 /** every base dungeon's playable engine definition */
-export const DUNGEON_ENGINES: Record<string, typeof BARROW_ENGINE> = { barrow: BARROW_ENGINE };
-export const ITEMS: Record<string, ItemDef> = byId([...regularItems(), ...BARROW_ITEMS]);
+export const DUNGEON_ENGINES: Record<string, DungeonEngine> = { barrow: BARROW_ENGINE, thimblebriar: THIMBLEBRIAR_ENGINE };
+export const ITEMS: Record<string, ItemDef> = byId([...regularItems(), ...BARROW_ITEMS, ...THIMBLEBRIAR_ITEMS]);
 /** every gilding kit (Heroic's own drops: the gilded look of a piece), by id */
-export const KITS: Record<string, KitDef> = byId([...HEROIC_KITS]);
-export const SETS: Record<string, SetDef> = byId([...BARROW_SETS]);
-export const COLLECTIBLES: Record<string, CollectibleDef> = byId([...BARROW_COLLECTIBLES, ...HEROIC_COLLECTIBLES, ...GARDEN_COLLECTIBLES]);
-export const TITLES: Record<string, TitleDef> = byId([...BARROW_TITLES, ...HEROIC_TITLES, ...GARDEN_TITLES]);
-export const ACHIEVEMENTS: Record<string, AchievementDef> = byId([...BARROW_ACHIEVEMENTS, ...HEROIC_ACHIEVEMENTS, ...GARDEN_ACHIEVEMENTS]);
-export const ACHIEVEMENT_LIST: AchievementDef[] = [...BARROW_ACHIEVEMENTS, ...HEROIC_ACHIEVEMENTS, ...GARDEN_ACHIEVEMENTS];
+export const KITS: Record<string, KitDef> = byId([...HEROIC_KITS, ...THIMBLEBRIAR_KITS]);
+export const SETS: Record<string, SetDef> = byId([...BARROW_SETS, ...THIMBLEBRIAR_SETS]);
+export const COLLECTIBLES: Record<string, CollectibleDef> = byId([...BARROW_COLLECTIBLES, ...HEROIC_COLLECTIBLES, ...THIMBLEBRIAR_COLLECTIBLES, ...THIMBLEBRIAR_HEROIC_COLLECTIBLES, ...GARDEN_COLLECTIBLES]);
+export const TITLES: Record<string, TitleDef> = byId([...BARROW_TITLES, ...HEROIC_TITLES, ...THIMBLEBRIAR_TITLES, ...THIMBLEBRIAR_HEROIC_TITLES, ...GARDEN_TITLES]);
+export const ACHIEVEMENT_LIST: AchievementDef[] = [...BARROW_ACHIEVEMENTS, ...HEROIC_ACHIEVEMENTS, ...THIMBLEBRIAR_ACHIEVEMENTS, ...THIMBLEBRIAR_HEROIC_ACHIEVEMENTS, ...GARDEN_ACHIEVEMENTS];
+export const ACHIEVEMENTS: Record<string, AchievementDef> = byId(ACHIEVEMENT_LIST);
 /** The heroic version of a dungeon, if it has one. */
 export const heroicVersion = (id: string): DungeonInfo | undefined => Object.values(DUNGEONS).find((d) => d.heroicOf === id);
 

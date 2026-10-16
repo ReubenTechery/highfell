@@ -17,7 +17,7 @@ import { KIT_RATE } from '../content/kits';
 import { MAX_HEROES, RACES, type RaceId } from '../content/folk';
 import { LOOKS } from '../content/house';
 import { ORDER, ROLES } from '../content/roles';
-import type { AchievementDef, DropDef, DungeonInfo, RoleId } from '../content/types';
+import type { AchievementDef, DropDef, DungeonInfo, DungeonStage, RoleId } from '../content/types';
 import { RECIPES, RECIPE_ORDER } from '../content/vale';
 import { loadoutFor } from '../meta/gear';
 import { HEROIC_AFTER, heroicOpen, heroicProgress, lootFor } from '../meta/loot';
@@ -85,17 +85,17 @@ export const ACT1_DUNGEONS: Act1DungeonMeta[] = [
     tier: 2,
     roman: 'II',
     name: 'Thimblebriar Hollow',
-    blurb: 'An overgrown fairytale bramble-burrow of clockwork needles, spore-caps, and Briar-King Bramble.',
+    blurb: 'A gnome burrow of mushrooms and brass, where the inventions went wrong.',
     recIlvl: 22,
     dropsIlvl: 34,
-    prizeName: 'Thimblebriar Workshop',
-    prizeDesc: 'A fairytale look & clockwork trophy for your house',
+    prizeName: 'The Gnomes',
+    prizeDesc: 'A new kind of hero',
     prizeIcon: 'c_gnome',
-    lookName: 'Thimblebriar Hall',
-    titleText: 'the Bramble-Woven',
-    bossNames: ['Spindle-Knight Stitch', 'Briar-King Bramble'],
-    themeLight: '#F4B942',
-    themeBg: '#271E2C',
+    lookName: 'Toadstool Workshop',
+    titleText: 'the Clockwork Knight',
+    bossNames: ['Old Toadstool', 'The Tinker King'],
+    themeLight: '#FF9F43',
+    themeBg: '#1A110B',
   },
   {
     id: 'moonmere',
@@ -406,15 +406,28 @@ function brewsPage(p: Profile): string {
 }
 
 /** the dungeon's picture: its bosses in the crypt, in the green light of the Gravekeeper's lantern
- *  (gold for Heroic, amber-violet for Thimblebriar, moonlit cyan for Moonmere) */
+ *  (gold for Heroic, moonlit cyan for Moonmere). A dungeon after the Barrow with a door (its stage) shows that:
+ *  its door, its final boss in the doorway, in its own light. */
 const BANNERS: Record<string, string> = {};
 const banner = (heroic: boolean, dgId = 'barrow'): string => {
   const key = `${dgId}:${heroic}`;
   const meta = ACT1_DUNGEONS.find((m) => m.id === dgId) || ACT1_DUNGEONS[0];
   const light = heroic ? '#F2C230' : meta.themeLight;
-  const bg = meta.themeBg;
-  return (BANNERS[key] ||= bannerSvg(light, bg, `dgx-glow-${dgId}-${heroic ? 'h' : 'n'}`));
+  const st = dgId !== 'barrow' ? DUNGEONS[dgId]?.stage : undefined;
+  return (BANNERS[key] ||= st ? stageBanner(st, light, `dgx-glow-${dgId}-${heroic ? 'h' : 'n'}`) : bannerSvg(light, meta.themeBg, `dgx-glow-${dgId}-${heroic ? 'h' : 'n'}`));
 };
+/* a door's stage as a card's wide picture: its dark, light and floor, the door, the boss and what stands in front */
+function stageBanner(st: DungeonStage, light: string, id: string): string {
+  const put = (pc: { sprite: string; x: number; y: number; k?: number; flip?: boolean }): string => placeSprite(pc.sprite, pc.x, pc.y, { k: pc.k, flip: pc.flip });
+  const o: string[] = [`<rect x="0" y="0" width="640" height="300" style="fill: ${st.bg}"/>`, `<circle cx="${st.light.x}" cy="${st.light.y}" r="${st.light.r}" style="fill: url(#${id})"/>`];
+  o.push(`<path d="M-4 ${st.floor.y} H644 V304 H-4 Z" style="fill: ${st.floor.color}; stroke: #1E1A1A; stroke-width: 4"/>`);
+  o.push(...st.back.map(put), put(st.boss), ...st.front.map(put));
+  o.push('<rect x="0" y="0" width="640" height="300" style="fill: url(#dgx-vig)"/>');
+  return `<svg class="dgx-svg" viewBox="0 0 640 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs>
+    <radialGradient id="${id}"><stop offset="0" stop-color="${light}" stop-opacity="0.42"/><stop offset="1" stop-color="${light}" stop-opacity="0"/></radialGradient>
+    <radialGradient id="dgx-vig" cx="50%" cy="42%" r="72%"><stop offset="0.62" stop-color="#140E18" stop-opacity="0"/><stop offset="1" stop-color="#140E18" stop-opacity="0.6"/></radialGradient>
+  </defs>${o.join('')}</svg>`;
+}
 function bannerSvg(light: string, bg: string, id: string): string {
   const o: string[] = [`<rect x="0" y="0" width="640" height="300" style="fill: ${bg}"/>`, `<circle cx="320" cy="168" r="230" style="fill: url(#${id})"/>`];
   o.push(placeSprite('arch', 320, 262, { k: 1.32 }));

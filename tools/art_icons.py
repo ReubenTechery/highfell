@@ -5,8 +5,9 @@ HF_ROOT = _hf_os.environ.get('HIGHFELL_ROOT') or _hf_os.path.dirname(_hf_os.path
 import json, math, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fighttiles import TV_TILES
-from art_sprites import gild
-from art_wardrobe import cut
+from art_sprites import gild, m
+from art_wardrobe import cut, parts, _bbox, _fit
+from art_wardrobe_tb import cog, taper, bez, oval
 
 OUT = HF_ROOT + '/art/'
 K = '#1E1A1A'
@@ -306,6 +307,86 @@ T['u_cryptfangs'] = tile('#244A3C',
                          inked('M24 56 L36 42', '#4A4458', 4.8) + F('M34 40 C44 26 52 14 58 12 C55 24 47 37 38 44 Z', '#F0E8D2', 3.4) +
                          C(20, 36, 3, '#9BE15D', 2) + C(35, 42, 3.2, '#9BE15D', 2))
 
+
+# ---- Thimblebriar's set pieces, cut from its stands (art_wardrobe_tb.py) the same way, each set's mark in the corner
+def one(set_id, slot, box=(4, 4, 54, 54), weight=0.8):
+    """a pair of shoulder pieces cut down to the left one, filling the tile (two side by side read as a face)"""
+    sil, det = parts(set_id)[slot]
+    return _fit(''.join(x for x in sil + det if 'opacity:' not in x and sum(_bbox(x)[0::2]) / 2 < 0), box, weight)
+
+
+def toad(x, y, k=1.0):
+    """a little toadstool: a cream stem, a red cap, a spot"""
+    q = lambda dx, dy: f'{f1(x + dx * k)} {f1(y + dy * k)}'
+    return (F(f'M{q(-2, 0)} L{q(-1.6, -5)} L{q(1.6, -5)} L{q(2, 0)} Z', '#F0E8D2', 1.8) +
+            F(f'M{q(-5.5, -4.5)} C{q(-5.5, -10)} {q(5.5, -10)} {q(5.5, -4.5)} C{q(2, -3.5)} {q(-2, -3.5)} {q(-5.5, -4.5)} Z', '#C8403F', 2) +
+            C(x - 1.8 * k, y - 7 * k, 1.2 * k, '#F0E8D2', 0))
+
+
+MARKS_TB = {
+    'clockguard': ('#7A3B2E', F(cog(52, 52, 8.5, 6, 8), '#F2C230', 2.2) + C(52, 52, 2.4, '#7A5614', 0)),
+    'sporebloom': ('#2C3A66', toad(52, 60, 1.45)),
+    'arcspark': ('#43307A', F('M54 41 L45 52 L50.5 52 L47 61 L58 48.5 L52.5 48.5 L56 41 Z', '#DDF3FF', 2.2)),
+    'gearshade': ('#245048', C(52, 52, 7.6, '#9AA7B8', 2.6) + C(52, 52, 4.2, '#FFB547', 1.6) + C(50.6, 50.6, 1.3, '#FFFFFF', 0)),
+}
+# the Sporebloom Mantle is one long low shape on its stand, so its tile is drawn here in the same colours: amber
+# roots woven over the shoulders, a root end curling out at either side, a bone toggle, toadstools on top
+_root = bez((9, 38), (7, 44), (6, 48), (3, 52), 6)
+MANT_SB = (F(taper(_root, 7, 1.2), '#E7A13C', 2.4) + F(taper([(64 - x, y) for x, y in _root], 7, 1.2), '#E7A13C', 2.4) +
+           F('M5 42 C7 26 19 16 32 16 C45 16 57 26 59 42 C51 39 42 40 32 44 C22 40 13 39 5 42 Z', '#E7A13C', 3.4) +
+           P('M27 19 C17 20 10 28 8 40 M28 25 C21 26 18 32 18 40 M29 31 C25 32 24 36 25 41 '
+             'M37 19 C47 20 54 28 56 40 M36 25 C43 26 46 32 46 40 M35 31 C39 32 40 36 39 41', '#B8742A', 2.2) +
+           P('M12 30 C15 24 20 20 25 19', '#F6C774', 2.2) + F(oval(32, 33, 4.2, 2.6), '#F0E8D2', 1.8) +
+           toad(13, 22) + toad(20, 19, 0.75) + toad(50, 21, 0.85))
+SHOULDERS_TB = {'clockguard': one('clockguard', 'shoulders'), 'sporebloom': MANT_SB,
+                'arcspark': one('arcspark', 'shoulders'), 'gearshade': one('gearshade', 'shoulders')}
+for set_id, (bg, mark) in MARKS_TB.items():
+    T[f's_{set_id}_helm'] = tile(bg, cut(set_id, 'helm') + mark)
+    T[f's_{set_id}_shoulders'] = tile(bg, SHOULDERS_TB[set_id] + mark)
+    T[f's_{set_id}_chest'] = tile(bg, cut(set_id, 'chest', (12, 6, 40, 52), 0.7) + mark)
+
+
+# ---- the Tinker King's four weapons, drawn as on their stands
+def turned(x, y, deg, body):
+    return f'<g transform="translate({x} {y}) rotate({deg})">{body}</g>'
+
+
+EAR = 'M0 -19 C-2 -24 -6 -27 -9.5 -26 C-13.5 -25 -13.5 -19.5 -9.5 -18 C-6 -17 -3 -17.5 0 -19 Z'
+FACE = 'M-18 -9 L-12.5 -9 L-12.5 9 L-18 9 C-19 3 -19 -3 -18 -9 Z'
+T['u_mainspring'] = tile('#8E4636', inked('M12 60 L30 34', '#8A5A34', 4.5) + C(12, 60, 3.4, '#A87A1E', 2) + turned(32, 31, 34,
+                         F('M-2.2 -17 L2.2 -17 L2.2 -10 L-2.2 -10 Z', '#9AA7B8', 2.2) + F(EAR, '#9AA7B8', 2.2) + F(m(EAR), '#9AA7B8', 2.2) +
+                         C(0, -18.5, 2.6, '#9AA7B8', 2) + C(-8.5, -22, 1.6, K, 0) + C(8.5, -22, 1.6, K, 0) +
+                         F('M-13 -8 C-13 -10 -12 -10.5 -10 -10.5 L10 -10.5 C12 -10.5 13 -10 13 -8 L13 8 C13 10 12 10.5 10 10.5 L-10 10.5 C-12 10.5 -13 10 -13 8 Z', '#D9A520', 3) +
+                         F(FACE, '#9AA7B8', 2.6) + F(m(FACE), '#9AA7B8', 2.6) + F('M-12.5 -2.5 L12.5 -2.5 L12.5 2.5 L-12.5 2.5 Z', '#A87A1E', 2) +
+                         C(-7, 6.5, 1.4, '#F2C230', 1.2) + C(0, 6.5, 1.4, '#F2C230', 1.2) + C(7, 6.5, 1.4, '#F2C230', 1.2) +
+                         P('M-10 -7 C-6 -8.5 -1 -8.5 3 -8', '#FFFFFF', 1.8)))
+T['u_sporelight'] = tile('#34457A', '<circle cx="45" cy="41" r="17" style="fill: #FFF3C4; opacity: 0.3"/>' +
+                         inked('M10 60 L26 21', '#8A5A34', 4.5) + inked('M26 22 C27 10 40 6 45 13 L45 17', '#D9A520', 3.2) + P('M45 17 L45 26', K, 2.4) +
+                         F('M34 35 L56 35 C56 46 51 51 45 51 C39 51 34 46 34 35 Z', '#9AA7B8', 3) + F('M41 50 L49 50 L50 55 L40 55 Z', '#7D8FA3', 2.4) +
+                         C(39.5, 42, 2.3, '#FFF3C4', 1.4) + C(45, 44.5, 2.3, '#FFF3C4', 1.4) + C(50.5, 42, 2.3, '#FFF3C4', 1.4) +
+                         F('M31 34 C31 22 59 22 59 34 C52 37 38 37 31 34 Z', '#C8403F', 3) + C(45, 23, 2.4, '#F2C230', 1.6) +
+                         C(37, 30.5, 2, '#F0E8D2', 1.2) + C(45, 27.5, 1.6, '#F0E8D2', 1) + C(53, 30.5, 2, '#F0E8D2', 1.2) +
+                         C(56, 17, 1.6, '#FFF3C4', 0) + C(60, 11, 1.2, '#FFF3C4', 0))
+coil = ''.join(inked(f'M{f1(x - 5)} {f1(y - 1)} L{f1(x + 5)} {f1(y + 3.5)}', '#C87533', 2.6) for x, y in ((16, 53), (19, 48.5), (22, 44), (25, 39.5)))
+T['u_arcwright'] = tile('#4F3A8A', '<circle cx="38" cy="13" r="14" style="fill: #8FD6FF; opacity: 0.3"/>' +
+                        inked('M12 60 L35 25', '#6B4528', 4.5) + coil + inked('M36 24 C33 17 30 12 25 7', '#9AA7B8', 3.6) +
+                        inked('M36 24 C42 20 47 17 54 15', '#9AA7B8', 3.6) + F('M30 24 L37 19 L42 26 L35 31 Z', '#D9A520', 2.4) +
+                        C(24, 6, 3.8, '#C9D2DC', 2.2) + C(55.5, 14.5, 3.8, '#C9D2DC', 2.2) + inked('M27 11 L33 8 L36 13 L42 10 L46 15 L51 13', '#DDF3FF', 2))
+
+
+def fusecutter(side):
+    """one of the Fusecutters, point up, its fuse curling off the pommel to one side"""
+    return (F('M-4 -14 L4 -14 C4.5 -26 3 -36 0 -44 C-3 -36 -4.5 -26 -4 -14 Z', '#D7DEE6', 2.4) + P('M0 -18 L0 -36', '#FFFFFF', 1.4) +
+            F('M-9 -12 C-9 -15 -7 -16 -5 -16 L5 -16 C7 -16 9 -15 9 -12 C5 -11 -5 -11 -9 -12 Z', '#D9A520', 2) +
+            F('M-2.8 -12 L2.8 -12 L2.8 -3 L-2.8 -3 Z', '#C9B08A', 1.8) + P('M-2.8 -9.5 L2.8 -11 M-2.8 -6 L2.8 -7.5', '#8C6F4A', 1.2) +
+            C(0, -1, 3.2, '#D9A520', 1.8) + inked(f'M{1.5 * side} 2 C{3 * side} 5 {6 * side} 6 {8 * side} 4', '#C9B08A', 1.4))
+
+
+spark = lambda x, y: (f'<circle cx="{x}" cy="{y}" r="6" style="fill: #FFE08A; opacity: 0.45"/>' +
+                      F(f'M{x} {y - 5} L{x + 1.5} {y - 1.5} L{x + 5} {y} L{x + 1.5} {y + 1.5} L{x} {y + 5} L{x - 1.5} {y + 1.5} L{x - 5} {y} L{x - 1.5} {y - 1.5} Z', '#FFE08A', 1.6))
+T['u_fusecutters'] = tile('#2A5C52', turned(21, 54, 26, f'<g transform="scale(1.2)">{fusecutter(-1)}</g>') +
+                          turned(43, 54, -26, f'<g transform="scale(1.2)">{fusecutter(1)}</g>') + spark(10.5, 54) + spark(53.5, 54))
+
 # ---- looks: rewards that change how you look, never how hard you hit
 T['c_dye'] = tile('#5C5070', '<circle cx="32" cy="38" r="20" style="fill: #DCFFF0; opacity: 0.25"/>' +
                   F('M24 22 H40 V28 C48 32 50 40 46 48 C42 56 22 56 18 48 C14 40 16 32 24 28 Z', '#DCFFF0') +
@@ -331,6 +412,9 @@ for _n in ['s_barrowguard_helm', 's_barrowguard_shoulders', 's_barrowguard_chest
            'u_gravedigger', 'u_longnight', 'u_gravefrost', 'u_cryptfangs']:
     T[_n + '_gilded'] = gild(T[_n], {'#4A4458': '#8A6418'} if _n in ('u_longnight', 'u_cryptfangs') else None, tile=True)
 T['c_dye_gilded'] = gild(T['c_dye'], {'#9FD9C6': '#F2C230', '#DCFFF0': '#FFE9A8'}, tile=True)
+# ---- heroic Thimblebriar drops: the same, gilded as their stands are (their steel, bone and cream turn gold)
+for _n in [f's_{_s}_{_p}' for _s in MARKS_TB for _p in ('helm', 'shoulders', 'chest')] + ['u_mainspring', 'u_sporelight', 'u_arcwright', 'u_fusecutters']:
+    T[_n + '_gilded'] = gild(T[_n], tile=True)
 
 
 if __name__ == '__main__':

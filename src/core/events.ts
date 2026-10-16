@@ -15,6 +15,9 @@ export interface RunSummary {
   handHits: number;         // party hits from the Gravekeeper's hands
   ringHits: number;         // party hits from burrow rings
   saves: number;            // allies the player healed from under 15%
+  bombHits: number;         // party hits from bombs going off (Thimblebriar)
+  lifts: number;            // curses and Sticky Bombs the healer lifted
+  bursts: number;           // curses and Sticky Bombs that went off
   playerDeaths: number;
   kicks: number;
   perfectBlocks: number;    // by the player
@@ -22,9 +25,9 @@ export interface RunSummary {
 
 export type GameEvent =
   | { type: 'run.start'; dungeon: string; role: RoleId; practice: boolean; solo: boolean }
-  | { type: 'mob.killed'; mob: string; boss: boolean; undead: boolean; byPlayer: boolean }
+  | { type: 'mob.killed'; mob: string; boss: boolean; undead: boolean; byPlayer: boolean; tally?: string }
   | { type: 'boss.pulled'; boss: string }
-  | { type: 'boss.killed'; boss: string; time: number; armorUp: boolean; onlyPlayerAlive: boolean; smashes: number; smashPerfect: number; playerIsTank: boolean; x?: number; y?: number }
+  | { type: 'boss.killed'; boss: string; time: number; armorUp: boolean; onlyPlayerAlive: boolean; smashes: number; smashPerfect: number; playerIsTank: boolean; x?: number; y?: number; bombed?: number }
   | { type: 'hero.died'; role: RoleId; player: boolean }
   | { type: 'block'; perfect: boolean; player: boolean; smash: boolean }
   | { type: 'dodge'; player: boolean }
@@ -33,9 +36,12 @@ export type GameEvent =
   | { type: 'chain.cut'; player: boolean }
   | { type: 'cage.broken'; player: boolean; self: boolean; secs: number }
   | { type: 'heal.save'; player: boolean }
-  | { type: 'curse.cast'; player: boolean; name: string }
-  | { type: 'curse.lifted'; player: boolean }
-  | { type: 'curse.burst'; player: boolean }
+  | { type: 'curse.cast'; player: boolean; name: string; kind?: string }
+  | { type: 'curse.lifted'; player: boolean; kind?: string }
+  | { type: 'curse.burst'; player: boolean; kind?: string }
+  | { type: 'bomb.knocked'; player: boolean }
+  | { type: 'bomb.batted'; player: boolean }
+  | { type: 'bomb.chain'; player: boolean }
   | { type: 'hazard.hit'; kind: string; player: boolean }
   | { type: 'run.wipe'; dungeon: string }
   | { type: 'run.lost'; dungeon: string; packsCleared: number }

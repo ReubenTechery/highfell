@@ -97,7 +97,7 @@ export function drawGround(ctx, v) {
   for (const f of S.fx) if (f.ground) drawFx(ctx, f);
   const ents = [];
   for (const h of S.heroes) ents.push(h);
-  for (const m of S.mobs) if (m.alive && !m.cage) ents.push(m);
+  for (const m of S.mobs) if (m.alive && !m.cage && !m.M.draw) ents.push(m);
   for (const tr of S.thralls || []) if (tr.alive) ents.push(tr);
   ctx.fillStyle = 'rgba(18, 12, 28, 0.36)';
   for (const e of ents) {
@@ -210,6 +210,8 @@ export function drawHazard(ctx, z) {
 export function drawZone(ctx, z) {
   const fade = Math.min(1, z.t / 0.15) * (1 - clamp((z.t - z.dur + 0.4) / 0.4, 0, 1));
   ctx.globalAlpha = fade;
+  // a zone that draws itself (a gadget's turret)
+  if (z.draw) { z.draw(ctx, z, drawSpr, fade); ctx.globalAlpha = 1; return; }
   if (z.kind === 'heal') {
     ctx.fillStyle = 'rgba(242, 194, 48, 0.2)'; ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill();
     ctx.lineWidth = 7; ctx.strokeStyle = K; ctx.stroke();
@@ -399,9 +401,12 @@ export function drawHero(ctx, h) {
     if (S.frame % 9 === 0) S.parts.push({ x: h.x + fx_ + vrand(-12, 12), y: h.y, z: -wy + vrand(-10, 10), vx: 0, vy: 0, vz: 0, up: true, col: '#FFF6D0', size: vrand(2.5, 4), t: 0, dur: 0.8 });
   }
   const yy = h.dodgeT > 0 ? y + 26 : y;
-  // your set's look: gold (gilded pieces, or the old Gravegold Dye) or ghostly (the Ghostly Dye; run.ts lets it win)
+  // your set's look: gold (gilded pieces, or the old Gravegold Dye), ghostly (the Ghostly Dye; run.ts lets it win), or
+  // glowing like mushrooms in the dark (the Sporeglow Dye, on a Thimblebriar set)
   const gold = h.isPlayer && S.opts.gilded, ghost = (h.st && h.st.ghost > 0) || (!gold && h.isPlayer && S.opts.ghostly);
-  drawSpr(ctx, name, x, yy, { flip: spinFlip, sx, sy, rot: rot, alpha: ghost ? 0.76 : 1, tint: h.flash > 0 ? 'flash' : gold ? 'gold' : ghost ? 'ghost' : null, tintA: h.flash > 0 ? Math.max(0, h.flash) / 0.12 : gold ? 0.4 : 0.45 });
+  const spore = !gold && !ghost && h.isPlayer && S.opts.sporeglow;
+  if (spore && S.frame % 8 === 0) S.parts.push({ x: h.x + vrand(-22, 22), y: h.y, z: vrand(10, 70), vx: 0, vy: 0, vz: 0, up: true, col: '#C8F5A8', size: vrand(2, 3.5), t: 0, dur: 1.0 });
+  drawSpr(ctx, name, x, yy, { flip: spinFlip, sx, sy, rot: rot, alpha: ghost ? 0.76 : 1, tint: h.flash > 0 ? 'flash' : gold ? 'gold' : ghost ? 'ghost' : spore ? 'spore' : null, tintA: h.flash > 0 ? Math.max(0, h.flash) / 0.12 : gold ? 0.4 : spore ? 0.3 : 0.45 });
   if (h.st && h.st.ghost > 0) {
     ctx.globalAlpha = 0.3 + Math.sin(S.t * 8) * 0.1; ctx.strokeStyle = '#FFE08A'; ctx.lineWidth = 3.5;
     ctx.beginPath(); ctx.ellipse(h.x, h.y + (top + 2) / 2, 48, (24 - top) / 2, 0, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
@@ -429,7 +434,7 @@ function drawCurses(ctx, v) {
   for (const h of S.heroes) {
     if (!h.alive || !h.st.curse || h.y < v.y0 || h.y > v.y1) continue;
     const { top } = heroFit(h.sprite || ROLES[h.role].sprite, h.back);
-    curseMark(ctx, h.x, h.y + top - 12, h.st.curse.t / CURSE_TIME);
+    curseMark(ctx, h.x, h.y + top - 12, h.st.curse.t / CURSE_TIME, h.st.curse);
     if (teach) swipeArrow(ctx, h.x, h.y - 40);
   }
 }
@@ -446,16 +451,17 @@ function swipeArrow(ctx, x, y) {
   ctx.fillStyle = '#FFE08A'; ctx.lineWidth = 4; ctx.strokeStyle = K; ctx.fill(); ctx.stroke();
   ctx.restore();
 }
-/* a curse over a hero's head: the skull, and its ring running down over the 4 seconds (red at the end) */
-function curseMark(ctx, x, y, k) {
+/* a curse over a hero's head: the skull (or its own mark, a Sticky Bomb's bomb), and its ring running down over
+   the 4 seconds (red at the end) */
+function curseMark(ctx, x, y, k, c) {
   const left = clamp(1 - k, 0, 1), cy = y - 24;
   const beat = 1 + Math.sin(S.t * (8 + 16 * k)) * 0.05 * (0.5 + k);
   ctx.globalAlpha = 0.45; ctx.lineWidth = 7; ctx.strokeStyle = K;
   ctx.beginPath(); ctx.arc(x, cy, 36, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
   ctx.beginPath(); ctx.arc(x, cy, 36, -Math.PI / 2, -Math.PI / 2 + TAU * left);
   ctx.lineWidth = 10; ctx.strokeStyle = K; ctx.stroke();
-  ctx.lineWidth = 5; ctx.strokeStyle = left < 0.3 ? '#FF6B5E' : CURSE_COL; ctx.stroke();
-  drawSpr(ctx, 'curse_skull', x, y, { sx: beat, sy: beat });
+  ctx.lineWidth = 5; ctx.strokeStyle = left < 0.3 ? '#FF6B5E' : c.col || CURSE_COL; ctx.stroke();
+  drawSpr(ctx, c.sp || 'curse_skull', x, y, { sx: beat, sy: beat });
 }
 export function stars(ctx, x, y, col) {
   for (let i = 0; i < 3; i++) {
@@ -479,9 +485,11 @@ export function bubble(ctx, x, y, str) {
   ctx.fillStyle = K; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(str, x, y - 14);
 }
 export function drawMob(ctx, m) {
+  // something that isn't a fighter (a bomb) draws itself
+  if (m.M.draw) { m.M.draw(ctx, m, drawSpr); return; }
   if (m.cage) { if (!m.alive) return; const k = m.hp / m.maxHp; drawSpr(ctx, 'cage', m.x, m.y + 2, { sy: 1 + Math.sin(S.t * 30) * (m.flash > 0 ? 0.04 : 0), tint: m.flash > 0 ? 'flash' : null, tintA: 0.6 }); castBar(ctx, m.x, m.y - 136, 60, k, '#F0E8D2'); return; }
   if (m.hidden) return;
-  let name = m.M.sp;
+  let name = (m.M.phaseSprites && m.M.phaseSprites[m.phase]) || m.M.sp;
   if (m.pose && m.M.poseSprites && m.M.poseSprites[m.pose]) name = m.M.poseSprites[m.pose];
   let x = m.x, y = m.y, sx = 1, sy = 1, rot = 0, alpha = 1;
   if (!m.alive) { const k = clamp(m.deadT / 0.25, 0, 1); alpha = 1 - k; sy = 1 - k * 0.5; if (alpha <= 0) return; }
@@ -520,7 +528,7 @@ export function drawMob(ctx, m) {
 export function drawAir(ctx, v) {
   for (const p of S.projs) {
     const a = p.team === 'hero' ? Math.atan2(p.vy || 0, p.vx || 1) : Math.atan2(p.vy, p.vx);
-    drawSpr(ctx, p.sp, p.x, p.y - p.z, { rot: a, sx: p.big ? 1.6 : 1, sy: p.big ? 1.6 : 1 });
+    drawSpr(ctx, p.sp, p.x, p.y - p.z, { rot: p.spin ? S.t * 14 : a, sx: p.big ? 1.6 : 1, sy: p.big ? 1.6 : 1 });
   }
   for (const ch of S.chains) drawChain(ctx, ch);
   for (const f of S.fx) if (!f.ground && f.type !== 'hand') drawFx(ctx, f);
@@ -652,7 +660,7 @@ export function drawDark(ctx) {
   g.fillStyle = '#000';
   const w = S.walkout && !S.walkout.done && S.walkout.tell === 'pet' ? S.walkout : null;
   for (const h of S.heroes) if (h.alive) hole(h.x, h.y - 40, w ? 46 : 120);
-  if (w) { const ly = w.y - 50 - 60 * w.lift; hole(w.x, ly - 26, 96 + Math.sin(S.t * 7) * 4); if (w.pet) hole(w.pet.x, w.y - 40, 56); }
+  if (w) { const ly = w.y - 50 - 60 * w.lift; hole(w.x, ly - 26, 96 + Math.sin(S.t * 7) * 4); if (w.pet) hole(w.pet.x, (w.pet.y ?? w.y) - 40, 56); }
   for (const m of S.mobs) { if (!m.alive) continue; if (m.M.light && !m.hidden) hole(m.x + m.M.light.dx * (m.flip ? -1 : 1), m.y + m.M.light.dy, m.M.light.r); if (m.M.wisp) hole(m.x, m.y - 40, 60); }
   for (const z of S.hazards) if (!z.noDmg) hole(z.x, z.y, (z.r || 60) * 0.9 + 20);
   for (const z of S.zones) hole(z.x, z.y, z.r);

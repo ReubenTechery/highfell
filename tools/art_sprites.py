@@ -530,7 +530,9 @@ def projectiles():
 
 def build():
     import art_heroes  # here, not at the top: it imports this file's helpers
+    import art_thimble  # Thimblebriar Hollow's mobs, bosses, bombs, props and cuckoo clock (same reason)
     SPRITES.update(art_heroes.build())
+    SPRITES.update(art_thimble.build())
     rattler(); rattler(True); archer(); brute(); caller(); wisp(); knight(); keeper(); keeper_smash()
     pillar(); coffin(); coffin(True); torch(); candles(); bones(); skullpile(); urn(); banner()
     tombstone(0); tombstone(1); tombstone(2); grave(); tree(); chest(); chest(True); gate(); hand(); cage(); arch(); curse_skull()

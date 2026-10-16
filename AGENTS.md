@@ -105,15 +105,18 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
 - `src/content`: data only. Roles and abilities, gear and traits, `folk.ts` (the races, which are earned, the
   four classes, which race and class combos have art in `HERO_ART`, name lists), one folder per dungeon
   (`barrow/`: map, mobs, bosses, script, items, loot tables, collectibles, achievements, `stage.ts`, its door
-  for the Dungeons sheet, and `heroic.ts`, its heroic version: its gilding kits and gilded twins), `_template/`
+  for the Dungeons sheet, and `heroic.ts`, its heroic version: its gilding kits and gilded twins;
+  `thimblebriar/`, dungeon 2, the same shape plus `signature.js`, its bombs), `_template/`
   (a small working dungeon to copy for a new one; its `README.md` has the rules for every new dungeon),
   `kits.ts` (gilding kits, Heroic's own drops, built from any dungeon's tables), and `vale/` (ingredients,
   recipes, ranks, and `garden.ts`).
   `house.ts` is the house's plan (each room's `main`, what a tap from far away opens, and the paddock's places). Register new content in `src/content/index.ts`; `checkContent()`
   and the tests catch broken ids.
 - `src/dungeon`: the engine, plain JS with no DOM: state `S`, entities, heroes, mobs, bots, the loop,
-  rendering to a canvas, `walkout.js` (the lantern tells) and `coach.js` (which button's moment has come, for
-  a class's first runs). A dungeon's layout is data built by `layout.js` (rooms and the doors between them,
+  rendering to a canvas, `walkout.js` (the lantern tells; `cuckoo.js`, Thimblebriar's clock) and `coach.js`
+  (which button's moment has come, for a class's first runs). `bombs.js` is Thimblebriar's bombs as a shared
+  part (any hit knocks one back, a perfect block bats one back, the Sticky Bomb) and `gadgets.js` its sets'
+  bonuses and boss weapons. A dungeon's layout is data built by `layout.js` (rooms and the doors between them,
   any shape) and drawn by `mapdraw.js`; its bosses are built from the shared moves in `moves.js`; its run
   script and themes come from `template.js`. It reaches the screen only through `HOOKS`
   and `emit`.
@@ -166,11 +169,11 @@ python3 tools/audio.py make crit            # the take picked in tools/audio_lis
 4. GitHub: the owner signs in once with the GitHub CLI (`gh auth login`; Windows: `winget install -e --id
    GitHub.cli`). Then push your branch and open the pull request with `gh pr create`.
 
-In the page, `window.highfell` is the running app: `highfell.startRun({ start, testRar, role?, heroic? })`,
-`highfell.run.autoplay(seconds)`, `highfell.reveal.preview('normal' | 'unique' | 'pet' | 'log')`, `highfell.garden.open(bed)`,
+In the page, `window.highfell` is the running app: `highfell.startRun({ start, testRar, role?, heroic?, dungeon? })`,
+`highfell.run.autoplay(seconds)`, `highfell.reveal.preview('normal' | 'unique' | 'pet' | 'log', dungeon?)`, `highfell.garden.open(bed)`,
 `highfell.showBrew()`, `highfell.showHearth('bunks')` (any room's id), `highfell.music.now()` (what's playing),
 `highfell.sfx.clips` (the decoded effects), and `highfell.p` is the live save (change it, then `highfell.save()`). A fresh browser opens on the hero maker: click `#cr-go` to make the rolled hero, then `#intro-skip` to skip the Crypt Trial.
-Settings has testing switches (walkout and log-complete previews, instant garden growth, lucky ×50,
+Settings has testing switches (walkout and log-complete previews of the dungeon picked on the Dungeons sheet, instant garden growth, lucky ×50,
 "Everything open": the log rewards and Heroic before they're earned, and buttons to replay the Crypt Trial and Hearth tour).
 
 ## How we keep the code good (no vibe coding)

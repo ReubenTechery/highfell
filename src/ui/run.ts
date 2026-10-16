@@ -303,7 +303,9 @@ export class RunScene implements InputUI {
       loadouts[role] = { ...(loadouts[role] as object), cls: h.cls, name: h.name, sprite: spr };
     }
     const looks = Object.keys(p.collection).filter((id) => COLLECTIBLES[id] && (COLLECTIBLES[id].kind === 'cosmetic') && !p.settings.looksOff.includes(id));
-    const wornSet = !!h && Object.values(worn(p, h)).some((w) => w.def.setId && SETS[w.def.setId]);
+    // a dungeon's dye works on that dungeon's set: the Ghostly Dye on a Barrow piece, the Sporeglow Dye on a Thimblebriar one
+    const wornSetOf = (dungeon: string): boolean => !!h && Object.values(worn(p, h)).some((w) => w.def.setId && SETS[w.def.setId]?.dungeon === dungeon);
+    const wornSet = wornSetOf('barrow');
     const ghostly = intro || (looks.includes('dye.ghostly') && wornSet && !test);
     const baseId = o.dungeon || 'barrow';
     const baseDg = DUNGEONS[baseId] || BARROW;
@@ -313,6 +315,7 @@ export class RunScene implements InputUI {
     // set. The rarer Ghostly Dye wins: switch it off in Looks to shine gold
     const gildedWorn = !!h && Object.values(worn(p, h)).some((w) => w.unique && gildedOn(p, w.def.id));
     const gilded = !test && !ghostly && (gildedWorn || (looks.includes('dye.ghostly.gilded') && wornSet));
+    const sporeglow = !test && !ghostly && !gilded && looks.includes('dye.sporeglow') && wornSetOf('thimblebriar');
     if (!this.practice) countRunStart(p, dg);
     // a class's first runs glow the button whose moment has come (the trial teaches its own way)
     this.learn = h && !intro ? learnGlow(p, h.cls) : 0;
@@ -330,7 +333,7 @@ export class RunScene implements InputUI {
       onChest: () => this.finish(),
       playerIntent,
     });
-    newGame(engine, { role, loadouts, start: o.start, seed: (Math.random() * 0x7fffffff) | 1, looks, ghostly, gilded, testGear: test, heroic: !!o.heroic, swipeHint: this.swipeHint, ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) });
+    newGame(engine, { role, loadouts, start: o.start, seed: (Math.random() * 0x7fffffff) | 1, looks, ghostly, gilded, sporeglow, testGear: test, heroic: !!o.heroic, swipeHint: this.swipeHint, ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) });
     S.startedAt = S.t;
     // a heroic run counts for the Barrow's own achievements
     this.ach = this.practice ? null : new Achiever(p, { dungeon: dg.heroicOf || dg.id, role, practice: false, testGear: false });
@@ -461,6 +464,11 @@ export class RunScene implements InputUI {
       if (this.ach) for (const id of this.ach.cleared(e.summary)) this.unlockedNow(id);
       this.app.store.save();
     } else if (e.type === 'boss.pulled' && !this.practice) {
+      this.app.store.save();
+    } else if (e.type === 'curse.cast' && e.kind === 'sticky' && S.player.role === 'healer' && !p.counters['tip.sticky']) {
+      // the first Sticky Bomb you see as the healer: only you can get it off
+      p.counters['tip.sticky'] = 1;
+      banner(`Sticky Bomb! Swipe across ${e.player ? 'yourself' : e.name} to throw it back.`, 'warn', 3.2);
       this.app.store.save();
     } else if (e.type === 'curse.cast' && S.player.role === 'healer' && needsCurseTip(p)) {
       finishCurseTip(p);
@@ -656,7 +664,11 @@ export class RunScene implements InputUI {
       el.classList.toggle('danger', h.alive && h.hp < h.maxHp * 0.15);
       const c = h.alive ? h.st.curse : null;
       el.classList.toggle('cursed', !!c);
+      el.classList.toggle('sticky', !!c && c.kind === 'sticky');
       if (c) {
+        // a curse's own mark on the frame: the skull, or a Sticky Bomb's bomb
+        const img = el.querySelector<HTMLImageElement>('.cu img'), sp = c.sp || 'curse_skull';
+        if (img && img.dataset.sp !== sp) { img.dataset.sp = sp; img.src = spriteURL(sp); }
         const left = Math.max(0, CURSE_TIME - c.t), txt = String(Math.ceil(left));
         el.style.setProperty('--k', (left / CURSE_TIME).toFixed(3));
         const n = el.querySelector('.cu-t'); if (n && n.textContent !== txt) n.textContent = txt;
@@ -730,7 +742,7 @@ export class RunScene implements InputUI {
   }
 }
 
-/** a cursed mate's frame: the skull, its ring running down, and the seconds left (styles.css shows it) */
+/** a cursed mate's frame: the skull (a Sticky Bomb's bomb), its ring running down, and the seconds left (styles.css shows it) */
 const CURSE_MARK = (): string => `<span class="cu" aria-hidden="true"><img src="${spriteURL('curse_skull')}" alt="" draggable="false"><b class="cu-t"></b></span>`;
 function setW(el: Element | null, k: number): void { if (!el) return; const v = (clamp(k, 0, 1) * 100).toFixed(1) + '%'; const s = (el as HTMLElement).style; if (s.width !== v) s.width = v; }
 

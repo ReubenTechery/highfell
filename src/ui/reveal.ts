@@ -5,7 +5,8 @@
  * gave stays on the page with a way to it. A new piece for the log gets a moment of its own: its stand
  * comes up and the piece drops on. Then the numbers: kill counts, time, the log's strip, the garden.
  */
-import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, KITS, TITLES } from '../content';
+import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, ITEMS, KITS, TITLES, heroicVersion } from '../content';
+import { TELL_SPRITES } from '../dungeon/walkout.js';
 import { KIT_RATE, gilded } from '../content/kits';
 import type { RaceId } from '../content/folk';
 import { BARROW } from '../content/barrow';
@@ -69,10 +70,12 @@ export class Reveal {
     // the Crypt Trial's chest: real starter gear the first time, examples on a replay
     const trialReal = !!extra.intro && !extra.preview;
     const head = extra.intro ? 'Crypt Trial complete' : extra.preview ? 'Preview: nothing is added' : `${dg.name} · clear ${fmtN(loot.clears)}`;
-    const title = extra.intro ? (trialReal ? 'Your first chest' : 'What a real clear can drop') : 'The Gravekeeper is buried';
-    // the pet that came out of the chest stands in for the lantern (gilded from Heroic)
+    const base = DUNGEONS[dg.heroicOf || dg.id] || dg;
+    const title = extra.intro ? (trialReal ? 'Your first chest' : 'What a real clear can drop') : base.clearTitle || 'The Gravekeeper is buried';
+    // the pet that came out of the chest stands in for the lantern (or the cuckoo clock), gilded from Heroic
     const pet = loot.drops.find((d) => d.source === 'table' && COLLECTIBLES[d.id]?.kind === 'pet');
-    const lantern = tell === 'pet' ? (pet && COLLECTIBLES[pet.id].sprite) || 'pet_keeper' : tell === 'unique' ? 'lantern_gold' : tell === 'kit' ? 'lantern' : 'lantern_out';
+    const style = ((DUNGEON_ENGINES[base.id] as { walkout?: string } | undefined)?.walkout || 'lantern') as keyof typeof TELL_SPRITES;
+    const lantern = tell === 'pet' ? (pet && COLLECTIBLES[pet.id].sprite) || 'pet_keeper' : TELL_SPRITES[style][tell];
     const kcChips = extra.intro
       ? `<span class="chip dark">${trialReal ? 'Starter chest' : 'Example chest'} · <b>4 drop types</b></span>`
       : Object.entries(loot.kc).map(([b, n]) => `<span class="chip dark">${esc(dg.bosses.find((x) => x.id === b)?.name || b)} <b>KC ${fmtN(n)}</b></span>`).join('');
@@ -98,7 +101,8 @@ export class Reveal {
     </div>
     <button type="button" class="btn small skip" data-act="skip" id="rv-skip" hidden>Skip</button>`;
     this.root.scrollTop = 0;
-    SFX.play(tell === 'pet' ? 'petchime' : tell === 'unique' ? 'flare' : tell === 'kit' ? 'gild' : 'gutter');
+    const clock = style === 'cuckoo';
+    SFX.play(tell === 'pet' ? 'petchime' : tell === 'unique' ? (clock ? 'cuckoo' : 'flare') : tell === 'kit' ? 'gild' : clock ? 'clocktick' : 'gutter');
     (this.root.querySelector('.chest-stage') as HTMLElement).focus({ preventScroll: true });
   }
 
@@ -399,24 +403,32 @@ export class Reveal {
     this.show(loot, { unlocked: [], hero: h?.id || null, role, deaths: 0, again: null, preview: !first || !h, intro: true });
   }
 
-  /** the reveal with made-up loot, for testing the look. Touches nothing in the save. 'log' plays a run
-   *  that fills the Barrow's whole collection log; 'kit' is a Heroic chest with a gilding kit. */
-  preview(kind: Tell | 'log'): void {
-    const tell: Tell = kind === 'log' ? 'unique' : kind, dgId = tell === 'kit' ? 'barrow-heroic' : 'barrow';
+  /** the reveal with made-up loot, for testing the look. Touches nothing in the save. It's the chest of `dungeon`
+   *  (the one picked on the Dungeons sheet): 'log' plays a run that fills its whole collection log; 'kit' is its
+   *  Heroic chest with a gilding kit. */
+  preview(kind: Tell | 'log', dungeon = 'barrow'): void {
+    const asked = DUNGEONS[dungeon], base = asked && !asked.heroicOf && standsOf(asked.id).length ? asked : BARROW;
+    const tell: Tell = kind === 'log' ? 'unique' : kind, dgId = (tell === 'kit' && heroicVersion(base.id)?.id) || base.id;
     const p = this.app.p, h = activeHero(p), role: RoleId = h ? roleOf(h) : 'tank', gk = h ? gearKey(h) : role;
-    const kcK = (p.bosses[`${dgId}.keeper`]?.kc || 0) + 1, kcN = (p.bosses[`${dgId}.knight`]?.kc || 0) + 1;
+    const fin = base.finalBoss, mini = base.bosses.find((b) => b.id !== fin)?.id || fin;
+    const kcF = (p.bosses[`${dgId}.${fin}`]?.kc || 0) + 1, kcM = (p.bosses[`${dgId}.${mini}`]?.kc || 0) + 1;
     const drops: Drop[] = [
       { id: gearId(gk, 'helm', 2), source: 'regular', role, slot: 'helm', rar: 2, prevRar: 1, isNew: true, dupe: false, marks: 0, toEquip: true },
       { id: gearId(role === 'tank' ? 'healer' : 'tank', 'chest', 1), source: 'spare', role: role === 'tank' ? 'healer' : 'tank', slot: 'chest', rar: 1, prevRar: 0, isNew: true, dupe: false, marks: 0 },
     ];
-    const set = h?.cls === 'rogue' ? 'shadeveil' : { tank: 'barrowguard', healer: 'candlewake', dps: 'rimebone' }[role];
-    if (tell === 'unique' || tell === 'pet') drops.push({ id: `${set}.helm`, source: 'table', boss: 'keeper', rate: dropOf(BARROW, `${set}.helm`).rate, kc: kcK, role, isNew: true, dupe: false, marks: 0, toEquip: true });
-    if (tell === 'kit') drops.push({ id: gilded(`${set}.chest`), source: 'table', boss: 'keeper', rate: KIT_RATE, kc: kcK, role, isNew: true, dupe: false, marks: 0 });
-    if (tell === 'unique') drops.push({ id: 'trophy.rattlebones_plume', source: 'table', boss: 'knight', rate: 1 / 50, kc: kcN, role, isNew: false, dupe: true, marks: 3 });
-    if (tell === 'pet') drops.push({ id: 'pet.pint_gravekeeper', source: 'table', rate: 1 / 2500, boss: 'keeper', kc: kcK, role, isNew: true, dupe: false, marks: 0 });
-    const loot: RunLoot = { dungeon: dgId, role, hero: h?.id || '', drops, tell, gild: tell === 'kit', kc: { knight: kcN, keeper: kcK }, marks: 1 + drops.reduce((a, d) => a + d.marks, 0), clears: (p.dungeons[dgId]?.clears || 0) + 1, time: 247, pb: p.dungeons[dgId]?.pb ?? 247, newPb: false, firstClear: false };
+    // your seat's set, the mini boss's trophy and the pet, from the dungeon's own log
+    const stands = standsOf(base.id), rogue = h?.cls === 'rogue';
+    const set = (stands.find((s) => s.set.role === role && (s.set.cls === 'rogue') === rogue) || stands[0]).set.id;
+    const slotOf = (k: string): string | undefined => base.collection.find((id) => COLLECTIBLES[id]?.kind === k);
+    const trophy = slotOf('trophy'), pet = slotOf('pet');
+    if (tell === 'unique' || tell === 'pet') drops.push({ id: `${set}.helm`, source: 'table', boss: fin, rate: dropOf(base, `${set}.helm`).rate, kc: kcF, role, isNew: true, dupe: false, marks: 0, toEquip: true });
+    if (tell === 'kit') drops.push({ id: gilded(`${set}.chest`), source: 'table', boss: fin, rate: KIT_RATE, kc: kcF, role, isNew: true, dupe: false, marks: 0 });
+    if (tell === 'unique' && trophy) drops.push({ id: trophy, source: 'table', boss: mini, rate: dropOf(base, trophy).rate, kc: kcM, role, isNew: false, dupe: true, marks: 3 });
+    if (tell === 'pet' && pet) drops.push({ id: pet, source: 'table', rate: dropOf(base, pet).rate, boss: fin, kc: kcF, role, isNew: true, dupe: false, marks: 0 });
+    const loot: RunLoot = { dungeon: dgId, role, hero: h?.id || '', drops, tell, gild: tell === 'kit', kc: { [mini]: kcM, [fin]: kcF }, marks: 1 + drops.reduce((a, d) => a + d.marks, 0), clears: (p.dungeons[dgId]?.clears || 0) + 1, time: 247, pb: p.dungeons[dgId]?.pb ?? 247, newPb: false, firstClear: false };
+    const log = logAchievement(base.id)?.id;
     this.app.show('reveal');
-    this.show(loot, { unlocked: kind === 'log' ? ['barrow.log'] : [], hero: h?.id || null, role, deaths: 0, again: null, preview: true });
+    this.show(loot, { unlocked: kind === 'log' && log ? [log] : [], hero: h?.id || null, role, deaths: 0, again: null, preview: true });
   }
 }
 

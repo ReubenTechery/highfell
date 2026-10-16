@@ -183,6 +183,10 @@ export const SOUNDS: Record<string, Play> = {
   lightsout: (t, v) => { T(t, 160, 0.9, 'sine', 0.3 * v, 40); N(t, 0.7, 0.2 * v, 600, 'lowpass', 1, 80); },
   petchime: (t, v) => { [1046, 1318, 1568, 2093, 1568, 2637].forEach((f, i) => T(t, f, 0.6, 'sine', 0.08 * v, null, i * 0.22)); },
   petfound: (t, v) => { [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => T(t, f, 0.7, 'triangle', 0.12 * v, null, i * 0.08)); N(t, 1, 0.08 * v, 7000, 'highpass', 0.7, null, 0.3); },
+  // Thimblebriar's walkout: the Tinker King's cuckoo clock ticks, the cuckoo calls, and at midnight it strikes
+  clocktick: (t, v) => { T(t, 1900, 0.025, 'triangle', 0.08 * v, 1500); N(t, 0.03, 0.12 * v, 3200, 'bandpass', 4); },
+  cuckoo: (t, v) => { T(t, 784, 0.22, 'sine', 0.2 * v, 760); T(t, 622, 0.32, 'sine', 0.2 * v, 600, 0.26); T(t, 1568, 0.18, 'sine', 0.03 * v, null, 0.02); },
+  midnight: (t, v) => { [0, 0.55, 1.1].forEach((d) => { T(t, 196, 1.2, 'sine', 0.22 * v, 190, d); T(t, 392, 0.9, 'triangle', 0.06 * v, null, d); }); },
   // the reveal
   flip: (t, v) => { N(t, 0.08, 0.2 * v, 3000, 'bandpass', 1.5, 1200); T(t, 600, 0.06, 'triangle', 0.05 * v, 900); },
   deal: (t, v) => N(t, 0.07, 0.15 * v, 2200, 'bandpass', 1.4, 900),
