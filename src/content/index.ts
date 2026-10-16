@@ -1,15 +1,15 @@
 /**
  * Everything in the game, by id. New dungeons register their items, sets, collectibles, titles,
- * achievements and info here; nothing else needs to change.
+ * achievements, Heroic kits and info here; nothing else needs to change.
  */
-import type { AchievementDef, CollectibleDef, DungeonInfo, ItemDef, SetDef, TitleDef } from './types';
+import type { AchievementDef, CollectibleDef, DungeonInfo, ItemDef, KitDef, SetDef, TitleDef } from './types';
 import { regularItems } from './gear';
 import { BARROW } from './barrow';
 import { BARROW_ENGINE } from './barrow/engine';
 import { BARROW_ITEMS, BARROW_SETS } from './barrow/items';
 import { BARROW_COLLECTIBLES, BARROW_TITLES } from './barrow/collectibles';
 import { BARROW_ACHIEVEMENTS } from './barrow/achievements';
-import { BARROW_HEROIC, HEROIC_ACHIEVEMENTS, HEROIC_COLLECTIBLES, HEROIC_ITEMS, HEROIC_TITLES } from './barrow/heroic';
+import { BARROW_HEROIC, HEROIC_ACHIEVEMENTS, HEROIC_COLLECTIBLES, HEROIC_KITS, HEROIC_TITLES } from './barrow/heroic';
 import { GARDEN_ACHIEVEMENTS, GARDEN_COLLECTIBLES, GARDEN_TITLES } from './vale/garden';
 import { FIRST_HARVEST_GIFT, GARDEN_TABLE, INGREDIENTS, PLANTS, RECIPES } from './vale';
 import { LOOKS } from './house';
@@ -28,7 +28,9 @@ const byId = <T extends { id: string }>(list: T[]): Record<string, T> => {
 export const DUNGEONS: Record<string, DungeonInfo> = byId([BARROW, BARROW_HEROIC]);
 /** every base dungeon's playable engine definition */
 export const DUNGEON_ENGINES: Record<string, typeof BARROW_ENGINE> = { barrow: BARROW_ENGINE };
-export const ITEMS: Record<string, ItemDef> = byId([...regularItems(), ...BARROW_ITEMS, ...HEROIC_ITEMS]);
+export const ITEMS: Record<string, ItemDef> = byId([...regularItems(), ...BARROW_ITEMS]);
+/** every gilding kit (Heroic's own drops: the gilded look of a piece), by id */
+export const KITS: Record<string, KitDef> = byId([...HEROIC_KITS]);
 export const SETS: Record<string, SetDef> = byId([...BARROW_SETS]);
 export const COLLECTIBLES: Record<string, CollectibleDef> = byId([...BARROW_COLLECTIBLES, ...HEROIC_COLLECTIBLES, ...GARDEN_COLLECTIBLES]);
 export const TITLES: Record<string, TitleDef> = byId([...BARROW_TITLES, ...HEROIC_TITLES, ...GARDEN_TITLES]);
@@ -38,12 +40,15 @@ export const ACHIEVEMENT_LIST: AchievementDef[] = [...BARROW_ACHIEVEMENTS, ...HE
 export const heroicVersion = (id: string): DungeonInfo | undefined => Object.values(DUNGEONS).find((d) => d.heroicOf === id);
 
 /** What a drop id points at. */
-export type Thing = { kind: 'item'; def: ItemDef } | { kind: 'collectible'; def: CollectibleDef };
+export type Thing = { kind: 'item'; def: ItemDef } | { kind: 'collectible'; def: CollectibleDef } | { kind: 'kit'; def: KitDef };
 export function thing(id: string): Thing | null {
   if (ITEMS[id]) return { kind: 'item', def: ITEMS[id] };
   if (COLLECTIBLES[id]) return { kind: 'collectible', def: COLLECTIBLES[id] };
+  if (KITS[id]) return { kind: 'kit', def: KITS[id] };
   return null;
 }
+/** The piece an id is, or the one its kit gilds. */
+export const itemOf = (id: string): ItemDef | undefined => ITEMS[id] || (KITS[id] ? ITEMS[KITS[id].item] : undefined);
 
 /** Catches typos in content: every id a table, log or reward points at must exist. */
 export function checkContent(): string[] {
@@ -56,6 +61,10 @@ export function checkContent(): string[] {
     if (d.heroicOf && !DUNGEONS[d.heroicOf]) bad.push(`${d.id} heroic of ${d.heroicOf}`);
   }
   for (const s of Object.values(SETS)) for (const id of s.pieces) if (!ITEMS[id] || ITEMS[id].setId !== s.id) bad.push(`set ${s.id} piece ${id}`);
+  for (const k of Object.values(KITS)) {
+    if (!ITEMS[k.item] || ITEMS[k.item].kind === 'gear') bad.push(`kit ${k.id} gilds ${k.item}`);
+    if (COLLECTIBLES[k.id] || ITEMS[k.id]) bad.push(`kit ${k.id} is also an item or a collectible`);
+  }
   for (const d of Object.values(DUNGEONS)) for (const sd of d.seeds || []) {
     if (!PLANTS[sd.seed]) bad.push(`${d.id} seed ${sd.seed}`);
     if (!d.bosses.some((b) => b.id === sd.boss)) bad.push(`${d.id} seed boss ${sd.boss}`);

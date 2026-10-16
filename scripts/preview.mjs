@@ -14,13 +14,19 @@ const newest = (dir) => fs.readdirSync(dir, { withFileTypes: true }).reduce((t, 
 }, 0);
 let built = 0;
 const build = () => {
-  const changed = Math.max(newest('src'), newest('art'));
+  const changed = Math.max(newest('src'), newest('art'), newest('audio'));
   if (changed <= built && fs.existsSync('site/index.html')) return;
   execFileSync(process.execPath, ['scripts/site.mjs'], { stdio: 'inherit' });
   built = Date.now();
 };
 build();
 http.createServer((req, res) => {
+  // the music streams from next to the page, as it does from the live page's own files
+  const track = /^\/music\/([a-z]+\.mp3)$/.exec(req.url || '');
+  if (track && fs.existsSync(`audio/music/${track[1]}`)) {
+    res.writeHead(200, { 'content-type': 'audio/mpeg', 'cache-control': 'no-store' });
+    res.end(fs.readFileSync(`audio/music/${track[1]}`)); return;
+  }
   if (req.url !== '/' && req.url !== '/index.html') { res.writeHead(404); res.end('Not found'); return; }
   try { build(); } catch (e) { res.writeHead(500, { 'content-type': 'text/plain' }); res.end(String(e)); return; }
   res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
@@ -29,5 +35,5 @@ http.createServer((req, res) => {
   const lan = Object.values(os.networkInterfaces()).flat().filter((a) => a && a.family === 'IPv4' && !a.internal).map((a) => a.address);
   console.log(`\nHighfell preview\n  this computer:  http://localhost:${port}`);
   for (const a of lan) console.log(`  phone (same Wi-Fi):  http://${a}:${port}`);
-  console.log('Edit, then reload the page: it rebuilds when src/ or art/ changed. Ctrl+C to stop.\n');
+  console.log('Edit, then reload the page: it rebuilds when src/, art/ or audio/ changed. Ctrl+C to stop.\n');
 });

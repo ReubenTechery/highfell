@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRng } from '../src/core/rng';
-import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, ITEMS, SETS, checkContent, heroicVersion } from '../src/content';
+import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, ITEMS, KITS, SETS, checkContent, heroicVersion, itemOf } from '../src/content';
 import { TEMPLATE_DUNGEON } from '../src/content/_template';
 import { TEMPLATE_ENGINE } from '../src/content/_template/engine';
 import { BARROW } from '../src/content/barrow';
@@ -475,15 +475,16 @@ test('the log as a wardrobe: each set on a stand with its role’s boss weapon, 
 
 test('the wardrobe: every set piece and boss weapon, plain and gilded, has its piece for the stands', () => {
   const pieces: Record<string, string> = WARDROBE.pieces, boxes: Record<string, number[]> = WARDROBE.boxes;
-  const worn = Object.values(ITEMS).filter((d) => d.setId || d.kind === 'unique');
-  assert.ok(worn.length >= 32, 'the Barrow’s 16 pieces and their gilded twins');
-  for (const d of worn) {
-    const g = pieces[d.id] || '', sil = g.slice(g.indexOf('<g class="sil">'), g.indexOf('<g class="det">'));
-    assert.ok(sil, `${d.id} has a stand piece, with a silhouette for its ghost`);
+  // each piece, and its gilding kit (the same piece, gilded, on the Heroic log's stands)
+  const worn = [...Object.values(ITEMS).filter((d) => d.setId || d.kind === 'unique').map((d) => d.id), ...Object.keys(KITS)];
+  assert.ok(worn.length >= 32, 'the Barrow’s 16 pieces and their kits');
+  for (const id of worn) {
+    const g = pieces[id] || '', sil = g.slice(g.indexOf('<g class="sil">'), g.indexOf('<g class="det">'));
+    assert.ok(sil, `${id} has a stand piece, with a silhouette for its ghost`);
     // a ghost is one line round its silhouette's shapes, so every one of them is filled: no bare lines (beams)
-    assert.ok(!/fill: none/.test(sil), `${d.id}'s silhouette is all shapes`);
-    const b = boxes[d.id.replace(/\.gilded$/, '')];
-    assert.ok(b && b.length === 4 && b[2] > 0 && b[3] > 0, `${d.id} has a box, to be shown on its own`);
+    assert.ok(!/fill: none/.test(sil), `${id}'s silhouette is all shapes`);
+    const b = boxes[itemOf(id)!.id];
+    assert.ok(b && b.length === 4 && b[2] > 0 && b[3] > 0, `${id} has a box, to be shown on its own`);
   }
   for (const c of Object.values(COLLECTIBLES).filter((x) => x.id.startsWith('dye.'))) assert.ok(c.sprite, `${c.id} can stand on the log's shelf`);
 });
@@ -574,8 +575,8 @@ test('collection log: filling the Barrow’s whole log opens Barrow Hall, a titl
   assert.equal(lookOpen(q, 'barrow'), false, 'and the Barrow’s own log is still its own');
 });
 
-test('heroic: opens after ten clears, drops the Barrow’s pieces gilded at the same rates, pays Barrow Marks, keeps its own kill counts', () => {
-  const { p, h } = withHero('tank');
+test('heroic: opens after ten clears of its normal dungeon (its loot is in heroic.test.ts)', () => {
+  const { p } = withHero('tank');
   assert.equal(heroicOpen(p, 'barrow'), false);
   dungeonRecord(p, 'barrow').clears = 9;
   assert.deepEqual(heroicProgress(p, 'barrow'), { have: 9, need: 10 });
@@ -583,22 +584,7 @@ test('heroic: opens after ten clears, drops the Barrow’s pieces gilded at the 
   assert.ok(heroicOpen(p, 'barrow'));
   const H = heroicVersion('barrow')!;
   assert.equal(H.id, 'barrow-heroic');
-  // every line of the Barrow's tables, gilded, at the same rate and for the same role
-  const plain = BARROW.loot.flatMap((t) => t.drops), gold = H.loot.flatMap((t) => t.drops);
-  assert.deepEqual(gold.map((d) => [d.id, d.rate, d.role]), plain.map((d) => [`${d.id}.gilded`, d.rate, d.role]));
-  assert.deepEqual(H.collection, BARROW.collection.map((id) => `${id}.gilded`));
-  // a heroic clear counts its own kills and clears, and pays Barrow Marks
-  const marks0 = p.dungeons.barrow.marks;
-  resolveRun(p, H, clear(h), makeRng(3));
-  assert.equal(p.bosses['barrow-heroic.keeper'].kc, 1);
-  assert.equal(p.bosses['barrow.keeper'], undefined);
-  assert.equal(p.dungeons['barrow-heroic'].clears, 1);
-  assert.ok(p.dungeons.barrow.marks > marks0, 'the clear paid a Barrow Mark');
-  assert.equal(p.dungeons['barrow-heroic'].marks, 0, 'there are no heroic Marks');
-  // a gilded piece wears exactly like the plain one: the same set, the same power
-  for (const id of ['barrowguard.helm.gilded', 'barrowguard.chest']) { p.collection[id] = { n: 1, kc: 1, at: 1 }; assert.ok(equip(p, h, ITEMS[id].slot, id)); }
-  assert.ok(loadoutFor(p, h).bonuses.includes('barrowguard2'), 'gilded and plain count for the same set');
-  assert.equal(compareFor(p, h, 'barrowguard.helm')!.verdict, 'same');
+  assert.equal(H.heroicOf, 'barrow');
 });
 
 test('party: you take your hero’s seat, your Warband heroes take the others on Normal (disabled on Heroic), and bots stand in for empty seats', () => {
@@ -733,6 +719,7 @@ test('art: every icon and sprite the content names exists', async () => {
   const sprites = { ...read('sprites.json'), ...read('hearth.json'), ...read('vale.json') };
   const missing: string[] = [];
   for (const it of Object.values(ITEMS)) if (!tiles[it.icon]) missing.push('icon ' + it.icon + ' for ' + it.id);
+  for (const k of Object.values(KITS)) if (!tiles[k.icon]) missing.push('icon ' + k.icon + ' for ' + k.id);
   for (const c of Object.values(COLLECTIBLES)) {
     if (!tiles[c.icon]) missing.push('icon ' + c.icon + ' for ' + c.id);
     if (c.sprite && !sprites[c.sprite]) missing.push('sprite ' + c.sprite + ' for ' + c.id);

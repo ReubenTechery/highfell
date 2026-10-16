@@ -15,6 +15,7 @@ import { activeHero, roleOf } from '../meta/profile';
 import type { RoleId } from '../content/types';
 import type { RaceId } from '../content/folk';
 import { $, GLYPH } from './dom';
+import { MUSIC } from './music';
 import { SFX } from './sound';
 import { Toasts } from './toasts';
 import { Hearth } from './hearth';
@@ -45,6 +46,9 @@ export class App {
   readonly creator: Creator;
   readonly garden: Garden;
   readonly brew: Brewing;
+  /** the effects and the music, for testing in the page */
+  readonly sfx = SFX;
+  readonly music = MUSIC;
   scene: SceneId = 'hearth';
   touch = false;
   dev: Dev = { valeFree: false, valeLuck: false, allOpen: false };
@@ -86,6 +90,7 @@ export class App {
     const kick = () => SFX.unlock();
     window.addEventListener('pointerdown', kick, { capture: true });
     window.addEventListener('keydown', kick, { capture: true });
+    document.addEventListener('visibilitychange', () => { const c = SFX.ctx; if (c) void (document.hidden ? c.suspend() : c.resume()).catch(() => {}); });
     this.store.onChange((why) => {
       if (why === 'remote') { SFX.on = this.p.settings.sound; this.refresh(); }
       else this.hearth.syncState();
@@ -116,6 +121,8 @@ export class App {
   show(id: SceneId): void {
     this.scene = id;
     for (const s of SCENES) $('sc-' + s).hidden = s !== id;
+    // a run picks its own music; the reveal is quiet so every drop's sound lands
+    if (id !== 'run') { MUSIC.want(id === 'reveal' ? null : 'house'); MUSIC.duck(1); }
     if (id === 'hearth') { this.hearth.render(); }
     if (id === 'run') {
       resizeView();

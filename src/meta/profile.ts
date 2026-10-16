@@ -17,11 +17,12 @@ import type { Rar, RoleId, SlotId } from '../content/types';
 import { ORDER } from '../content/roles';
 import { SLOT_IDS } from '../content/gear';
 import { CLASSES, FOUNDERS, MAX_HEROES, canMake, cleanName, defaultSex, type ClassId, type RaceId, type SexId } from '../content/folk';
+import { DUNGEONS, KITS } from '../content';
 import { BEDS } from '../content/vale';
 import { settleSpots } from './hearth';
 import { opened } from './logs';
 
-export const PROFILE_VERSION = 8;
+export const PROFILE_VERSION = 9;
 /** Shared gear climbs to Rare. Epic is earned on the hero. */
 export const WARBAND_CAP: Rar = 2;
 
@@ -184,6 +185,40 @@ const MIGRATIONS: Record<number, (raw: any) => any> = {
   7: (d) => {
     const v = obj(d.vale);
     return { ...d, vale: { ...v, seeds: { glowcap: 1 }, beds: Array.from({ length: BEDS }, emptyBed) } };
+  },
+  /* v8's Heroic dropped gilded copies of the pieces. From v9 it drops the normal pieces plus gilding kits (a
+     piece's gilded look): a gilded piece you had is the plain piece plus its kit, so both logs keep what you
+     found, and the plain one counts both drops, from the first. A hero who wore it wears the plain one, and
+     its look stays gold unless a hero wore the plain one instead. Heroic kills rolled the normal dungeon's
+     table, so they count on its kill counts too, once. */
+  8: (d) => {
+    const col: Record<string, any> = { ...obj(d.collection) };
+    const roster: Record<string, any>[] = (Array.isArray(d.roster) ? d.roster : []).map((h: unknown) => obj(h));
+    const wore = (id: string): boolean => roster.some((h) => Object.values(obj(h.equip)).includes(id));
+    const off: string[] = Array.isArray(obj(d.settings).looksOff) ? [...obj(d.settings).looksOff] : [];
+    for (const [k, v] of Object.entries(col)) {
+      const kit = KITS[k];
+      if (!kit) continue;
+      const g = obj(v), cur = col[kit.item] ? obj(col[kit.item]) : null;
+      const first = !cur || num(g.at, Infinity) < num(cur.at, Infinity) ? g : cur;
+      col[kit.item] = { n: num(g.n, 1) + (cur ? num(cur.n, 1) : 0), kc: num(first.kc, 0), at: num(first.at, Date.now()) };
+      if (wore(kit.item) && !wore(k) && !off.includes(k)) off.push(k);
+    }
+    const plain = (id: unknown): unknown => (typeof id === 'string' && KITS[id] ? KITS[id].item : id);
+    const bosses: Record<string, any> = { ...obj(d.bosses) };
+    for (const [k, v] of Object.entries(obj(d.bosses))) {
+      const at = k.indexOf('.'), base = DUNGEONS[k.slice(0, at)]?.heroicOf;
+      if (at < 0 || !base) continue;
+      const nk = `${base}.${k.slice(at + 1)}`, n = obj(bosses[nk]);
+      bosses[nk] = { kc: num(n.kc, 0) + num(obj(v).kc, 0), pb: typeof n.pb === 'number' ? n.pb : null, wipes: num(n.wipes, 0) };
+    }
+    return {
+      ...d,
+      collection: col,
+      roster: roster.map((h) => ({ ...h, equip: Object.fromEntries(Object.entries(obj(h.equip)).map(([slot, id]) => [slot, plain(id)])), fresh: Array.isArray(h.fresh) ? h.fresh.map(plain) : [] })),
+      settings: { ...obj(d.settings), looksOff: off },
+      bosses,
+    };
   },
 };
 

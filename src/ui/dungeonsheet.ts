@@ -1,7 +1,7 @@
 /**
  * The Dungeons sheet, opened by the big Dungeons button or the Barrow door. Its head is the dungeon's name,
  * which opens All dungeons (each one's log and Heroic, and what the coming ones will ask). The door with
- * its Normal / Heroic switch (Heroic opens after ten clears and plays harder, for gilded drops), and right
+ * its Normal / Heroic switch (Heroic opens after ten clears and plays harder: the same drops, plus gilding kits), and right
  * under it one small line for that version's collection log: how full it is, with what finishing it gives
  * at the end of the bar (the Barrow's: a new kind of hero, the Risen). The line opens the Loot page: those
  * rewards and what each role can get, yours first (what you have lit up, every drop rate; tap one to hold
@@ -13,6 +13,7 @@
  * play. Then your brew (one button; its page has every bottle and what it does), and the gold button.
  */
 import { COLLECTIBLES, DUNGEONS, TITLES, heroicVersion } from '../content';
+import { KIT_RATE } from '../content/kits';
 import { MAX_HEROES, RACES, type RaceId } from '../content/folk';
 import { LOOKS } from '../content/house';
 import { ORDER, ROLES } from '../content/roles';
@@ -237,7 +238,8 @@ function lootPanel(p: Profile, dg: DungeonInfo, role: RoleId): string {
   rows.sort((a, b) => Number(b.yours) - Number(a.yours));
   rows.push({ label: 'Anyone', role: null, drops: lootFor(dg, role).shared, yours: false });
   return `${logLine(p, dg, false)}
-    ${drops ? `<p class="dgx-ilvl">Drops up to <b>ilvl ${drops}</b>${dg.heroicOf ? `, gilded · made for <b>ilvl ${drops - 2}</b>` : ''}</p>` : ''}
+    ${drops ? `<p class="dgx-ilvl">Drops up to <b>ilvl ${drops}</b>${dg.heroicOf ? ` · made for <b>ilvl ${drops - 2}</b>` : ''}</p>` : ''}
+    ${dg.heroicOf ? `<p class="dgx-ilvl">Everything Normal drops, plus a gilding kit for every piece: any seat, <b>${fmtRate(KIT_RATE)}</b> each. Same power.</p>` : ''}
     ${ach ? rewards(ach, done) : ''}
     <div class="dgx-rows">${rows.map((r) => lootRow(p, r.label, r.role, r.drops, r.yours)).join('')}</div>
     <button type="button" class="btn small dgx-open" data-act="entry" data-id="${dg.id}.${dg.finalBoss}">${GLYPH.book}Open the collection log</button>`;

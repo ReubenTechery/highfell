@@ -3,7 +3,7 @@ import { angDiff, angTo, dist, distXY, norm } from '../core/math';
 import { rng } from '../core/rng';
 import { AB, MEND, abKey } from '../content/roles';
 import { HOOKS, S, emit } from './state.js';
-import { addThreat, aggro, banner, bits, brewFx, dots, fx, fxText, healHero, hitstop, hurtMob, say, sfx, shake, taunt } from './entities.js';
+import { CHILL, SHATTERLANCE_CHILL, STAGGER, addThreat, aggro, banner, bits, brewFx, chillBoss, dots, fx, fxText, healHero, hitstop, hurtMob, say, sfx, shake, shatterable, staggerBoss, stunned, taunt } from './entities.js';
 import { interruptCast, liftCurse } from './mobs.js';
 import { canStand, moveEnt } from './world.js';
 
@@ -199,7 +199,7 @@ function heroAuto(h, dt) {
 }
 /* The Gravedigger: every fifth swing digs in */
 function gravedig(h) {
-  for (const m of foesNear(h.x, h.y, 120, false)) { if (m.cage) continue; hurtMob(m, 30, h, { size: 17 }); if (!m.isBoss) { m.st.stun = Math.max(m.st.stun, 1); m.wind = 0; } }
+  for (const m of foesNear(h.x, h.y, 120, false)) { if (m.cage) continue; hurtMob(m, 30, h, { size: 17 }); if (m.isBoss) staggerBoss(m, STAGGER); else { m.st.stun = Math.max(m.st.stun, 1); m.wind = 0; } }
   fx({ type: 'ring', x: h.x, y: h.y, r0: 20, r1: 130, col: '#C9B79A', dur: 0.3, w: 8, ground: true });
   bits(h.x, h.y, 'shard_dirt', 8, 220); sfx('thud'); shake(3);
 }
@@ -229,15 +229,16 @@ export function projHit(p) {
     if (h.traits.has('splinter')) { const o = S.mobs.find((m) => m !== t && isFoe(m) && engaged(m) && !m.cage && dist(m, t) < 220); if (o) hurtMob(o, 21, h, { col: '#DDF3FF', size: 17 }); }
     bits(t.x, t.y - 40, 'shard_ice', 2, 110);
   } else if (p.kind === 'icicle') {
-    const frozen = t.st && t.st.freeze > 0;
+    const shatters = shatterable(t);
     const helmMul = h.bonuses.has('rb_helm') ? 1.25 : 1;
-    hurtMob(t, 72 * helmMul, h, { shatter: 3, crit: 0.25, col: frozen ? '#8FD6FF' : '#DDF3FF' });
+    hurtMob(t, 72 * helmMul, h, { shatter: 3, crit: 0.25, col: shatters ? '#8FD6FF' : '#DDF3FF' });
     if (h.bonuses.has('rb_helm')) {
       const o = S.mobs.find((m) => m !== t && isFoe(m) && engaged(m) && !m.cage && dist(m, t) < 160);
       if (o) hurtMob(o, 40, h, { col: '#DDF3FF', size: 17, noCrit: true });
     }
-    if (frozen && h.isPlayer) fxText(t.x, t.y - 130, 'Shatter', '#8FD6FF', 22, { dur: 0.9 });
-    bits(t.x, t.y - 40, 'shard_ice', frozen ? 7 : 3, 180);
+    if (shatters && h.isPlayer) fxText(t.x, t.y - (t.isBoss ? 210 : 130), 'Shatter', '#8FD6FF', 22, { dur: 0.9 });
+    if (shatters) sfx('shatter', 0.7);
+    bits(t.x, t.y - 40, 'shard_ice', shatters ? 7 : 3, 180);
   } else if (p.kind === 'smite') {
     const helmMul = h.bonuses.has('cw_helm') ? 1.3 : 1;
     const got = hurtMob(t, 74 * helmMul, h, { col: '#FFE08A', size: 20 });
@@ -358,10 +359,10 @@ function abCleave(h, aim) {
   if (t && dist(h, t) < 220) h.face = angTo(h, t);
   const wide = h.traits.has('wide');
   const hits = foesNear(h.x, h.y, 126, false).filter((m) => !m.cage && Math.abs(angDiff(h.face, angTo(h, m))) < (wide ? 1.42 : 1.25));
-  const crush = hits.length >= 2 || hits.some((m) => m.M.big || (m.st && m.st.stun > 0));
+  const crush = hits.length >= 2 || hits.some((m) => m.M.big || stunned(m));
   const helmMul = h.bonuses.has('bg_helm') ? 1.25 : 1;
   const base = 70 * helmMul, crushDmg = 92 * helmMul;
-  for (const m of hits) hurtMob(m, (crush || m.M.big || (m.st && m.st.stun > 0)) ? crushDmg : base, h, { knock: crush ? 105 : 85, crit: crush ? 0.28 : 0.2 });
+  for (const m of hits) hurtMob(m, (crush || m.M.big || stunned(m)) ? crushDmg : base, h, { knock: crush ? 105 : 85, crit: crush ? 0.28 : 0.2 });
   if (hits.length > 0 && h.bonuses.has('bg_helm')) healHero(h, h, 24, { size: 17 });
   if (crush && h.isPlayer) {
     fxText(h.x + Math.cos(h.face) * 58, h.y + Math.sin(h.face) * 35 - 112, 'Crush!', '#FFE08A', 24, { dur: 0.85 });
@@ -427,7 +428,8 @@ function chargeImpact(h, d) {
     if (ring) hurtMob(m, hitDmg, h, { knock: 60 });
     if (ring || m === d.mob) taunt(m, h, 2.5);
     addThreat(m, h, 260);
-    if (!m.isBoss) { m.st.stun = Math.max(m.st.stun, stunDur); m.wind = 0; if (m.cast) interruptCast(m); }
+    if (m.isBoss) staggerBoss(m, STAGGER);
+    else { m.st.stun = Math.max(m.st.stun, stunDur); m.wind = 0; if (m.cast) interruptCast(m); }
   }
   if (h.bonuses.has('bg_shoulders')) {
     h.absorb = Math.max(h.absorb, Math.round(80 * h.power));
@@ -562,7 +564,7 @@ function abNova(h) {
     aggro(m, h, 0);
     hurtMob(m, 50 * shMul, h, { col: '#DDF3FF' });
     if (!m.alive) continue;
-    if (m.isBoss) { m.st.slow = 0.4; m.st.slowT = 3; }
+    if (m.isBoss) { m.st.slow = 0.4; m.st.slowT = 3; chillBoss(m, CHILL); }
     else if (!m.M.wisp) { m.st.freeze = 3; m.wind = 0; if (m.cast) interruptCast(m); }
   }
   if (h.bonuses.has('rb_shoulders')) h.cd.a3 = Math.max(0, h.cd.a3 - 1.5);
@@ -594,17 +596,18 @@ function finishCast(h) {
   fx({ type: 'comet', x: tx, y: ty, dur: 0.32 });
   sfx('whoosh');
   later(0.32, () => {
-    const frozen = t.alive && t.st.freeze > 0;
-    if (t.alive) hurtMob(t, 315, h, { shatter: h.traits.has('shatterlance') ? 3 : 2, crit: 0.15, col: frozen ? '#8FD6FF' : '#DDF3FF' });
-    if (frozen && h.isPlayer) fxText(tx, ty - 150, 'Shatter!', '#8FD6FF', 32, { dur: 1.2 });
-    if (frozen && h.bonuses.has('rimebone2')) h.cd.a3 = Math.min(h.cd.a3, cd / 2);
+    const shatters = t.alive && shatterable(t);
+    const lance = h.traits.has('shatterlance');
+    if (t.alive) hurtMob(t, 315, h, { shatter: lance ? 3 : 2, chillShatter: lance ? SHATTERLANCE_CHILL : undefined, crit: 0.15, col: shatters ? '#8FD6FF' : '#DDF3FF' });
+    if (shatters && h.isPlayer) fxText(tx, ty - (t.isBoss ? 230 : 150), 'Shatter!', '#8FD6FF', 32, { dur: 1.2 });
+    if (shatters && h.bonuses.has('rimebone2')) h.cd.a3 = Math.min(h.cd.a3, cd / 2);
     const splash = foesNear(tx, ty, 90, false).filter((o) => o !== t && !o.cage);
     for (const o of splash) hurtMob(o, 114, h, { size: 19 });
-    if (h.unique === 'gravefrost') for (const o of [t, ...splash]) { if (!o.alive) continue; if (o.isBoss) { o.st.slow = Math.max(o.st.slow, 0.4); o.st.slowT = 2; } else if (!o.M.wisp) { o.st.freeze = Math.max(o.st.freeze, 2); o.wind = 0; } }
+    if (h.unique === 'gravefrost') for (const o of [t, ...splash]) { if (!o.alive) continue; if (o.isBoss) { o.st.slow = Math.max(o.st.slow, 0.4); o.st.slowT = 2; chillBoss(o, 2); } else if (!o.M.wisp) { o.st.freeze = Math.max(o.st.freeze, 2); o.wind = 0; } }
     fx({ type: 'ring', x: tx, y: ty, r0: 20, r1: 110, col: '#DDF3FF', dur: 0.3, w: 8, ground: true });
     bits(tx, ty - 20, 'shard_ice', 14, 320);
-    shake(frozen ? 7 : 4); sfx('comet');
-    if (frozen && h.isPlayer) hitstop(0.08);
+    shake(shatters ? 7 : 4); sfx('comet'); if (shatters) sfx('shatter');
+    if (shatters && h.isPlayer) hitstop(0.08);
   });
 }
 

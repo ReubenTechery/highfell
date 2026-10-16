@@ -7,11 +7,11 @@
  * two bonuses. Details opens its own sheet (what it replaces, its flavour); a piece you own and haven't put
  * on can go straight to the gear doll.
  */
-import { COLLECTIBLES, DUNGEONS, ITEMS, SETS } from '../content';
+import { COLLECTIBLES, DUNGEONS, ITEMS, KITS, SETS } from '../content';
 import { ROLES } from '../content/roles';
 import type { DungeonInfo, ItemDef } from '../content/types';
 import { FIRST_HARVEST_GIFT, GARDEN_TABLE } from '../content/vale';
-import { bestRegular, compareFor, compareOn, floorWorn, itemShare, wearerOf } from '../meta/gear';
+import { bestRegular, compareFor, compareOn, floorWorn, gildedOn, itemShare, wearerOf } from '../meta/gear';
 import { spotById, spotOf } from '../meta/hearth';
 import { standPieces, standsOf } from '../meta/logs';
 import type { Profile } from '../meta/profile';
@@ -31,9 +31,10 @@ function dropSource(p: Profile, id: string): { dg: DungeonInfo; boss: string; ra
   return null;
 }
 
-/** The card, or nothing for an id that isn't a log slot. `onSet` is the set page it was opened on, if any. */
+/** The card, or nothing for an id that isn't a log slot. `onSet` is the set page it was opened on, if any. A
+ *  gilding kit's card is its piece, gilded, and what the kit does for it. */
 export function peekCard(p: Profile, id: string, onSet?: string): string {
-  const it = ITEMS[id], c = COLLECTIBLES[id];
+  const kit = KITS[id], it = ITEMS[id] || (kit && ITEMS[kit.item]), c = COLLECTIBLES[id];
   if (!it && !c) return '';
   const e = p.collection[id], src = dropSource(p, id), harvest = GARDEN_TABLE.find((d) => d.id === id);
   const bonus = !!src?.dg.bonus?.includes(id), t = slotTag(id);
@@ -44,10 +45,16 @@ export function peekCard(p: Profile, id: string, onSet?: string): string {
     : harvest ? `<b>${fmtRate(harvest.rate)}</b> from any harvest · ${fmtN(p.counters['vale.harvests'] || 0)} so far`
     : esc(c?.source || 'Not yet');
   const art = (it && pieceSvg(id)) || (c?.sprite ? `<img src="${spriteURL(c.sprite)}" alt="">` : `<span class="tile">${iconOf(id)}</span>`);
-  const kind = it ? (it.setId ? `${SLOT_WORD[it.slot]} · ${whoOf(it.role, it.cls)} · ${SETS[it.setId].name} set` : `Boss weapon · ${whoOf(it.role, it.cls)}`)
-    : `${t.word}${bonus ? ' · a bonus slot, never needed' : ''}`;
+  const kind = (kit ? 'Gilding kit · ' : '') + (it ? (it.setId ? `${SLOT_WORD[it.slot]} · ${whoOf(it.role, it.cls)} · ${SETS[it.setId].name} set` : `Boss weapon · ${whoOf(it.role, it.cls)}`)
+    : `${t.word}${bonus ? ' · a bonus slot, never needed' : ''}`);
   let body: string, acts = '';
-  if (it) {
+  if (kit && it) {
+    // a kit isn't gear: what it does for its piece, and whether yours is gilded
+    const own = !!p.collection[it.id], now = !e ? 'Any seat can get it.' : !own ? `You don't have the ${it.name} yet: when it drops, it comes gilded.`
+      : gildedOn(p, it.id) ? `Your ${it.name} is gilded.` : `Your ${it.name} is plain for now: Details switches it.`;
+    body = `<p class="pk-desc">Turns the ${esc(it.name)} gold for every hero who wears it. Never more power.</p><p class="pk-home">${esc(now)}</p>`;
+    if (stand && onSet !== `${src!.dg.id}.set.${stand.set.id}`) acts += `<button type="button" class="btn small" data-act="entry" data-id="${esc(src!.dg.id)}.set.${esc(stand.set.id)}">The set</button>`;
+  } else if (it) {
     const g = gear(p, it, stand ? stand.pieces.filter((x) => p.collection[x]).length : 0);
     body = g.html;
     acts = g.act;
@@ -79,10 +86,9 @@ function gear(p: Profile, d: ItemDef, found: number): { html: string; act: strin
     <div class="pk-ss">${stat(String(share.ilvl), 'Item level', cmp.ilvl[1] - cmp.ilvl[0])}${share.power > 0 ? stat(`+${share.power}%`, cap(word.short), cmp.power, '%') + stat(`+${share.health}%`, 'Health', cmp.health, '%') : ''}</div></div>`;
   const owns = !!(p.collection[d.id] || (d.kind === 'gear' && h && bestRegular(h, d.slot).rar >= d.rar));
   const act = h && owns && cmp.verdict !== 'wearing' ? `<button type="button" class="btn small gold" data-act="gearat" data-hero="${esc(h.id)}" data-slot="${d.slot}">${GLYPH.shield}Put it on</button>` : '';
-  const gilt = d.id.endsWith('.gilded') ? '<p class="pk-gild">Gilded: the same power as its Normal piece, a rarer look.</p>' : '';
   const fx = d.effectDesc ? `<p class="pk-fx"><b>When worn</b> ${esc(d.effectDesc)}</p>` : '';
   const s = d.setId ? SETS[d.setId] : undefined;
   const set = s ? `<div class="lb-bonus pk-set"><p class="pk-set-h"><b>${esc(s.name)} set</b><small>${found} of ${s.pieces.length} found</small></p>
       <p class="${found >= 2 ? 'on' : ''}"><i>2</i><span>${esc(s.bonus2.desc)}</span></p><p class="${found >= 3 ? 'on' : ''}"><i>3</i><span>${esc(s.bonus3.desc)}</span></p></div>` : '';
-  return { html: vs + gilt + fx + set, act };
+  return { html: vs + fx + set, act };
 }
