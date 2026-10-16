@@ -70,7 +70,7 @@ export class Sheets {
   private lookPick: string | null = null;
   /** the collection log: heroic pages or normal ones, and what its page remembers (Try it on, the closer look) */
   private logHeroic = false;
-  private readonly logView: LogView = { tryOn: false, peek: null };
+  private readonly logView: LogView = { tryOn: false, peek: null, flip: false };
   /** a hero's sheet: letting them go takes two taps, and renaming has its own little form */
   private heroSt: HeroSheetState = { delArmed: false, renaming: false, err: '' };
   private heroTimer = 0;

@@ -79,9 +79,10 @@ function gear(p: Profile, d: ItemDef, found: number): { html: string; act: strin
     <div class="pk-ss">${stat(String(share.ilvl), 'Item level', cmp.ilvl[1] - cmp.ilvl[0])}${share.power > 0 ? stat(`+${share.power}%`, cap(word.short), cmp.power, '%') + stat(`+${share.health}%`, 'Health', cmp.health, '%') : ''}</div></div>`;
   const owns = !!(p.collection[d.id] || (d.kind === 'gear' && h && bestRegular(h, d.slot).rar >= d.rar));
   const act = h && owns && cmp.verdict !== 'wearing' ? `<button type="button" class="btn small gold" data-act="gearat" data-hero="${esc(h.id)}" data-slot="${d.slot}">${GLYPH.shield}Put it on</button>` : '';
+  const gilt = d.id.endsWith('.gilded') ? '<p class="pk-gild">Gilded: the same power as its Normal piece, a rarer look.</p>' : '';
   const fx = d.effectDesc ? `<p class="pk-fx"><b>When worn</b> ${esc(d.effectDesc)}</p>` : '';
   const s = d.setId ? SETS[d.setId] : undefined;
   const set = s ? `<div class="lb-bonus pk-set"><p class="pk-set-h"><b>${esc(s.name)} set</b><small>${found} of ${s.pieces.length} found</small></p>
       <p class="${found >= 2 ? 'on' : ''}"><i>2</i><span>${esc(s.bonus2.desc)}</span></p><p class="${found >= 3 ? 'on' : ''}"><i>3</i><span>${esc(s.bonus3.desc)}</span></p></div>` : '';
-  return { html: vs + fx + set, act };
+  return { html: vs + gilt + fx + set, act };
 }

@@ -1059,16 +1059,28 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .lb-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 3px solid var(--ink); border-radius: 999px; background: var(--panel); color: var(--ink); box-shadow: 0 3px 0 var(--ink); font-family: var(--f-display); font-size: 16px; cursor: pointer; }
 .lb-chip[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
 .lb-chip .dot { margin-left: 0; }
-.lb-hero { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; margin-bottom: 6px; padding: 0 10px 0 4px; border: 2.5px solid var(--ink); border-radius: 999px; background: var(--panel); color: var(--ink); box-shadow: 0 2px 0 var(--ink); font-family: var(--f-display); font-size: 14px; cursor: pointer; }
-.lb-hero .gem { display: grid; place-items: center; width: 22px; height: 22px; border: 2px solid var(--ink); border-radius: 7px; background: #3A2C10; }
-.lb-hero .gem i { width: 9px; height: 9px; border: 2px solid var(--ink); background: var(--gold); transform: rotate(45deg); }
-.lb-hero[aria-pressed="true"] { background: var(--gold); }
+/* Normal or Heroic: a toggle across the top of the stage; its thumb sits on your side (gold for Heroic) and slides
+   over when you flip it */
+.lb-mode { position: relative; grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 6px; padding: 4px; border: 3px solid var(--ink); border-radius: 999px; background: rgba(23, 18, 31, 0.75); box-shadow: 0 3px 0 var(--ink); }
+.lb-mode::before { content: ''; position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); box-sizing: border-box; border: 2.5px solid var(--ink); border-radius: 999px; background: var(--panel); box-shadow: 0 2px 0 var(--ink); }
+.lb-mode.on::before { transform: translateX(100%); background: var(--gold); box-shadow: 0 2px 0 var(--ink), 0 0 16px 3px rgba(242, 194, 48, 0.65); }
+.lb-mode button { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; padding: 0 10px; border: 0; border-radius: 999px; background: none; color: #E9DDCB; font-family: var(--f-display); font-size: 18px; cursor: pointer; }
+.lb-mode button[aria-checked="true"] { color: var(--ink); }
+.lb-mode .gem { display: grid; place-items: center; width: 24px; height: 24px; border: 2px solid var(--ink); border-radius: 7px; background: #3A2C10; }
+.lb-mode .gem i { width: 10px; height: 10px; border: 2px solid var(--ink); background: var(--gold); transform: rotate(45deg); }
+.lb-mode-note { grid-column: 1 / -1; margin: 0 0 8px; font-family: var(--f-mono); font-size: 11px; line-height: 1.4; color: #FFE9A8; text-align: center; }
+@media (prefers-reduced-motion: no-preference) {
+  .lb-mode.flip::before { animation: knobon 0.34s cubic-bezier(0.3, 1.35, 0.5, 1); }
+  .lb-mode.flip:not(.on)::before { animation-name: knoboff; }
+}
+@keyframes knobon { from { transform: translateX(0); background: var(--panel); } }
+@keyframes knoboff { from { transform: translateX(100%); background: var(--gold); } }
 /* the prize stage: the log's big prize on a plinth, the count, the notched bar, what it gives, your kill counts */
 .lb-prize { position: relative; overflow: hidden; display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 4px 12px; padding: 14px 14px 12px; border: 3px solid var(--ink); border-radius: 18px; background: radial-gradient(circle at 16% 56%, rgba(155, 225, 93, 0.3) 0, rgba(155, 225, 93, 0) 40%), #3A3150; color: var(--panel); box-shadow: 0 4px 0 var(--ink); }
 .lb-prize.done { background: repeating-conic-gradient(from 0deg at 16% 60%, rgba(242, 194, 48, 0.16) 0 10deg, transparent 10deg 20deg), radial-gradient(circle at 16% 56%, rgba(242, 194, 48, 0.45) 0, rgba(242, 194, 48, 0) 44%), #4A3A20; }
 .lb.gilt .lb-prize { background: radial-gradient(circle at 16% 56%, rgba(242, 194, 48, 0.34) 0, rgba(242, 194, 48, 0) 40%), #3A2C10; }
 .lb.gilt .lb-prize.done { background: repeating-conic-gradient(from 0deg at 16% 60%, rgba(242, 194, 48, 0.2) 0 10deg, transparent 10deg 20deg), radial-gradient(circle at 16% 56%, rgba(242, 194, 48, 0.5) 0, rgba(242, 194, 48, 0) 44%), #3A2C10; }
-.lb-plinth { grid-row: 1 / span 3; position: relative; display: grid; place-items: end center; height: 178px; }
+.lb-plinth { grid-row: span 3; position: relative; display: grid; place-items: end center; height: 178px; }
 .lb-plinth img { position: relative; z-index: 1; width: auto; height: 150px; margin-bottom: 18px; filter: saturate(0.55) brightness(0.82); }
 .lb-prize.done .lb-plinth img { filter: none; }
 .lb-base { position: absolute; left: 6px; right: 6px; bottom: 0; height: 26px; border: 3px solid var(--ink); border-radius: 8px; background: #6E6382; box-shadow: inset 0 -6px 0 #5C5070; }
@@ -1144,6 +1156,10 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .stand .go * { fill: none !important; stroke: rgba(255, 248, 236, 0.74) !important; stroke-width: 6 !important; stroke-dasharray: 9 7; stroke-linecap: round; }
 .stand .gf { opacity: 0.1; }
 .stand .gf * { fill: #FFF8EC !important; stroke: none !important; }
+/* on a heroic log the outlines are gold, and the gilded tiles keep their gold */
+.lb.gilt .stand .go * { stroke: rgba(255, 214, 102, 0.85) !important; }
+.lb.gilt .stand .gf * { fill: #F2C230 !important; }
+.lb.gilt .lb-pip.miss .tile svg, .lb.gilt .lb-pc.miss .lb-pc-t .tile svg { filter: grayscale(0.3); opacity: 0.7; }
 @media (prefers-reduced-motion: no-preference) {
   .stand .drop { animation: standdrop 1s cubic-bezier(0.2, 1.4, 0.4, 1) 0.35s both; }
   .lb-rib.new { animation: bob 1.6s ease-in-out infinite; }
@@ -1241,6 +1257,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .pk-s > b { font-family: var(--f-display); font-weight: 400; font-size: 23px; line-height: 1; }
 .pk-s small { font-family: var(--f-mono); font-size: 11px; color: var(--dim); }
 .pk-s .cmp-d { margin-top: 2px; font-size: 12px; padding: 1px 7px; }
+.pk-gild { margin: -2px 0 0; font-family: var(--f-mono); font-size: 12px; line-height: 1.4; color: #8A5A10; }
 .pk-fx { margin: 0; font-size: 15px; line-height: 1.4; color: var(--soft); }
 .pk-fx b { margin-right: 4px; font-family: var(--f-display); font-weight: 400; font-size: 16px; color: var(--ink); }
 .pk-set { gap: 6px; padding: 9px 11px; }

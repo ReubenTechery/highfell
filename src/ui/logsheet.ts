@@ -49,7 +49,13 @@ export function logActions(h: LogHost): Record<string, (el: HTMLElement) => void
   const reset = (): void => { h.view.tryOn = false; h.view.peek = null; };
   return {
     tab: (el) => { reset(); SFX.play('ui'); h.open({ kind: 'logs', tab: el.dataset.tab as LogTab }); },
-    entry: (el) => { reset(); SFX.play('ui'); h.open({ kind: 'logs', tab: 'collection', ...(el.dataset.id ? { entry: el.dataset.id } : {}) }); },
+    entry: (el) => {
+      reset();
+      h.view.flip = !!el.dataset.flip;
+      SFX.play('ui');
+      h.open({ kind: 'logs', tab: 'collection', ...(el.dataset.id ? { entry: el.dataset.id } : {}) });
+      h.view.flip = false;
+    },
     tryon: () => { h.view.tryOn = !h.view.tryOn; SFX.play('ui'); h.refresh(); },
     peek: (el) => { h.view.peek = el.dataset.id || null; SFX.play('ui'); h.refresh(); h.root.querySelector<HTMLElement>('.pk-x')?.focus({ preventScroll: true }); },
     peekclose: () => {

@@ -20,8 +20,9 @@ import { iconOf, nameOf, rarLook, spriteURL, standSvg, tile } from './art';
 import { mainReward } from './dungeonsheet';
 import { SWATCH } from './lookssheet';
 
-/** what the page remembers while it's open: Try it on, on a set's page, and the slot it's taking a closer look at */
-export interface LogView { tryOn: boolean; peek: string | null }
+/** what the page remembers while it's open: Try it on, on a set's page, the slot it's taking a closer look at,
+ *  and whether this draw is the one just after the Normal or Heroic toggle flipped (its thumb slides over) */
+export interface LogView { tryOn: boolean; peek: string | null; flip: boolean }
 
 /** who stands on a log's plinth: the Barrow's Risen, gilded for its heroic log */
 export const PRIZE_ART: Record<string, string> = { 'barrow.log': 'risen_tank_f', 'barrow-heroic.log': 'risen_tank_gilded_f' };
@@ -38,7 +39,7 @@ export function collectionLog(p: Profile, entry: string | undefined, heroicWas: 
   const pg = pageOf(p, entry, heroicWas);
   const heroic = pg.kind === 'dungeon' || pg.kind === 'set' ? !!pg.dg.heroicOf : heroicWas;
   const body = pg.kind === 'set' ? setPage(p, pg.dg, pg.stand, view)
-    : chips(p, pg, heroic) + (pg.kind === 'dungeon' ? prize(p, pg.dg) + wardrobe(p, pg.dg, view.peek) + shelf(p, pg.dg) : pg.kind === 'garden' ? gardenPage(p) : otherPage(p));
+    : chips(p, pg, heroic) + (pg.kind === 'dungeon' ? prize(p, pg.dg, view.flip) + wardrobe(p, pg.dg, view.peek) + shelf(p, pg.dg) : pg.kind === 'garden' ? gardenPage(p) : otherPage(p));
   const gilt = (pg.kind === 'dungeon' || pg.kind === 'set') && heroic;
   return { html: `<div class="lb${gilt ? ' gilt' : ''}">${body}</div>`, heroic };
 }
@@ -70,8 +71,9 @@ function chips(p: Profile, pg: Page, heroic: boolean): string {
   return `<nav class="lb-chips" aria-label="Logs">${dgs.join('')}${chip('garden.harvests', 'Garden', pg.kind === 'garden', fresh(GARDEN_TABLE.map((d) => d.id)))}${chip('other.rewards', 'Other', pg.kind === 'other', false)}</nav>`;
 }
 
-/** the log's big prize on its plinth, how many slots you have, what finishing gives, and your kill counts */
-function prize(p: Profile, dg: DungeonInfo): string {
+/** the log's big prize on its plinth, how many slots you have, what finishing gives, and your kill counts, under
+ *  the toggle between the dungeon's log and its heroic one */
+function prize(p: Profile, dg: DungeonInfo, flipped: boolean): string {
   const ach = logAchievement(dg.id), pr = logProgress(p, dg.id), won = !!ach && !!p.achievements[ach.id];
   const main = ach ? mainReward(ach) : null, art = ach ? PRIZE_ART[ach.id] : undefined;
   const left = pr.need - pr.have;
@@ -82,13 +84,17 @@ function prize(p: Profile, dg: DungeonInfo): string {
   const kcs = dg.bosses.map((b) => `<span class="lb-kc">${esc(b.name)} <b>KC ${fmtN(p.bosses[`${dg.id}.${b.id}`]?.kc || 0)}</b></span>`).join('')
     + (p.dungeons[dg.id]?.pb ? `<span class="lb-kc">Best <b>${fmtT(p.dungeons[dg.id].pb)}</b></span>` : '');
   const race = ach?.reward.race, look = ach?.reward.look;
-  // the switch between the dungeon's log and its heroic one
-  const other = dg.heroicOf ? DUNGEONS[dg.heroicOf] : heroicVersion(dg.id);
-  const flip = other ? `<button type="button" class="lb-hero" data-act="entry" data-id="${esc(other.id)}.log" aria-pressed="${!!dg.heroicOf}"><span class="gem" aria-hidden="true"><i></i></span>Heroic</button>` : '';
+  // Normal or Heroic: a toggle across the top of the stage, its thumb on the side you're on. Heroic's pieces are the
+  // same ones gilded, at the same power, and the page says so: it's a rarer look and a log of its own, not an upgrade
+  const base = dg.heroicOf ? DUNGEONS[dg.heroicOf] : dg, hero = heroicVersion(base.id), on = !!dg.heroicOf;
+  const side = (d: DungeonInfo, label: string, mine: boolean): string =>
+    `<button type="button" role="radio" aria-checked="${mine}" data-act="entry" data-id="${esc(d.id)}.log"${mine ? '' : ' data-flip="1"'}>${label}</button>`;
+  const mode = hero ? `<div class="lb-mode${on ? ' on' : ''}${flipped ? ' flip' : ''}" role="radiogroup" aria-label="Normal or Heroic log">${side(base, 'Normal', !on)}${side(hero, '<span class="gem" aria-hidden="true"><i></i></span>Heroic', on)}</div>
+    ${on ? '<p class="lb-mode-note">Gilded pieces: the same power as Normal, a rarer look, and a log of their own.</p>' : ''}` : '';
   const acts = won ? `<div class="lb-acts">${race && main ? `<button type="button" class="btn gold small" data-act="makerace" data-race="${esc(race)}">${GLYPH.plus}Make a ${esc(main.name.replace(/^The /, ''))}</button>` : ''}${look ? '<button type="button" class="btn small" data-act="putlook">Put up the look</button>' : ''}</div>` : '';
-  return `<section class="lb-prize${won ? ' done' : ''}" aria-label="${esc(dg.name)} log">
+  return `<section class="lb-prize${won ? ' done' : ''}" aria-label="${esc(dg.name)} log">${mode}
     <div class="lb-plinth">${art ? `<img src="${spriteURL(art)}" alt="${esc(main?.name || '')}">` : ''}<span class="lb-base" aria-hidden="true"></span>${won ? '' : `<span class="lb-lock">${GLYPH.lock}${left} to go</span>`}</div>
-    <div class="lb-top">${flip}<p class="eyebrow">${esc(dg.name)} log</p><p class="lb-count">${pr.have}<span> / ${pr.need}</span></p></div>
+    <div class="lb-top"><p class="eyebrow">${esc(dg.name)} log</p><p class="lb-count">${pr.have}<span> / ${pr.need}</span></p></div>
     <div class="lb-bar" role="progressbar" aria-label="Slots filled" aria-valuenow="${pr.have}" aria-valuemax="${pr.need}" style="--n: ${Math.max(1, pr.need)}"><i style="width: ${((pr.have / Math.max(1, pr.need)) * 100).toFixed(1)}%"></i></div>
     <p class="lb-line">${line}</p>
     ${ach ? `<div class="lb-rw">${prizeRewards(ach)}</div>` : ''}<div class="lb-kcs">${kcs}</div>${acts}</section>`;
