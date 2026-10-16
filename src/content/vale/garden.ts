@@ -36,19 +36,21 @@ export const GARDEN_TITLES: TitleDef[] = [
   { id: 'title.rootwhisper', text: 'Root-Whisperer' },
 ];
 
-const D = 'garden';
+/** where the garden's achievements are earned, for the achievements page and the titles list */
+export const GARDEN_PLACE = { id: 'garden', name: 'The garden' } as const;
+const D = GARDEN_PLACE.id;
 export const GARDEN_ACHIEVEMENTS: AchievementDef[] = [
-  { id: 'vale.first', dungeon: D, tier: 'bronze', points: 10, name: 'Green Fingers', how: 'Harvest a garden bed.',
+  { id: 'vale.first', dungeon: D, tier: 'bronze', points: 10, name: 'Green Fingers', how: 'Harvest one of your garden beds.',
     reward: { text: 'A satchel that smells of moonpetal' }, counter: { key: 'vale.harvests', target: 1 } },
   { id: 'vale.steady', dungeon: D, tier: 'silver', points: 25, name: 'Steady Hands', how: 'Get 50 Perfects while harvesting.',
     reward: { title: 'title.steady', text: 'Title: Steady-Handed' }, counter: { key: 'vale.perfects', target: 50 } },
-  { id: 'vale.brewer', dungeon: D, tier: 'silver', points: 25, name: 'Something Brewing', how: 'Brew 10 times.',
+  { id: 'vale.brewer', dungeon: D, tier: 'silver', points: 25, name: 'Something Brewing', how: 'Brew at the cauldron 10 times.',
     reward: { title: 'title.brewer', text: 'Title: the Brewer' }, counter: { key: 'vale.brews', target: 10 } },
   // Dottle's errands went with riding out: kept for whoever earned it, hidden from everyone else
   { id: 'vale.errands', dungeon: D, tier: 'silver', points: 25, name: 'Odd Jobs', how: 'Did 10 errands for Dottle, back when you rode out to Bramblewick.', retired: true,
     reward: { title: 'title.friend_bw', text: 'Title: Friend of Bramblewick' }, counter: { key: 'vale.errands', target: 10 } },
   { id: 'vale.rank', dungeon: D, tier: 'gold', points: 50, name: 'Green-Thumbed', how: 'Reach Gathering rank 10.',
     reward: { title: 'title.greenthumb', text: 'Title: the Green-Thumbed' }, counter: { key: 'vale.rank.gather', target: 10 } },
-  { id: 'vale.scream', dungeon: D, tier: 'hidden', points: 15, name: 'It Screamed', how: 'Pull up a Rootling.',
+  { id: 'vale.scream', dungeon: D, tier: 'hidden', points: 15, name: 'It Screamed', how: 'Pull up a Rootling pet while harvesting.',
     reward: { title: 'title.rootwhisper', text: 'Title: Root-Whisperer' }, collect: 'pet.rootling' },
 ];

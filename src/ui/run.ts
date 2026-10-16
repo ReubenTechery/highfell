@@ -484,7 +484,7 @@ export class RunScene implements InputUI {
   }
   private unlockedNow(id: string): void {
     this.unlocked.push(id);
-    this.app.toasts.achievement(id);
+    this.app.toasts.achievement(this.app.p, id);
     this.app.store.save();
   }
   /** the chest opened */

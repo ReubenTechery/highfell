@@ -16,7 +16,7 @@ import { THIMBLEBRIAR_ITEMS, THIMBLEBRIAR_SETS } from './thimblebriar/items';
 import { THIMBLEBRIAR_COLLECTIBLES, THIMBLEBRIAR_TITLES } from './thimblebriar/collectibles';
 import { THIMBLEBRIAR_ACHIEVEMENTS } from './thimblebriar/achievements';
 import { THIMBLEBRIAR_HEROIC, THIMBLEBRIAR_HEROIC_ACHIEVEMENTS, THIMBLEBRIAR_HEROIC_COLLECTIBLES, THIMBLEBRIAR_HEROIC_TITLES, THIMBLEBRIAR_KITS } from './thimblebriar/heroic';
-import { GARDEN_ACHIEVEMENTS, GARDEN_COLLECTIBLES, GARDEN_TITLES } from './vale/garden';
+import { GARDEN_ACHIEVEMENTS, GARDEN_COLLECTIBLES, GARDEN_PLACE, GARDEN_TITLES } from './vale/garden';
 import { FIRST_HARVEST_GIFT, GARDEN_TABLE, INGREDIENTS, PLANTS, RECIPES } from './vale';
 import { LOOKS } from './house';
 import { RACES } from './folk';
@@ -46,6 +46,14 @@ export const ACHIEVEMENT_LIST: AchievementDef[] = [...BARROW_ACHIEVEMENTS, ...HE
 export const ACHIEVEMENTS: Record<string, AchievementDef> = byId(ACHIEVEMENT_LIST);
 /** The heroic version of a dungeon, if it has one. */
 export const heroicVersion = (id: string): DungeonInfo | undefined => Object.values(DUNGEONS).find((d) => d.heroicOf === id);
+/** Where an achievement is earned, in words: its dungeon's name, or the garden. */
+export const placeName = (id: string): string | undefined => DUNGEONS[id]?.name || (id === GARDEN_PLACE.id ? GARDEN_PLACE.name : undefined);
+/** The achievement a title comes from: every title has exactly one (checkContent), which says how to earn it. */
+export const titleSource = (id: string): AchievementDef | undefined => ACHIEVEMENT_LIST.find((a) => a.reward.title === id);
+/** The achievement that gives a pet, a trophy, a banner or a look, if one does (the rest are drops). */
+export const rewardSource = (id: string): AchievementDef | undefined => ACHIEVEMENT_LIST.find((a) => a.reward.collectible === id);
+/** the longest an achievement's how may be: one sentence that fits a toast */
+export const HOW_MAX = 140;
 
 /** What a drop id points at. */
 export type Thing = { kind: 'item'; def: ItemDef } | { kind: 'collectible'; def: CollectibleDef } | { kind: 'kit'; def: KitDef };
@@ -89,6 +97,15 @@ export function checkContent(): string[] {
     if (a.log && !DUNGEONS[a.log]) bad.push(`${a.id} log ${a.log}`);
     if (a.reward.look && !LOOKS.some((l) => l.id === a.reward.look)) bad.push(`${a.id} look ${a.reward.look}`);
     if (a.reward.race && !(a.reward.race in RACES)) bad.push(`${a.id} race ${a.reward.race}`);
+    // what to do, plainly: one sentence of its own, short enough for a toast
+    const how = a.how.trim();
+    if (!how || how === a.name || !/[.!?]$/.test(how) || /[.!?]\s/.test(how) || how.length > HOW_MAX || /stroke/i.test(how)) bad.push(`${a.id} how is not one plain sentence`);
+    if (!placeName(a.dungeon)) bad.push(`${a.id} place ${a.dungeon}`);
+  }
+  // every title comes from one achievement, so it can always say where it came from and how to earn it
+  for (const t of Object.values(TITLES)) {
+    const from = ACHIEVEMENT_LIST.filter((a) => a.reward.title === t.id).length;
+    if (from !== 1) bad.push(`title ${t.id} comes from ${from} achievements`);
   }
   return bad;
 }

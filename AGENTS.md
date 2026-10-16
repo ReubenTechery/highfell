@@ -127,7 +127,7 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   `houseart.ts`, every room in each look, the Toadstool Workshop's in `houseworkshop.ts`, your hero's name tag `nametag.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
   close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons
   (`dungeonsheet.ts`, its door's picture in `stage.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
-  (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`), settings (`settingssheet.ts`), a hero's gear in the armoury
+  (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`, an achievement's row and card in `achcard.ts`), settings (`settingssheet.ts`), a hero's gear in the armoury
   (`armoury.ts`; the card for the piece you pick in `armourycard.ts`), the satchel and the spot picker. Toasts, sound (`sound.ts`: the embedded effects, each with its synthesised fallback) and music
   (`music.ts`: the streamed loops and the victory sting). `styles.css` is inlined by the build.
 - `audio/`: the sounds, made by `tools/audio.py` from `tools/audio_list.py`: `sfx/*.mp3` and `sfx.json` (the
@@ -140,7 +140,8 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
 - `tests/`: `balance.test.ts` (bot clears must stay in their bands), `dungeon.test.ts` (threat, cages,
   curses, numbers, tuning, where each hero's weapon and head are), `coach.test.ts` (which button the coach
   names), `combos.test.ts` (the combos on bosses), `input.test.ts` (the touch controls and party-frame swipes,
-  driven without a browser), `meta.test.ts`, `vale.test.ts`.
+  driven without a browser), `meta.test.ts`, `achievements.test.ts` (each says what to do, what it gives and
+  where it went; every title's source; the kill count it came at), `vale.test.ts`.
 
 ## Commands
 
@@ -193,6 +194,9 @@ Settings has testing switches (walkout and log-complete previews of the dungeon 
   `placeSprite`, `tile`, the sheet pattern, toasts, `SFX`).
 - **Visible text is plain and short,** and never uses the word "stroke" (the build warns). The game's name
   isn't final: it lives in one constant, `GAME_NAME` in `src/content/index.ts`.
+- **Achievements and titles say why.** Every achievement's `how` is one plain, exact sentence, shown wherever
+  it shows (toast, chest, page, titles list), and every title comes from exactly one achievement.
+  `checkContent()` checks both.
 - **Done means:** `npm run all` passes, you looked at the change on a phone-sized screenshot (390×844) and a
   desktop one (1440×900) and fixed what looked wrong, and the docs that describe it are updated
   (`docs/design.md` for how a system works, this file for decisions and rules for agents).

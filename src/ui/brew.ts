@@ -4,10 +4,9 @@
  * stir fills one more bottle. Once the stir starts the ingredients are in: leaving still bottles it.
  * Brews are small fun twists for one dungeon run each, never power a raid needs.
  */
-import { ACHIEVEMENTS } from '../content';
 import { INGREDIENTS, RECIPES, RECIPE_ORDER, SKILLS } from '../content/vale';
 import type { RecipeDef } from '../content/types';
-import { Achiever } from '../meta/achievements';
+import { homeAchiever } from '../meta/achievements';
 import { activeHero, roleOf } from '../meta/profile';
 import { canBrew, finishBrew, ingredientName, lapXp, rankProgress, recipeUnlocked, skillRank, startBrew, type BrewDone, type BrewQuality, type BrewRun, type XpGain } from '../meta/vale';
 import type { App } from './app';
@@ -15,6 +14,7 @@ import { actions, esc, fmtN, GLYPH, reducedMotion, wait } from './dom';
 import { placeSprite, tile } from './art';
 import { SFX } from './sound';
 import { XpBar } from './xpbar';
+import { achChips } from './achcard';
 
 const K = '#1E1A1A';
 const ink = (fill: string, w = 4) => `fill: ${fill}; stroke: ${K}; stroke-width: ${w}; stroke-linejoin: round; stroke-linecap: round`;
@@ -44,6 +44,7 @@ export class Brewing {
       done: () => { SFX.play('ui'); this.result = null; this.render(); },
       drink: () => { const r = this.result; if (!r) return; this.app.p.vale.drink = r.done.recipe; SFX.play('clink'); this.app.save(); },
       garden: () => { SFX.play('ui'); app.showHearth('yard'); },
+      ach: (el) => { SFX.play('ui'); app.openAchievement(el.dataset.id || ''); },
     });
   }
 
@@ -116,7 +117,7 @@ export class Brewing {
     // left mid-stir: it still bottles, just not well
     const done = finishBrew(p, run, q || 'rough');
     const h = activeHero(p);
-    const ach = new Achiever(p, { dungeon: 'bramblewick', role: h ? roleOf(h) : 'tank', practice: false, testGear: false });
+    const ach = homeAchiever(p, h ? roleOf(h) : 'tank');
     const unlocked = ach.check();
     if (!p.vale.drink || !(p.vale.shelf[p.vale.drink] > 0)) p.vale.drink = r.id;
     app.store.save();
@@ -124,7 +125,7 @@ export class Brewing {
     this.result = { done, unlocked };
     this.render();
     if (done.rankUp || ranked) this.rankToast(done.rankUp?.rank || ranked);
-    for (const id of unlocked) app.toasts.achievement(id);
+    for (const id of unlocked) app.toasts.achievement(p, id);
   }
   /** a new Brewing rank: the toast says what it unlocked */
   private rankToast(rank: number): void {
@@ -143,7 +144,7 @@ export class Brewing {
       <div class="vc-gain"><span class="tile" aria-hidden="true">${tile(r.icon)}</span><div><b>+${res.done.bottles} ${esc(r.name)}</b><span>${esc(qWord[res.done.quality])}</span></div></div>
       <p class="vc-say">${esc(r.desc)} One bottle is one dungeon run.</p>
       <div class="vc-xp"><span class="tile" aria-hidden="true">${tile('s_brew')}</span><div><span>Brewing <b>${pr.rank}</b>${pr.need ? ` · ${fmtN(pr.into)}/${fmtN(pr.need)}` : ' · max'}</span><div class="bar"><i style="width: ${(pr.k * 100).toFixed(1)}%"></i></div></div><b class="plus">+${res.done.xp}</b></div>
-      ${res.unlocked.length ? `<div class="vc-ach">${res.unlocked.map((id) => `<span class="chip">Achievement <b>${esc(ACHIEVEMENTS[id]?.name || id)}</b></span>`).join('')}</div>` : ''}
+      ${achChips(p, res.unlocked)}
       <div class="vc-act">
         ${drinking ? `<span class="chip">Taking it on your next run</span>` : `<button type="button" class="btn" data-act="drink">Take it on my next run</button>`}
         ${more ? `<button type="button" class="btn" data-act="again">Brew again</button>` : ''}

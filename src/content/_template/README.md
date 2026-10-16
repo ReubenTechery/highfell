@@ -24,6 +24,10 @@ not in the game. Its names, numbers and art are stand-ins.
 7. **The art is the main cost.** Every dungeon needs its 3-piece sets, its boss weapons and the armour stands
    that show them in the collection log (`tools/art_wardrobe.py`). Then the two bosses, the one or two new
    enemies, the props and the theme. Spend the art there; reuse the rest.
+8. **Every achievement says why.** Its `how` is one plain, exact sentence (the toast, the chest, the
+   achievements page and the titles list all show it): name the dungeon, the move by its name in the game, and
+   the seat when only one seat can do it ("As the healer, ..."); a count that adds up over runs just says the
+   number. Every title comes from exactly one achievement. `checkContent()` checks both.
 
 ## What's in here
 

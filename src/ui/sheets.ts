@@ -5,7 +5,7 @@
  * profile every time, so whatever changed is always shown. This file opens and closes them and wires up
  * their buttons; most of them draw in a file of their own.
  */
-import { COLLECTIBLES, DUNGEONS, ITEMS, thing } from '../content';
+import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, thing } from '../content';
 import { SLOT_IDS } from '../content/gear';
 import type { SlotId } from '../content/types';
 import { INGREDIENTS, INGREDIENT_ORDER, LORE, PLANTS, RECIPES, RECIPE_ORDER, SEED_ICON, SEED_ORDER, SKILLS } from '../content/vale';
@@ -65,7 +65,7 @@ export class Sheets {
   private lookPick: string | null = null;
   /** the collection log: heroic pages or normal ones, and what its page remembers (Try it on, the closer look) */
   private logHeroic = false;
-  private readonly logView: LogView = { tryOn: false, peek: null, flip: false };
+  private readonly logView: LogView = { tryOn: false, peek: null, flip: false, ach: null };
   /** a hero's sheet: letting them go takes two taps, and renaming has its own little form */
   private heroSt: HeroSheetState = { delArmed: false, renaming: false, err: '' };
   private heroTimer = 0;
@@ -148,7 +148,7 @@ export class Sheets {
       // on the door, the arrow keys step between dungeons like the arrows on the picture
       if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && this.spec.kind === 'dungeon' && this.pick.page === 'door') { dungeonStep(this.pick, e.key === 'ArrowLeft' ? -1 : 1); SFX.play('ui'); this.refresh(); return; }
       if (e.key !== 'Escape') return;
-      if (this.logView.peek) root.querySelector<HTMLElement>('.pk-x')?.click();
+      if (this.logView.peek || this.logView.ach) root.querySelector<HTMLElement>('.pk-x')?.click();
       else if (this.spec.kind === 'dungeon' && dungeonBack(this.pick)) { this.refresh(); const b = root.querySelector('.sheet-body'); if (b) b.scrollTop = 0; }
       else this.close();
     });
@@ -165,6 +165,8 @@ export class Sheets {
     if (spec.kind === 'dungeon' && !inDungeon(this.spec)) { this.pick.page = 'door'; if (!DUNGEONS[this.pick.dungeon || '']) this.pick.dungeon = 'barrow'; }
     if (spec.kind === 'hero' && !(this.spec && this.spec.kind === 'hero' && this.spec.hero === spec.hero)) { clearTimeout(this.heroTimer); this.heroSt = { delArmed: false, renaming: false, err: '' }; }
     if (spec.kind !== 'logs' && spec.kind !== 'item') this.logView.peek = null;
+    // an achievement asked for by its id opens its card, over its place's page; anything else closes it
+    this.logView.ach = spec.kind === 'logs' && spec.tab === 'achievements' && spec.entry && ACHIEVEMENTS[spec.entry] ? spec.entry : null;
     const looked = leftSlot(this.app.p, this.spec, spec);
     this.spec = spec;
     this.render(!was);
@@ -173,7 +175,7 @@ export class Sheets {
   close(): void {
     if (!this.spec) return;
     const looked = leftSlot(this.app.p, this.spec, null);
-    this.spec = null; this.logView.tryOn = false; this.logView.peek = null;
+    this.spec = null; this.logView.tryOn = false; this.logView.peek = null; this.logView.ach = null;
     this.root.innerHTML = '';
     this.app.hearth.closed();
     if (looked) this.app.save();

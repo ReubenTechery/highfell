@@ -58,7 +58,7 @@ export class App {
 
   constructor(readonly root: HTMLElement) {
     root.innerHTML = SHELL;
-    this.toasts = new Toasts($('toasts'));
+    this.toasts = new Toasts($('toasts'), (id) => this.openAchievement(id));
     this.hearth = new Hearth(this, $('sc-hearth'));
     this.sheets = new Sheets(this, $('sheets'));
     this.run = new RunScene(this, $('sc-run'));
@@ -199,6 +199,8 @@ export class App {
     this.run.stop();
     this.showHearth();
   }
+  /** An achievement's card, over whatever is showing: its toast, the chest, the garden or the cauldron opens it. */
+  openAchievement(id: string): void { this.sheets.open({ kind: 'logs', tab: 'achievements', entry: id }); }
 }
 
 const SHELL = `

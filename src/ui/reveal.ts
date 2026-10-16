@@ -5,7 +5,7 @@
  * gave stays on the page with a way to it. A new piece for the log gets a moment of its own: its stand
  * comes up and the piece drops on. Then the numbers: kill counts, time, the log's strip, the garden.
  */
-import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, ITEMS, KITS, TITLES, heroicVersion } from '../content';
+import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, ITEMS, KITS, heroicVersion } from '../content';
 import { TELL_SPRITES } from '../dungeon/walkout.js';
 import { KIT_RATE, gilded } from '../content/kits';
 import type { RaceId } from '../content/folk';
@@ -17,6 +17,7 @@ import { takeTrait, trialStarter, type Drop, type RunLoot, type Tell } from '../
 import { activeHero, heroById, roleOf, type Hero, type Profile } from '../meta/profile';
 import { readyBeds, seedTotal } from '../meta/vale';
 import { logAchievement, logProgress, standPieces, standsOf } from '../meta/logs';
+import { wearTitle } from '../meta/achievements';
 import { PLANTS } from '../content/vale';
 import { itemShare, waiting, worn } from '../meta/gear';
 import type { App } from './app';
@@ -26,6 +27,7 @@ import { ROLE_STAT } from './itemsheet';
 import { mainReward, rewards } from './dungeonsheet';
 import { PRIZE_ART, dropOf, slotTag } from './logbook';
 import { SFX } from './sound';
+import { achRow } from './achcard';
 import type { RunOpts } from './run';
 
 export interface RevealExtra { unlocked: string[]; hero: string | null; role: RoleId; deaths: number; again: RunOpts | null; preview?: boolean; intro?: boolean }
@@ -57,6 +59,13 @@ export class Reveal {
       makerace: (el) => { SFX.play('ui'); this.goHome(); this.app.showCreate(undefined, el.dataset.race as RaceId); },
       putlook: () => { SFX.play('ui'); this.goHome(); this.app.sheets.open({ kind: 'looks' }); },
       tolog: (el) => { SFX.play('ui'); this.goHome(); this.app.sheets.open({ kind: 'logs', tab: 'collection', entry: el.dataset.id }); },
+      // an achievement's card opens over the chest; a title goes on the hero you play, right here
+      ach: (el) => { SFX.play('ui'); this.app.openAchievement(el.dataset.id || ''); },
+      wear: (el) => {
+        const h = activeHero(this.app.p);
+        if (this.extra?.preview || !h || !wearTitle(this.app.p, h, el.dataset.id || null)) { SFX.play('nope'); return; }
+        SFX.play('equip'); this.app.store.save(); this.renderAch();
+      },
     });
   }
 
@@ -345,11 +354,7 @@ export class Reveal {
       el.innerHTML = logs.map((a) => `<h3>${esc(a.name)}</h3>${rewards(a, true)}
         <div class="actions">${a.reward.race ? `<button type="button" class="btn gold" data-act="makerace" data-race="${esc(a.reward.race)}">Make a hero</button>` : ''}${a.reward.look ? '<button type="button" class="btn" data-act="putlook">Put up the look</button>' : ''}</div>`).join('');
     }
-    if (extra.unlocked.length) {
-      const ach = $('rv-ach', this.root);
-      ach.hidden = false;
-      ach.innerHTML = `<h3>Achievements</h3>${extra.unlocked.map((id) => { const a = ACHIEVEMENTS[id]; return `<div class="ach"><span class="medal ${a.tier}" aria-hidden="true">${a.points}</span><div><div class="n">${esc(a.name)}</div><div class="rw">${esc(a.reward.title ? 'Title: ' + (TITLES[a.reward.title]?.text || '') : a.reward.text)}</div></div><div class="pts">${a.points}<small>points</small></div></div>`; }).join('')}`;
-    }
+    this.renderAch();
     // new gear waits for you: the Gear button says how much
     const up = h && !extra.preview ? waiting(p, h).length : 0;
     const gb = this.root.querySelector<HTMLElement>('#rv-actions [data-act="gear"]');
@@ -365,6 +370,14 @@ export class Reveal {
     const done = !!stand && standPieces(stand).every((id) => id === last!.id || !!this.app.p.collection[id]);
     const news = fresh.length ? `+${fresh.length} new: <b>${fresh.map((d) => esc(nameOf(d.id))).join(', ')}</b>${done ? ' · set done' : ''}` : '';
     return `<button type="button" class="rv-logstrip" data-act="tolog" data-id="${esc(stand ? `${dungeon}.set.${stand.set.id}` : `${dungeon}.log`)}" aria-label="Open the collection log">${this.stripHtml(dungeon, start, end, need, news)}</button>`;
+  }
+  /** every achievement this run earned: what you did, what you got and where it went, Wear it for a title, and
+   *  a tap for its card. The preview's are shown as earned, though nothing is added. */
+  private renderAch(): void {
+    const ids = (this.extra?.unlocked || []).filter((id) => ACHIEVEMENTS[id]), el = $('rv-ach', this.root);
+    if (!ids.length || !el) return;
+    el.hidden = false;
+    el.innerHTML = `<h3>Achievements<small>${ids.length} this run · tap one for more</small></h3><div class="ac-list">${ids.map((id) => achRow(this.app.p, ACHIEVEMENTS[id], true)).join('')}</div>`;
   }
   private renderOffer(): void {
     const offer = this.loot?.drops.find((d) => d.offerTrait);

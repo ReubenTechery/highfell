@@ -129,9 +129,11 @@ export type Tier = 'bronze' | 'silver' | 'gold' | 'meta' | 'hidden' | 'log';
 export interface RewardDef { title?: string; collectible?: string; look?: string; race?: string; text: string }
 export interface AchievementDef {
   id: string;
+  /** where it's earned: a dungeon id (its Heroic counts too), or 'garden' */
   dungeon: string;
   tier: Tier;
   name: string;
+  /** what to do, in one plain, exact sentence: the page, the toast and the titles list all show it */
   how: string;
   points: number;
   reward: RewardDef;
@@ -142,6 +144,8 @@ export interface AchievementDef {
   live?: (e: GameEvent, ctx: { role: RoleId; practice: boolean; testGear: boolean }) => boolean;
   /** checked when a run is cleared */
   run?: (r: RunSummary) => boolean;
+  /** a clear faster than this many seconds earns it (the page shows your best clear against it) */
+  clearUnder?: number;
   /** other achievements it needs */
   needs?: string[];
   /** completes when this collectible is obtained */

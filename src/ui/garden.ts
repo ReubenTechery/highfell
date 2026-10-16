@@ -4,9 +4,9 @@
  * then a card with what it gave. The card and the close-up sit in a layer over the house. The rules
  * (planting, growing, what a harvest rolls) live in meta/vale.ts.
  */
-import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS } from '../content';
+import { COLLECTIBLES, DUNGEONS } from '../content';
 import { GROW_CLEARS, INGREDIENTS, PLANTS, SEED_ICON, SEED_ORDER, SKILLS } from '../content/vale';
-import { Achiever } from '../meta/achievements';
+import { homeAchiever, type Achiever } from '../meta/achievements';
 import { activeHero, roleOf, type Profile } from '../meta/profile';
 import { bedPhase, beginHarvest, clearsLeft, cutXp, endHarvest, plant, rankProgress, type Harvest, type HarvestEnd, type ValeDrop } from '../meta/vale';
 import type { App } from './app';
@@ -14,6 +14,7 @@ import { actions, esc, fmtN, fmtRate, GLYPH } from './dom';
 import { iconOf, nameOf, spriteURL, tile } from './art';
 import { SFX } from './sound';
 import { playToy, type ToyResult } from './toys';
+import { achChips } from './achcard';
 
 /** How a bed is drawn in the yard: the bed sprite, what grows on top, and the word under it. */
 export interface BedLook { sprite: string; plant: string | null; label: string; ready: boolean }
@@ -49,6 +50,7 @@ export class Garden {
       gplant: (el) => this.sow(Number(el.dataset.bed), el.dataset.seed || ''),
       gharvest: (el) => { void this.harvest(Number(el.dataset.bed)); },
       moment: () => this.momentDone?.(),
+      ach: (el) => { SFX.play('ui'); app.openAchievement(el.dataset.id || ''); },
     });
     root.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.card && !this.busy) { e.preventDefault(); this.close(); } });
   }
@@ -103,11 +105,11 @@ export class Garden {
     this.render();
     const rank = end.rankUp?.rank || ranked;
     if (rank) app.toasts.rank(SKILLS.gather.name, rank, 's_gather', [4, 7, 10].includes(rank) ? 'Every harvest gives one more' : '');
-    for (const id of unlocked) app.toasts.achievement(id);
+    for (const id of unlocked) app.toasts.achievement(p, id);
   }
   private achiever(): Achiever {
     const p = this.app.p, h = activeHero(p);
-    return new Achiever(p, { dungeon: 'garden', role: h ? roleOf(h) : 'tank', practice: false, testGear: false });
+    return homeAchiever(p, h ? roleOf(h) : 'tank');
   }
 
   /* ---------------------------------------------------------------- the card */
@@ -152,7 +154,7 @@ export class Garden {
       ${gift}
       ${dropsHtml(c.h.drops, `harvest ${fmtN(c.h.kc)}`)}
       ${xpRow(SKILLS.gather.name, 's_gather', pr, c.end.xp)}
-      ${achHtml(c.unlocked)}
+      ${achChips(p, c.unlocked)}
       <div class="vc-act">${again ? `<button type="button" class="btn gold" data-act="gplant" data-bed="${c.h.bed}" data-seed="${seed}">Plant another<small>${p.vale.seeds[seed]} left</small></button>` : ''}<button type="button" class="btn ${again ? '' : 'gold'}" data-act="gclose">Done</button></div>`;
   }
 
@@ -194,6 +196,4 @@ function dropsHtml(drops: ValeDrop[], kc: string): string {
 function xpRow(name: string, icon: string, pr: { rank: number; into: number; need: number; k: number }, xp: number): string {
   return `<div class="vc-xp"><span class="tile" aria-hidden="true">${tile(icon)}</span><div><span>${esc(name)} <b>${pr.rank}</b>${pr.need ? ` · ${fmtN(pr.into)}/${fmtN(pr.need)}` : ' · max'}</span><div class="bar"><i style="width: ${(pr.k * 100).toFixed(1)}%"></i></div></div><b class="plus">+${xp}</b></div>`;
 }
-function achHtml(ids: string[]): string {
-  return ids.length ? `<div class="vc-ach">${ids.map((id) => `<span class="chip">Achievement <b>${esc(ACHIEVEMENTS[id]?.name || id)}</b></span>`).join('')}</div>` : '';
-}
+

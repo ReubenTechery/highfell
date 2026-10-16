@@ -490,18 +490,73 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .lk-room.all { background: var(--gold); padding-left: 10px; }
 .lk-room:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
 .lk-room:disabled { opacity: 0.45; cursor: default; transform: none; box-shadow: 0 3px 0 var(--ink); }
-.ach { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px; border: 3px solid var(--ink); border-radius: 14px; background: var(--panel); }
+/* an achievement (achcard.ts): its medal, name and how, your progress, what it gives and where it went, and when
+   you earned it. The whole row opens its card (ac-hit, under the text); a Wear it sits over that */
+.ach { position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px; border: 3px solid var(--ink); border-radius: 14px; background: var(--panel); color: var(--ink); }
 .ach.locked { background: var(--panel-2); }
-.ach.locked .medal { filter: grayscale(1) opacity(0.5); }
+.ach.locked > .medal { filter: grayscale(1) opacity(0.5); }
 .ach .n { font-family: var(--f-display); font-size: 17px; line-height: 1.15; }
-.ach .h { font-size: 14px; line-height: 1.35; color: var(--soft); }
-.ach .rw { font-family: var(--f-mono); font-size: 11px; color: #5E3FA3; }
+.ach .h { margin: 2px 0 0; font-size: 14px; line-height: 1.35; color: var(--soft); }
 .ach .pts { font-family: var(--f-display); font-size: 18px; text-align: right; }
 .ach .pts small { display: block; font-family: var(--f-mono); font-size: 10px; color: var(--dim); }
-.ach .bar { grid-column: 2 / -1; height: 10px; }
+.ac-hit { position: absolute; inset: 0; margin: 0; padding: 0; border: 0; border-radius: 11px; background: transparent; cursor: pointer; }
+.ac-hit:active { background: rgba(30, 26, 26, 0.05); }
+.ach > .medal, .ac-tx, .ach .pts, .ac-more { position: relative; pointer-events: none; }
+.ac-more .btn { pointer-events: auto; }
+.ac-tx { min-width: 0; }
+.ac-more { grid-column: 2 / -1; min-width: 0; display: grid; gap: 7px; }
+.ac-more:empty { display: none; }
+.ac-pr { display: flex; align-items: center; gap: 8px; margin: 0; font-family: var(--f-mono); font-size: 12px; color: var(--soft); }
+.ac-pr .bar { flex: 1; height: 10px; }
+.ac-pr b { font-weight: 500; color: var(--ink); white-space: nowrap; }
+.ac-pr:not(.ac-best) > span:last-child:not(.bar) { margin-left: -4px; color: var(--dim); white-space: nowrap; }
+.ac-best { display: block; line-height: 1.5; }
+.ac-rws { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ac-rw { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.ac-pic .tile { width: 36px; height: 36px; box-sizing: border-box; border-width: 2px; border-radius: 9px; box-shadow: none; }
+.ac-pic .lk-sw svg { display: block; width: 100%; height: 100%; }
+.ac-ttl { display: grid; place-items: center; background: var(--purple); color: #FFFFFF; }
+.ac-ttl svg { width: 20px; height: 20px; }
+.ac-what { min-width: 0; }
+.ac-what b { display: block; font-family: var(--f-display); font-weight: 400; font-size: 15px; line-height: 1.15; }
+.ac-what small { display: block; font-family: var(--f-mono); font-size: 11px; line-height: 1.35; color: var(--dim); }
+.ac-rw .btn.small, .tl-row .btn.small { min-height: 34px; padding: 0 12px; font-size: 14px; }
+.ac-on { display: inline-flex; align-items: center; gap: 3px; font-family: var(--f-display); font-style: normal; font-size: 14px; color: #2E6B2A; white-space: nowrap; }
+.ac-on svg { width: 16px; height: 16px; }
+.ac-when { display: flex; align-items: center; gap: 4px; margin: 0; font-family: var(--f-mono); font-size: 12px; font-weight: 500; color: #2E6B2A; }
+.ac-when svg { width: 15px; height: 15px; flex: none; }
+.ac-when.no { color: var(--soft); font-weight: 400; }
+.ac-titles { cursor: pointer; box-shadow: 0 2px 0 var(--ink); }
+.ac-titles span { color: #5E3FA3; }
+.ac-places small { margin-left: 6px; font-family: var(--f-mono); font-size: 11px; opacity: 0.75; }
+.ac-where { margin: -6px 0 0; }
+.ac-list { display: grid; gap: 8px; }
+.ac-chip { cursor: pointer; flex-wrap: wrap; row-gap: 0; white-space: normal; text-align: left; box-shadow: 0 2px 0 var(--ink); }
+.ac-chip span { flex-basis: 100%; font-size: 11px; color: #5E3FA3; }
+.ac-from { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.ac-from > span { display: grid; gap: 2px; }
+.ac-from b { font-family: var(--f-display); font-weight: 400; font-size: 16px; }
+/* the card, over the Logs sheet (the collection log's closer look, ringed in its tier's colour) */
+.ac-card .ac-top { display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 12px; align-items: center; }
+.ac-card .ac-top > .medal { width: 68px; height: 68px; box-sizing: border-box; border-width: 4px; font-size: 26px; box-shadow: 0 0 0 4px var(--rc), 0 4px 0 4px var(--ink); }
+.ac-sec { display: grid; gap: 8px; padding-top: 10px; border-top: 2px dashed var(--panel-3); }
+.ac-sec h4 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 17px; }
+.ac-how { margin: 0; font-size: 16px; line-height: 1.4; }
+.ac-pts { display: flex; align-items: center; gap: 8px; margin: 0; font-family: var(--f-mono); font-size: 12px; color: var(--dim); }
+.ac-pts .medal { width: 28px; height: 28px; box-sizing: border-box; border-width: 2px; font-size: 12px; }
 .medal { width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--ink); display: grid; place-items: center; font-family: var(--f-display); font-size: 16px; color: var(--ink); }
 .medal.log { background: #E7B53C; box-shadow: inset 0 0 0 3px #FFF3C4; } .medal.bronze { background: #D08A4E; } .medal.silver { background: #C9D2DC; } .medal.gold { background: var(--gold); } .medal.meta { background: var(--moon); } .medal.hidden { background: #5C5070; color: #FFF8EC; }
-.titles { display: flex; flex-wrap: wrap; gap: 6px; }
+/* every title (the armoury's Looks): yours to wear with a tap, the rest with how to earn them */
+.tl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.tl-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border: 2px solid var(--ink); border-radius: 12px; background: var(--panel); color: var(--ink); }
+.tl-row:not(.have) { background: transparent; border-style: dashed; }
+.tl-row.on { box-shadow: 0 0 0 3px var(--gold); }
+.tl-tx { min-width: 0; display: grid; gap: 4px; }
+.tl-tx > b { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; font-family: var(--f-display); font-weight: 400; font-size: 17px; line-height: 1.15; }
+.tl-tx small { font-size: 13px; line-height: 1.35; color: var(--soft); }
+.tl-tx small i { display: block; margin-top: 2px; font-style: normal; font-family: var(--f-mono); font-size: 11px; color: var(--dim); }
+.tl-row.have .tl-tx small { font-family: var(--f-mono); font-size: 11px; color: var(--dim); }
+.tl-h { margin: 4px 0 0; font-family: var(--f-display); font-weight: 400; font-size: 17px; }
 
 /* picker for hearth spots */
 .picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
@@ -515,10 +570,18 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .toasts { position: absolute; top: calc(var(--pad-t) + 64px); left: 50%; transform: translateX(-50%); z-index: 40; display: grid; gap: 8px; width: min(420px, calc(100% - 24px)); pointer-events: none; }
 .toast { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; align-items: center; padding: 8px 12px 8px 8px; background: var(--panel); color: var(--ink); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 4px 0 var(--ink); }
 .toast .tile, .toast .medal { width: 44px; height: 44px; box-shadow: none; }
-.toast div > b { display: block; font-family: var(--f-display); font-weight: 400; font-size: 17px; line-height: 1.1; }
-.toast div > span { display: block; font-family: var(--f-mono); font-size: 11px; color: var(--dim); }
+.toast .tt { display: block; min-width: 0; text-align: left; }
+.toast .tt > b { display: block; font-family: var(--f-display); font-weight: 400; font-size: 17px; line-height: 1.1; }
+.toast .tt > span { display: block; font-family: var(--f-mono); font-size: 11px; color: var(--dim); }
 .toast .medal { font-size: 15px; }
-.toast small { font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #B0412F; }
+.toast small { display: block; font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #B0412F; }
+.toast small i { font-style: normal; color: var(--dim); }
+/* an achievement: what you did, then what you got; a tap opens its card (but never mid-fight) */
+.toast.tap { width: 100%; font: inherit; cursor: pointer; pointer-events: auto; }
+.toast .tt > .t-line { margin-top: 2px; font-family: var(--f-body); font-size: 13px; line-height: 1.3; color: var(--soft); }
+.toast .t-line em { font-style: normal; font-family: var(--f-mono); font-size: 11px; font-weight: 500; color: #5E3FA3; white-space: nowrap; }
+.in-run .toast.tap { pointer-events: none; }
+.in-run .toast .t-tap { display: none; }
 @media (prefers-reduced-motion: no-preference) { .toast { animation: toastin 0.35s cubic-bezier(.2, 1.4, .4, 1); } .toast.out { animation: toastout 0.3s ease-in forwards; } }
 @keyframes toastin { from { transform: translateY(-20px) scale(0.9); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes toastout { to { transform: translateY(-14px); opacity: 0; } }
@@ -821,6 +884,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 @keyframes stamp { from { transform: rotate(12deg) scale(2.4); opacity: 0; } to { transform: rotate(12deg) scale(1); opacity: 1; } }
 .rv-panel { width: 100%; max-width: 760px; box-sizing: border-box; background: var(--panel); color: var(--ink); border: 3px solid var(--ink); border-radius: 20px; box-shadow: 0 5px 0 var(--ink); padding: 14px 16px; display: grid; gap: 10px; }
 .rv-panel h3 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 20px; }
+.rv-panel h3 small { margin-left: 8px; font-family: var(--f-mono); font-size: 12px; color: var(--dim); }
 .rv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
 .kv { border: 2px solid var(--ink); border-radius: 12px; background: var(--panel-2); padding: 8px 10px; display: grid; gap: 2px; }
 .kv span { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.06em; color: var(--dim); text-transform: uppercase; }
