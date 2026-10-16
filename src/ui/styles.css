@@ -880,6 +880,37 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 @keyframes bigin { from { transform: scale(2.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
 @keyframes hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+/* a moment worth showing off, in the chest: what it was and the Share button (a big moment has the button too) */
+.rv-brag { grid-template-columns: minmax(0, 1fr) auto; align-items: center; box-shadow: 0 0 0 4px var(--gold), 0 5px 0 var(--ink); }
+.rb-tx { display: grid; gap: 2px; min-width: 0; }
+.rb-tx small { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8A5A10; }
+.rb-tx b { font-family: var(--f-display); font-weight: 400; font-size: 22px; line-height: 1.1; }
+.rb-tx span { font-family: var(--f-mono); font-size: 12px; color: var(--dim); }
+.big-moment .bm-share { position: relative; margin-top: 4px; }
+.ach .ach-share { width: 40px; height: 40px; box-shadow: 0 2px 0 var(--ink); }
+.ach .ach-share svg { width: 20px; height: 20px; }
+.ach.can-share { grid-template-columns: 40px minmax(0, 1fr) auto auto; }
+.chip.ach-chip { cursor: pointer; }
+.ach-chip svg { width: 15px; height: 15px; }
+
+/* ---- Share: the moment as a picture, shown big, with the share sheet or a way to keep it ---- */
+.share { position: absolute; inset: 0; z-index: 36; display: flex; justify-content: center; overflow-y: auto; padding: calc(var(--pad-t) + 12px) 16px calc(var(--pad-b) + 16px); box-sizing: border-box; background: rgba(12, 8, 18, 0.92); }
+.sh-in { display: grid; justify-items: center; gap: 12px; width: min(520px, 100%); margin: auto 0; }
+.sh-top { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+.sh-top .eyebrow { color: #FFE08A; font-size: 13px; }
+.sh-pic { position: relative; display: grid; place-items: center; width: min(100%, calc((100vh - 220px) * 0.8)); width: min(100%, calc((100dvh - var(--pad-t) - var(--pad-b) - 220px) * 0.8)); aspect-ratio: 1080 / 1350; border: 3px solid var(--ink); border-radius: 16px; background: #241C33; box-shadow: 0 0 0 3px var(--gold), 0 6px 0 var(--ink), 0 18px 50px rgba(0, 0, 0, 0.6); }
+.sh-pic img { display: block; width: 100%; height: 100%; border-radius: 13px; -webkit-touch-callout: default; user-select: auto; -webkit-user-select: auto; }
+.sh-wait { display: grid; justify-items: center; gap: 12px; padding: 16px; font-family: var(--f-display); font-size: 20px; color: var(--panel); text-align: center; }
+.sh-step { position: absolute; top: 50%; z-index: 1; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; translate: 0 -50%; border: 3px solid var(--ink); border-radius: 50%; background: var(--panel); color: var(--ink); box-shadow: 0 3px 0 var(--ink); cursor: pointer; }
+.sh-step.l { left: -12px; } .sh-step.r { right: -12px; }
+.sh-step svg { width: 22px; height: 22px; }
+.sh-dots { display: flex; gap: 8px; }
+.sh-dots i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--ink); background: rgba(255, 248, 236, 0.3); }
+.sh-dots i.on { background: var(--gold); }
+.sh-hint { margin: 0; font-family: var(--f-mono); font-size: 13px; color: #E9DDCB; text-align: center; }
+.sh-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+@media (prefers-reduced-motion: no-preference) { .sh-wait { animation: shwait 1.4s ease-in-out infinite; } }
+@keyframes shwait { 50% { opacity: 0.55; } }
 
 /* ---- role dots: tank blue, healer green, damage red ---- */
 .rdot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--ink); vertical-align: -1px; margin-right: 5px; background: #8E8A84; flex: none; }

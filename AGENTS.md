@@ -122,14 +122,16 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   and `emit`.
 - `src/meta`: TypeScript rules for everything that lasts: the profile and its migrations (heroes live here),
   loot (and when heroic opens), gear, achievements, what the collection log gives (`logs.ts`), the hearth,
-  the party's seats (`party.ts`), and `vale.ts` (seeds, planter beds, harvests, ranks, brewing).
+  the party's seats (`party.ts`), `vale.ts` (seeds, planter beds, harvests, ranks, brewing), and `brag.ts` (what a run
+  had to show off, for the Share card).
 - `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, its drawing
   `houseart.ts`, every room in each look, the Toadstool Workshop's in `houseworkshop.ts`, your hero's name tag `nametag.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
   close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons
   (`dungeonsheet.ts`, its door's picture in `stage.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
   (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`), settings (`settingssheet.ts`), a hero's gear in the armoury
   (`armoury.ts`; the card for the piece you pick in `armourycard.ts`), the satchel and the spot picker. Toasts, sound (`sound.ts`: the embedded effects, each with its synthesised fallback) and music
-  (`music.ts`: the streamed loops and the victory sting). `styles.css` is inlined by the build.
+  (`music.ts`: the streamed loops and the victory sting). The Share card (`sharecard.ts`: a moment drawn on a canvas)
+  and its screen (`share.ts`: the share sheet, or the picture to save). `styles.css` is inlined by the build.
 - `audio/`: the sounds, made by `tools/audio.py` from `tools/audio_list.py`: `sfx/*.mp3` and `sfx.json` (the
   build embeds it), `music/*.mp3` and `music.json` (streamed from the live page's own files, never embedded).
 - `src/sim` and `scripts/sim.mjs`: headless bot runs of the real engine (the balance numbers).
@@ -140,7 +142,7 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
 - `tests/`: `balance.test.ts` (bot clears must stay in their bands), `dungeon.test.ts` (threat, cages,
   curses, numbers, tuning, where each hero's weapon and head are), `coach.test.ts` (which button the coach
   names), `combos.test.ts` (the combos on bosses), `input.test.ts` (the touch controls and party-frame swipes,
-  driven without a browser), `meta.test.ts`, `vale.test.ts`.
+  driven without a browser), `brag.test.ts` (what a run had to show off), `meta.test.ts`, `vale.test.ts`.
 
 ## Commands
 
@@ -171,7 +173,7 @@ python3 tools/audio.py make crit            # the take picked in tools/audio_lis
 
 In the page, `window.highfell` is the running app: `highfell.startRun({ start, testRar, role?, heroic?, dungeon? })`,
 `highfell.run.autoplay(seconds)`, `highfell.reveal.preview('normal' | 'unique' | 'pet' | 'log', dungeon?)`, `highfell.garden.open(bed)`,
-`highfell.showBrew()`, `highfell.showHearth('bunks')` (any room's id), `highfell.music.now()` (what's playing),
+`highfell.showBrew()`, `highfell.showHearth('bunks')` (any room's id), `highfell.share.card(brag)` (a Share card's PNG), `highfell.music.now()` (what's playing),
 `highfell.sfx.clips` (the decoded effects), and `highfell.p` is the live save (change it, then `highfell.save()`). A fresh browser opens on the hero maker: click `#cr-go` to make the rolled hero, then `#intro-skip` to skip the Crypt Trial.
 Settings has testing switches (walkout and log-complete previews of the dungeon picked on the Dungeons sheet, instant garden growth, lucky ×50,
 "Everything open": the log rewards and Heroic before they're earned, and buttons to replay the Crypt Trial and Hearth tour).
@@ -192,7 +194,7 @@ Settings has testing switches (walkout and log-complete previews of the dungeon 
 - **Read before you write.** Find the existing helper before making a new one (art helpers, `actions()`,
   `placeSprite`, `tile`, the sheet pattern, toasts, `SFX`).
 - **Visible text is plain and short,** and never uses the word "stroke" (the build warns). The game's name
-  isn't final: it lives in one constant, `GAME_NAME` in `src/content/index.ts`.
+  isn't final: it lives in one constant, `GAME_NAME` in `src/content/index.ts`, with `PLAY_URL`, the link on Share cards.
 - **Done means:** `npm run all` passes, you looked at the change on a phone-sized screenshot (390×844) and a
   desktop one (1440×900) and fixed what looked wrong, and the docs that describe it are updated
   (`docs/design.md` for how a system works, this file for decisions and rules for agents).

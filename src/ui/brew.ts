@@ -8,6 +8,7 @@ import { ACHIEVEMENTS } from '../content';
 import { INGREDIENTS, RECIPES, RECIPE_ORDER, SKILLS } from '../content/vale';
 import type { RecipeDef } from '../content/types';
 import { Achiever } from '../meta/achievements';
+import { achBrag } from '../meta/brag';
 import { activeHero, roleOf } from '../meta/profile';
 import { canBrew, finishBrew, ingredientName, lapXp, rankProgress, recipeUnlocked, skillRank, startBrew, type BrewDone, type BrewQuality, type BrewRun, type XpGain } from '../meta/vale';
 import type { App } from './app';
@@ -44,6 +45,7 @@ export class Brewing {
       done: () => { SFX.play('ui'); this.result = null; this.render(); },
       drink: () => { const r = this.result; if (!r) return; this.app.p.vale.drink = r.done.recipe; SFX.play('clink'); this.app.save(); },
       garden: () => { SFX.play('ui'); app.showHearth('yard'); },
+      achshare: (el) => app.share.open([achBrag(el.dataset.id || '')]),
     });
   }
 
@@ -143,7 +145,7 @@ export class Brewing {
       <div class="vc-gain"><span class="tile" aria-hidden="true">${tile(r.icon)}</span><div><b>+${res.done.bottles} ${esc(r.name)}</b><span>${esc(qWord[res.done.quality])}</span></div></div>
       <p class="vc-say">${esc(r.desc)} One bottle is one dungeon run.</p>
       <div class="vc-xp"><span class="tile" aria-hidden="true">${tile('s_brew')}</span><div><span>Brewing <b>${pr.rank}</b>${pr.need ? ` · ${fmtN(pr.into)}/${fmtN(pr.need)}` : ' · max'}</span><div class="bar"><i style="width: ${(pr.k * 100).toFixed(1)}%"></i></div></div><b class="plus">+${res.done.xp}</b></div>
-      ${res.unlocked.length ? `<div class="vc-ach">${res.unlocked.map((id) => `<span class="chip">Achievement <b>${esc(ACHIEVEMENTS[id]?.name || id)}</b></span>`).join('')}</div>` : ''}
+      ${res.unlocked.length ? `<div class="vc-ach">${res.unlocked.map((id) => `<button type="button" class="chip ach-chip" data-act="achshare" data-id="${esc(id)}">Achievement <b>${esc(ACHIEVEMENTS[id]?.name || id)}</b>${GLYPH.share}</button>`).join('')}</div>` : ''}
       <div class="vc-act">
         ${drinking ? `<span class="chip">Taking it on your next run</span>` : `<button type="button" class="btn" data-act="drink">Take it on my next run</button>`}
         ${more ? `<button type="button" class="btn" data-act="again">Brew again</button>` : ''}

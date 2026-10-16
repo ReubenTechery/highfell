@@ -7,6 +7,7 @@
 import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS } from '../content';
 import { GROW_CLEARS, INGREDIENTS, PLANTS, SEED_ICON, SEED_ORDER, SKILLS } from '../content/vale';
 import { Achiever } from '../meta/achievements';
+import { achBrag } from '../meta/brag';
 import { activeHero, roleOf, type Profile } from '../meta/profile';
 import { bedPhase, beginHarvest, clearsLeft, cutXp, endHarvest, plant, rankProgress, type Harvest, type HarvestEnd, type ValeDrop } from '../meta/vale';
 import type { App } from './app';
@@ -49,6 +50,7 @@ export class Garden {
       gplant: (el) => this.sow(Number(el.dataset.bed), el.dataset.seed || ''),
       gharvest: (el) => { void this.harvest(Number(el.dataset.bed)); },
       moment: () => this.momentDone?.(),
+      achshare: (el) => this.app.share.open([achBrag(el.dataset.id || '')]),
     });
     root.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.card && !this.busy) { e.preventDefault(); this.close(); } });
   }
@@ -195,5 +197,5 @@ function xpRow(name: string, icon: string, pr: { rank: number; into: number; nee
   return `<div class="vc-xp"><span class="tile" aria-hidden="true">${tile(icon)}</span><div><span>${esc(name)} <b>${pr.rank}</b>${pr.need ? ` · ${fmtN(pr.into)}/${fmtN(pr.need)}` : ' · max'}</span><div class="bar"><i style="width: ${(pr.k * 100).toFixed(1)}%"></i></div></div><b class="plus">+${xp}</b></div>`;
 }
 function achHtml(ids: string[]): string {
-  return ids.length ? `<div class="vc-ach">${ids.map((id) => `<span class="chip">Achievement <b>${esc(ACHIEVEMENTS[id]?.name || id)}</b></span>`).join('')}</div>` : '';
+  return ids.length ? `<div class="vc-ach">${ids.map((id) => `<button type="button" class="chip ach-chip" data-act="achshare" data-id="${esc(id)}">Achievement <b>${esc(ACHIEVEMENTS[id]?.name || id)}</b>${GLYPH.share}</button>`).join('')}</div>` : '';
 }
