@@ -415,3 +415,14 @@ test('dungeon template: starter _template dungeon builds map, packs, seal, theme
   assert.ok(s.heroes.every((h: any) => h.alive), 'template dungeon ticks cleanly with bots');
 });
 
+test('Sir Rattlebones: the lash from his last guard dying can finish him, and the run goes on', () => {
+  const { s, tank } = game('tank', 'knight');
+  const knight = s.mobs.find((m: any) => m.type === 'knight');
+  s.boss = knight; knight.state = 'fight'; knight.phase = 2; knight.hp = 5;
+  const guard = spawnMob('rattler', knight.x + 60, knight.y, null, true) as any;
+  guard.rally = true;
+  hurtMob(guard, 1e6, tank, { quiet: true, noCrit: true });
+  assert.equal(knight.alive, false);
+  assert.equal(s.boss, null);
+  step(1);
+});
