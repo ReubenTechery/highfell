@@ -332,7 +332,12 @@ export function dungeonActions(d: DungeonHost): Record<string, (el: HTMLElement)
       const h = heroById(d.app.p, el.dataset.id || null); if (!h) return;
       setActive(d.app.p, h.id); d.pick.page = 'door'; SFX.play('place'); d.app.save();
     },
-    newseat: (el) => { const r = el.dataset.role as RoleId; seenTip(d, 'warband'); SFX.play('ui'); d.close(); d.app.showCreate(r); },
+    newseat: (el) => {
+      const r = el.dataset.role as RoleId;
+      // the Warband tip stays up until the last bot seat gets a hero (or you tap Later)
+      if (seats(d.app.p, false).filter((s) => !s.hero).length <= 1) seenTip(d, 'warband');
+      SFX.play('ui'); d.close(); d.app.showCreate(r);
+    },
     go: () => goIn(d, false),
     goanyway: () => goIn(d, true),
     warnback: () => { d.pick.warn = false; SFX.play('ui'); d.refresh(); },
@@ -460,13 +465,15 @@ function door(p: Profile, base: DungeonInfo, heroic: boolean, diff: string, warb
 /** The first time at the door: who comes with you. Your other heroes take the other seats in their own gear,
  *  and a bot stands in for a role you have no hero for yet (its button makes one, and comes back here). */
 function warbandTip(p: Profile): string {
-  const bot = seats(p, false).find((s) => !s.hero), room = p.roster.length < MAX_HEROES;
-  const make = bot && room ? `<button type="button" class="btn small" data-act="newseat" data-role="${bot.role}">${GLYPH.plus}Make a ${esc(word(bot.role))}</button>` : '';
+  // a gold button for each seat a bot is filling (as many as there are free beds); making them is the point
+  const free = MAX_HEROES - p.roster.length;
+  const bots = seats(p, false).filter((s) => !s.hero).slice(0, Math.max(0, free));
+  const make = bots.map((b) => `<button type="button" class="btn small gold" data-act="newseat" data-role="${b.role}">${GLYPH.plus}Make a ${esc(word(b.role))}</button>`).join('');
+  const any = seats(p, false).some((s) => !s.hero);
   return `<div class="dgx-tip" role="note">
-    <p class="dgx-tip-h"><span class="dgx-tip-new">New</span><b>Your Warband</b></p>
-    <p>Your other heroes fill these seats, in their own gear. ${bot ? 'A bot stands in until you make one.' : 'Tap a name to swap who goes in.'}</p>
-    <p>Better gear on them, faster runs.</p>
-    <div class="dgx-tip-acts">${make}<button type="button" class="btn small gold" data-act="tipok" data-tip="warband">Got it</button></div></div>`;
+    <p class="dgx-tip-h"><span class="dgx-tip-new">New</span><b>Your Warband</b>${make ? '<button type="button" class="dgx-tip-later" data-act="tipok" data-tip="warband">Later</button>' : ''}</p>
+    <p>Your other heroes fill these seats, in their own gear: better gear on them, faster runs. ${any ? 'A bot stands in until you make one.' : 'Tap a name to swap who goes in.'}</p>
+    <div class="dgx-tip-acts${make ? ' make' : ''}">${make || '<button type="button" class="btn small gold" data-act="tipok" data-tip="warband">Got it</button>'}</div></div>`;
 }
 
 /** your first bottle: it's poured as you go in, for the whole party */

@@ -345,6 +345,9 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-tip-h b { font-family: var(--f-display); font-weight: 400; font-size: 17px; line-height: 1.1; color: var(--ink); }
 .dgx-tip-new { padding: 0 8px; border-radius: 999px; background: var(--gold); font-family: var(--f-mono); font-size: 12px; font-weight: 700; line-height: 20px; color: var(--ink); }
 .dgx-tip-acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 2px; }
+.dgx-tip-acts.make { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+.dgx-tip-acts.make .btn { min-width: 0; padding-left: 8px; padding-right: 8px; white-space: nowrap; }
+.dgx-tip-later { margin: -12px -6px -12px auto; min-height: 44px; padding: 0 6px; border: 0; background: none; font-family: var(--f-display); font-size: 15px; color: var(--soft); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 /* a tip with one button keeps it beside the words */
 .dgx-tip.one { grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 12px; }
 .dgx-tip.one > p { grid-column: 1; }
