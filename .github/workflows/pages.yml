@@ -1,0 +1,44 @@
+# The game on GitHub Pages, a plain web link anyone can open (no claude.ai needed): rebuilt from main on
+# every push. The page is dist/highfell.html in claude.ai's page shell, as index.html, with the music loops beside it in music/,
+# where the game streams them from. Saves there live on each player's own device.
+name: Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Lay out the site
+        run: |
+          mkdir -p _site/music
+          # the same page shell claude.ai wraps the game in: a phone-width viewport and a bare body
+          {
+            printf '%s' '<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;padding:0}</style></head><body>'
+            cat dist/highfell.html
+            printf '%s' '</body></html>'
+          } > _site/index.html
+          cp audio/music/*.mp3 _site/music/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4
