@@ -573,3 +573,14 @@ test('crypt seals: only on heroic Barrow; normal Barrow has none', () => {
   newGame(BARROW_ENGINE, { role: 'tank', seed: 99, start: 'entrance', heroic: true, auto: false, quiet: true, noEvents: true, loadouts: {} });
   assert.ok((S as any).seal && (S as any).seal.pads.length === 3, 'heroic Barrow has one');
 });
+
+test('the Gravekeeper: a banished wisp’s bolt can finish him, and the run goes on', () => {
+  const { s, healer } = game('healer', 'keeper');
+  const keeper = s.mobs.find((m: any) => m.type === 'keeper');
+  s.boss = keeper; keeper.state = 'fight'; keeper.hp = 5;
+  const wisp = spawnMob('wisp', healer.x + 15, healer.y, null);
+  hurtMob(wisp, 50, healer);
+  assert.equal(keeper.alive, false);
+  assert.equal(s.boss, null);
+  step(1);
+});

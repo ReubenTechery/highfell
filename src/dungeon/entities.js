@@ -286,9 +286,11 @@ export function killMob(m, src) {
     dots(m.x, m.y - 40, '#C8F5E8', 10, 160); fx({ type: 'ring', x: m.x, y: m.y - 40, r0: 8, r1: 46, col: '#C8F5E8', dur: 0.25, w: 4 }); sfx('pop');
     // Soul Spark backlash: banishing a wisp during a boss fight zaps the boss and restores healer mana
     if (src && src.role === 'healer' && S.boss && S.boss.alive && !S.boss.hidden) {
+      // the bolt can finish him, so hold on to him for the beam
+      const b = S.boss;
       src.mana = Math.min(src.maxMana, src.mana + 5);
-      hurtMob(S.boss, 180, src, { raw: true, noCrit: true, col: '#C8F5E8', size: 19 });
-      fx({ type: 'beam', x: m.x, y: m.y - 40, x2: S.boss.x, y2: S.boss.y - 90, col: '#C8F5E8', dur: 0.22 });
+      hurtMob(b, 180, src, { raw: true, noCrit: true, col: '#C8F5E8', size: 19 });
+      fx({ type: 'beam', x: m.x, y: m.y - 40, x2: b.x, y2: b.y - 90, col: '#C8F5E8', dur: 0.22 });
     }
     return;
   }
