@@ -1,37 +1,79 @@
 /**
- * Sound: everything is synthesised, nothing to download. The engine asks for sounds by name through
- * HOOKS.sound; the screens use the same table for the hearth, the walkout and the reveal.
+ * Sound: real effects, made with ElevenLabs and embedded in the page (audio/sfx.json, made by tools/audio.py),
+ * each keeping its old synthesised version as the fallback: a sound plays synthesised until its file is
+ * decoded, and for good if it can't be. The engine asks for sounds by name through HOOKS.sound; the screens use
+ * the same names for the hearth, the walkout and the reveal. The garden and brewing sounds are synthesised only.
+ * The music (music.ts) shares this AudioContext.
  */
+import CLIPS from '../../audio/sfx.json';
+
 type Play = (t: number, v: number) => void;
+export type Clip = { buf: AudioBuffer; at: number };
+const FILES: Record<string, string> = CLIPS;
 
 class Synth {
   ctx: AudioContext | null = null;
   out: GainNode | null = null;
-  on = true;
+  /** music.ts follows Sound on and off, and the unlock */
+  onChange: (() => void) | null = null;
+  /** music.ts plays the victory sting at the music's volume, and says false when it can't */
+  sting: ((c: Clip, v: number) => boolean) | null = null;
+  /** the effects decoded so far (the rest play synthesised) */
+  readonly clips: Record<string, Clip> = {};
+  private loud = true;
   private last: Record<string, number> = {};
   private nb: AudioBuffer | null = null;
 
+  get on(): boolean { return this.loud; }
+  set on(v: boolean) { this.loud = v; this.onChange?.(); }
+
   unlock(): void {
-    if (this.ctx) { if (this.ctx.state === 'suspended') void this.ctx.resume(); return; }
+    if (this.ctx) { if (this.ctx.state !== 'running') void this.ctx.resume().catch(() => {}); return; }
     try {
       const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AC) return;
       this.ctx = new AC();
-      this.out = this.ctx.createGain(); this.out.gain.value = 0.42;
+      this.out = this.ctx.createGain(); this.out.gain.value = 0.5;
+      // only catches the pile-ups: one effect on its own goes through untouched
       const comp = this.ctx.createDynamicsCompressor();
+      comp.threshold.value = -8; comp.knee.value = 6; comp.ratio.value = 6; comp.attack.value = 0.002; comp.release.value = 0.15;
       this.out.connect(comp); comp.connect(this.ctx.destination);
       const len = this.ctx.sampleRate;
       this.nb = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
       const d = this.nb.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      void this.decode(this.ctx);
+      this.onChange?.();
     } catch { this.ctx = null; }
   }
+  /** every embedded effect, decoded once the page may make sound */
+  private async decode(c: AudioContext): Promise<void> {
+    await Promise.all(Object.entries(FILES).map(async ([name, b64]) => {
+      try {
+        const bin = atob(b64), bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const buf = await new Promise<AudioBuffer>((res, rej) => { void c.decodeAudioData(bytes.buffer, res, rej)?.catch?.(rej); });
+        this.clips[name] = { buf, at: leadIn(buf) };
+      } catch { /* this one stays synthesised */ }
+    }));
+  }
   play(name: string, vol?: number): void {
-    if (!this.on || !this.ctx || this.ctx.state !== 'running') return;
+    if (!this.loud || !this.ctx || this.ctx.state !== 'running') return;
     const now = this.ctx.currentTime;
     if (now - (this.last[name] || 0) < 0.045) return;
     this.last[name] = now;
-    const f = SOUNDS[name];
-    if (f) try { f(now, vol === undefined ? 1 : vol); } catch { /* a missed sound is fine */ }
+    const v = vol === undefined ? 1 : vol;
+    // the victory sting is music: it plays at music volume, or as the victory jingle with the music off
+    if (name === 'fanfare') { const f = this.clips.fanfare; if (f && this.sting?.(f, v)) return; name = 'victory'; }
+    const clip = this.clips[name];
+    try {
+      if (clip) this.sample(clip, now, v);
+      else SOUNDS[name]?.(now, v);
+    } catch { /* a missed sound is fine */ }
+  }
+  private sample(c: Clip, t: number, v: number): void {
+    const ctx = this.ctx!, s = ctx.createBufferSource(), g = ctx.createGain();
+    s.buffer = c.buf; g.gain.value = v;
+    s.connect(g); g.connect(this.out!); s.start(t, c.at);
   }
   tone(t: number, f: number, dur: number, type?: OscillatorType, vol = 0.1, f2?: number | null, delay?: number): void {
     const c = this.ctx!, o = c.createOscillator(), g = c.createGain();
@@ -51,6 +93,13 @@ class Synth {
   }
 }
 
+/** where a decoded effect's sound starts: some decoders leave a few milliseconds of silence in front of an MP3 */
+function leadIn(b: AudioBuffer): number {
+  const d = b.getChannelData(0), n = Math.min(d.length, Math.floor(b.sampleRate * 0.1));
+  for (let i = 0; i < n; i++) if (Math.abs(d[i]) > 0.001) return Math.max(0, (i - b.sampleRate * 0.001) / b.sampleRate);
+  return 0;
+}
+
 export const SFX = new Synth();
 const T = (t: number, f: number, dur: number, type?: OscillatorType, vol?: number, f2?: number | null, delay?: number) => SFX.tone(t, f, dur, type, vol, f2, delay);
 const N = (t: number, dur: number, vol: number, freq: number, type?: BiquadFilterType, q?: number, f2?: number | null, delay?: number) => SFX.noise(t, dur, vol, freq, type, q, f2, delay);
@@ -58,6 +107,8 @@ const N = (t: number, dur: number, vol: number, freq: number, type?: BiquadFilte
 export const SOUNDS: Record<string, Play> = {
   swing: (t, v) => N(t, 0.12, 0.25 * v, 2600, 'bandpass', 1.2, 700),
   hit: (t, v) => { N(t, 0.08, 0.3 * v, 1400, 'lowpass'); T(t, 160, 0.09, 'triangle', 0.18 * v, 90); },
+  // your own critical hit: a fat smack with a bright ting on top
+  crit: (t, v) => { N(t, 0.1, 0.35 * v, 1800, 'lowpass'); T(t, 150, 0.12, 'triangle', 0.22 * v, 70); T(t, 1760, 0.2, 'triangle', 0.1 * v, null, 0.02); },
   thud: (t, v) => { T(t, 110, 0.18, 'sine', 0.45 * v, 50); N(t, 0.12, 0.3 * v, 600); },
   die: (t, v) => { for (let i = 0; i < 4; i++) N(t, 0.05, 0.22 * v, 2400 - i * 300, 'bandpass', 3, null, i * 0.045); },
   bigdie: (t, v) => { for (let i = 0; i < 7; i++) N(t, 0.07, 0.28 * v, 1800 - i * 150, 'bandpass', 3, null, i * 0.05); T(t, 90, 0.4, 'sine', 0.3 * v, 40); },
@@ -73,6 +124,8 @@ export const SOUNDS: Record<string, Play> = {
   smite: (t, v) => { T(t, 1180, 0.16, 'triangle', 0.13 * v, 1760); N(t, 0.12, 0.12 * v, 5200, 'highpass'); },
   bolt: (t, v) => T(t, 1500, 0.08, 'sine', 0.07 * v, 2400),
   icicle: (t, v) => { T(t, 2600, 0.1, 'triangle', 0.1 * v, 1700); N(t, 0.1, 0.18 * v, 6500, 'highpass'); },
+  // ice cracking: three bright ticks falling, over a hiss
+  shatter: (t, v) => { for (let i = 0; i < 3; i++) T(t, 3400 - i * 600, 0.09, 'triangle', 0.1 * v, 1500 - i * 250, i * 0.035); N(t, 0.22, 0.3 * v, 5200, 'highpass', 0.8, 2200); },
   holy: (t, v) => T(t, 990, 0.08, 'triangle', 0.06 * v, 1320),
   blizzard: (t, v) => N(t, 1.2, 0.22 * v, 3000, 'bandpass', 0.6, 900),
   nova: (t, v) => { N(t, 0.4, 0.4 * v, 5000, 'highpass'); T(t, 2200, 0.3, 'triangle', 0.1 * v, 600); },
@@ -114,6 +167,8 @@ export const SOUNDS: Record<string, Play> = {
   revive: (t, v) => { for (let i = 0; i < 4; i++) T(t, 392 * Math.pow(1.26, i), 0.3, 'sine', 0.1 * v, null, i * 0.08); },
   wipe: (t, v) => { T(t, 330, 0.9, 'sawtooth', 0.12 * v, 110); T(t, 247, 1.0, 'sawtooth', 0.1 * v, 82, 0.1); },
   victory: (t, v) => { [523, 659, 784, 1046].forEach((f, i) => T(t, f, 0.5, 'triangle', 0.14 * v, null, i * 0.12)); },
+  // the last boss down: the victory sting (music.ts plays it at music volume)
+  fanfare: (t, v) => SOUNDS.victory(t, v),
   chest: (t, v) => { N(t, 0.3, 0.2 * v, 400, 'lowpass'); [784, 988, 1175, 1568].forEach((f, i) => T(t, f, 0.4, 'sine', 0.12 * v, null, 0.2 + i * 0.07)); },
   tick: (t, v) => T(t, 1400 + Math.random() * 400, 0.03, 'square', 0.04 * v),
   nope: (t, v) => T(t, 160, 0.1, 'square', 0.06 * v, 120),
@@ -138,6 +193,8 @@ export const SOUNDS: Record<string, Play> = {
   ach: (t, v) => { [784, 988, 1175].forEach((f, i) => T(t, f, 0.35, 'triangle', 0.11 * v, null, i * 0.08)); },
   ui: (t, v) => T(t, 700, 0.05, 'triangle', 0.05 * v, 900),
   place: (t, v) => { T(t, 300, 0.1, 'sine', 0.2 * v, 180); N(t, 0.06, 0.15 * v, 900); },
+  // a piece dropping onto its stand in the collection log
+  slot: (t, v) => SOUNDS.place(t, v),
   // the Vale: footsteps, a combo, a bucket of water, XP landing, a new rank
   step: (t, v) => { N(t, 0.05, 0.16 * v, 700, 'lowpass', 1); T(t, 110, 0.05, 'sine', 0.1 * v, 80); },
   combo: (t, v) => { T(t, 880 + v * 400, 0.12, 'triangle', 0.09, 1320 + v * 500); },

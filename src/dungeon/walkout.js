@@ -15,7 +15,7 @@ import { S } from './state.js';
 import { dots, fx, fxText, sfx, shake } from './entities.js';
 
 export const WALKOUT_LEN = { normal: 2.6, kit: 3.2, unique: 3.4, pet: 6.4 };
-const SPLIT = 1.1; // when the tells start to differ
+export const SPLIT = 1.1; // when the tells start to differ
 
 /* `gild`: a gilding kit is in the chest too (the kit tell always has one; the pet's moment stays its own) */
 export function startWalkout(tell, x, y, gild) {

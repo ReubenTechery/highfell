@@ -1,0 +1,23 @@
+{
+ "boss": {
+  "file": "music/boss.mp3",
+  "kb": 232,
+  "loopEnd": 26.43929,
+  "loopStart": 0.5,
+  "lufs": -13.3
+ },
+ "dungeon": {
+  "file": "music/dungeon.mp3",
+  "kb": 378,
+  "loopEnd": 42.2429,
+  "loopStart": 0.5,
+  "lufs": -16.0
+ },
+ "house": {
+  "file": "music/house.mp3",
+  "kb": 407,
+  "loopEnd": 46.653,
+  "loopStart": 0.5,
+  "lufs": -14.7
+ }
+}

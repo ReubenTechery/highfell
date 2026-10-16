@@ -14,7 +14,7 @@ import { AB, MEND, ROLES, abKey } from '../content/roles';
 import type { Rar, RoleId } from '../content/types';
 import { newGame, respawn, update } from '../dungeon/game.js';
 import { S, setHooks } from '../dungeon/state.js';
-import { banner, exposeMob } from '../dungeon/entities.js';
+import { banner, exposeMob, stunned } from '../dungeon/entities.js';
 import { abCd, abMana, bestCluster, doDodge, heroBy, isFoe, mend, useAbility } from '../dungeon/heroes.js';
 import { momentFor } from '../dungeon/coach.js';
 import { CURSE_TIME } from '../dungeon/mobs.js';
@@ -34,6 +34,7 @@ import type { App } from './app';
 import { $, esc, flash, fmtT } from './dom';
 import { heroImg, heroSprite, nameOf, spriteURL, tile } from './art';
 import { IN, aimPoint, bindFrameSwipes, bindInput, mashCage, playerIntent, resetInput, type InputUI } from './input';
+import { MUSIC, runMusic } from './music';
 import { SFX } from './sound';
 
 /** A run plays the hero you are playing. `role` is for testing: it picks one of your heroes in that seat,
@@ -570,6 +571,7 @@ export class RunScene implements InputUI {
     } else this.acc = 0;
     updateCam(dt);
     this.hudTick(dt);
+    const m = runMusic(S); MUSIC.want(m.track); MUSIC.duck(m.duck);
     render();
   }
 
@@ -741,16 +743,23 @@ function comboFor(p: any, slot: string): string {
     case 'charge': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 420) ? 'KICK!' : S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && !m.cage && dist(m, p) > 200 && dist(m, p) < 420) ? 'PEEL!' : '';
     case 'cleave': {
       const near = S.mobs.filter((m: any) => isFoe(m) && !m.cage && m.state === 'fight' && dist(m, p) < 115 + m.r);
-      return near.some((m: any) => m.st && m.st.stun > 0) || near.length >= 3 ? 'CRUSH!' : near.length >= 2 ? 'CLEAVE!' : '';
+      return near.some((m: any) => stunned(m)) || near.length >= 3 ? 'CRUSH!' : near.length >= 2 ? 'CLEAVE!' : '';
     }
     case 'circle': return S.heroes.filter((a: any) => a.alive && a.hp < a.maxHp * 0.78).length >= 2 ? 'CIRCLE!' : '';
     case 'sunburst': return S.heroes.some((a: any) => a.alive && (a.st.root > 0 || a.st.haunt > 0)) ? 'CLEANSE!' : S.heroes.filter((a: any) => a.alive && a.hp < a.maxHp * 0.6).length >= 2 ? 'BURST!' : '';
     case 'ward': { const t = heroBy('tank'); return (t && t.alive && t.absorb <= 0 && S.hazards.some((z: any) => z.tankBuster && !z.fired && (z.followT === t || inHaz(z, t.x, t.y, t.r)))) ? 'SHIELD!' : ''; }
     case 'smite': return S.inCombat && !!(heroBy('tank')?.target) && S.zones.some((z: any) => z.kind === 'heal') ? 'PULSE!' : S.inCombat && S.heroes.every((a: any) => !a.alive || a.hp > a.maxHp * 0.8) && !!(heroBy('tank')?.target) ? 'SMITE!' : '';
     case 'blizzard': { const c = bestCluster(p, 120, 560); return (c && c.score >= 3) ? 'STORM!' : ''; }
-    case 'nova': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 150 + m.r) ? 'KICK!' : S.mobs.filter((m: any) => isFoe(m) && !m.isBoss && !m.cage && m.state === 'fight' && dist(m, p) < 150 + m.r).length >= 2 ? 'FREEZE!' : '';
-    case 'comet': { const t = p.picked || p.target; return (t && t.alive && t.st && t.st.freeze > 0.6) ? 'SHATTER 2×!' : ''; }
-    case 'icicle': return S.mobs.some((m: any) => isFoe(m) && m.st && m.st.freeze > 0.3 && dist(m, p) < 500) ? 'SHATTER 3×!' : '';
+    case 'nova': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 150 + m.r) ? 'KICK!' : S.mobs.filter((m: any) => isFoe(m) && !m.isBoss && !m.cage && m.state === 'fight' && dist(m, p) < 150 + m.r).length >= 2 ? 'FREEZE!' : S.mobs.some((m: any) => isFoe(m) && m.isBoss && !m.cage && m.state === 'fight' && !(m.st.chill > 0) && dist(m, p) < 150 + m.r) ? 'CHILL!' : '';
+    case 'comet': {
+      const t = p.picked || p.target, lance = p.traits.has('shatterlance');
+      if (!(t && t.alive && t.st)) return '';
+      return t.st.freeze > 0.6 ? (lance ? 'SHATTER 3×!' : 'SHATTER 2×!') : t.st.chill > 0.6 ? (lance ? 'SHATTER 2×!' : 'SHATTER 1.5×!') : '';
+    }
+    case 'icicle': {
+      const near = S.mobs.filter((m: any) => isFoe(m) && m.st && dist(m, p) < 500);
+      return near.some((m: any) => m.st.freeze > 0.3) ? 'SHATTER 3×!' : near.some((m: any) => m.st.chill > 0.3) ? 'SHATTER 1.5×!' : '';
+    }
     case 'viper': { const t = p.picked || p.target; return (t && t.alive && !t.cage && (!t.bleed || t.bleed.left < 1.8) && dist(t, p) < 110 + t.r) ? 'VENOM!' : ''; }
     case 'ambush': { const t = p.picked || p.target; return (t && t.alive && t.bleed && t.bleed.left > 0 && dist(t, p) < 110 + t.r) ? 'CRIT!' : ''; }
     case 'flurry': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 135 + m.r) ? 'KICK!' : S.mobs.filter((m: any) => isFoe(m) && !m.cage && m.state === 'fight' && dist(m, p) < 135 + m.r).length >= 2 ? 'FLURRY!' : '';

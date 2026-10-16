@@ -25,6 +25,7 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 16 
 | Logs | The collection log as a wardrobe: a page per dungeon's log (Normal, or Heroic in gold, its stands holding the gilding kits) with its prize on a plinth, the count and the kill counts; each set on an armour stand with its role's badge (found pieces on it, missing ones as dashed outlines); a trophy shelf for the trophy and the bonus pet, mount and dye; a set's page with Try it on; rarity, drop rate and the kill count you got it at on every slot; tap any slot for a closer look over the page (its picture, its stats against what its role wears, its set's bonuses); the garden's and other rewards' pages; achievements; stats |  |
 | The Garden | 3 planter beds (`bed.0`, `bed.1`, `bed.2`) in the Hearth's outdoor yard; seeds drop from dungeon bosses (Gravekeeper drops Glowcap seeds at 1/5 Normal, 1/3 Heroic) and grow over 3 dungeon clears (`GROW_CLEARS = 3`); harvesting uses the `snip`/`pluck` close-up toys and yields 8–10+ herbs plus Gathering XP; first harvest gives the Hill Goat; every harvest rolls `GARDEN_TABLE` for trophies, kettle, bunting, hare and pets | New seeds from future dungeons |
 | Brews | The cauldron by your fire, 4 party-wide brews, 1 bottle poured at the dungeon door (`pourFor`) buffs all 3 seats for faster clears | More recipes as new dungeon seeds open |
+| Sound & music | 78 real effects made with ElevenLabs (every fight sound, the walkout, the chest and the cards, putting gear on, the buttons), embedded, each with its old synthesised sound as the fallback; your own crits get a sound; three music loops (the house, the dungeon, a boss) streamed from the live page's own files, the victory sting when the last boss falls, and a Music slider in Settings | Real garden and brewing sounds (still synthesised) |
 | Onboarding | Create your first hero first, then run a 60-second role-tailored Crypt Trial against the Ossuary and Sir Rattlebones (teaching your class's 4 abilities, dodging red lanes, and punishing Exposed windows); its chest holds a real Uncommon weapon + shared Warband piece (given when the hero is made, so skipping loses nothing) and two example uniques for the gold lantern. A save's first run never drops a seed. Then a 3-step Hearth tour (`hall` your hero's gear → `bunks` the empty bed → `cellar` Dungeons), and a one-step Garden tip only when your first seed drops. After that, a class's first five runs glow the one button whose moment has come (fading out), and the first run on a class that isn't your first hero's offers that class's Crypt Trial |  |
 
 ## Core Loop & Dungeon Rules
@@ -57,6 +58,12 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 16 
 - Killing Sir Rattlebones's Phase 2 rallied guards lashes him for 4% max HP each, and killing the last guard cracks his rally armour and exposes him for `3.0s`.
 - Cutting the Gravekeeper's `Soul Chain` exposes him for `3.0s`, and breaking `Bone Cage` in `< 2.0s` exposes him for `2.5s` while resetting the Tank's `Charge`.
 
+**Combos on bosses** (`chillBoss`, `staggerBoss`, `stunned` and `shatterable` in `src/dungeon/entities.js`): a boss never freezes, never gets stunned by a knock and never gets dragged, but the combos still land on him.
+- `Rime burst` leaves a boss **Chilled** for `4s` (a light frost tint and a `Chilled` callout) and slows him a little. `Icicle` and `Comet` shatter a Chilled boss for `1.5×` (frozen trash takes `3×` and `2×`), with the same `Shatter` text, flash and sound. With **Shatterlance**, Comet hits a Chilled boss `2×`; **Rimebone 2pc** gives back half of Comet's cooldown on a Chilled boss too; the **Gravefrost Staff**'s Comet Chills a boss for `2s`.
+- `Charge` and the **Gravedigger**'s tremor leave a boss **Staggered** for `1s` (stars over his head and a `Staggered` callout). It is not a stun: he keeps swinging and his telegraphs stay. It counts as a stun for `Cleave`'s Crush (bosses are heavy, so Cleave crushes them anyway) and for **Headsman** (every hit crits).
+- `Slam` taunts a boss and spins its whirlwind through him, with no drag. A perfect block still stuns a boss for `1.6s`. Blizzard and frostbolts hit a boss but never slow him.
+- A bot mage steps into Rime burst's reach at a calm moment (the boss is on the tank, between moves, and nobody is caged), Chills him, then steps back out (`chillTarget` in `src/dungeon/bots.js`).
+
 **The Gravekeeper on Normal: two phases, about 80 seconds** (`keeperTick` in `src/content/barrow/bosses.js`; 65% of his written health):
 - **Phase 1** (down to half health): Shovel Smash (the tank blocks, everyone else stays out of the circle), the dirt toss, and Grasping Hands under everyone, after which he moves to a new spot.
 - **Phase 2** (half health to the end): lights out. Wisps (the healer swipes them), Soul Chain (the healer cuts it), Bone Cage on the tank (he mashes out), Shovel Smash, the dirt toss, and the pale green `Grave cold` ring that sweeps the party every 9s (the healer heals through it).
@@ -73,17 +80,17 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 16 
 
 | Role / Class | 1 | 2 | 3 | 4 |
 | --- | --- | --- | --- | --- |
-| Tank (Warrior) | Cleave: fast front sweep, Crush bonus on heavy/stunned/clumped foes, 2.2s | Charge: dash, hit, taunt and stun nearby foes, readies Cleave, 6.5s | Slam: drag nearby foes in, taunt for 4s, spin a 360° whirlwind, 6s | Shield (hold): a perfect block stuns, counter-strikes, exposes the attacker and resets Cleave |
+| Tank (Warrior) | Cleave: fast front sweep, Crush bonus on heavy/stunned/clumped foes, 2.2s | Charge: dash, hit, taunt and stun nearby foes (a boss Staggers), readies Cleave, 6.5s | Slam: drag nearby foes in (never a boss), taunt for 4s, spin a 360° whirlwind, 6s | Shield (hold): a perfect block stuns, counter-strikes, exposes the attacker and resets Cleave |
 | Healer (Cleric) | Prayer circle, 5s | Ward, 3.8s | Sunburst: heals everyone in reach, clears roots and lifts curses, 13s | Smite: heals your most hurt ally for the damage dealt, pulses Prayer circles and gives mana back, 2.4s |
-| DPS (Mage) | Blizzard, 7.8s | Rime burst, 11.5s | Comet: 0.9s cast, 5.6s | Icicle: instant, triple damage on frozen mobs, 2.6s |
+| DPS (Mage) | Blizzard, 7.8s | Rime burst: freezes nearby mobs (a boss is Chilled), 11.5s | Comet: 0.9s cast, double damage on frozen mobs, 1.5× on a Chilled boss, 5.6s | Icicle: instant, triple damage on frozen mobs, 1.5× on a Chilled boss, 2.6s |
 | DPS (Rogue) | Viper Blades: single-target twin-dagger slash + 5.5s Viper Venom, 2.3s | Shadowstrike: single-target execution thrust, guaranteed crit + 35% bonus damage on poisoned targets, 3.4s | Fan of Blades: modest 360° throwing-knife spin + enemy cast interrupt + refreshes active venom, 6.0s | Shadowstep: blink through shadow behind target, interrupt casts, +35% attack speed for 3.8s, shaves 2s off Shadowstrike, 5.5s |
 
 ## Talents (retired in favor of Gear, Set & Boss Weapon Ability Buffs)
 
 Skill trees and hero levels are omitted so that **Gear alone drives damage, healing, health, and ability fantasy**. Every class's 4 buttons are balanced out of the box, and Dungeon / Heroic Boss Weapons and 3-piece sets transform and buff how those 4 buttons work:
-- **The Gravedigger** (Tank): Every fifth swing digs in with a stunning tremor, and `Charge` resets `Cleave`’s cooldown.
+- **The Gravedigger** (Tank): Every fifth swing digs in with a stunning tremor (a boss Staggers), and `Charge` resets `Cleave`’s cooldown.
 - **Lantern of the Long Night** (Healer): `Mend` wards its target for 60, and `Sunburst` sears nearby foes for 90 holy damage and wards the party for 75.
-- **Gravefrost Staff** (Mage): `Comet` freezes everything it hits for 2 seconds, and `Rime burst` resets `Icicle` and leaves a 3s frost storm.
+- **Gravefrost Staff** (Mage): `Comet` freezes everything it hits for 2 seconds (a boss is Chilled), and `Rime burst` resets `Icicle` and leaves a 3s frost storm.
 - **The Cryptfangs** (Rogue): Every fourth twin-dagger slash strikes twice and refreshes Viper Venom, and `Shadowstep` resets `Shadowstrike`.
 
 ## Heroes, Warband and Alts
@@ -112,6 +119,7 @@ Home is a tall house on the hill, cut open like a doll's house. Built 14 Oct aft
 - **One big button: Dungeons.** Everything else is a thing in the house: the Barrow door in the cellar, the 3 garden planter beds in the yard, the armour stand (gear), the big book in the trophy loft (the collection log), the cauldron and the larder (the satchel). Your hero's tag at the top opens gear too.
 - **Rooms:** the trophy loft, the bunk room (your other heroes), the armory, the hall (your hero, the fire, the mantel), the brewing room (the whole ground floor, with the door out to the garden), the cellar with the Barrow door and two bricked arches for dungeons to come. Outside: the yard on the left (with the 3 planter beds) and the paddock on the right.
 - **The paddock:** a fenced field at ground level, right of the house, with a trough and hay. Every mount in the game has its own place in it. The ones you own stand there and wander a little; the ones you haven't got are a shadow with a "?", like the collection log. Tap a mount for its card: its name, where it drops, its rate, and the kill count you got it at. It replaced the indoor stable (16 Oct): a mount that was in the stall is in the paddock, nothing lost. As built: `MOUNTS` and `paddock(p)` in `src/meta/hearth.ts`, the places from `paddockSlots` in `house.ts`, in the order the game lists them; the wandering is CSS only, and a tap opens the mount's card (`itemSheet`). It reads the collection, so a mount that was in the old stall (or the garden's spot) is simply there; the save keeps its old spot keys and needs no migration.
+- **Life around the house:** smoke climbs out of the chimney, a few birds cross the dusk sky about once a minute (in an arc over the roof and past the moon), and fireflies blink over the garden and the paddock. Built 16 Oct. As built: `smoke()`, `birds()` and `fireflies()` in `src/ui/houseart.ts`, moved by CSS only (`styles.css`). Like the fire, each is a few frames drawn once, taking turns on one slow beat (a new frame every 0.45s), and each is its own small picture the browser shows, hides and slides on its own, so the house never redraws for them (standing still, they add no work on the page's main thread and no repaints; measured 16 Oct). With reduced motion each holds one frame and the birds stay away.
 - **Trophies everywhere:** about 30 spots: the mantel, the loft's shelves, banners on the walls and the roof's flagpoles, pets by the fire, on the rug, on the table and in the loft. Decorate shows the empty ones; the rest of the time they're hidden.
 - **Dungeons** (the big button or the Barrow door): the dungeon's picture, with one small collection log line under it that opens to show what each role can get. Then you: pick a role and you play your hero of that role you played last (Change picks another or makes one), your brew, and loot or practice. Your own Warband heroes from your bunk room take the other seats in their own gear (or bots stand in until you make them).
 - **Looks:** Decorate, then Looks: pick a look and put it on a room or the whole house. Looks only; everything you placed stays where it is.
@@ -179,9 +187,9 @@ The weapon is the upgrade you feel; Helm, Shoulders and Chest are the set. Power
 
 | Role / Class | Trait | Trait | Trait |
 | --- | --- | --- | --- |
-| Tank (Warrior) | **Wide Swings**: swings hit everything in front at full damage | **Ringing Blow**: Charge hits twice and everything it hits turns on you | **Headsman**: hits on stunned mobs always crit |
+| Tank (Warrior) | **Wide Swings**: swings hit everything in front at full damage | **Ringing Blow**: Charge hits twice and everything it hits turns on you | **Headsman**: hits on stunned mobs, or a Staggered boss, always crit |
 | Healer (Cleric) | **Sunflare**: Mend splashes half to the next hurt ally | **Quick Hands**: Mend recasts faster | **Kindle**: a Ward that breaks heals for 80 |
-| DPS (Mage) | **Shatterlance**: Comet on frozen mobs hits 3× | **Splinter**: frostbolts split to a second mob | **Quickfrost**: Comet casts twice as fast |
+| DPS (Mage) | **Shatterlance**: Comet on frozen mobs hits 3×, on a Chilled boss 2× | **Splinter**: frostbolts split to a second mob | **Quickfrost**: Comet casts twice as fast |
 | DPS (Rogue) | **Twin Venom**: twin-dagger auto-attacks extend Viper Venom by 1.5s | **Venomrush**: Shadowstrike on a poisoned foe refunds 1.2s of its cooldown | **Nightstalker**: Shadowstep makes your next Shadowstrike deal +30% damage |
 
 ### How sets work
@@ -198,7 +206,7 @@ The weapon is the upgrade you feel; Helm, Shoulders and Chest are the set. Power
 | --- | --- | --- | --- |
 | **Barrowguard** (tank) | Bone-white plate, skull shoulders, coffin-lid shield | Perfect blocks give you a 150 bone shield | `Slam` raises 2 skeleton thralls for 8s that slash nearby foes for 28 damage and soak 25% of hits on the tank |
 | **Candlewake** (healer) | Black robes, candle crown, a lantern | Mend leaves a candle that heals 40 more over 4s | Once per fight per ally, fatal damage turns them into a fighting ghost at 35% HP (+25% damage) for 6s; `Prayer circle` also sears enemies inside for 32 holy damage per tick |
-| **Rimebone** (Mage DPS) | Frosted bone crown, icicle shoulders | Comet on a frozen mob refunds half its cooldown | `Blizzard` rains bone shards (+30% damage) and raises a frost skeleton (on boss casts or mob kills inside) that slashes for 32 frost damage and slows for 6s |
+| **Rimebone** (Mage DPS) | Frosted bone crown, icicle shoulders | Comet on a frozen mob or a Chilled boss refunds half its cooldown | `Blizzard` rains bone shards (+30% damage) and raises a frost skeleton (on boss casts or mob kills inside) that slashes for 32 frost damage and slows for 6s |
 | **Shadeveil** (Rogue DPS) | Shadow-stitched mask, bone-bladed spaulders, silent leather jerkin | Critical hits with Shadowstrike or Viper Blades erupt in shadow for 55 damage | `Shadowstep` leaves a shadow twin for 6s that slashes your target with twin daggers (34 damage every 0.55s) and refreshes Viper Venom |
 
 ### Sets by dungeon
@@ -338,9 +346,20 @@ Each dungeon has 12 achievements that pop mid-run and pay out in looks, titles, 
 
 Hidden: **Bravely Stupid** (go in solo as DPS and die to the first pack), **Last One Standing** (win a boss fight as the only one alive), **Lucky Dig** (get the boss pet).
 
+## Sound and music
+
+Short, dry and punchy, a TV cartoon's fantasy rather than stock fantasy, so every sound sits well on a phone's speaker.
+
+- **Effects:** 78 real effects made with ElevenLabs: every combat sound, the walkout, the chest and the cards, a log slot filling, putting gear on and the buttons. They are embedded in the page (`audio/sfx.json`, about 320 KB, 40 kbps mono MP3) and each keeps its old synthesised sound (`SOUNDS` in `src/ui/sound.ts`) as its fallback, so a sound that can't be decoded still plays. The garden and brewing sounds, and the gilding kit's little bell (`gild`), are still synthesised only.
+- **Your own crits** get their own sound (`crit`), the way only your own numbers show.
+- **Music:** three loops made with Eleven Music: the house (a cosy tavern, 46 s), the dungeon (low and tense, 42 s) and a boss (driving, 26 s). They are too big to embed (about 1 MB together), so each one streams from the live page's own files (`music/*.mp3`, published next to the page from `audio/music`) the first time it's wanted, and loops without a gap (`src/ui/music.ts`; `runMusic` picks the loop from a run's state). The boss's loop loads during the dungeon. The reveal is quiet, so every drop's sound lands.
+- **The victory sting** (`fanfare`) plays as the last boss falls, at the music's volume (with the music off, the victory jingle plays instead). Under the lantern's tells the music ducks, and for the pet it cuts out with every other sound.
+- **Settings:** Sound on or off (off silences the music too), and a Music slider kept on this device (`highfell.music` in local storage), never in the save.
+- **Making sounds:** `tools/audio.py` asks ElevenLabs for takes, trims each to its first sound and natural end, takes out rumble, levels its loudness against the others and compresses it; `tools/audio_list.py` holds every prompt and which take went in.
+
 ## Making it fair
 
-Today's baseline (`tests/balance.test.ts`): bots clear Barrow Crypt in about 3:30 on Common gear with no wipes (the Gravekeeper about 80 seconds of it), full Epic in about 2:10, and a full BiS party (`power: 1.96` with 3-piece sets and Boss Weapons) melts the dungeon in well under half the time (`~1:30`). A healer who does nothing (no heals, no lifts) wipes the party by Sir Rattlebones, and the player as tank in Common gear with a bot healer clears with no wipes. Heroic in full Epic clears in about 3:45 with no wipes. The repo's `npm run sim` prints the full table.
+Today's baseline (`tests/balance.test.ts`): bots clear Barrow Crypt in about 3:25 on Common gear with no wipes (the Gravekeeper about 80 seconds of it), full Epic in about 2:05, and a full BiS party (`power: 1.96` with 3-piece sets and Boss Weapons) melts the dungeon in well under half the time (`~1:30`). A healer who does nothing (no heals, no lifts) wipes the party by Sir Rattlebones, and the player as tank in Common gear with a bot healer clears with no wipes. Heroic in full Epic clears in about 3:35 with no wipes. The repo's `npm run sim` prints the full table.
 
 - **The bands `tests/balance.test.ts` keeps:** a Common bot clear in about 3:30 with no wipes (3:05 to 3:55), with the Gravekeeper about 80 seconds of it (70 to 95); full Epic clearly faster; full BiS melting the dungeon in roughly half the time (under 62% of the Common clear time); and a DPS alone dies before Sir Rattlebones. A healer who does nothing (no heals, no lifts) wipes the party by Sir Rattlebones, and you as tank in Common gear with a bot healer clear with no wipes. Heroic: full Epic clears in about four minutes with no wipes, and Common gets buried.
 

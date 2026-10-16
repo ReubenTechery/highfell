@@ -77,13 +77,27 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .bit .pq { font-family: var(--f-display); font-size: 64px; fill: #FFF8EC; stroke: var(--ink); stroke-width: 7px; paint-order: stroke; text-anchor: middle; }
 .room .lbl { font-family: var(--f-display); font-size: 22px; fill: #FFF8EC; stroke: var(--ink); stroke-width: 6px; paint-order: stroke; text-anchor: middle; pointer-events: none; }
 .room .lbl.small { font-size: 17px; }
-/* the house's moving bits: each is its own small picture, so the browser moves it without a redraw */
+/* the house's moving bits: each is its own small picture, so the browser moves it without a redraw. The fire,
+   the smoke, the birds' wings and the fireflies keep one slow beat, a new frame every 0.45s. Held still, each
+   shows one frame, and the birds stay out of sight. */
+.bit.fire-b, .bit.smoke:not(.s0), .bit.flock.b { opacity: 0; }
 @media (prefers-reduced-motion: no-preference) {
   .bit.fire-a { animation: fireA 0.9s steps(1) infinite; }
   .bit.fire-b { animation: fireB 0.9s steps(1) infinite; }
+  /* the smoke's four frames take turns, so its puffs climb */
+  .bit.smoke { animation: frame4 1.8s steps(1) infinite; }
+  .bit.smoke.s1 { animation-delay: -1.35s; }
+  .bit.smoke.s2 { animation-delay: -0.9s; }
+  .bit.smoke.s3 { animation-delay: -0.45s; }
+  /* the flock crosses the sky once every 66s, flapping as it goes; coming home, it is 8s along */
+  .bit.flock { animation: flight 66s linear -8s infinite, fireA 0.9s steps(1) infinite; }
+  .bit.flock.b { animation-name: flight, fireB; }
+  /* fireflies blink and drift through 16 beats, each from its own place in them */
+  .bit.firefly { animation: glimmer 7.2s steps(1) infinite; }
+  .bit.firefly.f1 { animation-delay: -2.7s; animation-direction: reverse; }
+  .bit.firefly.f2 { animation-delay: -4.95s; }
   .bit.bob { animation: bob 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
   .bit.breathe { animation: breathe 3.2s ease-in-out infinite; transform-origin: 50% 100%; }
-  .bit.float { animation: float 3.4s ease-in-out infinite; transform-origin: 50% 100%; }
   .bit.sway { animation: sway 4s ease-in-out infinite; transform-origin: 50% 0%; }
   .bit.new-pop { animation: newpop 0.7s cubic-bezier(.2, 1.6, .4, 1) both; transform-origin: 50% 100%; }
   .bit.pip { animation: bob 1.2s ease-in-out infinite; transform-origin: 50% 100%; }
@@ -95,10 +109,32 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 }
 @keyframes fireA { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
 @keyframes fireB { 0%, 49% { opacity: 0; } 50%, 100% { opacity: 1; } }
+@keyframes frame4 { 0% { opacity: 1; } 25%, 100% { opacity: 0; } }
+/* the flock's arc, from where houseart.ts draws it (past the left edge) over the roof to past the right edge;
+   then it waits out of sight, shrunk to nothing */
+@keyframes flight {
+  0% { transform: translate(0, 0); } 2.5% { transform: translate(350px, -19px); } 5% { transform: translate(700px, -76px); }
+  7.5% { transform: translate(1050px, -167px); } 10% { transform: translate(1400px, -285px); } 12.5% { transform: translate(1750px, -422px); }
+  15% { transform: translate(2100px, -570px); } 17.5% { transform: translate(2450px, -718px); } 20% { transform: translate(2800px, -855px); }
+  22.5% { transform: translate(3150px, -973px); } 25% { transform: translate(3500px, -1064px); } 27.5% { transform: translate(3850px, -1121px); }
+  30% { transform: translate(4200px, -1140px); } 32.5% { transform: translate(4550px, -1121px); } 35% { transform: translate(4900px, -1064px); }
+  37.5% { transform: translate(5250px, -973px); } 40% { transform: translate(5600px, -855px); } 42.5% { transform: translate(5950px, -718px); }
+  45% { transform: translate(6300px, -570px); } 47.5% { transform: translate(6650px, -422px); } 50% { transform: translate(7000px, -285px); }
+  52.5% { transform: translate(7350px, -167px); } 55% { transform: translate(7700px, -76px); } 57.5% { transform: translate(8050px, -19px); }
+  60% { transform: translate(8400px, 0); } 60.1%, 100% { transform: translate(8400px, 0) scale(0); }
+}
+/* a firefly's 16 frames: dark, glowing up, drifting, dimming, dark again, and once more */
+@keyframes glimmer {
+  0%, 6.25% { opacity: 0; transform: translate(0, 0); }
+  12.5% { opacity: 0.45; transform: translate(6px, -6px); } 18.75% { opacity: 1; transform: translate(14px, -14px); }
+  25% { opacity: 1; transform: translate(22px, -18px); } 31.25% { opacity: 0.45; transform: translate(28px, -26px); }
+  37.5%, 50% { opacity: 0; transform: translate(26px, -30px); }
+  56.25% { opacity: 0.45; transform: translate(16px, -36px); } 62.5% { opacity: 1; transform: translate(6px, -34px); }
+  68.75% { opacity: 0.45; transform: translate(-4px, -28px); } 75%, 100% { opacity: 0; transform: translate(0, 0); }
+}
 @keyframes glow { from { opacity: 0.75; } to { opacity: 1; } }
 @keyframes bob { 0%, 100% { transform: translateY(0) scaleY(1); } 50% { transform: translateY(-3px) scaleY(1.02); } }
 @keyframes breathe { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.025); } }
-@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
 @keyframes sway { 0%, 100% { transform: rotate(-1.2deg); } 50% { transform: rotate(1.2deg); } }
 @keyframes newpop { from { transform: scale(0.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @keyframes wander {
@@ -561,6 +597,14 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .card { width: 100%; max-width: 560px; box-sizing: border-box; background: var(--panel); color: var(--ink); border: 3px solid var(--ink); border-radius: 22px; box-shadow: 0 6px 0 var(--ink); padding: 22px clamp(16px, 4vw, 28px) 24px; display: flex; flex-direction: column; gap: 14px; }
 .card h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clamp(28px, 6vw, 40px); line-height: 1; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+/* the music's volume in Settings: a chunky slider beside the Sound button */
+.vol { display: flex; align-items: center; gap: 10px; flex: 1 1 170px; min-width: 0; max-width: 340px; font-family: var(--f-display); font-size: 15px; color: var(--ink); }
+.vol input { -webkit-appearance: none; appearance: none; flex: 1; min-width: 0; height: 32px; margin: 0; background: transparent; cursor: pointer; }
+.vol input::-webkit-slider-runnable-track { height: 12px; border: 3px solid var(--ink); border-radius: 999px; background: var(--panel-2); }
+.vol input::-moz-range-track { height: 6px; border: 3px solid var(--ink); border-radius: 999px; background: var(--panel-2); }
+.vol input::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 26px; height: 26px; margin-top: -10px; border: 3px solid var(--ink); border-radius: 50%; background: var(--gold); box-shadow: 0 2px 0 var(--ink); }
+.vol input::-moz-range-thumb { width: 20px; height: 20px; border: 3px solid var(--ink); border-radius: 50%; background: var(--gold); box-shadow: 0 2px 0 var(--ink); }
+.vol input:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; border-radius: 999px; }
 
 .overlay.welcome { align-items: center; padding: calc(var(--pad-t) + 16px) 16px calc(var(--pad-b) + 16px); background: rgba(16, 12, 24, 0.86); }
 .overlay.welcome .card { max-width: 470px; min-height: min(700px, calc(100vh - 36px)); justify-content: space-between; text-align: center; padding: 22px 18px 20px; gap: 14px; border-width: 3.5px; box-shadow: 0 0 0 3px var(--gold), 0 8px 0 var(--ink); }

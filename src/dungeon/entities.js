@@ -68,11 +68,30 @@ export function makeMob(type, x, y, pack) {
     hp, maxHp: hp, speed: M.speed, alive: true, state: 'idle',
     threat: new Map(), target: null, forced: null, forcedT: 0,
     atkT: rand(0.3, 0.9), wind: 0, ab: {}, cast: null, busy: 0,
-    st: { stun: 0, freeze: 0, slow: 0, slowT: 0, kx: 0, ky: 0 },
+    st: { stun: 0, freeze: 0, chill: 0, stagger: 0, slow: 0, slowT: 0, kx: 0, ky: 0 },
     flash: 0, lunge: 0, lungeA: 0, face: Math.PI / 2, flip: rng() < 0.5, walkT: rand(0, 6), squash: 0, rise: 0, deadT: 0, moving: 0,
     isBoss: !!M.boss, phase: 1, armorUp: 0, exposed: 0, untargetable: false, hidden: false, pose: null, dmgMul: 1, ghostProps: !!M.wisp,
   };
 }
+
+/* Bosses never freeze or stun, but the combos still land on them. Frost that would freeze leaves a boss Chilled:
+   Icicle and Comet shatter him for CHILL_SHATTER (Comet with Shatterlance for SHATTERLANCE_CHILL). A knock that
+   would stun Staggers him: it counts as a stun for Cleave and Headsman, and he keeps doing what he was doing. */
+export const CHILL = 4, CHILL_SHATTER = 1.5, SHATTERLANCE_CHILL = 2, STAGGER = 1;
+export function chillBoss(m, dur) {
+  if (!m.alive) return;
+  if (!(m.st.chill > 0)) fxText(m.x, m.y - 245, 'Chilled', '#8FD6FF', 22, { dur: 1.0 });
+  m.st.chill = Math.max(m.st.chill || 0, dur);
+}
+export function staggerBoss(m, dur) {
+  if (!m.alive) return;
+  if (!(m.st.stagger > 0)) fxText(m.x, m.y - 245, 'Staggered', '#FFE08A', 22, { dur: 1.0 });
+  m.st.stagger = Math.max(m.st.stagger || 0, dur);
+}
+/* stunned for a combo's sake: a stun, or a boss's Stagger */
+export const stunned = (m) => !!m.st && (m.st.stun > 0 || m.st.stagger > 0);
+/* Icicle and Comet shatter what is frozen, and a Chilled boss */
+export const shatterable = (m) => !!m.st && (m.st.freeze > 0 || m.st.chill > 0);
 
 export function exposeMob(m, dur, label) {
   if (!m || !m.alive || m.cage || m.M.wisp) return;
@@ -262,13 +281,14 @@ export function hurtMob(m, amt, src, o) {
   const zealCrit = src && src.st && src.st.zeal > 0 ? 0.1 : 0;
   const critChance = (o.crit === undefined ? 0.12 : o.crit) + (o.crit === 1 ? 0 : gearCrit + zealCrit);
   if (!o.noCrit && rng() < critChance) { a *= 2; crit = true; }
-  else if (!o.noCrit && src && src.traits && src.traits.has('headsman') && m.st.stun > 0) { a *= 2; crit = true; }
-  if (o.shatter && m.st.freeze > 0) a *= o.shatter;
+  else if (!o.noCrit && src && src.traits && src.traits.has('headsman') && stunned(m)) { a *= 2; crit = true; }
+  const shattered = !!o.shatter && shatterable(m);
+  if (shattered) a *= m.st.freeze > 0 ? o.shatter : o.chillShatter || CHILL_SHATTER;
   if (m.armorUp > 0) a *= 1 - m.armorUp;
   a = Math.round(a);
   if (a <= 0) return 0;
   m.hp -= a;
-  if (!m.isBoss || crit || a >= 200) m.flash = m.isBoss ? 0.07 : 0.08;
+  if (!m.isBoss || crit || shattered || a >= 200) m.flash = m.isBoss ? 0.07 : 0.08;
   if (m.cast && m.cast.kick) { m.cast.taken += a; if (m.cast.taken >= m.cast.kick) interruptCast(m); }
   if (src && src.kind === 'hero') { aggro(m, src, 0); addThreat(m, src, a * src.threatMod * (o.threat || 1)); src.stats.dmg += a; }
   const big = crit || a >= 250;
@@ -276,7 +296,7 @@ export function hurtMob(m, amt, src, o) {
   if (iceCrit) bits(m.x, m.y - (m.isBoss ? 150 : 60), 'shard_ice', 6, 220);
   if (!o.quiet && src && src.isPlayer) fxText(m.x, m.y - (m.isBoss ? 170 : m.M.big ? 120 : 70), (crit ? a + '!' : '' + a), iceCrit ? '#8FD6FF' : o.col || (crit || m.exposed > 0 ? '#F2C230' : '#FFFFFF'), o.size || (a >= 600 ? 40 : big ? 30 : 21), { dur: big ? 1.15 : 0.9, crit });
   if (o.knock && !m.isBoss && !m.M.big) { const an = Math.atan2(m.y - src.y, m.x - src.x); m.st.kx += Math.cos(an) * o.knock; m.st.ky += Math.sin(an) * o.knock; }
-  if (crit && src && src.isPlayer) hitstop(0.035);
+  if (crit && src && src.isPlayer) { hitstop(0.035); if (!o.quiet) sfx('crit', 0.9); }
   if (crit && src && src.kind === 'hero') emit({ type: 'crit', amount: a, player: !!src.isPlayer });
   if (m.hp <= 0) killMob(m, src);
   return a;

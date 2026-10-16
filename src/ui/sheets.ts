@@ -20,6 +20,7 @@ import { HEARTH_SPOTS, place, setLook, spotById, spotOf } from '../meta/hearth';
 import type { App } from './app';
 import { actions, cap, esc, fmtN, fmtRate, GLYPH } from './dom';
 import { heroImg, heroSprite, iconOf, nameOf, rarLook, tile } from './art';
+import { MUSIC } from './music';
 import { SFX } from './sound';
 import { ilvl } from './hearth';
 import { heroesSheet, heroSheet, type HeroSheetState } from './herosheet';
@@ -211,6 +212,7 @@ export class Sheets {
       this.app.save();
     });
     window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.spec) { if (this.logView.peek) root.querySelector<HTMLElement>('.pk-x')?.click(); else this.close(); } });
+    root.addEventListener('input', (e) => { const el = e.target as HTMLInputElement; if (el.dataset.act === 'music') MUSIC.setVolume(+el.value / 100); });
   }
 
   open(spec: SheetSpec): void {

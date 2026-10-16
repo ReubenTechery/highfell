@@ -267,7 +267,7 @@ export class Reveal {
         ${done && stand ? `<p class="sm-done">${GLYPH.check}${esc(stand.set.name)} set done · ${standPieces(stand).length} of ${standPieces(stand).length}</p>` : stand ? `<p class="sm-set">${esc(stand.set.name)} · ${standPieces(stand).filter(on).length} of ${standPieces(stand).length}</p>` : ''}
         ${need ? this.stripHtml(dg.id, before, after, need, '') : ''}<p style="opacity: 0.7">Tap to carry on</p></div>`;
       this.root.appendChild(el);
-      SFX.play('rare');
+      SFX.play('slot'); SFX.play('rare', 0.7);
       this.momentDone = () => { el.remove(); this.momentDone = null; res(); };
       el.focus?.();
     });
