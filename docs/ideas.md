@@ -3,6 +3,35 @@
 Nothing here is decided. An idea moves into the game only when the owner says yes; then it goes into
 `docs/design.md` and gets built. Agents: don't build anything from this page unasked.
 
+## Direction: seasons, not expansions (the owner's call, 17 Oct)
+
+The owner has chosen this direction. It isn't built, and it changes the brief, so when it's time it goes into
+`AGENTS.md`, `docs/design.md` and `docs/dungeons.md` in its own pull request.
+
+- **A season is about 3 months: one new dungeon and one raid with 3 wings.** The first wing opens at launch,
+  the second a month later and the third a month after that, so there's something fresh each month. A missed
+  wing waits for you; nothing is timed beyond the launch.
+- **Every season restarts the treadmill.** Everyone starts the new season in fresh gear and climbs over the
+  3 months, from struggling to melting it. A slow incline that a parent can keep up with. Newcomers and anyone
+  who skipped a season start level with everyone on day one, so there's nothing to catch up on.
+- **Old seasons are timewalked.** When a season ends, its dungeons and raid are scaled up to current power
+  and stay playable forever, mostly for the collection log: its gear becomes looks and log slots (no longer
+  power), and its pets, mounts, titles and house looks are still there to chase. A run there should still give
+  a little current-season regular gear, so it's never wasted.
+- **Lasting progress is the collection:** logs, looks, pets, mounts, titles, house looks. Power is per
+  season.
+- **The three Act 1 dungeons (Barrow Crypt, Thimblebriar Hollow, Moonmere Sanctum) become Season 1**, and
+  are timewalked when Season 2 arrives.
+- **The 6pm live raid night is off.** Raids follow the dungeon rules: Normal playable with your Warband and
+  bots, Heroic the group flex.
+- **Pricing idea:** about $2–6 a season, sell content and never power or catch-up. Older seasons later as a
+  cheaper bundle for collectors.
+
+What it replaces or changes: the brief's "later dungeons drop upgrade attachments that awaken older dungeon
+gear" (old gear becomes collection instead), "raids are a later bonus activity" (each season has one), and
+the Free Trial → Base Game → Expansions model in `docs/dungeons.md`. Still to settle (a `/grill-me`): how much
+power a season adds, what timewalked runs give, the wing timing, the price, and whether Season 1 is free.
+
 ## Proposal: make every run pay (dungeon materials)
 
 **The want:** a reason to run Barrow Crypt 50 more times after the gear is done, and to feel the difference
