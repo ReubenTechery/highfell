@@ -5,12 +5,12 @@
  * profile every time, so whatever changed is always shown. This file opens and closes them and wires up
  * their buttons; most of them draw in a file of their own.
  */
-import { COLLECTIBLES, thing } from '../content';
+import { COLLECTIBLES, ITEMS, thing } from '../content';
 import { SLOT_IDS } from '../content/gear';
 import type { Rar, RoleId, SlotId } from '../content/types';
 import { INGREDIENTS, INGREDIENT_ORDER, LORE, PLANTS, RECIPES, RECIPE_ORDER, SEED_ICON, SEED_ORDER, SKILLS } from '../content/vale';
 import { rankProgress, recipeUnlocked } from '../meta/vale';
-import { activeHero, freshProfile, heroById, nameProblem, removeHero, renameHero, roleOf, setActive, type Hero } from '../meta/profile';
+import { freshProfile, heroById, nameProblem, removeHero, renameHero, roleOf, setActive, type Hero } from '../meta/profile';
 import { pickRole } from '../meta/party';
 import { HEARTH_SPOTS, place, setLook, spotById, spotOf } from '../meta/hearth';
 import type { App } from './app';
@@ -25,13 +25,13 @@ import type { LogView } from './logbook';
 import { markSeen } from '../meta/logs';
 import { looksSheet, pickedLook } from './lookssheet';
 import { settingsSheet } from './settingssheet';
-import { armouryActions, armourySheet, countUp, leftSlot, type ArmouryView } from './armoury';
+import { ARMOURY_TABS, armouryActions, armourySheet, countUp, leftSlot, settle, type ArmouryTab, type ArmouryView } from './armoury';
 
 export type SheetSpec =
   | { kind: 'dungeon' }
   | { kind: 'satchel' }
   | { kind: 'hero'; hero: string }
-  | { kind: 'gear'; hero: string; slot?: SlotId }
+  | { kind: 'gear'; hero: string; slot?: SlotId; pick?: string; tab?: ArmouryTab }
   | { kind: 'logs'; tab: LogTab; entry?: string }
   | { kind: 'settings' }
   | { kind: 'picker'; spot: string }
@@ -46,7 +46,7 @@ export function normSpec(x: unknown): SheetSpec | null {
   switch (s.kind) {
     case 'dungeon': case 'settings': case 'satchel': case 'looks': case 'heroes': case 'mounts': return { kind: s.kind };
     case 'hero': return typeof s.hero === 'string' ? { kind: 'hero', hero: s.hero } : null;
-    case 'gear': return typeof s.hero === 'string' ? { kind: 'gear', hero: s.hero, ...(SLOT_IDS.includes(s.slot) ? { slot: s.slot } : {}) } : null;
+    case 'gear': return typeof s.hero === 'string' ? { kind: 'gear', hero: s.hero, ...(SLOT_IDS.includes(s.slot) ? { slot: s.slot } : {}), ...(typeof s.pick === 'string' && ITEMS[s.pick] ? { pick: s.pick } : {}), ...(ARMOURY_TABS.includes(s.tab) ? { tab: s.tab } : {}) } : null;
     case 'logs': return { kind: 'logs', tab: LOG_TABS.includes(s.tab) ? s.tab : 'collection', ...(typeof s.entry === 'string' ? { entry: s.entry } : {}) };
     case 'picker': return typeof s.spot === 'string' && spotById(s.spot) ? { kind: 'picker', spot: s.spot } : null;
     case 'item': return typeof s.id === 'string' && thing(s.id) ? { kind: 'item', id: s.id, ...(s.back ? { back: normSpec(s.back) || undefined } : {}) } : null;
@@ -73,7 +73,7 @@ export class Sheets {
   constructor(private app: App, private root: HTMLElement) {
     actions(root, {
       ...logActions({ app, root, view: this.logView, open: (s) => this.open(s), refresh: () => this.refresh(), close: () => this.close() }),
-      ...armouryActions({ app, view: this.armoury, spec: () => this.spec, stay: (s) => { this.spec = s; }, open: (s) => this.open(s) }),
+      ...armouryActions({ app, root, view: this.armoury, spec: () => this.spec, open: (s) => this.open(s) }),
       close: () => this.close(),
       back: () => { const s = this.spec; if (s && s.kind === 'item' && s.back) this.open(s.back); else this.close(); },
       dgpick: (el) => {
@@ -169,8 +169,10 @@ export class Sheets {
     window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.spec) { if (this.logView.peek) root.querySelector<HTMLElement>('.pk-x')?.click(); else this.close(); } });
   }
 
-  open(spec: SheetSpec): void {
+  open(to: SheetSpec): void {
     const was = !!this.spec;
+    // the armoury always has a slot and a piece picked, so moving on from them can count as looking
+    const spec = to.kind === 'gear' ? settle(this.app.p, to) : to;
     // the dungeon picker starts fresh when it opens, but not when you come back to it from one of its drops
     const inDungeon = (s: SheetSpec | null): boolean => !!s && (s.kind === 'dungeon' || (s.kind === 'item' && s.back?.kind === 'dungeon'));
     if (spec.kind === 'dungeon' && !inDungeon(this.spec)) { this.pick.role = null; this.pick.alts = false; this.pick.log = false; }
@@ -208,9 +210,11 @@ export class Sheets {
         break;
       }
       case 'gear': {
-        const h = heroById(this.app.p, s.hero) || activeHero(this.app.p);
+        // what's picked may have moved since it opened (a piece put on, a save from another device)
+        const g = settle(this.app.p, s), h = heroById(this.app.p, g.hero);
         if (!h) { this.close(); return; }
-        ({ head, body } = armourySheet(this.app.p, h, s.slot || null, this.armoury));
+        this.spec = g;
+        ({ head, tabs, body, foot } = armourySheet(this.app.p, h, g, this.armoury));
         break;
       }
       case 'logs': {

@@ -6,7 +6,7 @@ import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, SETS, checkContent, heroic
 import { BARROW } from '../src/content/barrow';
 import { activeHero, classRuns, countClassRun, countLift, createHero, dungeonRecord, finishCurseTip, finishHearthTour, finishIntroRun, freshProfile, learnGlow, markClassTrial, migrate, nameProblem, needsClassTrial, needsCurseTip, needsHearthTour, needsIntroRun, needsSwipeHint, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, startHearthTour, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
 import { DUPE_MARKS, grantTrialStarter, heroicOpen, heroicProgress, resolveRun, rollTable, trialStarter } from '../src/meta/loot';
-import { bestRegular, betterFor, buyTrait, compareFor, compareOn, effectsOf, equip, floorWorn, freshForRole, itemScore, loadoutFor, newHero, plainLoadout, putOn, seenSlot, shelfFor, waiting, waitingFor, weaponTrait, wearerOf, worn, type ShelfPiece } from '../src/meta/gear';
+import { bestRegular, betterFor, buyTrait, compareFor, compareOn, effectsOf, equip, floorWorn, freshForRole, itemScore, loadoutFor, newHero, plainLoadout, putOn, seenSlot, setChange, shelfFor, waiting, waitingFor, weaponTrait, wear, wearerOf, worn, type ShelfPiece } from '../src/meta/gear';
 import { CLASSES, FOUNDERS, HERO_ART, MAX_HEROES, RACES, allHeroArt, canMake, cleanName, defaultSex, heroArt } from '../src/content/folk';
 import { SLOT_IDS, gearId } from '../src/content/gear';
 import { INGREDIENTS, RECIPES } from '../src/content/vale';
@@ -329,6 +329,41 @@ test('armoury: a slot lines up what is worn, what waits, the rest best first, th
   // each class sees only its own: a rogue never sees the warrior's pieces
   const rogue = newHero(p, { name: 'Kettil Anvilsong', race: 'human', cls: 'rogue' })!;
   assert.ok(shelfFor(p, rogue, 'helm').every((x) => x.def.cls === 'rogue'));
+});
+
+test('armoury: anything in a slot\'s row goes on with one rule, and nothing else does', () => {
+  const { p, h } = withHero('tank');
+  h.regular.helm = { rar: 1 }; h.bag.helm = { rar: 2 };
+  p.collection['barrowguard.helm'] = { n: 1, kc: 23, at: 1 };
+  freshForRole(p, 'barrowguard.helm');
+  assert.ok(wear(p, h, ITEMS['barrowguard.helm']));
+  assert.equal(worn(p, h).helm.def.id, 'barrowguard.helm');
+  assert.ok(!h.fresh.includes('barrowguard.helm'), 'on, so no longer new');
+  // the Rare helm from the bag becomes the regular piece, and the set helm comes off
+  assert.ok(wear(p, h, ITEMS['gear.tank.helm.2']));
+  assert.equal(worn(p, h).helm.def.id, 'gear.tank.helm.2');
+  assert.equal(h.bag.helm, null);
+  assert.equal(h.regular.helm.rar, 2);
+  // back to the set helm, and back again to the regular one you already have
+  assert.ok(wear(p, h, ITEMS['barrowguard.helm']));
+  assert.ok(wear(p, h, ITEMS['gear.tank.helm.2']));
+  assert.equal(worn(p, h).helm.def.id, 'gear.tank.helm.2');
+  // what isn't yours to wear stays off: one the ladder replaced, one you haven't found, another class's
+  p.collection['rimebone.helm'] = { n: 1, kc: 5, at: 1 };
+  assert.equal(wear(p, h, ITEMS['gear.tank.helm.1']), false);
+  assert.equal(wear(p, h, ITEMS['barrowguard.chest']), false);
+  assert.equal(wear(p, h, ITEMS['rimebone.helm']), false);
+  assert.equal(worn(p, h).helm.def.id, 'gear.tank.helm.2');
+});
+
+test('armoury: a swap says how it moves a set, the one it joins or the one it breaks', () => {
+  const { p, h } = withHero('tank');
+  for (const id of ['barrowguard.helm', 'barrowguard.chest', 'barrowguard.shoulders']) p.collection[id] = { n: 1, kc: 1, at: 1 };
+  equip(p, h, 'helm', 'barrowguard.helm'); equip(p, h, 'chest', 'barrowguard.chest');
+  assert.deepEqual(setChange(worn(p, h), ITEMS['barrowguard.shoulders']), { id: 'barrowguard', before: 2, after: 3 }, 'the third piece');
+  assert.deepEqual(setChange(worn(p, h), ITEMS['gear.tank.chest.2']), { id: 'barrowguard', before: 2, after: 1 }, 'swapping a piece out breaks the pair');
+  assert.deepEqual(setChange(worn(p, h), ITEMS['barrowguard.chest']), { id: 'barrowguard', before: 2, after: 2 }, 'what is worn changes nothing');
+  assert.equal(setChange(worn(p, h), ITEMS['gear.tank.weapon.2']), null, 'no set either side');
 });
 
 test('gear: a weapon trait works while its weapon is on, or under a unique weapon', () => {

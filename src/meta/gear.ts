@@ -247,6 +247,32 @@ export function shelfFor(p: Profile, h: Hero, slot: SlotId): ShelfPiece[] {
   ];
 }
 
+/** Put on any piece from a slot's row: a unique you own, the regular piece you wear, or the better one
+ *  waiting in the bag. False for anything else: one the ladder replaced, one you haven't found, another
+ *  class's. */
+export function wear(p: Profile, h: Hero, def: ItemDef): boolean {
+  const slot = def.slot;
+  if (def.kind !== 'gear') return equip(p, h, slot, def.id);
+  const gKey = gearKey({ role: roleOf(h), cls: h.cls });
+  const bag = h.bag[slot];
+  if (bag && bag.rar > h.regular[slot].rar && def.id === gearId(gKey, slot, bag.rar)) {
+    h.regular[slot] = { ...bag }; h.bag[slot] = null; h.equip[slot] = null;
+    return true;
+  }
+  if (def.id !== gearId(gKey, slot, h.regular[slot].rar)) return false;
+  h.equip[slot] = null;
+  return true;
+}
+
+/** How putting a piece on moves a set: the set it is in, or else the set of what it replaces, with how many
+ *  of that set are worn before and after. Null when neither is a set piece. */
+export function setChange(now: Record<SlotId, Worn>, def: ItemDef): { id: string; before: number; after: number } | null {
+  const id = def.setId || now[def.slot].def.setId;
+  if (!id) return null;
+  const count = (w: Record<SlotId, Worn>): number => SLOT_IDS.filter((s) => w[s].def.setId === id).length;
+  return { id, before: count(now), after: count({ ...now, [def.slot]: { slot: def.slot, def, unique: def.kind !== 'gear' } }) };
+}
+
 /** Whether something you have for a slot beats what is worn there: the quiet arrow a slot keeps once its
  *  New glow has gone. */
 export function betterFor(p: Profile, h: Hero, slot: SlotId): boolean {
