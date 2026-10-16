@@ -7,9 +7,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, update } from '../src/dungeon/game.js';
 import { S } from '../src/dungeon/state.js';
-import { exposeMob, hurtHero, hurtMob, pickTarget } from '../src/dungeon/entities.js';
+import { aggro, exposeMob, healHero, hurtHero, hurtMob, pickTarget } from '../src/dungeon/entities.js';
 import { abCd, onPerfectBlock, useAbility } from '../src/dungeon/heroes.js';
-import { breakCage, cutChain, makeCage, makeChain, mashCage, spawnMob } from '../src/dungeon/mobs.js';
+import { CURSE_TIME, breakCage, curseHero, cutChain, liftCurse, makeCage, makeChain, mashCage, spawnMob } from '../src/dungeon/mobs.js';
 import { GIVE_UP, KEEP_UP } from '../src/dungeon/bots.js';
 import { navPoint } from '../src/dungeon/world.js';
 import { HERO_FIT, heroFit } from '../src/dungeon/render.js';
@@ -385,21 +385,20 @@ test('barrow revamp: Crushing Blows on non-tanks, hazard Ward bleed-through, Exp
   assert.ok(s.ring.x > 450, 'Phase 3 lantern ring tracks the moving Gravekeeper');
   assert.ok(tank.st.zeal > 0, 'Standing inside the Phase 3 lantern circle grants Lantern Zeal');
 
-  // 5. Crypt Seal in Room 4 grants Crypt Surge (+25% speed, +20% damage) when all 3 pads are lit
-  for (const mob of s.mobs) { mob.alive = false; mob.state = 'dead'; }
-  s.boss = null;
-  s.ring = null;
-  const packD = s.packs.find((p: any) => p.def.id === 'D');
+  // 5. Heroic's Crypt Seal in Room 4 grants Crypt Surge (+25% speed, +20% damage) when all 3 pads are lit
+  newGame(BARROW_ENGINE, { role: 'tank', seed: 99, start: 'entrance', heroic: true, auto: false, quiet: true, noEvents: true, loadouts: {} });
+  const h = S as any;
+  for (const mob of h.mobs) { mob.alive = false; mob.state = 'dead'; }
+  const packD = h.packs.find((p: any) => p.def.id === 'D');
   packD.cleared = true;
-  s.inCombat = false;
-  for (const pad of s.seal.pads) {
-    const hero = s.heroes.find((h: any) => h.role === pad.role);
+  for (const pad of h.seal.pads) {
+    const hero = h.heroes.find((x: any) => x.role === pad.role);
     hero.x = pad.x; hero.y = pad.y;
     hero.intent.mx = 0; hero.intent.my = 0;
   }
   step(0.35);
-  assert.equal(s.seal.cleared, true, 'Standing on all 3 role rune pads shatters the Crypt Seal');
-  assert.ok(tank.st.surge > 10, 'Crypt Seal grants Crypt Surge to the party');
+  assert.equal(h.seal.cleared, true, 'Standing on all 3 role rune pads shatters the Crypt Seal');
+  assert.ok(h.heroes.find((x: any) => x.role === 'tank').st.surge > 10, 'Crypt Seal grants Crypt Surge to the party');
 });
 
 test('dungeon template: starter _template dungeon builds map, packs, seal, themes, heroic gilded log, and runs in engine', () => {
@@ -461,4 +460,116 @@ test('Sir Rattlebones: the lash from his last guard dying can finish him, and th
   assert.equal(knight.alive, false);
   assert.equal(s.boss, null);
   step(1);
+});
+
+test('curses: in 4 seconds a curse drops its hero to a tenth of their health, and it never kills on its own', () => {
+  const { s, dps } = game('healer');
+  const caller = spawnMob('caller', dps.x + 2000, dps.y, null);
+  assert.equal(CURSE_TIME, 4);
+  assert.ok(curseHero(caller, dps));
+  assert.ok(!curseHero(caller, dps), 'one curse at a time on a hero');
+  step(3.9);
+  assert.ok(dps.st.curse, 'still cursed just before it bursts');
+  assert.equal(dps.hp, dps.maxHp);
+  step(0.12);
+  assert.equal(dps.st.curse, null, 'it burst');
+  // (out of a fight the party heals a little every frame, so allow a frame or two of that)
+  assert.ok(dps.hp <= Math.round(dps.maxHp * 0.1) + 5, `down to a tenth (${dps.hp} of ${dps.maxHp})`);
+  assert.ok(s.stats.bursts >= 1);
+  // on a hero already under a tenth it takes nothing more, so on its own it can't kill
+  dps.hp = dps.maxHp;
+  curseHero(caller, dps);
+  step(3.95);
+  dps.hp = 1;
+  step(0.1);
+  assert.equal(dps.st.curse, null);
+  assert.ok(dps.alive && dps.hp >= 1, 'a curse never kills');
+});
+
+test('curses: only the healer lifts one, by a swipe or Sunburst, and gets 5 mana back', () => {
+  const { s, tank, healer, dps } = game('healer');
+  const caller = spawnMob('caller', healer.x + 2000, healer.y, null);
+  curseHero(caller, dps);
+  assert.equal(liftCurse(dps, tank), false, 'the tank cannot lift it');
+  assert.equal(liftCurse(dps, dps), false, 'nor can the cursed hero');
+  assert.ok(dps.st.curse);
+  healer.mana = 50;
+  assert.equal(liftCurse(dps, healer), true, 'the healer lifts it');
+  assert.equal(dps.st.curse, null);
+  assert.equal(healer.mana, 55);
+  assert.equal(s.stats.lifts, 1);
+  // Sunburst lifts every curse on the heroes it reaches
+  tank.x = healer.x + 60; tank.y = healer.y; dps.x = healer.x - 60; dps.y = healer.y;
+  curseHero(caller, tank); curseHero(caller, dps);
+  healer.cd.a3 = 0; healer.gcd = 0; healer.mana = 100;
+  assert.ok(useAbility(healer, 'a3', null));
+  assert.equal(tank.st.curse, null);
+  assert.equal(dps.st.curse, null);
+});
+
+test('curses: a bot healer lifts nearly every curse within about a second; curses end with the fight or the hero', () => {
+  const { s, tank, healer, dps } = game('dps');
+  const caller = spawnMob('caller', healer.x + 2000, healer.y, null);
+  let lifted = 0;
+  for (let i = 0; i < 12; i++) {
+    tank.x = healer.x + 80; tank.y = healer.y; tank.hp = tank.maxHp;
+    curseHero(caller, tank);
+    const c = tank.st.curse;
+    step(2.2);
+    if (tank.st.curse !== c || !tank.st.curse) lifted++;
+    tank.st.curse = null;
+  }
+  assert.ok(lifted >= 10, `the bot healer lifted ${lifted} of 12`);
+  // a fight that ends takes its curses with it; so does going down
+  aggro(caller, tank, 5);
+  step(0.1);
+  assert.ok(s.inCombat);
+  healer.alive = false;
+  curseHero(caller, dps);
+  caller.hp = 1; hurtMob(caller, 50, tank, { quiet: true, noCrit: true });
+  step(0.2);
+  assert.equal(s.inCombat, false);
+  assert.equal(dps.st.curse, null, 'the fight ended, so did the curse');
+  curseHero(spawnMob('caller', dps.x + 2000, dps.y, null), dps);
+  hurtHero(dps, 1e6, null, { pierce: true, dodge: false, block: false });
+  assert.equal(dps.alive, false);
+  assert.equal(dps.st.curse, null, 'a fallen hero loses the curse');
+});
+
+test('curses: Gravecallers cast them in a fight, packs A and C have one, and the Crypt Trial has none', () => {
+  const { s, tank } = game('healer');
+  const ids = (id: string) => s.packs.find((p: any) => p.def.id === id).mobs.map((m: any) => m.type);
+  assert.ok(ids('A').includes('caller') && ids('C').includes('caller') && ids('D').includes('caller'));
+  const caller = s.packs.find((p: any) => p.def.id === 'A').mobs.find((m: any) => m.type === 'caller');
+  caller.hp = caller.maxHp = 1e6; // the bots go for Gravecallers first; this one has to live long enough to show its curse
+  aggro(caller, tank, 5);
+  let cursed = false;
+  for (let i = 0; i < 60 * 4 && !cursed; i++) { step(1 / 60); cursed = s.heroes.some((h: any) => h.st.curse); }
+  assert.ok(cursed, 'a Gravecaller curses someone within a few seconds of the pull');
+  newGame(BARROW_ENGINE, { role: 'healer', seed: 99, start: 'intro', auto: false, quiet: true, noEvents: true, loadouts: {} });
+  const t = S as any;
+  const dps = t.heroes.find((h: any) => h.role === 'dps');
+  assert.equal(curseHero(spawnMob('caller', dps.x + 200, dps.y, null), dps), null, 'no curses in the Crypt Trial');
+});
+
+test('saves: your heal on a mate under 15% pops SAVED!, once per mate every few seconds', () => {
+  const { s, healer, dps } = game('healer');
+  dps.hp = Math.round(dps.maxHp * 0.1);
+  healHero(healer, dps, 138);
+  assert.ok(s.texts.some((t: any) => t.str === 'SAVED!'), 'SAVED! pops');
+  const n = s.texts.filter((t: any) => t.str === 'SAVED!').length;
+  dps.hp = Math.round(dps.maxHp * 0.1);
+  healHero(healer, dps, 138);
+  assert.equal(s.texts.filter((t: any) => t.str === 'SAVED!').length, n, 'not again straight away');
+  const { s: s2, tank, dps: d2 } = game('tank');
+  d2.hp = Math.round(d2.maxHp * 0.1);
+  healHero(tank, d2, 50);
+  assert.ok(!s2.texts.some((t: any) => t.str === 'SAVED!'), 'only the healer saves');
+});
+
+test('crypt seals: only on heroic Barrow; normal Barrow has none', () => {
+  newGame(BARROW_ENGINE, { role: 'tank', seed: 99, start: 'entrance', auto: false, quiet: true, noEvents: true, loadouts: {} });
+  assert.equal((S as any).seal, null, 'normal Barrow has no Crypt Seal');
+  newGame(BARROW_ENGINE, { role: 'tank', seed: 99, start: 'entrance', heroic: true, auto: false, quiet: true, noEvents: true, loadouts: {} });
+  assert.ok((S as any).seal && (S as any).seal.pads.length === 3, 'heroic Barrow has one');
 });

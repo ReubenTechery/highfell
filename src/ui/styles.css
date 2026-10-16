@@ -403,6 +403,10 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .fb.mp { height: 6px; }
 .fb .mpf { position: absolute; top: 0; bottom: 0; left: 0; width: 100%; background: var(--blue); }
 .low .hpf { background: var(--hurt); }
+.fr.cursed, .pd.cursed { box-shadow: 0 0 0 3px var(--moon), 0 3px 0 var(--ink); }
+.cursed .fr-n, .cursed .pd-n { color: var(--purple); }
+.danger .fr-n, .danger .pd-n { color: var(--red); display: inline-block; transform-origin: left center; animation: throb 0.85s ease-in-out infinite; }
+@keyframes throb { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.14); } 30% { transform: scale(1); } 45% { transform: scale(1.1); } }
 .dead { opacity: 0.55; }
 .dead .fr-n, .dead .pd-n { text-decoration: line-through; }
 .far .fr-n, .far .pd-n { opacity: 0.55; }

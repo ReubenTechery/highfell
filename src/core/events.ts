@@ -33,6 +33,9 @@ export type GameEvent =
   | { type: 'chain.cut'; player: boolean }
   | { type: 'cage.broken'; player: boolean; self: boolean; secs: number }
   | { type: 'heal.save'; player: boolean }
+  | { type: 'curse.cast'; player: boolean; name: string }
+  | { type: 'curse.lifted'; player: boolean }
+  | { type: 'curse.burst'; player: boolean }
   | { type: 'hazard.hit'; kind: string; player: boolean }
   | { type: 'run.wipe'; dungeon: string }
   | { type: 'run.lost'; dungeon: string; packsCleared: number }

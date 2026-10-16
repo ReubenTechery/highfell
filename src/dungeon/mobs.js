@@ -152,9 +152,15 @@ function archerTick(m, dt) {
 
 function callerTick(m, dt) {
   const ab = m.ab;
-  if (ab.raise === undefined) { ab.raise = 3.5; ab.rot = 5.5; }
-  ab.raise -= dt; ab.rot -= dt;
-  if (ab.raise <= 0) {
+  if (ab.raise === undefined) { ab.raise = 3.5; ab.rot = 5.5; ab.curse = 1.8; }
+  ab.raise -= dt; ab.rot -= dt; ab.curse -= dt;
+  if (ab.curse <= 0) {
+    ab.curse = 8.5;
+    const pool = S.heroes.filter((h) => h.alive && !h.st.caged && !h.st.curse);
+    if (pool.length) curseHero(m, pick(pool));
+  }
+  // one raised by Sir Rattlebones' rally only curses and rots: his fight has adds enough
+  if (ab.raise <= 0 && !m.rally) {
     ab.raise = 11;
     startCast(m, { key: 'raise', name: 'Raise Dead', dur: 2.6, kick: 110, done: () => {
       if (!m.alive) return;
@@ -208,6 +214,55 @@ function wispTick(m, dt) {
     if (got > 0) { t.st.haunt = 3; if (t.isPlayer) fxText(t.x, t.y - 110, 'Haunted', '#C8F5E8', 16); }
     killMob(m, null);
   }
+}
+
+/* ---------- curses: only the healer lifts them ---------- */
+/* A Gravecaller curses one hero. In CURSE_TIME seconds it bursts and drops them to a tenth of their health; on
+   its own it never kills. Only the healer lifts it: a swipe across them, or Sunburst. It goes when the fight
+   ends or the hero goes down, and never comes in the Crypt Trial. */
+export const CURSE_TIME = 4;
+export const CURSE_COL = '#B79CFF';
+export function curseHero(m, h) {
+  if (!h || !h.alive || h.st.caged || h.st.curse || (S.opts && S.opts.start === 'intro')) return null;
+  h.st.curse = { id: 'cu' + S.seq++, t: 0, by: m };
+  fx({ type: 'beam', x: m.x, y: m.y - 70, x2: h.x, y2: h.y - 120, col: CURSE_COL, dur: 0.3 });
+  dots(h.x, h.y - 120, CURSE_COL, 8, 90);
+  sfx('curse');
+  if (h.isPlayer || S.player.role === 'healer') fxText(h.x, h.y - 205, 'Cursed!', CURSE_COL, 22, { dur: 1.1 });
+  emit({ type: 'curse.cast', player: !!h.isPlayer, name: h.isPlayer ? 'you' : h.name });
+  return h.st.curse;
+}
+export function curseTick(h, dt) {
+  const c = h.st.curse;
+  if (!h.alive) { h.st.curse = null; return; }
+  c.t += dt;
+  if (c.t >= CURSE_TIME) burstCurse(h);
+}
+function burstCurse(h) {
+  h.st.curse = null;
+  const lost = Math.max(0, h.hp - Math.round(h.maxHp * 0.1));
+  if (lost > 0) { h.hp -= lost; h.stats.taken += lost; h.flash = 0.12; h.hurtT = 0.25; }
+  fx({ type: 'ring', x: h.x, y: h.y - 60, r0: 14, r1: 100, col: CURSE_COL, dur: 0.4, w: 7 });
+  dots(h.x, h.y - 70, CURSE_COL, 14, 190);
+  sfx('burst');
+  if (h.isPlayer) { shake(7); S.hurtFlash = Math.min(1, S.hurtFlash + 0.6); if (lost) fxText(h.x, h.y - 60, '-' + lost, '#FF6B5E', 26); }
+  S.stats.bursts = (S.stats.bursts || 0) + 1;
+  emit({ type: 'curse.burst', player: !!h.isPlayer });
+}
+export function liftCurse(h, by) {
+  if (!h.st.curse) return false;
+  if (by && by.kind === 'hero' && by.role !== 'healer') return false;
+  h.st.curse = null;
+  if (by) {
+    by.mana = Math.min(by.maxMana, by.mana + 5);
+    fxText(h.x, h.y - 150, 'Lifted!', '#F2C230', 24, { dur: 1.1 });
+    fx({ type: 'ring', x: h.x, y: h.y - 120, r0: 8, r1: 64, col: '#FFE08A', dur: 0.3, w: 5 });
+    dots(h.x, h.y - 120, '#FFE08A', 10, 150);
+    sfx('lift');
+    S.stats.lifts = (S.stats.lifts || 0) + 1;
+    emit({ type: 'curse.lifted', player: !!by.isPlayer });
+  }
+  return true;
 }
 
 /* ---------- cages, chains: the swipe and tap mechanics ---------- */

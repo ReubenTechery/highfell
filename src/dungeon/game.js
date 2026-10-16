@@ -6,12 +6,12 @@ import { HOOKS, S, emit, setS } from './state.js';
 import { aggro, banner, bits, brewFx, dots, fx, fxText, healHero, hurtHero, hurtMob, makeHero, makeMob, sfx, shake } from './entities.js';
 import { botTick, inHaz } from './bots.js';
 import { applyBleed, heroBy, heroTick, isFoe, later, projHit } from './heroes.js';
-import { chainTick, mobTick, nearestHeroTo, spawnMob } from './mobs.js';
+import { chainTick, curseTick, mobTick, nearestHeroTo, spawnMob } from './mobs.js';
 import { canStand, inWalk, moveEnt, roomIndexOf, walkTo } from './world.js';
 import { tickWalkout } from './walkout.js';
 
 /* dg: a dungeon definition (map, mobs, packs, script). opts:
-   { role, loadouts: {tank, healer, dps}, start, solo, seed, auto, quiet, testGear, heroic } */
+   { role, loadouts: {tank, healer, dps}, start, solo, seed, auto, quiet, testGear, heroic, noHeal (sims: an idle healer bot) } */
 export function newGame(dg, opts) {
   setSeed(opts.seed || ((Date.now() & 0xfffffff) | 1));
   setS({
@@ -118,7 +118,7 @@ export function respawn() {
   S.hazards = []; S.zones = []; S.thralls = []; S.projs = []; S.rings = []; S.chains = []; S.timers = []; S.ring = null; S.dark = 0; S.darkTarget = 0;
   for (const h of S.heroes) {
     Object.assign(h, { alive: true, hp: h.maxHp, mana: h.maxMana, absorb: 0, absorbT: 0, dodgeT: 0, dash: null, cast: null, blocking: false, target: null, picked: null, holdFire: false, hots: [], ghostSaved: false });
-    h.st = { stun: 0, root: 0, haunt: 0, air: 0, ghost: 0, surge: 0, zeal: 0, kx: 0, ky: 0, chained: null, caged: null };
+    h.st = { stun: 0, root: 0, haunt: 0, air: 0, ghost: 0, surge: 0, zeal: 0, kx: 0, ky: 0, chained: null, caged: null, curse: null };
     for (const k in h.cd) h.cd[k] = 0;
     h.bot.ignore = new Set(); h.bot.seen = new Set();
   }
@@ -174,6 +174,7 @@ export function update(dt) {
   tickThralls(dt);
   tickProjs(dt); tickHazards(dt); tickZones(dt); tickRings(dt);
   for (const ch of S.chains.slice()) chainTick(ch, dt);
+  for (const h of S.heroes) if (h.st.curse) curseTick(h, dt);
   if (S.ring) tickFireRing(dt);
   separate();
   // fight state
@@ -213,7 +214,7 @@ export function update(dt) {
 function onCombatEnd() {
   for (const h of S.heroes) {
     h.ghostSaved = false;
-    if (h.st) h.st.ghost = 0;
+    if (h.st) { h.st.ghost = 0; h.st.curse = null; }
   }
   const dead = S.heroes.filter((h) => !h.alive);
   if (!dead.length || S.over) return;
@@ -222,7 +223,7 @@ function onCombatEnd() {
     const healer = heroBy('healer');
     for (const h of S.heroes) {
       if (h.alive) continue;
-      h.alive = true; h.hp = Math.round(h.maxHp * 0.5); h.st = { stun: 0, root: 0, haunt: 0, air: 0, ghost: 0, surge: 0, zeal: 0, kx: 0, ky: 0, chained: null, caged: null };
+      h.alive = true; h.hp = Math.round(h.maxHp * 0.5); h.st = { stun: 0, root: 0, haunt: 0, air: 0, ghost: 0, surge: 0, zeal: 0, kx: 0, ky: 0, chained: null, caged: null, curse: null };
       fxText(h.x, h.y - 100, healer && healer.alive && healer !== h ? healer.name + ' brings ' + (h.isPlayer ? 'you' : h.name) + ' back' : 'Back up', '#9BE15D', 20, { dur: 1.6 });
       dots(h.x, h.y - 40, '#FFE08A', 14, 160);
     }

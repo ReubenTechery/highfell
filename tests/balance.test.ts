@@ -55,6 +55,24 @@ test('balance: the DPS alone does not get past Sir Rattlebones', () => {
   assert.ok(!r.packs.some((p) => p.id === 'K' && p.cleared != null));
 });
 
+test('balance: a healer who does nothing (no heals, no lifts) wipes the party by Sir Rattlebones, and the curses they leave burst', () => {
+  for (const seed of [121, 232, 343]) {
+    const r = simRun({ role: 'healer', seed, noHeal: true, maxWipes: 1 });
+    assert.equal(r.wipes, 1, `seed ${seed}: the party never wiped`);
+    assert.ok(!r.packs.some((p) => p.id === 'K' && p.cleared != null), `seed ${seed}: got past Sir Rattlebones`);
+    assert.ok(!r.packs.some((p) => p.id === 'D'), `seed ${seed}: reached the room after Sir Rattlebones`);
+    assert.ok((r.stats.bursts || 0) >= 1, `seed ${seed}: no curse burst, though nobody lifted them`);
+  }
+});
+
+test('balance: the player as tank in Common gear, with a bot healer, clears with no wipes', () => {
+  for (const seed of [111, 222, 333]) {
+    const r = simRun({ role: 'tank', seed });
+    assert.equal(r.over, 'victory', `seed ${seed} did not clear`);
+    assert.equal(r.wipes, 0, `seed ${seed} wiped`);
+  }
+});
+
 test('balance: a Glowcap Draught for the party makes a run clearly quicker, Normal and Heroic', () => {
   // brews make a run quicker; nothing needs one (the bands above are all without a brew)
   const plain = simRun({ role: 'healer', seed: 1111 });

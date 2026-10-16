@@ -101,6 +101,13 @@ export const SOUNDS: Record<string, Play> = {
   fire: (t, v) => N(t, 1.4, 0.2 * v, 900, 'bandpass', 0.7, 400),
   kick: (t, v) => { T(t, 1200, 0.12, 'square', 0.1 * v, 600); T(t, 1800, 0.18, 'sine', 0.12 * v, null, 0.05); },
   rot: (t, v) => N(t, 0.6, 0.2 * v, 500, 'bandpass', 2, 200),
+  // curses: a sour warble when one lands, a dark thump when one bursts, a bright chime when the healer lifts it
+  curse: (t, v) => { T(t, 520, 0.5, 'triangle', 0.1 * v, 260); T(t, 490, 0.5, 'sine', 0.08 * v, 245, 0.04); N(t, 0.4, 0.08 * v, 900, 'bandpass', 3, 400); },
+  burst: (t, v) => { T(t, 90, 0.45, 'sine', 0.4 * v, 45); N(t, 0.35, 0.3 * v, 700, 'bandpass', 1, 200); T(t, 300, 0.3, 'sawtooth', 0.06 * v, 120); },
+  lift: (t, v) => { N(t, 0.12, 0.2 * v, 5000, 'highpass'); [1046, 1568].forEach((f, i) => T(t, f, 0.25, 'triangle', 0.1 * v, null, 0.03 + i * 0.05)); },
+  // a save: the healer caught someone at the last moment
+  saved: (t, v) => { [659, 880, 1318].forEach((f, i) => T(t, f, 0.4, 'triangle', 0.14 * v, null, i * 0.06)); N(t, 0.5, 0.07 * v, 7000, 'highpass', 0.7, null, 0.12); },
+  heartbeat: (t, v) => { T(t, 62, 0.14, 'sine', 0.45 * v, 45); T(t, 58, 0.16, 'sine', 0.35 * v, 42, 0.2); },
   gate: (t, v) => { for (let i = 0; i < 8; i++) T(t, 200 + i * 15, 0.06, 'square', 0.06 * v, null, i * 0.06); T(t, 80, 0.4, 'sine', 0.4 * v, 40, 0.5); },
   down: (t, v) => T(t, 440, 0.6, 'triangle', 0.16 * v, 110),
   revive: (t, v) => { for (let i = 0; i < 4; i++) T(t, 392 * Math.pow(1.26, i), 0.3, 'sine', 0.1 * v, null, i * 0.08); },

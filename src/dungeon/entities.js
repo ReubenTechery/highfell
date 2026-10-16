@@ -48,7 +48,7 @@ export function makeHero(role, isPlayer, loadout) {
     frenzyT: 0, nightstalkerT: 0, ghostSaved: false,
     target: null, picked: null, stillT: 1, dodgeT: 0, dodgeX: 0, dodgeY: -1, iframe: 0,
     blocking: false, blockT: 9, dash: null, cast: null,
-    st: { stun: 0, root: 0, haunt: 0, air: 0, ghost: 0, surge: 0, zeal: 0, kx: 0, ky: 0, chained: null, caged: null },
+    st: { stun: 0, root: 0, haunt: 0, air: 0, ghost: 0, surge: 0, zeal: 0, kx: 0, ky: 0, chained: null, caged: null, curse: null },
     absorb: 0, absorbT: 0, flash: 0, hurtT: 0, lunge: 0, lungeA: 0, walkT: 0, squash: 0, moving: 0,
     say: null, sayT: 0, deadT: 0, swings: 0, hots: [],
     intent: { mx: 0, my: 0, block: false },
@@ -231,6 +231,7 @@ export function killHero(h) {
   h.hp = 0; h.alive = false; h.blocking = false; h.cast = null; h.dash = null; h.deadT = 0; h.stats.deaths++; S.stats.deaths++;
   if (h.st.chained) cutChain(h.st.chained, false);
   if (h.st.caged) breakCage(h.st.caged, false);
+  h.st.curse = null;
   fxText(h.x, h.y - 100, h.isPlayer ? 'You went down' : h.name + ' is down', '#FF6B5E', 22, { dur: 1.8 });
   if (h.isPlayer && S.heroes.some((o) => o.alive && o !== h)) banner('You’re down. Your mates can still win this one.', 'warn', 3);
   sfx('down');
@@ -337,6 +338,12 @@ export function healHero(src, t, amt, o) {
   // a save: the player catches someone under 15% and they are still up three seconds later
   if (src && src.isPlayer && real > 0 && before < 0.15 && S.t >= (t.saveLock || 0)) {
     t.saveLock = S.t + 6;
+    if (src.role === 'healer') {
+      fxText(t.x, t.y - 130, 'SAVED!', '#F2C230', 30, { dur: 1.3 });
+      fx({ type: 'ring', x: t.x, y: t.y - 40, r0: 16, r1: 110, col: '#F2C230', dur: 0.4, w: 7 });
+      dots(t.x, t.y - 50, '#FFE08A', 14, 200);
+      sfx('saved'); hitstop(0.12);
+    }
     S.timers.push({ t: 3, fn: () => { if (t.alive) { S.stats.saves = (S.stats.saves || 0) + 1; emit({ type: 'heal.save', player: true }); } } });
   }
   return real;

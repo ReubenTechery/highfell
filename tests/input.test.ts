@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame } from '../src/dungeon/game.js';
 import { S } from '../src/dungeon/state.js';
-import { makeChain } from '../src/dungeon/mobs.js';
+import { curseHero, makeChain } from '../src/dungeon/mobs.js';
 import { VIEW, toScreen } from '../src/dungeon/render.js';
 import { BARROW_ENGINE } from '../src/content/barrow/engine';
 import { IN, bindInput, resetInput } from '../src/ui/input';
@@ -20,18 +20,22 @@ VIEW.cv = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 390, height:
 bindInput(layer, { active: () => true, stick: () => {}, hintDone: () => {}, holdBtn: () => {}, pause: () => {} });
 const touch = (type: string, x: number, y: number) => on[type]({ pointerId: 7, pointerType: 'touch', clientX: x, clientY: y, preventDefault: () => {} });
 
-/** a run as `role`, with a chain hanging straight down through the bottom-left of the screen */
-function chainedRun(role: string) {
+/** a run as `role` on the phone view; world (460, 5230) is in the walk stick's bottom-left part of the screen */
+function phoneRun(role: string) {
   newGame(BARROW_ENGINE, { role, seed: 99, start: 'entrance', auto: false, quiet: true, noEvents: true, loadouts: {} });
   resetInput();
   const s = S as any;
-  const me = s.player, dps = s.heroes.find((h: any) => h.role === 'dps'), boss = s.packs[0].mobs[0];
-  me.x = 500; me.y = 5000;
+  s.player.x = 500; s.player.y = 5000;
   Object.assign(VIEW, { W: 390, H: 844, scale: 0.7, fx: 156, fy: 506, cam: { x: 500, y: 4960 } });
-  // the chain runs from just above the boss's shoulder down to the DPS's chest, at world x 460
-  boss.x = 390; boss.y = 5160; dps.x = 460; dps.y = 5400;
-  const ch: any = makeChain(boss, dps);
-  return { s, ch, at: toScreen(460, 5230) };
+  return { s, dps: s.heroes.find((h: any) => h.role === 'dps'), mob: s.packs[0].mobs[0], at: toScreen(460, 5230) };
+}
+/** the same, with a chain hanging straight down through that spot */
+function chainedRun(role: string) {
+  const { s, dps, mob, at } = phoneRun(role);
+  // the chain runs from just above the mob's shoulder down to the DPS's chest, at world x 460
+  mob.x = 390; mob.y = 5160; dps.x = 460; dps.y = 5400;
+  const ch: any = makeChain(mob, dps);
+  return { s, ch, at };
 }
 
 test('a healer swipe that starts on the left, where the walk stick lives, still cuts the chain', () => {
@@ -59,4 +63,16 @@ test('the same swipe by anyone else is just a walk: only the healer cuts chains'
   assert.ok(IN.stick, 'still walking');
   touch('pointerup', x0 + 168, at.y);
   assert.equal(IN.stick, null);
+});
+
+test('a healer swipe across a cursed mate lifts the curse, even one that starts on the left', () => {
+  const { dps, mob, at } = phoneRun('healer');
+  dps.x = 460; dps.y = 5270;
+  curseHero(mob, dps);
+  const x0 = at.x - 80;
+  touch('pointerdown', x0, at.y);
+  assert.ok(IN.stick, 'it starts as the walk stick: the touch is not on the mate');
+  for (let i = 1; i <= 6; i++) touch('pointermove', x0 + i * 28, at.y);
+  assert.equal(dps.st.curse, null, 'the curse is lifted');
+  touch('pointerup', x0 + 168, at.y);
 });

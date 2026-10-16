@@ -35,7 +35,9 @@ const built = makeDungeonScript({
     chestY: 660,
     victoryText: 'The Gravekeeper is buried for good!',
   },
+  // Heroic only: Normal has the curses, so it doesn't get busier
   seal: {
+    heroicOnly: true,
     patterns: SEAL_PATTERNS,
     x: 500,
     y: 1920,

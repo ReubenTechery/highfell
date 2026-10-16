@@ -67,9 +67,11 @@ function knightAct(m, dt) {
     m.pose = 'wind';
     if (!a.done && a.t > 1.0) {
       a.done = true; m.pose = null;
+      // the first coffin holds a Gravecaller (curses for the healer), never in the trial
       S.props.filter((p) => p.sp === 'coffin' && p.room === 3 && p.sc === 1).forEach((p, i) => {
         p.sp = 'coffin_open';
-        const r = spawnMob(i % 2 ? 'rattler2' : 'rattler', p.x + (p.x < 500 ? 46 : -46), p.y - 40, null, true);
+        const type = i === 0 && !intro ? 'caller' : i % 2 ? 'rattler2' : 'rattler';
+        const r = spawnMob(type, p.x + (p.x < 500 ? 46 : -46), p.y - 40, null, true);
         r.rally = true;
         const v = randomHero(true) || m.target;
         aggro(r, v, 60);
