@@ -22,7 +22,7 @@ import { actions, esc, fmtN, fmtRate, fmtT, GLYPH, reducedMotion, wait } from '.
 import { colourOf, iconOf, nameOf, spriteURL, standSvg, tile } from './art';
 import { ROLE_STAT } from './itemsheet';
 import { mainReward, rewards } from './dungeonsheet';
-import { PRIZE_ART, slotTag } from './logbook';
+import { PRIZE_ART, dropOf, slotTag } from './logbook';
 import { SFX } from './sound';
 import type { RunOpts } from './run';
 
@@ -379,7 +379,7 @@ export class Reveal {
     const set = h?.cls === 'rogue' ? 'shadeveil' : { tank: 'barrowguard', healer: 'candlewake', dps: 'rimebone' }[role];
     const drops: Drop[] = [
       ...(h ? trialStarter(h) : []),
-      { id: `${set}.helm`, source: 'table', boss: 'knight', rate: 1 / 50, kc: 1, role, isNew: false, dupe: false, marks: 0 },
+      { id: `${set}.helm`, source: 'table', boss: 'knight', rate: dropOf(BARROW, `${set}.helm`).rate, kc: 1, role, isNew: false, dupe: false, marks: 0 },
       { id: 'trophy.rattlebones_plume', source: 'table', boss: 'knight', rate: 1 / 50, kc: 1, role, isNew: false, dupe: false, marks: 0 },
     ];
     const t = Math.max(12, Math.round(time));
@@ -399,7 +399,7 @@ export class Reveal {
       { id: gearId(role === 'tank' ? 'healer' : 'tank', 'chest', 1), source: 'spare', role: role === 'tank' ? 'healer' : 'tank', slot: 'chest', rar: 1, prevRar: 0, isNew: true, dupe: false, marks: 0 },
     ];
     const set = h?.cls === 'rogue' ? 'shadeveil' : { tank: 'barrowguard', healer: 'candlewake', dps: 'rimebone' }[role];
-    if (tell !== 'normal') drops.push({ id: `${set}.helm`, source: 'table', boss: 'keeper', rate: 1 / 50, kc: kcK, role, isNew: true, dupe: false, marks: 0, toEquip: true });
+    if (tell !== 'normal') drops.push({ id: `${set}.helm`, source: 'table', boss: 'keeper', rate: dropOf(BARROW, `${set}.helm`).rate, kc: kcK, role, isNew: true, dupe: false, marks: 0, toEquip: true });
     if (tell === 'unique') drops.push({ id: 'trophy.rattlebones_plume', source: 'table', boss: 'knight', rate: 1 / 50, kc: kcN, role, isNew: false, dupe: true, marks: 3 });
     if (tell === 'pet') drops.push({ id: 'pet.pint_gravekeeper', source: 'table', rate: 1 / 2500, boss: 'keeper', kc: kcK, role, isNew: true, dupe: false, marks: 0 });
     const loot: RunLoot = { dungeon: 'barrow', role, hero: h?.id || '', drops, tell, kc: { knight: kcN, keeper: kcK }, marks: 1 + drops.reduce((a, d) => a + d.marks, 0), clears: (p.dungeons.barrow?.clears || 0) + 1, time: 247, pb: p.dungeons.barrow?.pb ?? 247, newPb: false, firstClear: false };
