@@ -14,7 +14,7 @@ import { Achiever, progress } from '../src/meta/achievements';
 import { logProgress, opened } from '../src/meta/logs';
 import { HEARTH_SPOTS, lookOf, lookOpen, lookProgress, place, setLook } from '../src/meta/hearth';
 import { HOUSE_SPOTS, LOOK_ROOMS, ROOMS, THINGS } from '../src/content/house';
-import { heroesFor, pickRole, seats } from '../src/meta/party';
+import { groupOf, heroesFor, partyProblem, pickRole, seats, seatsFor } from '../src/meta/party';
 import { lootFor } from '../src/meta/loot';
 import type { GameEvent, RunSummary } from '../src/content/types';
 
@@ -526,6 +526,34 @@ test('party: you take your hero’s seat, your Warband heroes take the others on
   const tank2 = newHero(p, { name: 'Brakka Stoutmantle', race: 'dwarf', cls: 'warrior' })!;
   setActive(p, tank2.id, 3);
   assert.deepEqual(heroesFor(p, 'tank').map((h) => h.id), [tank2.id, tank.id], 'the tank you played last comes first');
+});
+
+test('party: Heroic needs at least two real players and a bot takes the third seat, never your Warband; Normal is fine solo', () => {
+  // you play a tank, with your own healer and DPS waiting in the bunk room
+  const p = freshProfile();
+  const tank = newHero(p, { name: 'Hollis Emberhand', race: 'dwarf', cls: 'warrior' })!;
+  const myHealer = newHero(p, { name: 'Wren Ashby', race: 'human', cls: 'cleric' })!;
+  const myDps = newHero(p, { name: 'Ivo Larkspur', race: 'elf', cls: 'mage' })!;
+  setActive(p, tank.id, 1);
+  // friends bring their own heroes, from their own saves
+  const friendHealer = newHero(freshProfile(), { name: 'Tam Hollow', race: 'human', cls: 'cleric' })!;
+  const friendDps = newHero(freshProfile(), { name: 'Sel Moonwhisper', race: 'elf', cls: 'mage' })!;
+  // Normal on your own: allowed, and your Warband fills the other two seats
+  assert.equal(partyProblem([tank], { heroic: false }), null);
+  assert.deepEqual(seatsFor(p, [tank], false).map((s) => s.hero?.id), [tank.id, myHealer.id, myDps.id]);
+  // Heroic on your own: blocked, in plain words; until online play your group is just you
+  assert.deepEqual(groupOf(p).map((h) => h.id), [tank.id]);
+  assert.equal(partyProblem(groupOf(p), { heroic: true }), 'Heroic needs at least two players. Bring a friend.');
+  assert.equal(partyProblem([tank], { heroic: true, practice: true }), null, 'practice gives nothing, so it is open solo');
+  // two players and a bot: allowed, and the empty seat is a bot, never your own DPS
+  assert.equal(partyProblem([tank, friendHealer], { heroic: true }), null);
+  assert.deepEqual(seatsFor(p, [tank, friendHealer], true).map((s) => s.hero?.id ?? s.bot), [tank.id, friendHealer.id, 'Ivy']);
+  // three players: allowed, no bots
+  assert.equal(partyProblem([tank, friendHealer, friendDps], { heroic: true }), null);
+  assert.deepEqual(seatsFor(p, [tank, friendHealer, friendDps], true).map((s) => s.hero?.id), [tank.id, friendHealer.id, friendDps.id]);
+  // two players can't take one seat
+  const friendTank = newHero(freshProfile(), { name: 'Brakka Stoutmantle', race: 'dwarf', cls: 'warrior' })!;
+  assert.ok(partyProblem([tank, friendTank], { heroic: true }));
 });
 
 test('party: picking a role switches to your hero of that role you played last, or changes nothing', () => {
