@@ -174,6 +174,7 @@ The weapon is the upgrade you feel; Helm, Shoulders and Chest are the set. Power
 - The weapon carries 40% of your power (`WEIGHT.weapon = 4` of `10`), so a Boss Weapon (`rar: 4`, `+38.4%` damage/healing and `+19.2%` health) is a massive power spike.
 - Every clear drops a regular item better than the best you have in your weakest slot. No dead drops. It waits until you put it on. It also drops a shared piece for another role, up to Rare, so a new alt never starts cold.
 - Tap any drop (in the collection log or the Dungeons sheet) to hold it up against what that role wears now: Upgrade, Downgrade, Same power or A trade, then what changes (item level, power, health, set count) and any effect it adds or takes away.
+- The armoury lines up each slot the same way everywhere (`shelfFor` in `src/meta/gear.ts`): what is worn, then what waits to go on, then the rest of what you have, best first, then the uniques you haven't found yet. A slot keeps a quiet "something better" mark once its New glow has gone, while anything you have beats what is worn (`betterFor`).
 - **No currency:** a duplicate counts in the collection log ("Seen 3×") and your weapon's trait swaps for free. The save still counts each dungeon's `marks` (1 per clear, 3 per duplicate), never shown or spent.
 
 **Weapon traits** (unlocked at Rare, free to swap, and stay active alongside Unique weapons; one picked on a weapon still in the bag works once that weapon is on, `weaponTrait`)

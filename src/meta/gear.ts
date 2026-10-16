@@ -221,6 +221,39 @@ export function ownedFor(p: Profile, h: Hero, slot: SlotId): ItemDef[] {
     .sort((a, b) => itemScore(b) - itemScore(a));
 }
 
+/** One piece in a slot's row in the armoury. `worn`: on the hero now. `isNew`: waiting to go on, a better
+ *  regular piece in the bag or a unique that arrived since you last looked. `found`: yours; the uniques you
+ *  haven't found yet are listed too, so you can see what's left to chase. */
+export interface ShelfPiece { def: ItemDef; worn: boolean; isNew: boolean; found: boolean }
+
+/** Everything a hero has for a slot, the way the armoury lines it up: what is worn, then what waits to go
+ *  on, then the rest of what you have, best first, then the uniques you haven't found yet. Only the best
+ *  regular piece you have counts (the ladder replaces the others), plus the one worn while a better one
+ *  waits in the bag. */
+export function shelfFor(p: Profile, h: Hero, slot: SlotId): ShelfPiece[] {
+  const gKey = gearKey({ role: roleOf(h), cls: h.cls });
+  const on = worn(p, h)[slot].def;
+  const bag = h.bag[slot];
+  const bagNew = bag && !h.equip[slot] && bag.rar > h.regular[slot].rar ? gearId(gKey, slot, bag.rar) : null;
+  const isNew = (d: ItemDef): boolean => d.id !== on.id && (d.kind === 'gear' ? d.id === bagNew : h.fresh.includes(d.id));
+  const have = [ITEMS[gearId(gKey, slot, bestRegular(h, slot).rar)], ...ownedFor(p, h, slot)];
+  if (!have.some((d) => d.id === on.id)) have.unshift(on);
+  const rank = (d: ItemDef): number => (d.id === on.id ? 2 : isNew(d) ? 1 : 0);
+  const best = (a: ItemDef, b: ItemDef): number => itemScore(b) - itemScore(a) || a.id.localeCompare(b.id);
+  const toFind = Object.values(ITEMS).filter((d) => d.kind !== 'gear' && d.slot === slot && fitsHero(d, h) && !p.collection[d.id]).sort(best);
+  return [
+    ...have.sort((a, b) => rank(b) - rank(a) || best(a, b)).map((def) => ({ def, worn: def.id === on.id, isNew: isNew(def), found: true })),
+    ...toFind.map((def) => ({ def, worn: false, isNew: false, found: false })),
+  ];
+}
+
+/** Whether something you have for a slot beats what is worn there: the quiet arrow a slot keeps once its
+ *  New glow has gone. */
+export function betterFor(p: Profile, h: Hero, slot: SlotId): boolean {
+  const now = worn(p, h), gKey = gearKey({ role: roleOf(h), cls: h.cls });
+  return shelfFor(p, h, slot).some((x) => x.found && !x.worn && compareOn(now, gKey, x.def).verdict === 'better');
+}
+
 /** Make a hero: it starts wearing the shared gear for its role, and the uniques the roster owns for
  *  that role wait for it to put them on. */
 export function newHero(p: Profile, o: { name: string; race: RaceId; cls: ClassId; sex?: 'm' | 'f'; free?: boolean }, now = Date.now()): Hero | null {

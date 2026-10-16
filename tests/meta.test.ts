@@ -6,7 +6,7 @@ import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, SETS, checkContent, heroic
 import { BARROW } from '../src/content/barrow';
 import { activeHero, classRuns, countClassRun, countLift, createHero, dungeonRecord, finishCurseTip, finishHearthTour, finishIntroRun, freshProfile, learnGlow, markClassTrial, migrate, nameProblem, needsClassTrial, needsCurseTip, needsHearthTour, needsIntroRun, needsSwipeHint, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, startHearthTour, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
 import { DUPE_MARKS, grantTrialStarter, heroicOpen, heroicProgress, resolveRun, rollTable, trialStarter } from '../src/meta/loot';
-import { bestRegular, buyTrait, compareFor, compareOn, effectsOf, equip, floorWorn, itemScore, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, weaponTrait, wearerOf, worn } from '../src/meta/gear';
+import { bestRegular, betterFor, buyTrait, compareFor, compareOn, effectsOf, equip, floorWorn, freshForRole, itemScore, loadoutFor, newHero, plainLoadout, putOn, seenSlot, shelfFor, waiting, waitingFor, weaponTrait, wearerOf, worn, type ShelfPiece } from '../src/meta/gear';
 import { CLASSES, FOUNDERS, HERO_ART, MAX_HEROES, RACES, allHeroArt, canMake, cleanName, defaultSex, heroArt } from '../src/content/folk';
 import { SLOT_IDS, gearId } from '../src/content/gear';
 import { INGREDIENTS, RECIPES } from '../src/content/vale';
@@ -298,6 +298,37 @@ test('gear: nothing goes on by itself, and putting it on is yours to do', () => 
   h.bag.weapon = { rar: 3, trait: 'splinter' }; p.dungeons.barrow.marks = 10;
   assert.ok(buyTrait(p, h, 'barrow', 'quickfrost'));
   assert.equal(h.bag.weapon!.trait, 'quickfrost');
+});
+
+test('armoury: a slot lines up what is worn, what waits, the rest best first, then what is left to find', () => {
+  const { p, h } = withHero('tank');
+  const row = (s: ShelfPiece[]) => s.filter((x) => x.found).map((x) => [x.def.id, x.worn, x.isNew]);
+  const toFind = (s: ShelfPiece[]) => s.filter((x) => !x.found);
+  // a new hero: rags on, and the Barrow's helm still to find
+  let s = shelfFor(p, h, 'helm');
+  assert.deepEqual(row(s), [['gear.tank.helm.0', true, false]]);
+  assert.ok(toFind(s).some((x) => x.def.id === 'barrowguard.helm'));
+  assert.ok(toFind(s).every((x) => x.def.kind !== 'gear' && x.def.slot === 'helm' && x.def.role === 'tank' && !p.collection[x.def.id]), 'only uniques you could wear and haven\'t got');
+  assert.equal(betterFor(p, h, 'helm'), false);
+  // a Rare helm in the bag and the set helm just arrived: both wait, the set helm (item level 26) first
+  h.bag.helm = { rar: 2 };
+  p.collection['barrowguard.helm'] = { n: 1, kc: 23, at: 1 };
+  freshForRole(p, 'barrowguard.helm');
+  s = shelfFor(p, h, 'helm');
+  assert.deepEqual(row(s), [['gear.tank.helm.0', true, false], ['barrowguard.helm', false, true], ['gear.tank.helm.2', false, true]]);
+  assert.ok(!toFind(s).some((x) => x.def.id === 'barrowguard.helm'), 'found is found');
+  assert.ok(betterFor(p, h, 'helm'));
+  // looked at: no longer new, but still better than what is worn
+  seenSlot(h, 'helm');
+  assert.deepEqual(row(shelfFor(p, h, 'helm')), [['gear.tank.helm.0', true, false], ['gear.tank.helm.2', false, true], ['barrowguard.helm', false, false]]);
+  assert.ok(betterFor(p, h, 'helm'));
+  // the set helm on: it leads, and the Rare helm under it waits quietly
+  assert.ok(equip(p, h, 'helm', 'barrowguard.helm'));
+  assert.deepEqual(row(shelfFor(p, h, 'helm')), [['barrowguard.helm', true, false], ['gear.tank.helm.2', false, false]]);
+  assert.equal(betterFor(p, h, 'helm'), false, 'nothing beats it');
+  // each class sees only its own: a rogue never sees the warrior's pieces
+  const rogue = newHero(p, { name: 'Kettil Anvilsong', race: 'human', cls: 'rogue' })!;
+  assert.ok(shelfFor(p, rogue, 'helm').every((x) => x.def.cls === 'rogue'));
 });
 
 test('gear: a weapon trait works while its weapon is on, or under a unique weapon', () => {
