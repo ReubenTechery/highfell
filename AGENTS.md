@@ -59,7 +59,8 @@ Dungeons and their collection logs are the core loop of the whole game: four-min
 | Barrow Crypt hits 1.5 times as hard as its numbers, ordinary mobs have 1.3 times the health (`tune`), and unblocked hazards pierce 60% of Ward shields | So tanking, healing, dodging, and blocking genuinely matter in beginner gear |
 | Only the tank is caged; inside, the boss turns on someone else | The party feels the tank's absence |
 | You see only your own numbers (your hits, your heals, what hits you); mates' spell effects stay | Less noise, your numbers mean more |
-| The first garden harvest gives the Hill Goat | Earned from your first harvest; sits in the Hearth's stall |
+| The first garden harvest gives the Hill Goat | Earned from your first harvest; stands in the paddock |
+| Mounts live out in the paddock, on the right of the house: one place for every mount in the game; yours wander a little, the rest are a shadow with a "?" | Like the collection log, you see what's left to chase; tap one for where it drops, its rate and the kill count you got it at |
 | No trading or selling between players, ever | The collection log has to mean "I did this" |
 | A DPS alone dies before the mini boss (a test checks it) | All three roles are needed |
 | The Hearth yard has 3 planter beds (`bed.0..2`); seeds drop from dungeon bosses and grow in 3 clears (`GROW_CLEARS = 3`) | Feeds directly into the dungeon loop with no real-time timers or chores |
@@ -100,8 +101,15 @@ The full systems design (abilities, sets, drop tables, achievements, balance rul
   or a new effect with nothing lost, worse is less or an effect lost for nothing, both at once is a trade.
 - **The house:** its plan is data in `src/content/house.ts`: rooms, the things you tap and the display spots.
   Zoomed out, a tap goes into a room; zoomed in, a tap uses a thing. The hearth's first eight spot ids never
-  change; a spot a save has never had takes what isn't on show when the save loads (`settleSpots`); a spot
-  you emptied stays empty; something new goes to the first free spot of its kind (the hall first).
+  change (bar `mount.stall`, gone with the stable); a spot a save has never had takes what isn't on show when
+  the save loads (`settleSpots`); a spot you emptied stays empty; something new goes to the first free spot of
+  its kind (the hall first). Spots hold pets, trophies and banners; mounts have the paddock.
+- **The paddock** (outside, right of the house, at ground level next to the yard): one place for every mount
+  in the game (`MOUNTS` and `paddock(p)` in `src/meta/hearth.ts`, the places from `paddockSlots` in
+  `house.ts`), in the order the game lists them. A mount you own stands there and wanders a little (CSS only);
+  one you haven't got is its shadow with a "?". Tap either for its card (`itemSheet`): where it drops, its
+  rate, the kill count you got it at. It reads the collection, so a mount that was in the old stall (or the
+  garden's spot) is simply there; the save keeps its old spot keys and needs no migration.
 - **Looks:** every room inside the house has a look (`p.hearth.looks`, room id to look id; a room not in it is
   the tavern). A look opens with the achievement that gives it (`reward.look`: finishing that dungeon's
   collection log); a look you haven't earned is drawn as the tavern (the testing switch shows it). Decorate, then Looks, puts one on a room or the whole house. With
@@ -165,7 +173,7 @@ The full systems design (abilities, sets, drop tables, achievements, balance rul
   four classes, which race and class combos have art in `HERO_ART`, name lists), one folder per dungeon
   (`barrow/`: map, mobs, bosses, script, items, loot tables, collectibles, achievements, and `heroic.ts`, its
   heroic version and gilded drops), and `vale/` (ingredients, recipes, ranks, and `garden.ts`).
-  `house.ts` is the house's plan. Register new content in `src/content/index.ts`; `checkContent()`
+  `house.ts` is the house's plan (and the paddock's places). Register new content in `src/content/index.ts`; `checkContent()`
   and the tests catch broken ids.
 - `src/dungeon`: the engine, plain JS with no DOM: state `S`, entities, heroes, mobs, bots, the loop,
   rendering to a canvas, and `walkout.js` (the lantern tells). It reaches the screen only through `HOOKS`

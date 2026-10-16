@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pw_check import ROOT, wrap
 
 CATS = 'toplevel,devtools.timeline,disabled-by-default-devtools.timeline,disabled-by-default-devtools.timeline.frame,cc,viz'
-LOOK_ROOMS = ['loft', 'bunks', 'armory', 'hall', 'stable', 'brewery', 'cellar']
+LOOK_ROOMS = ['loft', 'bunks', 'armory', 'hall', 'brewery', 'cellar']
 
 
 def measure(pg, client, act, ms):
@@ -66,7 +66,12 @@ def main():
             pg.goto(Path(path).as_uri())
             pg.wait_for_timeout(1200)
             pg.evaluate("() => document.querySelector('#cr-go') && document.querySelector('#cr-go').click()")
-            pg.wait_for_timeout(600)
+            pg.wait_for_timeout(1500)
+            # skip the Crypt Trial a new hero plays, and the tour of the house after it
+            pg.evaluate("() => document.querySelector('#intro-skip') && document.querySelector('#intro-skip').click()")
+            pg.wait_for_timeout(1500)
+            pg.evaluate("() => { const b = document.querySelector('[data-act=\"tourskip\"]'); if (b) b.click(); }")
+            pg.wait_for_timeout(300)
             if a.look:
                 pg.evaluate("""([look, rooms]) => { highfell.setDev({ allOpen: true }); highfell.p.hearth.looks = Object.fromEntries(rooms.map((r) => [r, look]));
                   highfell.save(); highfell.showHearth('hall'); }""", [a.look, LOOK_ROOMS])

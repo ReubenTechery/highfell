@@ -17,7 +17,14 @@ export const spotById = (id: string): Spot | undefined => HEARTH_SPOTS.find((s) 
 export function ownedOfKind(p: Profile, kind: CollectibleKind): string[] {
   return Object.keys(p.collection).filter((id) => COLLECTIBLES[id] && COLLECTIBLES[id].kind === kind);
 }
-export const spotOf = (p: Profile, id: string): string | null => Object.entries(p.hearth.spots).find(([, v]) => v === id)?.[0] ?? null;
+/** The spot something is on show in. A spot the house no longer has (the old stall) doesn't count. */
+export const spotOf = (p: Profile, id: string): string | null => Object.entries(p.hearth.spots).find(([k, v]) => v === id && spotById(k))?.[0] ?? null;
+
+/** Every mount in the game, in the order the game lists them: each has its own place in the paddock. */
+export const MOUNTS: string[] = Object.values(COLLECTIBLES).filter((c) => c.kind === 'mount').map((c) => c.id);
+/** The paddock: every mount in the game, and whether it's yours. One you own stands in its place (wherever
+ *  it was on show before: the old stall, the garden); one you haven't got shows as a shadow. */
+export const paddock = (p: Profile): { id: string; owned: boolean }[] => MOUNTS.map((id) => ({ id, owned: !!p.collection[id] }));
 
 /** Put something in a spot (or clear it with null). An item can only sit in one spot. */
 export function place(p: Profile, spotId: string, id: string | null): boolean {
@@ -44,8 +51,8 @@ export function settleSpots(p: Profile): void {
   }
 }
 
-/** New pets, mounts, trophies and banners go straight into the first empty spot of their kind, so you
- *  see them the moment you get home: the hall first, then the loft, the roof and the yard. */
+/** New pets, trophies and banners go straight into the first empty spot of their kind, so you see them
+ *  the moment you get home: the hall first, then the loft and the roof. A new mount is in the paddock already. */
 export function autoPlace(p: Profile, id: string): string | null {
   const c = COLLECTIBLES[id];
   if (!c || spotOf(p, id)) return null;

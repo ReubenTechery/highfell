@@ -194,7 +194,7 @@ export class Reveal {
         const dp = Math.round((newS.power - nowS.power) * 10) / 10, dh = Math.round((newS.health - nowS.health) * 10) / 10;
         if (dp > 0) gains = `<span class="lc-gains"><b class="up">${GLYPH.rise}+${dp}% ${esc(ROLE_STAT[it.role].short)}</b><b class="up">${GLYPH.rise}+${dh}% hp</b></span>`;
       }
-      note = d.dupe ? `Duplicate · Seen ${fmtN(this.app.p.collection[d.id]?.n || 2)}× in log` : c ? (c.kind === 'pet' ? 'Waiting by the fire' : c.kind === 'mount' ? 'In the stall at home' : c.kind === 'cosmetic' ? 'A new look' : 'On the mantel') : it?.setId ? `${esc(it.name.split(' ')[0])} set piece · ilvl ${itemShare(it).ilvl}` : it?.effectDesc ? esc(it.effectDesc) : '';
+      note = d.dupe ? `Duplicate · Seen ${fmtN(this.app.p.collection[d.id]?.n || 2)}× in log` : c ? (c.kind === 'pet' ? 'Waiting by the fire' : c.kind === 'mount' ? 'In the paddock at home' : c.kind === 'cosmetic' ? 'A new look' : 'On the mantel') : it?.setId ? `${esc(it.name.split(' ')[0])} set piece · ilvl ${itemShare(it).ilvl}` : it?.effectDesc ? esc(it.effectDesc) : '';
     }
     const stamp = example ? '<span class="stamp ex">Example</span>' : table ? (d.dupe ? '<span class="stamp dupe">Dupe</span>' : '<span class="stamp">New</span>') : d.offerTrait ? '' : '<span class="stamp" style="background: var(--green)">Up</span>';
     const tapHint = `<span class="lc-tap">${it ? 'Tap to compare stats' : 'Tap to inspect'}</span>`;
@@ -233,7 +233,7 @@ export class Reveal {
       el.setAttribute('role', 'dialog');
       el.setAttribute('aria-label', c.name);
       el.innerHTML = `<span class="rays"></span><div class="bm"><img src="${spriteURL(c.sprite || '')}" alt=""><h2>${esc(c.name)}</h2>
-        <p>${esc(fmtRate(d.rate))} · kill count ${fmtN(d.kc || 0)}</p><p>${c.kind === 'pet' ? 'He is waiting by the fire at home.' : 'Waiting in the stall at home.'}</p><p style="opacity: 0.7">Tap to carry on</p></div>`;
+        <p>${esc(fmtRate(d.rate))} · kill count ${fmtN(d.kc || 0)}</p><p>${c.kind === 'pet' ? 'He is waiting by the fire at home.' : 'Waiting in the paddock at home.'}</p><p style="opacity: 0.7">Tap to carry on</p></div>`;
       this.root.appendChild(el);
       SFX.play('petfound');
       this.momentDone = () => { el.remove(); this.momentDone = null; res(); };
