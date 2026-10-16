@@ -68,7 +68,9 @@ function mageMoment(h) {
   const t = h.picked || h.target;
   return first(h, [
     ['a2', 'FREEZE!', () => foes.some((m) => m.cast && m.cast.kick && dist(m, h) < 150 + m.r) || foes.filter((m) => !m.isBoss && dist(m, h) < 150 + m.r).length >= 2],
-    ['a4', 'SHATTER!', () => foes.some((m) => m.st.freeze > 0.3 && dist(m, h) < 500)],
+    // a boss never freezes: Rime burst Chills him, and Icicle shatters him for less
+    ['a2', 'CHILL!', () => foes.some((m) => m.isBoss && !(m.st.chill > 0) && dist(m, h) < 150 + m.r)],
+    ['a4', 'SHATTER!', () => foes.some((m) => (m.st.freeze > 0.3 || m.st.chill > 0.3) && dist(m, h) < 500)],
     ['a1', 'STORM!', () => { const c = bestCluster(h, 120, 520); return !!c && c.score >= 3; }],
     ['a3', 'COMET!', () => isFoe(t) && !t.cage && (t.st.freeze > 0.6 || t.isBoss || !!t.M.big) && dist(t, h) < 520],
   ]);
