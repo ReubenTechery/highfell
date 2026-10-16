@@ -25,7 +25,9 @@ import { ilvl } from './hearth';
 import { heroesSheet, heroSheet, type HeroSheetState } from './herosheet';
 import { dungeonSheet, pickedDungeon, type DungeonPick } from './dungeonsheet';
 import { itemSheet, KIND_WORD, ROLE_STAT } from './itemsheet';
-import { LOG_TABS, logsSheet, mountsSheet, type LogTab } from './logsheet';
+import { LOG_TABS, logActions, logsSheet, mountsSheet, type LogTab } from './logsheet';
+import type { LogView } from './logbook';
+import { markSeen } from '../meta/logs';
 import { looksSheet, pickedLook } from './lookssheet';
 import { settingsSheet } from './settingssheet';
 
@@ -67,9 +69,9 @@ export class Sheets {
   private resetArmed = false;
   /** the look picked in the looks sheet, while the page is open */
   private lookPick: string | null = null;
-  /** the collection log shows the heroic dungeons' pages instead of the normal ones; Try it on, on a set's page */
+  /** the collection log: heroic pages or normal ones, and what its page remembers (Try it on, the closer look) */
   private logHeroic = false;
-  private logTry = false;
+  private readonly logView: LogView = { tryOn: false, peek: null, flip: false };
   /** a hero's sheet: letting them go takes two taps, and renaming has its own little form */
   private heroSt: HeroSheetState = { delArmed: false, renaming: false, err: '' };
   private heroTimer = 0;
@@ -78,6 +80,7 @@ export class Sheets {
 
   constructor(private app: App, private root: HTMLElement) {
     actions(root, {
+      ...logActions({ app, root, view: this.logView, open: (s) => this.open(s), refresh: () => this.refresh(), close: () => this.close() }),
       close: () => this.close(),
       back: () => { const s = this.spec; if (s && s.kind === 'item' && s.back) this.open(s.back); else this.close(); },
       dgpick: (el) => {
@@ -156,11 +159,6 @@ export class Sheets {
       trait: (el) => { const h = this.gearHero(); if (!h) return; if (buyTrait(this.app.p, h, 'barrow', el.dataset.trait!)) { SFX.play('coin'); this.app.save(); } else SFX.play('nope'); },
       playas: () => { const h = this.gearHero(); if (!h) return; setActive(this.app.p, h.id); SFX.play('ui'); this.app.save(); },
       look: (el) => { const p = this.app.p, id = el.dataset.id!; const off = new Set(p.settings.looksOff); if (off.has(id)) off.delete(id); else off.add(id); p.settings.looksOff = [...off]; SFX.play('ui'); this.app.save(); },
-      tab: (el) => { SFX.play('ui'); this.open({ kind: 'logs', tab: el.dataset.tab as LogTab }); },
-      entry: (el) => { this.logTry = false; SFX.play('ui'); this.open({ kind: 'logs', tab: 'collection', ...(el.dataset.id ? { entry: el.dataset.id } : {}) }); },
-      tryon: () => { this.logTry = !this.logTry; SFX.play('ui'); this.refresh(); },
-      makerace: (el) => { SFX.play('ui'); this.close(); this.app.showCreate(undefined, el.dataset.race as RaceId); },
-      putlook: () => { SFX.play('ui'); this.open({ kind: 'looks' }); },
       item: (el) => { SFX.play('ui'); this.open({ kind: 'item', id: el.dataset.id!, back: this.spec || undefined }); },
       gearat: (el) => {
         const h = heroById(this.app.p, el.dataset.hero || null);
@@ -211,7 +209,7 @@ export class Sheets {
       SFX.play('place');
       this.app.save();
     });
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.spec) this.close(); });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.spec) { if (this.logView.peek) root.querySelector<HTMLElement>('.pk-x')?.click(); else this.close(); } });
     root.addEventListener('input', (e) => { const el = e.target as HTMLInputElement; if (el.dataset.act === 'music') MUSIC.setVolume(+el.value / 100); });
   }
 
@@ -221,12 +219,13 @@ export class Sheets {
     const inDungeon = (s: SheetSpec | null): boolean => !!s && (s.kind === 'dungeon' || (s.kind === 'item' && s.back?.kind === 'dungeon'));
     if (spec.kind === 'dungeon' && !inDungeon(this.spec)) { this.pick.role = null; this.pick.alts = false; this.pick.log = false; }
     if (spec.kind === 'hero' && !(this.spec && this.spec.kind === 'hero' && this.spec.hero === spec.hero)) { clearTimeout(this.heroTimer); this.heroSt = { delArmed: false, renaming: false, err: '' }; }
+    if (spec.kind !== 'logs' && spec.kind !== 'item') this.logView.peek = null;
     this.spec = spec;
     this.render(!was);
   }
   close(): void {
     if (!this.spec) return;
-    this.spec = null; this.logTry = false;
+    this.spec = null; this.logView.tryOn = false; this.logView.peek = null;
     this.root.innerHTML = '';
     this.app.hearth.closed();
   }
@@ -256,7 +255,7 @@ export class Sheets {
   private render(fresh: boolean): void {
     const s = this.spec!;
     const scroll = this.root.querySelector('.sheet-body')?.scrollTop || 0;
-    let head = '', tabs = '', body = '', foot = '', wide = false;
+    let head = '', tabs = '', body = '', foot = '', over = '', wide = false;
     switch (s.kind) {
       case 'dungeon': ({ head, body, foot } = dungeonSheet(this.app.p, this.pick, this.app.dev.allOpen)); wide = true; break;
       case 'hero': {
@@ -272,8 +271,8 @@ export class Sheets {
         break;
       }
       case 'logs': {
-        const r = logsSheet(this.app.p, s.tab, s.entry, this.logHeroic, { tryOn: this.logTry });
-        ({ head, tabs, body } = r); this.logHeroic = r.heroic;
+        const r = logsSheet(this.app.p, s.tab, s.entry, this.logHeroic, this.logView);
+        ({ head, tabs, body, over } = r); this.logHeroic = r.heroic;
         break;
       }
       case 'settings': ({ head, body } = settingsSheet(this.app.p, this.app.store.state, this.app.dev, this.resetArmed)); break;
@@ -284,13 +283,14 @@ export class Sheets {
       case 'heroes': ({ head, body, foot } = heroesSheet(this.app.p)); break;
       case 'mounts': ({ head, body } = mountsSheet(this.app.p)); break;
     }
-    this.root.innerHTML = `<div class="sheet-wrap"><section class="sheet ${wide ? 'wide' : ''} k-${s.kind}" role="dialog" aria-modal="true" aria-label="${esc(head.replace(/<[^>]+>/g, ' ').trim().split('  ')[0] || 'Panel')}">
+    // a sheet slides in when it opens, not every time it redraws
+    this.root.innerHTML = `<div class="sheet-wrap"><section class="sheet ${wide ? 'wide' : ''}${fresh ? '' : ' still'} k-${s.kind}" role="dialog" aria-modal="true" aria-label="${esc(head.replace(/<[^>]+>/g, ' ').trim().split('  ')[0] || 'Panel')}">
       <header class="sheet-head"><div>${head}</div><button type="button" class="icon-btn" data-act="close" aria-label="Close">${GLYPH.close}</button></header>
-      ${tabs}<div class="sheet-body">${body}</div>${foot ? `<footer class="sheet-foot">${foot}</footer>` : ''}</section></div>`;
+      ${tabs}<div class="sheet-body">${body}</div>${foot ? `<footer class="sheet-foot">${foot}</footer>` : ''}${over}</section></div>`;
     const b = this.root.querySelector('.sheet-body');
     if (b && !fresh) b.scrollTop = scroll;
     if (fresh) (this.root.querySelector('.sheet-head .icon-btn') as HTMLElement | null)?.focus({ preventScroll: true });
-    if (s.kind === 'logs' && s.tab === 'collection') this.markSeen();
+    if (s.kind === 'logs' && s.tab === 'collection' && markSeen(this.app.p)) this.app.store.save();
     if (s.kind === 'gear') this.countUp();
   }
   /** the item level climbing after you put something on */
@@ -548,13 +548,6 @@ export class Sheets {
         <ul class="tip-stats">${lines.join('')}</ul>${extra}<p class="tip-src">${esc(src)}</p>
       </div>
     </div>`;
-  }
-
-  private markSeen(): void {
-    const p = this.app.p;
-    let changed = false;
-    for (const id of Object.keys(p.collection)) if (!p.seen[id]) { p.seen[id] = Date.now(); changed = true; }
-    if (changed) this.app.store.save();
   }
 
   /* ---------------------------------------------------------------- hearth spot picker */

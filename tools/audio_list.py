@@ -56,7 +56,7 @@ SFX = {
     'down': S('A hero knocked out: a quick falling slide whistle and a soft thud.', 0.9, 0.8, take=1),
     'wipe': S('The whole party falls: a short sad sting of low falling brass and one soft drum thump.', 1.5, 1.3, take=1, jingle=True),
     'heartbeat': S('One tense heartbeat: a deep double thump, lub-dub.', 0.5, 0.4, take=2),
-    'curse': S('A curse landing on a hero: a sour wobbly falling warble with a dark spooky hiss.', 0.8, 0.6, take=1),
+    'curse': S('A curse landing on a hero: one low ominous bell toll with a ghostly falling wail over it, dark and unmistakable.', 1.2, 1.0, take=5),
     'burst': S('A curse bursting on a hero: a dark muffled pop and thump with a sour hissing puff.', 0.8, 0.5, take=2),
     'fanfare': S('A short victory fanfare sting for beating the last boss of a dungeon in a cartoon fantasy game: it starts '
                  'right away with a big bright brass ta-da hit, a quick rising flourish, then one held chord that rings out. '

@@ -1,10 +1,11 @@
 /**
  * The Logs sheet: the collection log (logbook.ts: each dungeon's log as a wardrobe, the garden, the other
- * rewards), the achievements, Bramblewick's story (if you found any of it) and the stats. The sheets wire up
- * its buttons and mark what you've seen. And the paddock's page: every mount in the game, which the paddock
- * opens when you tap it from far away.
+ * rewards), the achievements, Bramblewick's story (if you found any of it) and the stats, with its buttons
+ * (logActions) and the closer look at a slot riding over it (logpeek.ts). The sheets mark what you've seen.
+ * And the paddock's page: every mount in the game, which the paddock opens when you tap it from far away.
  */
 import { ACHIEVEMENT_LIST, COLLECTIBLES, DUNGEONS } from '../content';
+import type { RaceId } from '../content/folk';
 import { ROLES } from '../content/roles';
 import type { Tier } from '../content/types';
 import { LORE } from '../content/vale';
@@ -15,6 +16,10 @@ import { skillRank } from '../meta/vale';
 import { esc, fmtDate, fmtN, fmtT } from './dom';
 import { colourOf, iconOf, nameOf } from './art';
 import { collectionLog, type LogView } from './logbook';
+import { peekCard } from './logpeek';
+import { SFX } from './sound';
+import type { App } from './app';
+import type { SheetSpec } from './sheets';
 
 export type LogTab = 'collection' | 'achievements' | 'lore' | 'stats';
 export const LOG_TABS: LogTab[] = ['collection', 'achievements', 'lore', 'stats'];
@@ -22,15 +27,47 @@ const TIER_ORDER: Tier[] = ['log', 'bronze', 'silver', 'gold', 'meta', 'hidden']
 const TIER_WORD: Record<Tier, string> = { log: 'Collection logs', bronze: 'Bronze', silver: 'Silver', gold: 'Gold', meta: 'Mastery', hidden: 'Hidden' };
 
 /** The sheet for a tab. `heroic` is whether the collection log shows the heroic logs; a page asked for from
- *  the other version switches it, and the sheet hands back what it is now. */
-export function logsSheet(p: Profile, tab: LogTab, entry: string | undefined, heroic: boolean, view: LogView): { head: string; tabs: string; body: string; heroic: boolean } {
+ *  the other version switches it, and the sheet hands back what it is now. `over` is the closer look at a
+ *  slot, drawn over the sheet. */
+export function logsSheet(p: Profile, tab: LogTab, entry: string | undefined, heroic: boolean, view: LogView): { head: string; tabs: string; body: string; heroic: boolean; over: string } {
   const word: Record<LogTab, string> = { collection: 'Collection log', achievements: 'Achievements', lore: 'Story', stats: 'Stats' };
   // the story tab only shows if you found pages of Bramblewick's story back when you rode out
   const tabs = `<div class="tabs" role="tablist">${LOG_TABS.filter((t) => t !== 'lore' || p.vale.lore.length || tab === 'lore').map((t) => `<button type="button" class="tab" role="tab" data-act="tab" data-tab="${t}" aria-selected="${t === tab}">${word[t]}</button>`).join('')}</div>`;
   let body: string, h = heroic;
   if (tab === 'collection') ({ html: body, heroic: h } = collectionLog(p, entry, heroic, view));
   else body = tab === 'stats' ? stats(p) : tab === 'lore' ? lore(p) : achievements(p);
-  return { head: '<h2>Logs</h2>', tabs, body, heroic: h };
+  const over = tab === 'collection' && view.peek ? peekCard(p, view.peek, entry?.includes('.set.') ? entry : undefined) : '';
+  return { head: '<h2>Logs</h2>', tabs, body, heroic: h, over };
+}
+
+/** what the Logs sheet's buttons need from the sheets: what the page remembers, and the ways to move */
+export interface LogHost { app: App; root: HTMLElement; view: LogView; open(spec: SheetSpec): void; refresh(): void; close(): void }
+
+/** the Logs sheet's buttons: its tabs and pages, Try it on, the closer look (focus goes into it, and back to
+ *  what opened it), and a finished log's way in */
+export function logActions(h: LogHost): Record<string, (el: HTMLElement) => void> {
+  const reset = (): void => { h.view.tryOn = false; h.view.peek = null; };
+  return {
+    tab: (el) => { reset(); SFX.play('ui'); h.open({ kind: 'logs', tab: el.dataset.tab as LogTab }); },
+    entry: (el) => {
+      reset();
+      h.view.flip = !!el.dataset.flip;
+      SFX.play('ui');
+      h.open({ kind: 'logs', tab: 'collection', ...(el.dataset.id ? { entry: el.dataset.id } : {}) });
+      h.view.flip = false;
+    },
+    tryon: () => { h.view.tryOn = !h.view.tryOn; SFX.play('ui'); h.refresh(); },
+    peek: (el) => { h.view.peek = el.dataset.id || null; SFX.play('ui'); h.refresh(); h.root.querySelector<HTMLElement>('.pk-x')?.focus({ preventScroll: true }); },
+    peekclose: () => {
+      const id = h.view.peek;
+      h.view.peek = null;
+      SFX.play('ui');
+      h.refresh();
+      if (id) h.root.querySelector<HTMLElement>(`[data-act="peek"][data-id="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+    },
+    makerace: (el) => { SFX.play('ui'); h.close(); h.app.showCreate(undefined, el.dataset.race as RaceId); },
+    putlook: () => { SFX.play('ui'); h.open({ kind: 'looks' }); },
+  };
 }
 
 /** Every mount in the game, in the paddock's order: yours lit up with when you got it, the rest dark with

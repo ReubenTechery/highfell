@@ -4,14 +4,14 @@ import assert from 'node:assert/strict';
 import { makeRng } from '../src/core/rng';
 import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, SETS, checkContent, heroicVersion } from '../src/content';
 import { BARROW } from '../src/content/barrow';
-import { activeHero, createHero, dungeonRecord, finishCurseTip, finishHearthTour, finishIntroRun, freshProfile, migrate, nameProblem, needsCurseTip, needsHearthTour, needsIntroRun, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, startHearthTour, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
+import { activeHero, classRuns, countClassRun, countLift, createHero, dungeonRecord, finishCurseTip, finishHearthTour, finishIntroRun, freshProfile, learnGlow, markClassTrial, migrate, nameProblem, needsClassTrial, needsCurseTip, needsHearthTour, needsIntroRun, needsSwipeHint, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, startHearthTour, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
 import { DUPE_MARKS, grantTrialStarter, heroicOpen, heroicProgress, resolveRun, rollTable, trialStarter } from '../src/meta/loot';
 import { bestRegular, buyTrait, compareFor, compareOn, effectsOf, equip, floorWorn, itemScore, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, wearerOf, worn } from '../src/meta/gear';
 import { CLASSES, FOUNDERS, HERO_ART, MAX_HEROES, RACES, allHeroArt, canMake, cleanName, defaultSex, heroArt } from '../src/content/folk';
 import { SLOT_IDS, gearId } from '../src/content/gear';
 import { INGREDIENTS, RECIPES } from '../src/content/vale';
 import { Achiever, progress } from '../src/meta/achievements';
-import { logProgress, opened, shelfOf, standPieces, standsOf } from '../src/meta/logs';
+import { logProgress, markSeen, opened, shelfOf, standPieces, standsOf } from '../src/meta/logs';
 import { HEARTH_SPOTS, MOUNTS, autoPlace, lookOf, lookOpen, lookProgress, paddock, place, setLook, spotOf } from '../src/meta/hearth';
 import { HOUSE_SPOTS, LOOK_ROOMS, OUTSIDE, PADDOCK, ROOMS, THINGS, paddockSlots } from '../src/content/house';
 import { groupOf, heroesFor, partyProblem, pickRole, seats, seatsFor } from '../src/meta/party';
@@ -340,7 +340,9 @@ test('achievements: counters, live checks, run checks, rewards and the meta', ()
   assert.deepEqual(a.event({ type: 'crit', amount: 1600, player: true }), ['barrow.bignumber']);
   const tankOnly = new Achiever(p, { dungeon: 'barrow', role: 'healer', practice: false, testGear: false });
   assert.deepEqual(tankOnly.event({ type: 'boss.killed', boss: 'keeper', time: 1, armorUp: false, onlyPlayerAlive: false, smashes: 5, smashPerfect: 5, playerIsTank: true }), []);
-  const sum: RunSummary = { dungeon: 'barrow', role: 'dps', practice: false, testGear: false, time: 190, deaths: 0, wipes: 0, handHits: 0, ringHits: 0, saves: 0, playerDeaths: 0, kicks: 0, perfectBlocks: 0 };
+  const sum: RunSummary = { dungeon: 'barrow', role: 'dps', practice: false, testGear: false, time: 165, deaths: 0, wipes: 0, handHits: 0, ringHits: 0, saves: 0, playerDeaths: 0, kicks: 0, perfectBlocks: 0 };
+  // Gravedigger's Sprint is a clear under 2:50
+  assert.ok(!new Achiever(freshProfile(), { dungeon: 'barrow', role: 'dps', practice: false, testGear: false }).cleared({ ...sum, time: 175 }).includes('barrow.sprint'));
   const got = a.cleared(sum);
   for (const id of ['barrow.into', 'barrow.nobody', 'barrow.sprint', 'barrow.flawless']) assert.ok(got.includes(id), id);
   assert.ok(p.collection['trophy.barrow_key']);
@@ -470,11 +472,29 @@ test('the log as a wardrobe: each set on a stand with its role’s boss weapon, 
 });
 
 test('the wardrobe: every set piece and boss weapon, plain and gilded, has its piece for the stands', () => {
-  const pieces: Record<string, string> = WARDROBE.pieces;
+  const pieces: Record<string, string> = WARDROBE.pieces, boxes: Record<string, number[]> = WARDROBE.boxes;
   const worn = Object.values(ITEMS).filter((d) => d.setId || d.kind === 'unique');
   assert.ok(worn.length >= 32, 'the Barrow’s 16 pieces and their gilded twins');
-  for (const d of worn) assert.ok(pieces[d.id]?.includes('class="sil"'), `${d.id} has a stand piece, with a silhouette for its ghost`);
+  for (const d of worn) {
+    const g = pieces[d.id] || '', sil = g.slice(g.indexOf('<g class="sil">'), g.indexOf('<g class="det">'));
+    assert.ok(sil, `${d.id} has a stand piece, with a silhouette for its ghost`);
+    // a ghost is one line round its silhouette's shapes, so every one of them is filled: no bare lines (beams)
+    assert.ok(!/fill: none/.test(sil), `${d.id}'s silhouette is all shapes`);
+    const b = boxes[d.id.replace(/\.gilded$/, '')];
+    assert.ok(b && b.length === 4 && b[2] > 0 && b[3] > 0, `${d.id} has a box, to be shown on its own`);
+  }
   for (const c of Object.values(COLLECTIBLES).filter((x) => x.id.startsWith('dye.'))) assert.ok(c.sprite, `${c.id} can stand on the log's shelf`);
+});
+
+test('the log marks what it has shown as seen, once', () => {
+  const { p } = withHero('tank');
+  p.collection['barrowguard.helm'] = { n: 1, kc: 3, at: 1 };
+  p.collection['trophy.rattlebones_plume'] = { n: 2, kc: 9, at: 2 };
+  p.seen['trophy.rattlebones_plume'] = 5;
+  assert.equal(markSeen(p, 7), true);
+  assert.equal(p.seen['barrowguard.helm'], 7, 'the new one is seen now');
+  assert.equal(p.seen['trophy.rattlebones_plume'], 5, 'one already seen keeps when it was');
+  assert.equal(markSeen(p, 8), false, 'nothing new the second time');
 });
 
 test('house looks: a room shows the look you put on it once you have earned it, and the tavern is always yours', () => {
@@ -858,3 +878,37 @@ test('stepped dungeon tiers: Tier 1 is ilvl 26, Tier 2 is ilvl 34, and Tier 3 is
   assert.equal(itemScore(tier3Weapon), 42);
 });
 
+
+test('learning a class: its first five runs glow the button whose moment has come, fading out, and older saves count their clears', () => {
+  const { p, h } = withHero('healer');
+  assert.equal(classRuns(p, h.cls), 0);
+  const glows: number[] = [];
+  for (let i = 0; i < 6; i++) { glows.push(+learnGlow(p, h.cls).toFixed(2)); countClassRun(p, h.cls); }
+  assert.deepEqual(glows, [1, 0.85, 0.7, 0.55, 0.4, 0], 'full on the first run, fading, gone after five');
+  assert.equal(learnGlow(p, 'mage'), 1, 'another class starts fresh');
+  // a save from before the count: heroes with clears have played their class already
+  const old = withHero('tank');
+  old.h.clears = 7;
+  assert.equal(classRuns(old.p, old.h.cls), 7);
+  assert.equal(learnGlow(old.p, old.h.cls), 0);
+  // it's only counters, so the save keeps its shape and the count survives a save and load
+  assert.equal(classRuns(migrate(JSON.parse(JSON.stringify(p))), h.cls), 6);
+});
+
+test('learning a class: the first run on a class that isn\'t your first hero\'s offers its Crypt Trial, once', () => {
+  const { p, h } = withHero('healer');
+  assert.equal(needsClassTrial(p, h), false, 'the first hero played the trial when it was made');
+  const mage = newHero(p, { name: 'Ivo Brightwick', race: 'elf', cls: 'mage' })!;
+  assert.equal(needsClassTrial(p, mage), true);
+  markClassTrial(p, 'mage');
+  assert.equal(needsClassTrial(p, mage), false, 'offered once');
+  const rogue = newHero(p, { name: 'Wren Ashdown', race: 'human', cls: 'rogue' })!;
+  countClassRun(p, 'rogue');
+  assert.equal(needsClassTrial(p, rogue), false, 'not for a class you have already played');
+});
+
+test('curses: the swipe arrow over a cursed mate shows until you have lifted three', () => {
+  const p = freshProfile();
+  for (let i = 0; i < 3; i++) { assert.equal(needsSwipeHint(p), true, `after ${i} lifts`); countLift(p); }
+  assert.equal(needsSwipeHint(p), false);
+});

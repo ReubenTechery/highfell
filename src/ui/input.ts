@@ -196,6 +196,40 @@ export function bindInput(layer: HTMLElement, ui: InputUI): void {
   window.addEventListener('blur', () => { IN.keys = {}; IN.block = false; IN.stick = null; ui.stick(null); });
 }
 
+/** does the segment a→b touch the box? (screen points; the box as getBoundingClientRect gives it) */
+export function segHitsRect(a: { x: number; y: number }, b: { x: number; y: number }, r: { left: number; top: number; right: number; bottom: number }): boolean {
+  const inside = (q: { x: number; y: number }) => q.x >= r.left && q.x <= r.right && q.y >= r.top && q.y <= r.bottom;
+  if (inside(a) || inside(b)) return true;
+  const c = [{ x: r.left, y: r.top }, { x: r.right, y: r.top }, { x: r.right, y: r.bottom }, { x: r.left, y: r.bottom }];
+  return c.some((q, i) => segsCross(a, b, q, c[(i + 1) % 4]));
+}
+/** how far a touch on the party frames travels before it counts as a swipe (a tap that wobbles still only heals) */
+const FRAME_SWIPE = 24;
+/** A healer's swipe across party frames lifts the curse of each cursed mate whose frame it crosses. A tap on a
+ *  frame heals (the frame's own pointerdown); this watches from the list, so a swipe can start on one frame and
+ *  run on into the next. */
+export function bindFrameSwipes(list: HTMLElement): void {
+  let g: { id: number; x0: number; y0: number } | null = null;
+  list.addEventListener('pointerdown', (e) => {
+    g = { id: e.pointerId, x0: e.clientX, y0: e.clientY };
+    try { list.setPointerCapture(e.pointerId); } catch { /* fine */ }
+  }, true);
+  list.addEventListener('pointermove', (e) => {
+    if (!g || e.pointerId !== g.id || !S || S.over || S.paused) return;
+    const me = S.player;
+    if (!me.alive || me.st.caged || me.role !== 'healer') return;
+    const a = { x: g.x0, y: g.y0 }, b = { x: e.clientX, y: e.clientY };
+    if (Math.hypot(b.x - a.x, b.y - a.y) < FRAME_SWIPE) return;
+    list.querySelectorAll<HTMLElement>('[data-role]').forEach((el) => {
+      const h = heroBy(el.dataset.role);
+      if (h && h.alive && h.st.curse && segHitsRect(a, b, el.getBoundingClientRect())) liftCurse(h, me);
+    });
+  });
+  const end = (e: PointerEvent) => { if (g && e.pointerId === g.id) g = null; };
+  list.addEventListener('pointerup', end);
+  list.addEventListener('pointercancel', end);
+}
+
 /** a swipe by the healer that crosses a wisp or a chain cuts it, and one across a cursed hero lifts the curse */
 export function trySlice(a: { x: number; y: number }, b: { x: number; y: number }, _ui: InputUI): boolean {
   if (!S || !S.player.alive || S.player.st.caged || S.player.role !== 'healer') return false;

@@ -72,7 +72,7 @@ export function itemSheet(p: Profile, id: string, hasBack: boolean): { head: str
 }
 
 /** each verdict's word, its colour class and its mark */
-const VERDICT: Record<Verdict, { word: string; cls: string; mark: string }> = {
+export const VERDICT: Record<Verdict, { word: string; cls: string; mark: string }> = {
   better: { word: 'Upgrade', cls: 'up', mark: GLYPH.rise },
   worse: { word: 'Downgrade', cls: 'down', mark: GLYPH.fall },
   same: { word: 'Same power', cls: 'same', mark: GLYPH.same },
@@ -81,7 +81,7 @@ const VERDICT: Record<Verdict, { word: string; cls: string; mark: string }> = {
 };
 
 /** a change as a coloured tag: green and up, red and down, or the same */
-function tag(n: number, unit = ''): string {
+export function tag(n: number, unit = ''): string {
   if (n > 0) return `<b class="cmp-d up">${GLYPH.rise}+${n}${unit}</b>`;
   if (n < 0) return `<b class="cmp-d down">${GLYPH.fall}−${Math.abs(n)}${unit}</b>`;
   return '<b class="cmp-d">Same</b>';

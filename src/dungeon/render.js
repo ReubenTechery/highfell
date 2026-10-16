@@ -483,13 +483,29 @@ export function drawHero(ctx, h) {
   if (h.cast) { const k = h.cast.t / h.cast.dur; castBar(ctx, h.x, h.y + top - 14, 70, k, '#8FD6FF'); }
   if (h.say && h.sayT > 0) bubble(ctx, h.x, h.y + top - 14, h.say);
 }
-/* curses go over everything, the dark too: the healer has to see them */
+/* curses go over everything, the dark too: the healer has to see them. Until you've lifted three, the swipe
+   that lifts one is drawn across the cursed hero (opts.swipeHint, set by the run screen). */
 function drawCurses(ctx, v) {
+  const teach = S.opts.swipeHint && S.player.role === 'healer' && S.player.alive;
   for (const h of S.heroes) {
     if (!h.alive || !h.st.curse || h.y < v.y0 || h.y > v.y1) continue;
     const { top } = heroFit(h.sprite || ROLES[h.role].sprite, h.back);
     curseMark(ctx, h.x, h.y + top - 12, h.st.curse.t / CURSE_TIME);
+    if (teach) swipeArrow(ctx, h.x, h.y - 40);
   }
+}
+/* a gold arrow sweeping left to right across the hero, about once a second */
+function swipeArrow(ctx, x, y) {
+  const k = (S.t * 1.1) % 1, x0 = x - 90, hx = lerp(x0, x + 90, k);
+  ctx.save();
+  ctx.globalAlpha = clamp(k * 4, 0, 1) * clamp((1 - k) * 4, 0, 1);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(hx, y);
+  ctx.lineWidth = 13; ctx.strokeStyle = K; ctx.stroke();
+  ctx.lineWidth = 6; ctx.strokeStyle = '#FFE08A'; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(hx + 20, y); ctx.lineTo(hx - 4, y - 17); ctx.lineTo(hx - 4, y + 17); ctx.closePath();
+  ctx.fillStyle = '#FFE08A'; ctx.lineWidth = 4; ctx.strokeStyle = K; ctx.fill(); ctx.stroke();
+  ctx.restore();
 }
 /* a curse over a hero's head: the skull, and its ring running down over the 4 seconds (red at the end) */
 function curseMark(ctx, x, y, k) {

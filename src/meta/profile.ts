@@ -361,3 +361,20 @@ export const finishSeedTour = (p: Profile): void => { p.counters['intro.seed'] =
 /** The first curse that lands while you're the healer brings a one-line tip on lifting it, once a save. */
 export const needsCurseTip = (p: Profile): boolean => !p.counters['tip.curse'];
 export const finishCurseTip = (p: Profile): void => { p.counters['tip.curse'] = 1; };
+
+/* ---------------------------------------------------------------- learning a class */
+/** Runs played on a class: counted as each one starts, or, for saves from before the count, its heroes' clears. */
+export const classRuns = (p: Profile, cls: string): number =>
+  Math.max(p.counters['runs.' + cls] || 0, p.roster.reduce((n, h) => n + (h.cls === cls ? h.clears : 0), 0));
+export const countClassRun = (p: Profile, cls: string): void => { count(p, 'runs.' + cls); };
+/** A class's first runs glow the button whose moment has come: full on the first run, fading, gone after five. */
+export const LEARN_RUNS = 5;
+export const learnGlow = (p: Profile, cls: string): number => { const n = classRuns(p, cls); return n < LEARN_RUNS ? 1 - 0.15 * n : 0; };
+/** The first run on a class that isn't your first hero's offers that class's Crypt Trial, once. */
+export const needsClassTrial = (p: Profile, h: Hero): boolean =>
+  p.roster.length > 0 && p.roster[0].cls !== h.cls && !p.counters['trial.' + h.cls] && classRuns(p, h.cls) === 0;
+export const markClassTrial = (p: Profile, cls: string): void => { p.counters['trial.' + cls] = 1; };
+/** A swipe arrow is drawn across a cursed mate until you've lifted three curses. */
+export const SWIPE_HINT_LIFTS = 3;
+export const needsSwipeHint = (p: Profile): boolean => (p.counters['curse.lifts'] || 0) < SWIPE_HINT_LIFTS;
+export const countLift = (p: Profile): void => { count(p, 'curse.lifts'); };

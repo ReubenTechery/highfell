@@ -152,8 +152,9 @@ export const SOUNDS: Record<string, Play> = {
   fire: (t, v) => N(t, 1.4, 0.2 * v, 900, 'bandpass', 0.7, 400),
   kick: (t, v) => { T(t, 1200, 0.12, 'square', 0.1 * v, 600); T(t, 1800, 0.18, 'sine', 0.12 * v, null, 0.05); },
   rot: (t, v) => N(t, 0.6, 0.2 * v, 500, 'bandpass', 2, 200),
-  // curses: a sour warble when one lands, a dark thump when one bursts, a bright chime when the healer lifts it
-  curse: (t, v) => { T(t, 520, 0.5, 'triangle', 0.1 * v, 260); T(t, 490, 0.5, 'sine', 0.08 * v, 245, 0.04); N(t, 0.4, 0.08 * v, 900, 'bandpass', 3, 400); },
+  // curses: a low toll with a falling wail when one lands (nothing else sounds like it), a dark thump when one
+  // bursts, a bright chime when the healer lifts it
+  curse: (t, v) => { T(t, 196, 1.1, 'triangle', 0.26 * v, 175); T(t, 392, 0.8, 'sine', 0.13 * v, 350, 0.01); T(t, 1180, 0.45, 'square', 0.05 * v, 560, 0.06); N(t, 0.6, 0.12 * v, 1400, 'bandpass', 5, 300); },
   burst: (t, v) => { T(t, 90, 0.45, 'sine', 0.4 * v, 45); N(t, 0.35, 0.3 * v, 700, 'bandpass', 1, 200); T(t, 300, 0.3, 'sawtooth', 0.06 * v, 120); },
   lift: (t, v) => { N(t, 0.12, 0.2 * v, 5000, 'highpass'); [1046, 1568].forEach((f, i) => T(t, f, 0.25, 'triangle', 0.1 * v, null, 0.03 + i * 0.05)); },
   // a save: the healer caught someone at the last moment

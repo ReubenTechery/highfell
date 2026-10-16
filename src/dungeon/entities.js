@@ -59,8 +59,10 @@ export function makeHero(role, isPlayer, loadout) {
 
 export function makeMob(type, x, y, pack) {
   const M = S.dg.mobs[type];
-  // the dungeon's tuning: ordinary mobs get its health multiplier, bosses theirs (as written outside heroic)
-  const hp = Math.max(1, Math.round(M.hp * (M.boss ? S.tune.bossHp : S.tune.trashHp)));
+  // the dungeon's tuning: ordinary mobs get its health multiplier, bosses theirs (as written outside heroic),
+  // and a mob named in its hp gets that one instead
+  const own = S.tune.hp && S.tune.hp[type];
+  const hp = Math.max(1, Math.round(M.hp * (own !== undefined ? own : M.boss ? S.tune.bossHp : S.tune.trashHp)));
   return {
     id: 'm' + (S.seq++), kind: 'mob', type, M, name: M.name, x, y, r: M.r, home: { x, y }, home0: { x, y }, pack,
     hp, maxHp: hp, speed: M.speed, alive: true, state: 'idle',
@@ -286,9 +288,11 @@ export function killMob(m, src) {
     dots(m.x, m.y - 40, '#C8F5E8', 10, 160); fx({ type: 'ring', x: m.x, y: m.y - 40, r0: 8, r1: 46, col: '#C8F5E8', dur: 0.25, w: 4 }); sfx('pop');
     // Soul Spark backlash: banishing a wisp during a boss fight zaps the boss and restores healer mana
     if (src && src.role === 'healer' && S.boss && S.boss.alive && !S.boss.hidden) {
+      // the bolt can finish him, so hold on to him for the beam
+      const b = S.boss;
       src.mana = Math.min(src.maxMana, src.mana + 5);
-      hurtMob(S.boss, 180, src, { raw: true, noCrit: true, col: '#C8F5E8', size: 19 });
-      fx({ type: 'beam', x: m.x, y: m.y - 40, x2: S.boss.x, y2: S.boss.y - 90, col: '#C8F5E8', dur: 0.22 });
+      hurtMob(b, 180, src, { raw: true, noCrit: true, col: '#C8F5E8', size: 19 });
+      fx({ type: 'beam', x: m.x, y: m.y - 40, x2: b.x, y2: b.y - 90, col: '#C8F5E8', dur: 0.22 });
     }
     return;
   }

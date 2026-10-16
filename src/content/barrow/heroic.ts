@@ -42,7 +42,8 @@ export const BARROW_HEROIC: DungeonInfo = {
   id: 'barrow-heroic',
   name: 'Heroic Barrow Crypt',
   blurb: 'The same crypt with the gloves off: everything hits harder and lasts longer. Made for full Epic.',
-  bosses: BARROW.bosses,
+  // the Gravekeeper fights all three phases here
+  bosses: BARROW.bosses.map((b) => (b.id === 'keeper' ? { ...b, phases: 3 } : b)),
   finalBoss: BARROW.finalBoss,
   loot: HEROIC_LOOT,
   // the same seed as the normal crypt, more often
