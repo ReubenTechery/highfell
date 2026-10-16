@@ -22,8 +22,9 @@ import { mainReward } from './dungeonsheet';
 import { SWATCH } from './lookssheet';
 
 /** what the page remembers while it's open: Try it on, on a set's page, the slot it's taking a closer look at,
- *  and whether this draw is the one just after the Normal or Heroic toggle flipped (its thumb slides over) */
-export interface LogView { tryOn: boolean; peek: string | null; flip: boolean }
+ *  whether this draw is the one just after the Normal or Heroic toggle flipped (its thumb slides over), and
+ *  the achievement whose card is open on the achievements tab */
+export interface LogView { tryOn: boolean; peek: string | null; flip: boolean; ach: string | null }
 
 /** who stands on a log's plinth: the Barrow's Risen (gilded for its heroic log), Thimblebriar's Gnome */
 export const PRIZE_ART: Record<string, string> = { 'barrow.log': 'risen_tank_f', 'barrow-heroic.log': 'risen_tank_gilded_f', 'thimblebriar.log': 'gnome_tank_f', 'thimblebriar-heroic.log': 'gnome_tank_gilded_f' };

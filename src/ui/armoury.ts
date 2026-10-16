@@ -7,13 +7,14 @@
  * corner. Its buttons (armouryActions), the moment a piece goes on (the burst, the item level counting up)
  * and looking clearing New (leftSlot) live here too; the sheets open and close it.
  */
-import { COLLECTIBLES, ITEMS, SETS, TITLES } from '../content';
+import { COLLECTIBLES, ITEMS, SETS, TITLES, placeName } from '../content';
 import { AB, ROLES, SLOTS_AB, abKey } from '../content/roles';
 import { ROLE_SLOTS, SLOT_IDS, gearKey } from '../content/gear';
 import { CLASSES, RACES, type ClassId, type RaceId } from '../content/folk';
-import type { AbilitySlot, SlotId } from '../content/types';
+import type { AbilitySlot, RoleId, SlotId } from '../content/types';
 import { activeHero, heroById, roleOf, setActive, type Hero, type Profile } from '../meta/profile';
 import { betterFor, buyTrait, compareOn, effectsOf, healthPct, itemScore, loadoutFor, lookId, powerPct, seenSlot, shelfFor, waiting, waitingFor, wear, worn, type ShelfPiece, type Worn } from '../meta/gear';
+import { titleRows, wearTitle } from '../meta/achievements';
 import type { App } from './app';
 import { cap, esc, fmtRate, GLYPH } from './dom';
 import { heroImg, heroSprite, iconOf, nameOf, rarLook, tile } from './art';
@@ -23,6 +24,7 @@ import { ROLE_STAT } from './itemsheet';
 import { dropSource } from './logpeek';
 import { pieceCard, traitRow } from './armourycard';
 import type { SheetSpec } from './sheets';
+import { progressHtml } from './achcard';
 
 export type ArmouryTab = 'gear' | 'abilities' | 'looks';
 export const ARMOURY_TABS: ArmouryTab[] = ['gear', 'abilities', 'looks'];
@@ -98,7 +100,7 @@ export function armouryActions(x: ArmouryHost): Record<string, (el: HTMLElement)
       if (x.app.scene === 'reveal') x.app.showHearth();
       x.open({ kind: 'gear', hero: h.id, slot: el.dataset.slot as SlotId, ...(el.dataset.id ? { pick: el.dataset.id } : {}) });
     },
-    title: (el) => { const h = gearHero(); if (!h) return; h.title = el.dataset.id || null; SFX.play('ui'); x.app.save(); },
+    title: (el) => { const h = gearHero(); if (h && wearTitle(x.app.p, h, el.dataset.id || null)) { SFX.play(el.dataset.id ? 'equip' : 'ui'); x.app.save(); } else SFX.play('nope'); },
   };
 }
 
@@ -221,18 +223,38 @@ function abilities(p: Profile, h: Hero): string {
     ${always.length ? `<div class="ar-always">${always.map((e) => `<p><b>${esc(e.kind === 'trait' ? `${e.name} trait` : e.name)}</b> ${esc(e.desc)}</p>`).join('')}</div>` : '<p class="fine">Wear two pieces of a set, or a Rare weapon with a trait, to switch one on.</p>'}`;
 }
 
-/** the Looks tab: a title to wear, and the looks you own, on or off (never power) */
+/** the Looks tab: every title (the ones you have to wear with a tap, and where each came from; the rest with
+ *  exactly how to earn them), and the looks you own, on or off (never power) */
 function looks(p: Profile, h: Hero): string {
-  const role = roleOf(h);
-  const titles = p.titles.filter((t) => TITLES[t]);
-  const titleBox = `<div class="box"><h3 class="section-title">Title<small>shown with ${esc(h.name.split(' ')[0])}’s name</small></h3>${titles.length ? `<div class="titles" role="radiogroup">
-    <button type="button" class="sg" role="radio" data-act="title" data-id="" aria-checked="${!h.title}">None</button>
-    ${titles.map((t) => `<button type="button" class="sg" role="radio" data-act="title" data-id="${t}" aria-checked="${h.title === t}">${esc(TITLES[t].text)}</button>`).join('')}</div>` : '<p class="fine">Some achievements give a title. Every hero can wear the ones you earn.</p>'}</div>`;
+  return titlesBox(p, h) + looksBox(p, h, roleOf(h));
+}
+
+/** Every title in one list. Yours say where they came from and go on with one tap (the one worn says so, and
+ *  shows over this hero's head in the house); the rest say exactly how to earn them, with your progress, and a
+ *  hidden achievement's keeps its secret. */
+function titlesBox(p: Profile, h: Hero): string {
+  const rows = titleRows(p), first = h.name.split(' ')[0], mine = rows.filter((r) => r.have), rest = rows.filter((r) => !r.have);
+  const where = (id: string): string => esc(placeName(id) || '');
+  const row = (r: (typeof rows)[number]): string => {
+    const on = h.title === r.id, a = r.from;
+    const btn = !r.have ? '' : on ? '<button type="button" class="btn small" data-act="title" data-id="">Take it off</button>'
+      : `<button type="button" class="btn small gold" data-act="title" data-id="${esc(r.id)}">Wear it</button>`;
+    const said = r.have ? `From ${esc(a.name)} · ${where(a.dungeon)}`
+      : r.secret ? `A hidden achievement in ${where(a.dungeon)}. You’ll know it when it happens.` : `${esc(a.how)} <i>${esc(a.name)} · ${where(a.dungeon)}</i>`;
+    return `<li class="tl-row${r.have ? ' have' : ''}${on ? ' on' : ''}"><span class="tl-tx"><b>${r.secret ? '???' : esc(r.text)}${on ? `<i class="ac-on">${GLYPH.check}Wearing</i>` : ''}</b>
+      <small>${said}</small>${r.have || r.secret ? '' : progressHtml(p, a)}</span>${btn}</li>`;
+  };
+  return `<div class="box tl"><h3 class="section-title">Titles<small>${mine.length} of ${rows.length} · over ${esc(first)}’s head</small></h3>
+    ${mine.length ? `<ul class="tl-list">${mine.map(row).join('')}</ul>` : '<p class="fine">Achievements give titles. Every hero of yours can wear the ones you earn.</p>'}
+    ${rest.length ? `<h4 class="tl-h">To earn</h4><ul class="tl-list">${rest.map(row).join('')}</ul>` : ''}</div>`;
+}
+
+/** the looks you own, on or off, and the ones still to find */
+function looksBox(p: Profile, h: Hero, role: RoleId): string {
   const ids = ['cosmetic.glow_shield', 'cosmetic.glow_staff', 'cosmetic.crit_ice', 'cosmetic.trail_wisp', 'dye.ghostly', 'dye.ghostly.gilded', 'dye.sporeglow', 'cosmetic.gilded_bones', 'cosmetic.gilded_gnomes']
     .filter((id) => (id === 'cosmetic.glow_shield' ? role === 'tank' : id === 'cosmetic.glow_staff' ? role === 'healer' : id === 'cosmetic.crit_ice' ? role === 'dps' : COLLECTIBLES[id].gilds ? h.race === COLLECTIBLES[id].gilds : true) && (!COLLECTIBLES[id].retired || !!p.collection[id]));
-  const looksBox = `<div class="box"><h3 class="section-title">Looks<small>never power</small></h3><div class="picks">${ids.map((id) => {
+  return `<div class="box"><h3 class="section-title">Looks<small>never power</small></h3><div class="picks">${ids.map((id) => {
     const c = COLLECTIBLES[id], own = !!p.collection[id], on = own && !p.settings.looksOff.includes(id);
     return `<button type="button" class="pick" data-act="${own ? 'look' : 'item'}" data-id="${id}" aria-pressed="${on}"><span class="tile" aria-hidden="true" ${own ? '' : 'style="filter: grayscale(1) opacity(0.5)"'}>${tile(c.icon)}</span><span><b>${esc(c.name)}</b><span>${own ? (on ? 'On' : 'Off') : esc(c.source)}</span></span></button>`;
   }).join('')}</div></div>`;
-  return titleBox + looksBox;
 }

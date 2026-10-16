@@ -23,7 +23,7 @@ import { settleSpots } from './hearth';
 import { opened } from './logs';
 import { warbandOpen } from './warband';
 
-export const PROFILE_VERSION = 9;
+export const PROFILE_VERSION = 10;
 /** Shared gear climbs to Rare. Epic is earned on the hero. */
 export const WARBAND_CAP: Rar = 2;
 
@@ -53,6 +53,8 @@ export interface Hero {
   clears: number;
 }
 export interface CollectionEntry { n: number; kc: number; at: number }
+/** When an achievement came, and from v10 the kill count it came at (its dungeon's last boss; none for the garden's). */
+export interface AchievementEntry { at: number; kc?: number }
 /** A gathering spot's state from the days you rode out (kept, never used again). */
 export interface NodeState { n: number; day: number; shimmer: boolean }
 export interface PlaceState { nodes: Record<string, NodeState>; errands: { n: number; day: number; next: number } }
@@ -95,7 +97,7 @@ export interface Profile {
   bosses: Record<string, BossRecord>;
   /** everything obtained: drops and achievement rewards */
   collection: Record<string, CollectionEntry>;
-  achievements: Record<string, { at: number }>;
+  achievements: Record<string, AchievementEntry>;
   counters: Record<string, number>;
   /** titles earned by the whole roster; each hero picks one to wear */
   titles: string[];
@@ -221,6 +223,9 @@ const MIGRATIONS: Record<number, (raw: any) => any> = {
       bosses,
     };
   },
+  /* v9 kept only the day each achievement came. From v10 a new one also keeps the kill count it came at; the
+     ones you have keep their day, and their count stays unknown. */
+  9: (d) => d,
 };
 
 /** Reads any stored value into a valid current profile. Unknown or broken data starts fresh. */
@@ -274,7 +279,7 @@ export function normalize(d: any, now = Date.now()): Profile {
   for (const [k, v] of Object.entries(obj(d.dungeons))) { const x = obj(v); p.dungeons[k] = { runs: num(x.runs, 0), clears: num(x.clears, 0), pb: typeof x.pb === 'number' ? x.pb : null, marks: num(x.marks, 0) }; }
   for (const [k, v] of Object.entries(obj(d.bosses))) { const x = obj(v); p.bosses[k] = { kc: num(x.kc, 0), pb: typeof x.pb === 'number' ? x.pb : null, wipes: num(x.wipes, 0) }; }
   for (const [k, v] of Object.entries(obj(d.collection))) { const x = obj(v); p.collection[k] = { n: Math.max(1, num(x.n, 1)), kc: num(x.kc, 0), at: num(x.at, now) }; }
-  for (const [k, v] of Object.entries(obj(d.achievements))) p.achievements[k] = { at: num(obj(v).at, now) };
+  for (const [k, v] of Object.entries(obj(d.achievements))) { const x = obj(v); p.achievements[k] = { at: num(x.at, now), ...(typeof x.kc === 'number' && x.kc >= 0 ? { kc: Math.floor(x.kc) } : {}) }; }
   for (const [k, v] of Object.entries(obj(d.counters))) p.counters[k] = num(v, 0);
   p.titles = Array.isArray(d.titles) ? d.titles.filter((t: unknown) => typeof t === 'string') : [];
   for (const h of p.roster) if (h.title && !p.titles.includes(h.title)) h.title = null;
