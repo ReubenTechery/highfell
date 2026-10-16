@@ -11,7 +11,7 @@ import { CLASSES, FOUNDERS, HERO_ART, MAX_HEROES, RACES, allHeroArt, canMake, cl
 import { SLOT_IDS, gearId } from '../src/content/gear';
 import { INGREDIENTS, RECIPES } from '../src/content/vale';
 import { Achiever, progress } from '../src/meta/achievements';
-import { logProgress, opened, shelfOf, standPieces, standsOf } from '../src/meta/logs';
+import { logProgress, markSeen, opened, shelfOf, standPieces, standsOf } from '../src/meta/logs';
 import { HEARTH_SPOTS, MOUNTS, autoPlace, lookOf, lookOpen, lookProgress, paddock, place, setLook, spotOf } from '../src/meta/hearth';
 import { HOUSE_SPOTS, LOOK_ROOMS, OUTSIDE, PADDOCK, ROOMS, THINGS, paddockSlots } from '../src/content/house';
 import { groupOf, heroesFor, partyProblem, pickRole, seats, seatsFor } from '../src/meta/party';
@@ -340,7 +340,9 @@ test('achievements: counters, live checks, run checks, rewards and the meta', ()
   assert.deepEqual(a.event({ type: 'crit', amount: 1600, player: true }), ['barrow.bignumber']);
   const tankOnly = new Achiever(p, { dungeon: 'barrow', role: 'healer', practice: false, testGear: false });
   assert.deepEqual(tankOnly.event({ type: 'boss.killed', boss: 'keeper', time: 1, armorUp: false, onlyPlayerAlive: false, smashes: 5, smashPerfect: 5, playerIsTank: true }), []);
-  const sum: RunSummary = { dungeon: 'barrow', role: 'dps', practice: false, testGear: false, time: 190, deaths: 0, wipes: 0, handHits: 0, ringHits: 0, saves: 0, playerDeaths: 0, kicks: 0, perfectBlocks: 0 };
+  const sum: RunSummary = { dungeon: 'barrow', role: 'dps', practice: false, testGear: false, time: 165, deaths: 0, wipes: 0, handHits: 0, ringHits: 0, saves: 0, playerDeaths: 0, kicks: 0, perfectBlocks: 0 };
+  // Gravedigger's Sprint is a clear under 2:50
+  assert.ok(!new Achiever(freshProfile(), { dungeon: 'barrow', role: 'dps', practice: false, testGear: false }).cleared({ ...sum, time: 175 }).includes('barrow.sprint'));
   const got = a.cleared(sum);
   for (const id of ['barrow.into', 'barrow.nobody', 'barrow.sprint', 'barrow.flawless']) assert.ok(got.includes(id), id);
   assert.ok(p.collection['trophy.barrow_key']);
@@ -470,11 +472,29 @@ test('the log as a wardrobe: each set on a stand with its role’s boss weapon, 
 });
 
 test('the wardrobe: every set piece and boss weapon, plain and gilded, has its piece for the stands', () => {
-  const pieces: Record<string, string> = WARDROBE.pieces;
+  const pieces: Record<string, string> = WARDROBE.pieces, boxes: Record<string, number[]> = WARDROBE.boxes;
   const worn = Object.values(ITEMS).filter((d) => d.setId || d.kind === 'unique');
   assert.ok(worn.length >= 32, 'the Barrow’s 16 pieces and their gilded twins');
-  for (const d of worn) assert.ok(pieces[d.id]?.includes('class="sil"'), `${d.id} has a stand piece, with a silhouette for its ghost`);
+  for (const d of worn) {
+    const g = pieces[d.id] || '', sil = g.slice(g.indexOf('<g class="sil">'), g.indexOf('<g class="det">'));
+    assert.ok(sil, `${d.id} has a stand piece, with a silhouette for its ghost`);
+    // a ghost is one line round its silhouette's shapes, so every one of them is filled: no bare lines (beams)
+    assert.ok(!/fill: none/.test(sil), `${d.id}'s silhouette is all shapes`);
+    const b = boxes[d.id.replace(/\.gilded$/, '')];
+    assert.ok(b && b.length === 4 && b[2] > 0 && b[3] > 0, `${d.id} has a box, to be shown on its own`);
+  }
   for (const c of Object.values(COLLECTIBLES).filter((x) => x.id.startsWith('dye.'))) assert.ok(c.sprite, `${c.id} can stand on the log's shelf`);
+});
+
+test('the log marks what it has shown as seen, once', () => {
+  const { p } = withHero('tank');
+  p.collection['barrowguard.helm'] = { n: 1, kc: 3, at: 1 };
+  p.collection['trophy.rattlebones_plume'] = { n: 2, kc: 9, at: 2 };
+  p.seen['trophy.rattlebones_plume'] = 5;
+  assert.equal(markSeen(p, 7), true);
+  assert.equal(p.seen['barrowguard.helm'], 7, 'the new one is seen now');
+  assert.equal(p.seen['trophy.rattlebones_plume'], 5, 'one already seen keeps when it was');
+  assert.equal(markSeen(p, 8), false, 'nothing new the second time');
 });
 
 test('house looks: a room shows the look you put on it once you have earned it, and the tavern is always yours', () => {

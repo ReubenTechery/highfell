@@ -4,13 +4,15 @@ HF_ROOT = _hf_os.environ.get('HIGHFELL_ROOT') or _hf_os.path.dirname(_hf_os.path
 # piece of every set (helm, shoulders, chest, and the boss weapon of the same role) drawn as its own layer
 # around the stand's ground point (0, 0), so the log can put on the pieces you've found and draw the rest as
 # dashed ghosts. Each piece is <g class="pc"><g class="sil">..</g><g class="det">..</g></g>: the silhouette is
-# what a ghost keeps, the details are what it drops. Each set is drawn from its own `look` in
-# src/content/barrow/items.ts, and the set icons in art_icons.py are cut from these same pieces.
-# Heroic pieces are the same pieces through gild().
+# what a ghost keeps, the details are what it drops. A ghost is drawn as one dashed line round the whole
+# silhouette (its shapes are masked out of their own outline, so overlaps don't show), so every silhouette
+# shape is a closed shape: shafts are bar() and band(), never a beam. Each set is drawn from its own `look`
+# in src/content/barrow/items.ts, and the set icons in art_icons.py are cut from these same pieces.
+# Heroic pieces are the same pieces through gild(). Each piece also gets its box, for showing it on its own.
 # Usage: python3 tools/art_wardrobe.py -> art/wardrobe.json, art/_wardrobe_preview.html, shots/wardrobe_stands.json
-import json, os, re, sys
+import json, math, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from art_sprites import (K, s, ln, beam, c, e, halo, m, gild, f,
+from art_sprites import (K, s, ln, beam, c, e, halo, m, gild, f, mirror,
                          BONE, BONE_D, GRN, GRN_L, STEEL_L, GOLD, GOLD_D, RED,
                          BLUE, BLUE_D, WOOD, WOOD_D, FROST, FROST_L, FLAME)
 
@@ -26,6 +28,42 @@ FUR = '#F2EEE6'
 SHAFT = '#5C4A6A'
 HANDLE = '#4A4458'
 BLADE = '#D7DEE6'
+
+
+def bar(x0, y0, x1, y1, w, col, edge=4):
+    """a straight shaft as a closed shape, w wide from one point to another: a beam a ghost can outline"""
+    L = math.hypot(x1 - x0, y1 - y0)
+    nx, ny = -(y1 - y0) / L * w / 2, (x1 - x0) / L * w / 2
+    return s(f'M{f(x0 + nx)} {f(y0 + ny)} L{f(x1 + nx)} {f(y1 + ny)} L{f(x1 - nx)} {f(y1 - ny)} L{f(x0 - nx)} {f(y0 - ny)} Z', col, edge)
+
+
+def band(pts, w, col, edge=4):
+    """a bent shaft through some points, as a closed shape"""
+    left, right = [], []
+    for i, (x, y) in enumerate(pts):
+        (ax, ay), (bx, by) = pts[max(0, i - 1)], pts[min(len(pts) - 1, i + 1)]
+        L = math.hypot(bx - ax, by - ay) or 1
+        nx, ny = -(by - ay) / L * w / 2, (bx - ax) / L * w / 2
+        left.append((x + nx, y + ny)); right.append((x - nx, y - ny))
+    return s('M' + ' L'.join(f'{f(x)} {f(y)}' for x, y in left + right[::-1]) + ' Z', col, edge)
+
+
+TOK = re.compile(r'[A-Za-z]|-?\d+(?:\.\d+)?')
+
+
+def moved(d, fn):
+    """a path (M, L, C and Z only) with every point moved by fn(x, y)"""
+    out, xy = [], []
+    for t in TOK.findall(d):
+        if t.isalpha():
+            out.append(t)
+            continue
+        xy.append(float(t))
+        if len(xy) == 2:
+            x, y = fn(*xy)
+            out.append(f'{f(x)} {f(y)}')
+            xy = []
+    return ' '.join(out)
 
 
 def pc(slot, sil, det):
@@ -66,21 +104,33 @@ def barrowguard():
             [e(-10, -218, 6.5, 5, K, 0), e(10, -218, 6.5, 5, K, 0),
              ln('M-15 -206 L-15 -190 M-7.5 -206 L-7.5 -186 M0 -206 L0 -185 M7.5 -206 L7.5 -186 M15 -206 L15 -190', K, 2.6),
              ln('M0 -242 L0 -226', BONE_D, 3), ln('M-18 -234 C-14 -238 -9 -240 -4 -240', '#FFFFFF', 3)])
-    plate = 'M-30 -182 C-52 -194 -76 -184 -80 -158 C-68 -162 -50 -162 -32 -156 Z'
-    sh_sil, sh_det = [s(plate, BONE_D, 4), s(m(plate), BONE_D, 4)], []
+    # each pauldron: a rounded bone dome over two lames, a skull mounted on its face
+    dome = 'M-26 -186 C-40 -203 -72 -203 -86 -179 C-92 -167 -92 -155 -88 -147 C-72 -155 -50 -157 -30 -151 Z'
+    # each lame tucks up under the plate above it, so no seam shows where they meet
+    lames = ('M-89 -152 C-72 -160 -50 -162 -29 -156 L-31 -141 C-50 -147 -68 -145 -84 -137 Z',
+             'M-85 -142 C-68 -150 -50 -152 -30 -146 L-33 -132 C-50 -137 -64 -135 -78 -128 Z')
+    sh_sil, sh_det = [], []
     for sx in (-1, 1):
-        a, b = skull(sx * 54, -176, 0.92)
-        sh_sil += a; sh_det += b
+        mm = (lambda d: d) if sx < 0 else m
+        sh_sil += [s(mm(lames[1]), BONE, 3.5), s(mm(lames[0]), BONE, 3.5), s(mm(dome), BONE_D, 4)]
+        a, b = skull(sx * 59, -175, 0.52)
+        sh_sil += a
+        sh_det += b + [ln(mm('M-82 -181 C-77 -190 -69 -195 -61 -197'), '#FFFFFF', 3), c(sx * 37, -160, 2.4, BONE, 1.8)]
     chest = 'M-36 -178 C-42 -146 -38 -116 -26 -96 L26 -96 C38 -116 42 -146 36 -178 C18 -186 -18 -186 -36 -178 Z'
     ch_det = [s('M-5 -176 L5 -176 L5 -112 L-5 -112 Z', BONE_D, 3)]
     for y, w in ((-160, 27), (-142, 27), (-124, 22)):
         d = f'M-6 {y} C-12 {y - 6} -{w - 6} {y - 5} -{w} {y + 4}'
         ch_det.append(beam(d, BONE_D, 6, 2.6) + beam(m(d), BONE_D, 6, 2.6))
     ch_det += [s('M-28 -110 L28 -110 L28 -96 L-28 -96 Z', WOOD_D, 3.5), s('M-7 -111 L7 -111 L7 -95 L-7 -95 Z', GOLD, 2.6)]
-    weapon = ([s('M50 -16 L66 -10 L62 4 L46 -2 Z', '#8E96A3', 3.5),
-               beam('M58 -8 L88 -206', '#A0703F', 7, 4),
-               s('M82 -206 C94 -236 124 -232 124 -198 C110 -198 94 -200 82 -206 Z', BLADE, 4)],
-              [c(73, -108, 5, GRN, 2.4), ln('M92 -218 C100 -224 110 -224 116 -218', '#FFFFFF', 3)])
+    # the Gravedigger: half axe, half shovel. An iron foot, a stout shaft, a collar, and a broad head whose
+    # face is dished like a spade and whose far edge is an axe's
+    weapon = ([s('M42 -12 L58 -8 L56 4 L40 0 Z', '#8E96A3', 3.5),
+               bar(50, -6, 76, -226, 9, '#A0703F'),
+               s('M76 -236 C89 -248 109 -250 119 -238 C123 -219 121 -200 114 -186 C101 -191 88 -199 78 -210 Z', BLADE, 4),
+               s('M65 -224 L84 -220 L82 -204 L63 -208 Z', '#8E96A3', 3.5)],
+              [s('M88 -230 C99 -237 110 -236 114 -230 C117 -218 115 -206 110 -197 C101 -201 93 -206 88 -214 Z', '#B9C2CD', 2.4),
+               ln('M117 -232 C120 -219 119 -205 113 -193', '#FFFFFF', 3), ln('M68 -216 L80 -213', '#C9D2DC', 2.4),
+               c(64, -110, 5, GRN, 2.4)])
     return {'helm': helm, 'shoulders': (sh_sil, sh_det), 'chest': ([s(chest, BONE, 4)], ch_det), 'weapon': weapon}
 
 
@@ -107,7 +157,8 @@ def candlewake():
               s('M-14 -178 L-10 -168 L-6 -176 L-2 -164 L2 -176 L6 -170 L10 -177 L14 -178 Z', BONE, 2.2),
               ln('M-40 -96 C-38 -84 -40 -74 -44 -66', CLOTH_L, 3)]
     lant = lantern(92, -216)
-    weapon = ([beam('M66 -2 L72 -222', WOOD, 6, 4), ln('M72 -222 C78 -232 90 -230 92 -220', K, 4), lant[1]],
+    weapon = ([bar(66, -2, 72, -222, 8, WOOD), band([(71, -221), (75, -228), (83, -232), (89, -229), (92, -221)], 4.5, K, 0),
+               lant[1], lant[5], lant[6]],
               [halo(92, -190, 26, GRN, 0.22)] + lant)
     return {'helm': (crown_sil, crown_det), 'shoulders': ([s(mantle, CLOTH, 4)], sh_det), 'chest': ([s(robe, CLOTH, 4)], ch_det), 'weapon': weapon}
 
@@ -146,7 +197,7 @@ def rimebone():
               s('M-5 -160 L5 -160 L8 -72 L-8 -72 Z', FROST_L, 2.6),
               ln('M-10 -122 L10 -122 M0 -132 L0 -112 M-7 -129 L7 -115 M7 -129 L-7 -115', FROST_L, 2.6),
               ln('M-46 -84 L46 -84', FROST_L, 3)]
-    weapon = ([beam('M64 -2 L76 -196', SHAFT, 6, 4),
+    weapon = ([bar(64, -2, 76, -196, 8, SHAFT),
                s('M62 -214 C62 -232 92 -232 92 -214 C92 -204 86 -200 84 -194 L70 -194 C68 -200 62 -204 62 -214 Z', BONE, 3.5)],
               [halo(77, -214, 24, FROST, 0.3), c(71, -214, 4, FROST, 2), c(83, -214, 4, FROST, 2),
                ln('M73 -198 L73 -194 M77 -198 L77 -194 M81 -198 L81 -194', K, 2), ln('M66 -222 C70 -228 76 -229 81 -228', '#FFFFFF', 2.4)])
@@ -173,12 +224,26 @@ def shadeveil():
     ch_det = [beam('M-28 -172 L24 -108', WOOD, 6, 3), beam('M28 -172 L-24 -108', WOOD, 6, 3),
               c(0, -140, 6, GOLD, 3), s('M-28 -110 L28 -110 L28 -98 L-28 -98 Z', LEATHER_D, 3.5),
               s('M14 -110 L26 -110 L26 -94 L14 -94 Z', WOOD_D, 3), ln('M-24 -160 C-18 -156 -12 -156 -8 -158', LEATHER_L, 3)]
-    fang = 'M70 -40 C58 -84 62 -130 90 -164 C92 -150 86 -146 84 -132 C80 -100 82 -74 84 -46 Z'
-    fang2 = 'M96 -36 C112 -78 110 -126 86 -160 C86 -146 92 -140 94 -128 C100 -98 100 -76 94 -44 Z'
-    weapon = ([s('M64 -40 L90 -40 L88 -30 L66 -30 Z', HANDLE, 3), s('M72 -30 L82 -30 L80 -4 L74 -4 Z', HANDLE, 3), s(fang, BONE, 3.5),
-               s('M86 -34 L112 -34 L110 -24 L88 -24 Z', HANDLE, 3), s('M94 -24 L104 -24 L102 2 L96 2 Z', HANDLE, 3), s(fang2, BONE, 3.5)],
-              [c(77, -2, 3.6, GRN, 2), c(99, 4, 3.6, GRN, 2), ln('M70 -60 C69 -86 74 -112 84 -138', '#FFFFFF', 2.4)])
+    weapon = cryptfangs()
     return {'helm': helm, 'shoulders': shoulders, 'chest': ([s(chest, LEATHER, 4)], ch_det), 'weapon': weapon}
+
+
+def cryptfangs():
+    """the Cryptfangs, crossed on the ground beside the stand: two daggers, each a green gem for a pommel, a
+    wrapped dark grip, a curled guard with a gem, and a bone fang of a blade curving outward"""
+    a = math.radians(18)
+    put = lambda x, y: (66 + x * math.cos(a) - y * math.sin(a), -6 + x * math.sin(a) + y * math.cos(a))
+    one = lambda d: moved(d, put)
+    sil = [c(*put(0, -3), 4.6, GRN, 2.4),
+           s(one('M-4 -7 L4 -7 L4 -33 L-4 -33 Z'), HANDLE, 3.5),
+           s(one('M-11 -33 C-7 -39 7 -39 11 -33 C7 -29 -7 -29 -11 -33 Z'), '#3A3446', 3),
+           s(one('M-6 -36 C-11 -64 -7 -92 9 -118 C11 -96 12 -66 6 -36 Z'), BONE, 3.5)]
+    det = [ln(one('M-4 -14 L4 -18 M-4 -22 L4 -26'), '#6E6880', 2.2), c(*put(0, -34), 3.4, GRN, 2),
+           ln(one('M-3 -46 C-5 -66 -2 -86 5 -104'), '#FFFFFF', 2.4)]
+    # the other dagger is the first one turned round, leaning the other way: crossed above their guards
+    twin = lambda parts: [re.sub(r' d="([^"]+)"', lambda mm: f' d="{mirror(mm.group(1), 88)}"', x).replace('cx="', 'cx="~') for x in parts]
+    flip = lambda x: re.sub(r'cx="~([-\d.]+)"', lambda mm: f'cx="{f(176 - float(mm.group(1)))}"', x)
+    return [flip(x) for x in twin(sil)] + sil, [flip(x) for x in twin(det)] + det
 
 
 # every set's pieces by item id: the set's own three, and the boss weapon of its role
@@ -230,14 +295,40 @@ def cut(set_id, slot, box=(6, 6, 52, 52), weight=0.8, pair=False):
     return half + f'<g transform="translate({f(2 * bx + bw)} 0) scale(-1 1)">{half}</g>'
 
 
+def box_of(sil, det, pad=8):
+    """a piece's box (x, y, w, h) with some room round it, its glows left out"""
+    x0, y0, x1, y1 = _bbox(''.join(x for x in sil + det if 'opacity:' not in x))
+    return [round(x0 - pad), round(y0 - pad), round(x1 - x0 + 2 * pad), round(y1 - y0 + 2 * pad)]
+
+
 def build():
-    pieces = {}
+    pieces, boxes = {}, {}
     for set_id, (draw, weapon) in SETS.items():
         for slot, (sil, det) in draw().items():
             pid = weapon if slot == 'weapon' else f'{set_id}.{slot}'
             pieces[pid] = pc(slot, sil, det)
             pieces[pid + '.gilded'] = gild(pieces[pid])
-    return {'vb': list(VB), 'stand': stand(), 'pieces': pieces}
+            boxes[pid] = box_of(sil, det)
+    return {'vb': list(VB), 'stand': stand(), 'pieces': pieces, 'boxes': boxes}
+
+
+GHOST_CSS = ('<style>.gm *{fill:#000!important;stroke:none!important}'
+             '.go *{fill:none!important;stroke:rgba(255,248,236,.72)!important;stroke-width:6!important;stroke-dasharray:9 7;stroke-linecap:round}'
+             '.gf{opacity:.1}.gf *{fill:#FFF8EC!important;stroke:none!important}</style>')
+_ghosts = [0]
+
+
+def ghost(piece):
+    """a piece drawn as a ghost, the way src/ui/art.ts draws one: its silhouette's outline with the
+    silhouette itself masked out (so only the outer half of the line shows, and overlaps vanish), then the
+    silhouette faintly filled as one layer. The details are left out."""
+    _ghosts[0] += 1
+    sil = piece[piece.index('<g class="sil">') + 15:piece.index('</g><g class="det">')]
+    slot = re.search(r'class="pc (\w+)"', piece).group(1)
+    box = 'x="{}" y="{}" width="{}" height="{}"'.format(*VB)
+    gid = f'wg{_ghosts[0]}'
+    return (f'<g class="pc ghost {slot}"><mask id="{gid}" maskUnits="userSpaceOnUse" {box}><rect {box} fill="#fff"/><g class="gm">{sil}</g></mask>'
+            f'<g class="go" mask="url(#{gid})">{sil}</g><g class="gf">{sil}</g></g>')
 
 
 def assemble(w, set_id, have=SLOTS, gilded=False):
@@ -246,11 +337,9 @@ def assemble(w, set_id, have=SLOTS, gilded=False):
     def piece(slot):
         pid = (weapon if slot == 'weapon' else f'{set_id}.{slot}') + ('.gilded' if gilded else '')
         g = w['pieces'][pid]
-        return g if slot in have else g.replace('class="pc ', 'class="pc ghost ', 1)
+        return g if slot in have else ghost(g)
     x, y, wd, ht = VB
-    ghost = ('<style>.ghost .det{display:none}.ghost .sil path,.ghost .sil circle,.ghost .sil ellipse{fill:rgba(255,248,236,.1)!important;'
-             'stroke:rgba(255,248,236,.66)!important;stroke-width:3!important;stroke-dasharray:7 6}</style>')
-    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x} {y} {wd} {ht}" width="{wd}" height="{ht}">{ghost}'
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x} {y} {wd} {ht}" width="{wd}" height="{ht}">{GHOST_CSS}'
            f'{piece("weapon")}{w["stand"]}{piece("chest")}{piece("shoulders")}{piece("helm")}</svg>')
     return {'svg': svg, 'vb': list(VB)}
 

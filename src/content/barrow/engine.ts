@@ -10,11 +10,13 @@ export const BARROW_ENGINE = {
   map: MAP, gates: GATES, props: PROPS, decals: DECALS, walldecor: WALLDECOR, checkpoints: CHECKPOINTS, floorArt,
   mobs: MOBS, packs: PACKS, script, starts: script.STARTS,
   // how hard it is: everything that hurts a hero hits 1.5 times as hard as written, and ordinary mobs have
-  // 30% more health, so tanking and healing matter and a run lands near four minutes.
-  tune: { hit: 1.5, trashHp: 1.3, bossHp: 1 },
-  // heroic: made for full Epic (1.72 base power). Bots in full Epic clear it in about four minutes
-  // without wiping; in Common they get buried (tests/balance.test.ts). Its hits came down from 3.2 to 2.8
-  // when the Gravecallers' curses arrived: at 3.2 a full Epic bot party already wiped at the Gravekeeper about
-  // one run in five.
+  // 30% more health, so tanking and healing matter. The Gravekeeper fights two phases on Normal, not three, so
+  // he has 65% of his written health and the fight takes about 80 seconds: a run lands near three and a half
+  // minutes.
+  tune: { hit: 1.5, trashHp: 1.3, bossHp: 1, hp: { keeper: 0.65 } },
+  // heroic: made for full Epic (1.72 base power), with the Crypt Seal and all three of the Gravekeeper's
+  // phases at his full written health. Bots in full Epic clear it in about four minutes without wiping; in
+  // Common they get buried (tests/balance.test.ts). Its hits came down from 3.2 to 2.8 when the Gravecallers'
+  // curses arrived: at 3.2 a full Epic bot party already wiped at the Gravekeeper about one run in five.
   heroic: { hit: 2.8, trashHp: 1.95, bossHp: 1.63 },
 };

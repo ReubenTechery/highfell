@@ -68,9 +68,13 @@ New colours are fine when a thing needs one; keep them flat and in this family (
 - **The wardrobe:** each set stands on its own armour stand in the collection log (`art_wardrobe.py`). The stand
   is drawn bare, then every piece (helm, shoulders, chest, and the boss weapon of the set's role) is a layer of its
   own around the stand's ground point, split into its silhouette (`sil`) and its details (`det`): a piece you
-  haven't found is drawn as its silhouette only, dashed. Each set is drawn from its `look` in its dungeon's
-  `items.ts`, and the set's 64×64 icons are cut from the same pieces (`cut()`), so the tile and the stand always
-  agree. The stand is 270 tall at k = 1, a little taller than the house's armour stand.
+  haven't found is drawn as one dashed line round its whole silhouette (the silhouette masks out its own line, so
+  shapes that overlap don't show) with a faint fill. So every silhouette shape is a closed, filled shape: draw a
+  shaft with `bar()` or `band()`, never a `beam()` or a bare line, and tuck plates that meet under each other so
+  no seam shows. Each set is drawn from its `look` in its dungeon's `items.ts`, and the set's 64×64 icons are cut
+  from the same pieces (`cut()`), so the tile and the stand always agree. Each piece also has its box, for showing
+  it on its own (the log's closer look). The stand is 270 tall at k = 1, a little taller than the house's armour
+  stand.
 - **Helpers:** every tool has the same small helpers (`s()` a filled shape with the ink line, `ln()` a line,
   `c()` a circle, `mirror()` for symmetric parts). Reuse them; don't invent a new drawing style.
 

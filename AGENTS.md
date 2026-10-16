@@ -34,9 +34,9 @@ power as Normal, with gilded looks and its own log. Teamwork between roles is th
 
 ## Pillars: if a change fights one of these, the change is wrong
 
-1. **Dungeons are the core loop.** About 4 minutes a run in beginner gear (about 2 when melted in full BiS), all
-   three roles needed, loot every time. Four buttons and a dodge, never more: sets and boss weapons change what
-   buttons do, they never add one. Mistakes in beginner gear are genuinely dangerous, and skilled play opens
+1. **Dungeons are the core loop.** About 3 to 4 minutes a run in beginner gear (about 2 when melted in full BiS),
+   all three roles needed, loot every time. Four buttons and a dodge, never more: sets and boss weapons change
+   what buttons do, they never add one. Mistakes in beginner gear are genuinely dangerous, and skilled play opens
    windows to hit back harder.
 2. **Power creep you can feel, collecting that lasts.** Regular gear climbs Common → Rare in eight clears; Epic
    comes from each dungeon's 3-piece sets and boss weapons, and power climbs steeply enough that a geared party
@@ -118,7 +118,7 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   `houseart.ts`, every room in each look, your hero's name tag `nametag.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
   close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons
   (`dungeonsheet.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
-  (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`), settings (`settingssheet.ts`), the gear doll, satchel and spot
+  (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`), settings (`settingssheet.ts`), the gear doll, satchel and spot
   picker. Toasts, sound. `styles.css` is inlined by the build.
 - `src/sim` and `scripts/sim.mjs`: headless bot runs of the real engine (the balance numbers).
 - `tools/`: the art pipeline (Python writes SVG into `art/*.json`; the log's armour stands are in `art_wardrobe.py`; the heroes are in `art_heroes.py`, their
