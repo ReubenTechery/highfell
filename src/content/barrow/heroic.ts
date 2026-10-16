@@ -21,7 +21,7 @@ export const HEROIC_ITEMS: ItemDef[] = BARROW_ITEMS.map((d) => ({
 export const HEROIC_COLLECTIBLES: CollectibleDef[] = [
   { id: gilded('pet.pint_gravekeeper'), kind: 'pet', name: 'Pint-sized Gilded Gravekeeper', desc: 'Gold shovel, gold lantern, same attitude.', icon: 'c_pet_keeper_gilded', sprite: 'pet_keeper_gilded', source: 'Heroic: the Gravekeeper, 1 in 2,500' },
   { id: gilded('mount.gravehound'), kind: 'mount', name: 'Gilded Gravehound', desc: 'A bone dog the size of a pony, in solid gold. Still a good boy.', icon: 'c_mount_hound_gilded', sprite: 'mount_hound_gilded', source: 'Heroic: the Gravekeeper, 1 in 1,000', saddle: { x: -4, y: -94, k: 0.9 } },
-  { id: gilded('dye.ghostly'), kind: 'cosmetic', name: 'Gravegold Dye', desc: 'Turns your Barrow set to gold.', icon: 'c_dye_gilded', source: 'Heroic: the Gravekeeper, 1 in 1,000' },
+  { id: gilded('dye.ghostly'), kind: 'cosmetic', name: 'Gravegold Dye', desc: 'Turns your Barrow set to gold.', icon: 'c_dye_gilded', sprite: 'tr_dye_gilded', source: 'Heroic: the Gravekeeper, 1 in 1,000' },
   { id: gilded('trophy.rattlebones_plume'), kind: 'trophy', name: 'Sir Rattlebones’ Gilded Plume', desc: 'He polished it every night. Now you can.', icon: 'c_plume_gilded', sprite: 'tr_plume_gilded', source: 'Heroic: Sir Rattlebones, 1 in 50' },
   // the reward for the whole heroic log, not a drop
   { id: 'cosmetic.gilded_bones', kind: 'cosmetic', name: 'Gilded Bones', desc: 'Your Risen heroes’ bones turn to gold.', icon: 'c_gilded_bones', source: 'Achievement: Gilded to the Bone' },

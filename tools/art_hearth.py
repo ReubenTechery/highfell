@@ -177,6 +177,15 @@ def plume(k=1.0):
     return o
 
 
+def dye_bottle():
+    """the Ghostly Dye, standing on a shelf: a round flask of pale ghost-light with a cork"""
+    o = [halo(0, -24, 24, '#DCFFF0', 0.22)]
+    o.append(s('M-8 -44 H8 V-36 C20 -32 24 -20 20 -10 C16 0 -16 0 -20 -10 C-24 -20 -20 -32 -8 -36 Z', '#DCFFF0', 3.5))
+    o.append(ln('M-14 -16 C-6 -11 4 -11 14 -16', '#9FD9C6', 3) + ln('M-14 -26 L-17 -18', '#FFFFFF', 2.6))
+    o.append(s('M-10 -54 H10 V-44 H-10 Z', A.RUST, 3) + ln('M-6 -50 H6', WOOD_D, 2))
+    return o
+
+
 def key():
     o = [s('M-18 -10 H18 L16 0 H-16 Z', STONE_D, 3)]
     o.append(beam('M0 -12 L0 -50', '#5E6A7A', 6, 3.5))
@@ -244,6 +253,7 @@ def trophies():
     sprite('tr_shackle', (-24, -64, 48, 68), shackle()); icon('c_shackle', '#4A4458', shackle(), k=0.9, ground=60)
     sprite('tr_bars', (-28, -72, 56, 76), bars()); icon('c_bars', '#4F4466', bars(), k=0.8, ground=61)
     sprite('tr_skull', (-26, -56, 52, 60), gskull()); icon('c_skull', '#6A4BA3', gskull(), k=1.0, ground=56)
+    sprite('tr_dye', (-26, -58, 52, 62), dye_bottle())
     sprite('tr_banner', (-56, -4, 112, 140), party_banner()); icon('c_banner', '#3A3150', party_banner(), k=0.42, ground=4)
 
 
@@ -563,7 +573,7 @@ def race_icons():
 
 
 def heroic_drops():
-    for n, extra in (('pet_keeper', KEEPER_GILD), ('mount_hound', {}), ('tr_plume', PLUME_GILD)):
+    for n, extra in (('pet_keeper', KEEPER_GILD), ('mount_hound', {}), ('tr_plume', PLUME_GILD), ('tr_dye', {'#9FD9C6': GOLD, '#DCFFF0': '#FFE9A8'})):
         SP[n + '_gilded'] = {'svg': A.gild(SP[n]['svg'], extra), 'vb': SP[n]['vb']}
     for n, extra in (('c_pet_keeper', KEEPER_GILD), ('c_mount_hound', {}), ('c_plume', PLUME_GILD)):
         ICONS[n + '_gilded'] = A.gild(ICONS[n], extra, tile=True)

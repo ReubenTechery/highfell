@@ -17,6 +17,7 @@ import { HOUSE_SPOTS, LOOK_ROOMS, OUTSIDE, PADDOCK, ROOMS, THINGS, paddockSlots 
 import { groupOf, heroesFor, partyProblem, pickRole, seats, seatsFor } from '../src/meta/party';
 import { lootFor } from '../src/meta/loot';
 import type { GameEvent, RunSummary } from '../src/content/types';
+import WARDROBE from '../art/wardrobe.json';
 
 test('content: every id a table, log, set or reward points at exists', () => {
   assert.deepEqual(checkContent(), []);
@@ -440,6 +441,14 @@ test('house: spots a save has never had fill with what is not on show, once; emp
   assert.deepEqual(migrate(JSON.parse(JSON.stringify(q))).hearth.spots, q.hearth.spots, 'loading again changes nothing');
   const fresh = migrate(JSON.parse(JSON.stringify(freshProfile())));
   assert.ok(Object.values(fresh.hearth.spots).every((v) => v === null), 'a new save has an empty house');
+});
+
+test('the wardrobe: every set piece and boss weapon, plain and gilded, has its piece for the stands', () => {
+  const pieces: Record<string, string> = WARDROBE.pieces;
+  const worn = Object.values(ITEMS).filter((d) => d.setId || d.kind === 'unique');
+  assert.ok(worn.length >= 32, 'the Barrow’s 16 pieces and their gilded twins');
+  for (const d of worn) assert.ok(pieces[d.id]?.includes('class="sil"'), `${d.id} has a stand piece, with a silhouette for its ghost`);
+  for (const c of Object.values(COLLECTIBLES).filter((x) => x.id.startsWith('dye.'))) assert.ok(c.sprite, `${c.id} can stand on the log's shelf`);
 });
 
 test('house looks: a room shows the look you put on it once you have earned it, and the tavern is always yours', () => {

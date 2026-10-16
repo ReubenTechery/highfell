@@ -65,6 +65,12 @@ New colours are fine when a thing needs one; keep them flat and in this family (
 - **Heroic drops are gilded:** `gild()` in `art_sprites.py` turns a picture's bone and steel to gold; on a 64x64
   tile it also gives a dark gold ground and a sparkle in the corner. Every heroic drop uses it, so a gilded piece
   reads as the heroic one at a glance.
+- **The wardrobe:** each set stands on its own armour stand in the collection log (`art_wardrobe.py`). The stand
+  is drawn bare, then every piece (helm, shoulders, chest, and the boss weapon of the set's role) is a layer of its
+  own around the stand's ground point, split into its silhouette (`sil`) and its details (`det`): a piece you
+  haven't found is drawn as its silhouette only, dashed. Each set is drawn from its `look` in its dungeon's
+  `items.ts`, and the set's 64×64 icons are cut from the same pieces (`cut()`), so the tile and the stand always
+  agree. The stand is 270 tall at k = 1, a little taller than the house's armour stand.
 - **Helpers:** every tool has the same small helpers (`s()` a filled shape with the ink line, `ln()` a line,
   `c()` a circle, `mirror()` for symmetric parts). Reuse them; don't invent a new drawing style.
 
@@ -72,8 +78,9 @@ New colours are fine when a thing needs one; keep them flat and in this family (
 | --- | --- | --- |
 | `tools/art_heroes.py`, `tools/art_heads.py` | the heroes, front and back (the Risen too, gilded as well); their faces and the backs of their heads | `art/sprites.json` (through `art_sprites.py`) |
 | `tools/art_sprites.py` | mobs, bosses, dungeon props, effects, and `gild()`; builds the heroes in with them | `art/sprites.json` |
-| `tools/art_icons.py` | ability icons | `art/icons.json` |
-| `tools/art_hearth.py` | the house's props (the lectern, armour stand, weapon rack, larder, bunks, signpost, the Barrow door, bricked arches, the brewing bench, the paddock's hay and trough), the fireplace and furniture, pets, mounts, trophies, banners, lanterns, collectible icons | `art/hearth.json`, `art/collect_icons.json` |
+| `tools/art_icons.py` | ability icons, gear icons, the set pieces' icons (cut from the wardrobe) | `art/icons.json` |
+| `tools/art_wardrobe.py` | the wardrobe: the bare stand and every set piece and boss weapon as a layer, plain and gilded | `art/wardrobe.json` |
+| `tools/art_hearth.py` | the house's props (the lectern, armour stand, weapon rack, larder, bunks, signpost, the Barrow door, bricked arches, the brewing bench, the paddock's hay and trough), the fireplace and furniture, pets, mounts, trophies (and the dye bottle for the log's shelf), banners, lanterns, collectible icons | `art/hearth.json`, `art/collect_icons.json` |
 | `tools/art_vale.py` | the Vale: places, villagers, plants, Vale pets and mounts, ingredient and brew icons | `art/vale.json`, `art/vale_icons.json` |
 | `src/ui/valeart.ts`, `src/ui/houseart.ts`, `src/ui/toys.ts` | scenery, the house's rooms in each look (the tavern, Barrow Hall) and its roof, and close-ups, drawn live in the page, same rules | (in the page) |
 

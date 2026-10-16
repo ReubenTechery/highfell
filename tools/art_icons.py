@@ -6,6 +6,7 @@ import json, math, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fighttiles import TV_TILES
 from art_sprites import gild
+from art_wardrobe import cut
 
 OUT = HF_ROOT + '/art/'
 K = '#1E1A1A'
@@ -269,21 +270,23 @@ MARKS = {
     'rimebone': ('#1F4F7A', P('M52 44 V60 M45 48 L59 56 M45 56 L59 48', '#1E1A1A', 5) + P('M52 44 V60 M45 48 L59 56 M45 56 L59 48', '#DDF3FF', 2.2)),
     'shadeveil': ('#2D4A3E', F('M46 58 L54 42 L58 58 Z', '#7CF06A', 2.4) + C(52, 54, 3, '#F0E8D2', 1.8)),
 }
-SET_SHAPES = {
-    'barrowguard': {'helm': HELM, 'shoulders': PAUL, 'chest': None},
-    'candlewake': {'helm': HOOD, 'shoulders': MANT, 'chest': None},
-    'rimebone': {'helm': HAT, 'shoulders': MANT, 'chest': None},
-    'shadeveil': {'helm': MASK, 'shoulders': SPAULD, 'chest': None},
-}
-PLATE = F('M18 16 C26 12 38 12 46 16 L50 28 L44 30 V52 H20 V30 L14 28 Z', '#9AA7B8') + P('M32 18 V50', '#7D8FA3', 3)
-ROBE_G = F('M24 12 C28 16 36 16 40 12 L48 20 L44 26 L46 54 H18 L20 26 L16 20 Z', '#F6F1E4') + F('M28 18 L32 22 L36 18 L34 54 H30 Z', '#E7B53C', 2.6)
-ROBE_B = F('M24 12 C28 16 36 16 40 12 L48 20 L44 26 L46 54 H18 L20 26 L16 20 Z', '#4F86C6') + F('M28 18 L32 22 L36 18 L34 54 H30 Z', '#DDF3FF', 2.6)
+# the pieces are cut from the wardrobe's stands (art_wardrobe.py), so a set's icon is the piece on its stand.
+# A mantle is one long low shape on the stand, too thin for a tile, so its icon is drawn here in the same
+# colours: Candlewake's black with a gold hem, a clasp and wax drips; Rimebone's blue with icicles.
+CLOTH, CLOTH_L = '#2F2838', '#4A4058'
+MANT_CW = (F('M6 42 C8 26 20 18 32 18 C44 18 56 26 58 42 C48 38 40 40 32 46 C24 40 16 38 6 42 Z', CLOTH, 3.4) +
+           P('M10 38 C18 35 25 37 32 42 C39 37 46 35 54 38', '#F2C230', 2.6) + C(32, 30, 4, '#F2C230', 2.4) +
+           F('M15 38 H20 L19.5 46 C19.5 48.5 15.5 48.5 15.5 46 Z', '#F0E8D2', 2) + F('M43 39 H48 L47.5 45 C47.5 47.5 43.5 47.5 43.5 45 Z', '#F0E8D2', 2) +
+           P('M14 30 C18 25 22 23 26 22', CLOTH_L, 2.4))
+MANT_RB = (F('M6 40 C8 24 20 16 32 16 C44 16 56 24 58 40 L50 40 C46 36 40 35 32 36 C24 35 18 36 14 40 Z', '#4F6FA8', 3.4) +
+           F('M8 40 L14 40 L11 50 Z', '#DDF3FF', 2) + F('M16 39 L22 38 L19 46 Z', '#DDF3FF', 2) + F('M42 38 L48 39 L45 46 Z', '#DDF3FF', 2) + F('M50 40 L56 40 L53 50 Z', '#DDF3FF', 2) +
+           C(32, 27, 4, '#8FD6FF', 2.4) + P('M14 28 C18 23 22 21 26 20', '#7D98C8', 2.4))
+SHOULDERS = {'barrowguard': cut('barrowguard', 'shoulders', pair=True), 'candlewake': MANT_CW,
+             'rimebone': MANT_RB, 'shadeveil': cut('shadeveil', 'shoulders', pair=True)}
 for set_id, (bg, mark) in MARKS.items():
-    shapes = SET_SHAPES[set_id]
-    chest = PLATE if set_id == 'barrowguard' else ROBE_G if set_id == 'candlewake' else ROBE_B if set_id == 'rimebone' else JERKIN
-    T[f's_{set_id}_helm'] = tile(bg, shapes['helm'] + mark)
-    T[f's_{set_id}_shoulders'] = tile(bg, shapes['shoulders'] + mark)
-    T[f's_{set_id}_chest'] = tile(bg, chest + mark)
+    T[f's_{set_id}_helm'] = tile(bg, cut(set_id, 'helm') + mark)
+    T[f's_{set_id}_shoulders'] = tile(bg, SHOULDERS[set_id] + mark)
+    T[f's_{set_id}_chest'] = tile(bg, cut(set_id, 'chest', (12, 6, 40, 52), 0.7) + mark)
 
 # ---- the Gravekeeper's four weapons
 T['u_gravedigger'] = tile('#4E6B45', inked('M18 58 L42 14', '#A0703F', 5) +
