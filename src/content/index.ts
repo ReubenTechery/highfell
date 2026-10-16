@@ -2,7 +2,7 @@
  * Everything in the game, by id. New dungeons register their items, sets, collectibles, titles,
  * achievements, Heroic kits and info here; nothing else needs to change.
  */
-import type { AchievementDef, CollectibleDef, DungeonInfo, ItemDef, KitDef, SetDef, TitleDef } from './types';
+import type { AchievementDef, CollectibleDef, DungeonInfo, ItemDef, KitDef, SeasonDef, SetDef, TitleDef } from './types';
 import { regularItems } from './gear';
 import { BARROW } from './barrow';
 import { BARROW_ENGINE } from './barrow/engine';
@@ -29,6 +29,9 @@ const byId = <T extends { id: string }>(list: T[]): Record<string, T> => {
   for (const x of list) { if (out[x.id]) throw new Error('duplicate content id ' + x.id); out[x.id] = x; }
   return out;
 };
+
+/** The seasons, by number. The first three dungeons (Barrow Crypt, Thimblebriar Hollow, Moonmere Sanctum) are Season 0. */
+export const SEASONS: Record<number, SeasonDef> = { 0: { id: 0, name: 'Season 0' } };
 
 /** every dungeon, the heroic ones too (a heroic one names the dungeon it is the harder version of) */
 export const DUNGEONS: Record<string, DungeonInfo> = byId([BARROW, BARROW_HEROIC, THIMBLEBRIAR, THIMBLEBRIAR_HEROIC]);
@@ -75,6 +78,7 @@ export function checkContent(): string[] {
     for (const id of d.bonus || []) if (!d.collection.includes(id)) bad.push(`${d.id} bonus ${id} is not in its log`);
     for (const id of d.achievements) if (!ACHIEVEMENTS[id]) bad.push(`${d.id} achievement ${id}`);
     if (d.heroicOf && !DUNGEONS[d.heroicOf]) bad.push(`${d.id} heroic of ${d.heroicOf}`);
+    if (!SEASONS[d.season]) bad.push(`${d.id} season ${d.season}`);
   }
   for (const s of Object.values(SETS)) for (const id of s.pieces) if (!ITEMS[id] || ITEMS[id].setId !== s.id) bad.push(`set ${s.id} piece ${id}`);
   for (const k of Object.values(KITS)) {

@@ -195,7 +195,7 @@ export class Reveal {
         const prev = ITEMS[gearId(gk, slot, (d.prevRar ?? 0) as Rar)];
         const nowS = prev ? itemShare(prev) : { power: 0, health: 0, ilvl: 10 }, newS = it ? itemShare(it) : nowS;
         const dp = Math.round((newS.power - nowS.power) * 10) / 10, dh = Math.round((newS.health - nowS.health) * 10) / 10;
-        sub = `${r.name} ${slotName}${d.source === 'spare' ? ` · shared` : ` · ilvl ${nowS.ilvl} → ${newS.ilvl}`}`;
+        sub = `${r.name} ${slotName}${d.source === 'spare' ? ` · shared` : ` · Power ${nowS.ilvl} → ${newS.ilvl}`}`;
         if (dp > 0) gains = `<span class="lc-gains"><b class="up">${GLYPH.rise}+${dp}% ${esc(ROLE_STAT[role].short)}</b><b class="up">${GLYPH.rise}+${dh}% hp</b></span>`;
         note = d.source === 'spare' ? `For your ${ROLES[role].title.toLowerCase()} heroes` : prev && d.prevRar !== d.rar ? `Replaces ${esc(prev.name)}` : '';
         if (d.trait) note += `${note ? ' · ' : ''}Trait: ${esc(traitDef(gk, d.trait)?.name || '')}`;
@@ -213,7 +213,7 @@ export class Reveal {
         if (dp > 0) gains = `<span class="lc-gains"><b class="up">${GLYPH.rise}+${dp}% ${esc(ROLE_STAT[it.role].short)}</b><b class="up">${GLYPH.rise}+${dh}% hp</b></span>`;
       }
       const piece = kit && ITEMS[kit.item];
-      note = d.dupe ? `Duplicate · Seen ${fmtN(this.app.p.collection[d.id]?.n || 2)}× in log` : piece ? `Gilding kit · ${this.app.p.collection[piece.id] ? 'gilds your' : 'gilds the'} ${esc(piece.name)}` : c ? (c.kind === 'pet' ? 'Waiting by the fire' : c.kind === 'mount' ? 'In the paddock at home' : c.kind === 'cosmetic' ? 'A new look' : 'On the mantel') : it?.setId ? `${esc(it.name.split(' ')[0])} set piece · ilvl ${itemShare(it).ilvl}` : it?.effectDesc ? esc(it.effectDesc) : '';
+      note = d.dupe ? `Duplicate · Seen ${fmtN(this.app.p.collection[d.id]?.n || 2)}× in log` : piece ? `Gilding kit · ${this.app.p.collection[piece.id] ? 'gilds your' : 'gilds the'} ${esc(piece.name)}` : c ? (c.kind === 'pet' ? 'Waiting by the fire' : c.kind === 'mount' ? 'In the paddock at home' : c.kind === 'cosmetic' ? 'A new look' : 'On the mantel') : it?.setId ? `${esc(it.name.split(' ')[0])} set piece · Power ${itemShare(it).ilvl}` : it?.effectDesc ? esc(it.effectDesc) : '';
     }
     const stamp = example ? '<span class="stamp ex">Example</span>' : table ? (d.dupe ? '<span class="stamp dupe">Dupe</span>' : '<span class="stamp">New</span>') : d.offerTrait ? '' : '<span class="stamp" style="background: var(--green)">Up</span>';
     const tapHint = `<span class="lc-tap">${it ? 'Tap to compare stats' : 'Tap to inspect'}</span>`;

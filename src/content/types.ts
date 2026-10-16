@@ -158,10 +158,15 @@ export interface AchievementDef {
 
 export interface BossInfo { id: string; name: string; phases: number; enrage: number; room: number }
 
+/** A season: about three months, with its own dungeons (docs/ideas.md). `name` is what the game shows. */
+export interface SeasonDef { id: number; name: string }
+
 export interface DungeonInfo {
   id: string;
   name: string;
   blurb: string;
+  /** the season it came in (its name is in SEASONS): the first three dungeons are Season 0 */
+  season: number;
   /** Stepped progression tier (1 = Barrow, 2 = Thimblebriar, 3 = Moonmere). */
   tier?: 1 | 2 | 3;
   /** Recommended entry item level for this dungeon. */

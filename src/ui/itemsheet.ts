@@ -70,7 +70,7 @@ export function itemSheet(p: Profile, id: string, hasBack: boolean): { head: str
     if (cmp) { vs = cmp.html; act = cmp.act; }
     // what the piece gives on its own, next to its picture
     const share = itemShare(d);
-    side = `<div class="stats"><span class="chip">Item level <b>${share.ilvl}</b></span>${share.power > 0 ? `<span class="chip">${esc(cap(ROLE_STAT[d.role].main))} <b>+${share.power}%</b></span><span class="chip">Health <b>+${share.health}%</b></span>` : ''}</div>`;
+    side = `<div class="stats"><span class="chip">Power <b>${share.ilvl}</b></span>${share.power > 0 ? `<span class="chip">${esc(cap(ROLE_STAT[d.role].main))} <b>+${share.power}%</b></span><span class="chip">Health <b>+${share.health}%</b></span>` : ''}</div>`;
     // the effect is already in the comparison when wearing it would add it
     if (d.effectDesc && !cmp?.c.gains.some((x) => x.kind === 'unique')) more += `<div class="box"><b style="font-family: var(--f-display); font-weight: 400">When worn</b><span class="fine">${esc(d.effectDesc)}</span></div>`;
     if (d.setId) { const s = SETS[d.setId]; more += `<div class="box setbox"><b style="font-family: var(--f-display); font-weight: 400">${esc(s.name)} set</b><div class="setline"><i>2</i><span>${esc(s.bonus2.desc)}</span></div><div class="setline ${s.bonus3.ready ? '' : 'later'}"><i>3</i><span>${esc(s.bonus3.desc)}</span></div></div>`; }
@@ -136,11 +136,11 @@ function held(p: Profile, d: ItemDef): { html: string; act: string; c: Compare }
   if (c.verdict === 'wearing') return { html: `<section class="cmp v-on" aria-label="Against what you wear">${top}</section>`, act, c };
   const now = c.now.def, nl = rarLook(now.id), dl = rarLook(d.id);
   const vsCards = `<div class="tw-vs" style="margin: 0 12px">
-    <div class="tw-side old"><span class="tile" style="--c: ${nl.color}">${iconOf(now.id)}</span><div><small>Equipped now</small><b style="color: ${nl.ink}">${esc(now.name)}</b><span>${esc(nl.name)} · ilvl ${c.ilvl[0]}</span></div></div>
+    <div class="tw-side old"><span class="tile" style="--c: ${nl.color}">${iconOf(now.id)}</span><div><small>Equipped now</small><b style="color: ${nl.ink}">${esc(now.name)}</b><span>${esc(nl.name)} · Power ${c.ilvl[0]}</span></div></div>
     <i class="tw-arrow" aria-hidden="true">${GLYPH.right}</i>
-    <div class="tw-side new"><span class="tile" style="--c: ${dl.color}">${iconOf(d.id)}</span><div><small>This ${esc(d.slot)}</small><b style="color: ${dl.ink}">${esc(d.name)}</b><span>${esc(dl.name)} · ilvl ${c.ilvl[1]}</span></div></div>
+    <div class="tw-side new"><span class="tile" style="--c: ${dl.color}">${iconOf(d.id)}</span><div><small>This ${esc(d.slot)}</small><b style="color: ${dl.ink}">${esc(d.name)}</b><span>${esc(dl.name)} · Power ${c.ilvl[1]}</span></div></div>
   </div>`;
-  const rows = [`<div class="cmp-row"><span>Item level <small>${c.ilvl[0]} → ${c.ilvl[1]}</small></span>${tag(c.ilvl[1] - c.ilvl[0])}</div>`];
+  const rows = [`<div class="cmp-row"><span>Power <small>${c.ilvl[0]} → ${c.ilvl[1]}</small></span>${tag(c.ilvl[1] - c.ilvl[0])}</div>`];
   if (c.power) rows.push(`<div class="cmp-row"><span>${esc(cap(ROLE_STAT[d.role].main))}</span>${tag(c.power, '%')}</div>`);
   if (c.health) rows.push(`<div class="cmp-row"><span>Health</span>${tag(c.health, '%')}</div>`);
   if (c.set && d.setId) rows.push(`<div class="cmp-row"><span>${esc(SETS[d.setId].name)} set <small>${c.set[0]} → ${c.set[1]} of 3</small></span>${tag(c.set[1] - c.set[0])}</div>`);

@@ -5,6 +5,8 @@
  * swipe that starts as the move stick still cuts what it crosses.
  * Keyboard: WASD or arrows, Space dodges, 1 to 4 for the buttons (hold 2 to block as the tank),
  * Z X C heal the tank, you and the DPS, Esc pauses. Chains and wisps are cut with a mouse drag.
+ * A Crypt Trial lesson pauses the run until you press its own button (or its key): a touch, a swipe or
+ * a click on the dungeon does nothing while it waits.
  */
 import { dist, distXY } from '../core/math';
 import { AB, abKey } from '../content/roles';
@@ -34,6 +36,7 @@ export interface InputUI {
   hintDone(key: string): void;
   holdBtn(slot: string, on: boolean): void;
   pause(): void;
+  /** a Crypt Trial lesson is waiting on a button: this one's key was pressed; true when it was the right one */
   onTutInput?(slot: string): boolean;
 }
 
@@ -95,15 +98,7 @@ function onMechanic(x: number, y: number): boolean {
 
 export function bindInput(layer: HTMLElement, ui: InputUI): void {
   layer.addEventListener('pointerdown', (e) => {
-    if (!S || S.over) return;
-    if (S.paused) {
-      if (ui.onTutInput) {
-        const p = localXY(e);
-        IN.gest.set(e.pointerId, { pts: [{ x: p.x, y: p.y, t: performance.now() }], sliced: false });
-        try { layer.setPointerCapture(e.pointerId); } catch { /* fine */ }
-      }
-      return;
-    }
+    if (!S || S.over || S.paused) return;
     e.preventDefault();
     const p = localXY(e);
     // caged: every touch anywhere is a tap on the bars. A touch on a mate's cage hits it, wherever it is.
@@ -142,10 +137,9 @@ export function bindInput(layer: HTMLElement, ui: InputUI): void {
     const g = IN.gest.get(e.pointerId);
     if (!g) return;
     IN.gest.delete(e.pointerId);
-    if (!S || S.over) return;
+    if (!S || S.over || S.paused) return;
     const a = g.pts[0], b = g.pts[g.pts.length - 1];
     const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy), dur = b.t - a.t;
-    if (S.paused) { if (len > 34 && dur < 500) ui.onTutInput?.('dodge'); return; }
     if (g.sliced) return;
     if (len > 34 && dur < 340) { doDodge(S.player, dx, dy); return; }
     if (len < 16 && dur < 420) tapWorld(toWorld(b.x, b.y), ui);
@@ -162,10 +156,10 @@ export function bindInput(layer: HTMLElement, ui: InputUI): void {
     const c = e.code;
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(c) && !S.over) e.preventDefault();
     if (c === 'Escape' || c === 'KeyP') { ui.pause(); return; }
+    // a lesson's own key is its button on a keyboard; nothing else carries it on
     if (S.paused && ui.onTutInput) {
       if (c === 'Space' || c === 'ShiftLeft' || c === 'ShiftRight') { if (ui.onTutInput('dodge')) return; }
       if (c === 'Digit1' || c === 'Digit2' || c === 'Digit3' || c === 'Digit4') { if (ui.onTutInput('a' + c.slice(5))) return; }
-      if (c === 'Enter') { if (ui.onTutInput('any')) return; }
     }
     if (S.paused || S.over) return;
     if (e.repeat && c !== 'Digit4') return;

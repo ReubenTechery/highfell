@@ -162,7 +162,7 @@ export class Sheets {
     // the dungeon picker starts fresh when it opens, but not when you come back to it from one of its drops
     const inDungeon = (s: SheetSpec | null): boolean => !!s && (s.kind === 'dungeon' || (s.kind === 'item' && s.back?.kind === 'dungeon'));
     // the sheet opens on the door of a dungeon you can go into
-    if (spec.kind === 'dungeon' && !inDungeon(this.spec)) { this.pick.page = 'door'; if (!DUNGEONS[this.pick.dungeon || '']) this.pick.dungeon = 'barrow'; }
+    if (spec.kind === 'dungeon' && !inDungeon(this.spec)) { this.pick.page = 'door'; this.pick.warn = false; if (!DUNGEONS[this.pick.dungeon || '']) this.pick.dungeon = 'barrow'; }
     if (spec.kind === 'hero' && !(this.spec && this.spec.kind === 'hero' && this.spec.hero === spec.hero)) { clearTimeout(this.heroTimer); this.heroSt = { delArmed: false, renaming: false, err: '' }; }
     if (spec.kind !== 'logs' && spec.kind !== 'item') this.logView.peek = null;
     // an achievement asked for by its id opens its card, over its place's page; anything else closes it

@@ -32,7 +32,7 @@ import { CLASSES, heroArt, type ClassId } from '../content/folk';
 import { RECIPES } from '../content/vale';
 import { broughtBrew, spendBottle } from '../meta/vale';
 import type { App } from './app';
-import { $, esc, flash, fmtT } from './dom';
+import { $, esc, flash, fmtT, GLYPH } from './dom';
 import { heroImg, heroSprite, nameOf, spriteURL, tile } from './art';
 import { IN, aimPoint, bindFrameSwipes, bindInput, mashCage, playerIntent, resetInput, type InputUI } from './input';
 import { MUSIC, runMusic } from './music';
@@ -51,35 +51,36 @@ const HINTS: Record<string, [string, string, string, number?]> = {
   introChest: ['The lantern flared gold and the chest knocked twice: a unique is inside! Walk to the chest to open it.', 'The lantern flared gold and the chest knocked twice: a unique is inside! Walk to the chest to open it.', 'The walkout', 8],
 };
 
-interface TutStep { slot: string; icon: string; step: string; title: string; badge: string; text: string; btn: string }
+/** a lesson of the Crypt Trial: the button it waits on (the card says how to press it), its picture and its words */
+interface TutStep { slot: string; icon: string; step: string; title: string; badge: string; text: string }
 const TUT_BY_CLASS: Record<ClassId, Record<string, TutStep>> = {
   warrior: {
-    introAb: { slot: 'a1', icon: 'cleave', step: '1 / 5', title: '1 · Cleave', badge: 'Wide front sweep', text: 'Tap glowing Cleave to smash the pack!', btn: 'Use Cleave' },
-    slam: { slot: 'a3', icon: 'slam', step: '2 / 5', title: '3 · Slam (Taunt)', badge: 'Ivy has aggro! ➔ Pull pack in', text: 'Tap Slam to yank mobs back onto you.', btn: 'Use Slam' },
-    dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Tap Roll to dodge his charge!', btn: 'Dodge roll' },
-    block: { slot: 'a4', icon: 'shield', step: '4 / 5', title: '4 · Block Gold Hits', badge: 'Gold cone ➔ Block right before hit', text: 'Tap Block to parry the heavy swing!', btn: 'Raise shield' },
-    stagger: { slot: 'a2', icon: 'charge', step: '5 / 5', title: '2 · Boss Exposed!', badge: 'Perfect Block = Stun + +35% DMG!', text: 'Tap Charge to rush in and punish him!', btn: 'Use Charge' },
+    introAb: { slot: 'a1', icon: 'cleave', step: '1 / 5', title: '1 · Cleave', badge: 'Wide front sweep', text: 'Smash the whole pack in front of you!' },
+    slam: { slot: 'a3', icon: 'slam', step: '2 / 5', title: '3 · Slam (Taunt)', badge: 'Ivy has aggro! ➔ Pull pack in', text: 'Yank the mobs back onto you.' },
+    dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Roll out of his charge!' },
+    block: { slot: 'a4', icon: 'shield', step: '4 / 5', title: '4 · Block Gold Hits', badge: 'Gold cone ➔ Block right before hit', text: 'Parry the heavy swing!' },
+    stagger: { slot: 'a2', icon: 'charge', step: '5 / 5', title: '2 · Boss Exposed!', badge: 'Perfect Block = Stun + +35% DMG!', text: 'Rush in and punish him!' },
   },
   cleric: {
-    introAb: { slot: 'a1', icon: 'circle', step: '1 / 5', title: '1 · Prayer Circle', badge: 'Ground healing zone', text: 'Drop a glowing Prayer Circle under your party!', btn: 'Drop Circle' },
-    slam: { slot: 'a4', icon: 'smite', step: '2 / 5', title: '4 · Smite (Pulse & Mana)', badge: 'Hit foes + pulse your Circle', text: 'Cast Smite to blast foes, restore mana, and pulse your Circle!', btn: 'Cast Smite' },
-    dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Tap Roll to dodge Sir Rattlebones’s charge!', btn: 'Dodge roll' },
-    block: { slot: 'a2', icon: 'ward', step: '4 / 5', title: '2 · Ward the Tank', badge: 'Heavy boss swing incoming!', text: 'Shield your Tank before the heavy swing lands!', btn: 'Cast Ward' },
-    stagger: { slot: 'a3', icon: 'sunburst', step: '5 / 5', title: '3 · Boss Exposed!', badge: 'Boss staggered (+35% DMG taken)!', text: 'Unleash Sunburst to top up the party and sear the boss!', btn: 'Cast Sunburst' },
+    introAb: { slot: 'a1', icon: 'circle', step: '1 / 5', title: '1 · Prayer Circle', badge: 'Ground healing zone', text: 'Drop a glowing Prayer Circle under your party!' },
+    slam: { slot: 'a4', icon: 'smite', step: '2 / 5', title: '4 · Smite (Pulse & Mana)', badge: 'Hit foes + pulse your Circle', text: 'Cast Smite to blast foes, restore mana, and pulse your Circle!' },
+    dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Roll out of Sir Rattlebones’s charge!' },
+    block: { slot: 'a2', icon: 'ward', step: '4 / 5', title: '2 · Ward the Tank', badge: 'Heavy boss swing incoming!', text: 'Shield your Tank before the heavy swing lands!' },
+    stagger: { slot: 'a3', icon: 'sunburst', step: '5 / 5', title: '3 · Boss Exposed!', badge: 'Boss staggered (+35% DMG taken)!', text: 'Unleash Sunburst to top up the party and sear the boss!' },
   },
   mage: {
-    introAb: { slot: 'a1', icon: 'blizzard', step: '1 / 5', title: '1 · Blizzard', badge: 'Chilling ice storm', text: 'Call down Blizzard to slow and melt the pack!', btn: 'Cast Blizzard' },
-    slam: { slot: 'a2', icon: 'nova', step: '2 / 5', title: '2 · Rime Burst (Freeze)', badge: 'Freeze pack ➔ Shatter combo!', text: 'Freeze nearby foes solid so your ice spells Shatter!', btn: 'Cast Rime Burst' },
-    dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Tap Roll to dodge Sir Rattlebones’s charge!', btn: 'Dodge roll' },
-    block: { slot: 'a4', icon: 'icicle', step: '4 / 5', title: '4 · Instant Icicle', badge: 'Fast instant-cast shard', text: 'Fire Icicle while the Tank blocks the heavy swing!', btn: 'Fire Icicle' },
-    stagger: { slot: 'a3', icon: 'comet', step: '5 / 5', title: '3 · Boss Exposed!', badge: 'Boss staggered (+35% DMG taken)!', text: 'Drop a massive Comet during the Exposed window!', btn: 'Cast Comet' },
+    introAb: { slot: 'a1', icon: 'blizzard', step: '1 / 5', title: '1 · Blizzard', badge: 'Chilling ice storm', text: 'Call down Blizzard to slow and melt the pack!' },
+    slam: { slot: 'a2', icon: 'nova', step: '2 / 5', title: '2 · Rime Burst (Freeze)', badge: 'Freeze pack ➔ Shatter combo!', text: 'Freeze nearby foes solid so your ice spells Shatter!' },
+    dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Roll out of Sir Rattlebones’s charge!' },
+    block: { slot: 'a4', icon: 'icicle', step: '4 / 5', title: '4 · Instant Icicle', badge: 'Fast instant-cast shard', text: 'Fire Icicle while the Tank blocks the heavy swing!' },
+    stagger: { slot: 'a3', icon: 'comet', step: '5 / 5', title: '3 · Boss Exposed!', badge: 'Boss staggered (+35% DMG taken)!', text: 'Drop a massive Comet during the Exposed window!' },
   },
   rogue: {
-    introAb: { slot: 'a1', icon: 'viper', step: '1 / 5', title: '1 · Viper Blades', badge: 'Apply Viper Venom', text: 'Slash with Viper Blades to poison your target!', btn: 'Use Viper Blades' },
-    slam: { slot: 'a3', icon: 'flurry', step: '2 / 5', title: '3 · Fan of Blades', badge: 'AoE knives + refresh venom', text: 'Spin Fan of Blades to slice the pack and spread venom!', btn: 'Use Fan of Blades' },
-    dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Tap Roll to dodge Sir Rattlebones’s charge!', btn: 'Dodge roll' },
-    block: { slot: 'a4', icon: 'shadowstep', step: '4 / 5', title: '4 · Shadowstep Behind', badge: 'Gold cone ➔ Blink behind boss', text: 'Shadowstep behind him while the Tank parries his swing!', btn: 'Use Shadowstep' },
-    stagger: { slot: 'a2', icon: 'ambush', step: '5 / 5', title: '2 · Boss Exposed!', badge: 'Poisoned + Exposed (+35% DMG)!', text: 'Strike with Shadowstrike for a guaranteed massive crit!', btn: 'Use Shadowstrike' },
+    introAb: { slot: 'a1', icon: 'viper', step: '1 / 5', title: '1 · Viper Blades', badge: 'Apply Viper Venom', text: 'Slash with Viper Blades to poison your target!' },
+    slam: { slot: 'a3', icon: 'flurry', step: '2 / 5', title: '3 · Fan of Blades', badge: 'AoE knives + refresh venom', text: 'Spin Fan of Blades to slice the pack and spread venom!' },
+    dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Roll out of Sir Rattlebones’s charge!' },
+    block: { slot: 'a4', icon: 'shadowstep', step: '4 / 5', title: '4 · Shadowstep Behind', badge: 'Gold cone ➔ Blink behind boss', text: 'Shadowstep behind him while the Tank parries his swing!' },
+    stagger: { slot: 'a2', icon: 'ambush', step: '5 / 5', title: '2 · Boss Exposed!', badge: 'Poisoned + Exposed (+35% DMG)!', text: 'Strike with Shadowstrike for a guaranteed massive crit!' },
   },
 };
 
@@ -145,6 +146,14 @@ export class RunScene implements InputUI {
     return (TUT_BY_CLASS[cls] || TUT_BY_CLASS.warrior)[key] || null;
   }
 
+  /** how to carry a lesson on: press its own button, glowing below (on a keyboard, its key too). The card has
+   *  no button of its own, so the one you learn is the one you'll press in a real run. */
+  private tutHow(slot: string): string {
+    const def = slot === 'dodge' ? null : AB[abKey(S.player)][slot as 'a1'];
+    const name = esc(slot === 'dodge' ? 'Roll' : def?.hold ? 'Block' : def?.name || '');
+    return this.app.touch ? `Tap the glowing <b>${name}</b> button` : `Click the glowing <b>${name}</b> button <i>or press <kbd>${esc(KEY[slot])}</kbd></i>`;
+  }
+
   /** freeze the game in the Crypt Trial to explain a mechanic and highlight the button to press */
   showTut(key: string): void {
     const step = this.tutStep(key);
@@ -166,9 +175,8 @@ export class RunScene implements InputUI {
       <div class="tut-top"><span class="tut-step">${esc(step.step)}</span><span class="tut-badge">${esc(step.badge)}</span></div>
       <b>${esc(step.title)}</b>
       <span>${esc(step.text)}</span></div></div>
-      <div class="tut-acts"><button type="button" class="btn gold" id="tut-act">${esc(step.btn)}</button></div>`;
+      <p class="tut-do">${GLYPH.fall}<span>${this.tutHow(step.slot)}</span></p>`;
     h.hidden = false;
-    $('tut-act').addEventListener('click', (e) => { e.stopPropagation(); SFX.play('ui'); this.onTutInput('any'); });
     updateCam(0, true);
     this.hudTick(0);
   }
@@ -182,10 +190,11 @@ export class RunScene implements InputUI {
     h.hidden = true;
   }
 
+  /** a button (or its key) was pressed while a lesson waits: only the lesson's own button carries it on */
   onTutInput(slot: string): boolean {
     if (!this.tutKey || !S) return false;
     const step = this.tutStep(this.tutKey);
-    if (!step || (slot !== 'any' && slot !== step.slot)) return false;
+    if (!step || slot !== step.slot) return false;
     const key = this.tutKey;
     this.clearTut();
     this.hintsDone.add(key);
@@ -618,7 +627,8 @@ export class RunScene implements InputUI {
     b.addEventListener('pointerdown', (e) => {
       e.preventDefault(); e.stopPropagation();
       if (!S || S.over) return;
-      if (this.tutKey && this.onTutInput(slot)) return;
+      // a lesson waits on its own button: any other one shakes
+      if (this.tutKey) { if (!this.onTutInput(slot)) { flash(b, 'nope', 260); SFX.play('nope'); } return; }
       if (S.paused) return;
       const p = S.player;
       if (p.st.caged) { mashCage(p, this); return; }
@@ -704,6 +714,8 @@ export class RunScene implements InputUI {
       $('bb-sub').classList.toggle('hot', !!head || (enr > 0 && left <= 30));
     } else if (!bb.hidden) bb.hidden = true;
     const A = AB[abKey(p)];
+    // a Crypt Trial lesson: its button says so, and the others keep quiet
+    const lesson = this.tutKey ? this.tutStep(this.tutKey)?.slot || null : null;
     this.root.querySelectorAll<HTMLElement>('.ab').forEach((b) => {
       const slot = b.dataset.slot!;
       let cd = 0, max = 1, usable = p.alive && !p.st.stun && !p.st.caged;
@@ -714,11 +726,11 @@ export class RunScene implements InputUI {
       const cdn = b.querySelector('.cdn')!; const txt = cd > 0.95 ? String(Math.ceil(cd)) : ''; if (cdn.textContent !== txt) cdn.textContent = txt;
       // a class's first runs: only the coach's button glows; after that, every button's own combo prompt
       const teach = !!coach && coach.slot === slot;
-      const ctag = teach ? coach.tag : usable && cd <= 0 && !this.learn ? comboFor(p, slot) : '';
+      const ctag = lesson ? (lesson === slot ? (this.app.touch ? 'TAP!' : 'CLICK!') : '') : teach ? coach.tag : usable && cd <= 0 && !this.learn ? comboFor(p, slot) : '';
       const tagEl = b.querySelector('.c-tag'); if (tagEl && tagEl.textContent !== ctag) tagEl.textContent = ctag;
       b.classList.toggle('dim', !usable);
       b.classList.toggle('teach', teach);
-      b.classList.toggle('proc', !!ctag || (usable && cd <= 0 && !!this.tutKey && this.tutStep(this.tutKey)?.slot === slot));
+      b.classList.toggle('proc', !!ctag);
     });
     const bn = $('banner');
     const btxt = S.banner ? S.banner.str : '';

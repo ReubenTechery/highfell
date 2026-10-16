@@ -27,6 +27,8 @@ export const TEMPLATE_DUNGEON: DungeonInfo = {
   id: 'template',
   name: 'Template Sanctum',
   blurb: 'Four packs, a side room, the Warden, and the Sovereign in his round arena. About three and a quarter minutes, all three seats needed.',
+  // the season it comes in: a new dungeon names the season it's built for (SEASONS in src/content/index.ts)
+  season: 0,
   tier: 2,
   recIlvl: 22,
   dropsIlvl: 34,
