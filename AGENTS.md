@@ -38,8 +38,9 @@ Dungeons and their collection logs are the core loop of the whole game: four-min
 4. **Respect the player's time.** No streaks, no daily chores, nothing lost for missing a day (things bank up),
    no inventory to manage, no drinking for mana, no waiting around.
 5. **Anti-bloat.** Every system is a cost forever. A feature earns its place by making the core loop better
-   (hearth → dungeon → loot → hearth). Deepen what exists before adding something new. One currency per
-   dungeon (Marks), one potion system (Vale brews). When in doubt, leave it out and write it in `docs/ideas.md`.
+   (hearth → dungeon → loot → hearth). Deepen what exists before adding something new. No currency: every
+   reward is a drop, a log or an achievement. One potion system (Vale brews). When in doubt, leave it out and
+   write it in `docs/ideas.md`.
 6. **Original and hand-made.** No names, characters, ability names or designs lifted from other games. The art
    is drawn as code in one locked style (`docs/art.md`). It must never look AI-generated.
 
@@ -50,8 +51,8 @@ Dungeons and their collection logs are the core loop of the whole game: four-min
 | 4 gear slots: weapon, helm, shoulders, chest | The weapon chase stays separate from the set chase |
 | Regular gear caps at Rare in 8 clears; Epic comes from sets (1/35 a piece) and boss weapons (1/50) | ~1 in 10 clears gives an Epic piece (~50 runs for the full 4/4 Epic kit) |
 | Steep power curve (`1.00` Common → `1.72` plain Epic → `1.96` full BiS) and all 4 Barrow 3-piece set bonuses active (`ready: true`) | Grinding 100+ runs feels awesome when your gear and 3-piece summons melt the dungeon in half the time |
-| Duplicates become 3 Marks; Marks swap weapon traits (unlocked at Rare, 5 Marks each) | Nothing that drops is ever wasted; weapon traits stay active alongside Unique weapons |
-| Heroes: race and class are for keeps, up to 6 alts | Alts, like WoW; the collection, kill counts and Marks are shared |
+| No currency: a duplicate counts in the collection log ("Seen 3×"), weapon traits swap free once the regular weapon is Rare; saves still count marks, never shown or spent | Nothing to grind or spend; traits stay active alongside Unique weapons |
+| Heroes: race and class are for keeps, up to 6 alts | Alts, like WoW; the collection and kill counts are shared |
 | Normal dungeons allow Warband & Group; Heroic dungeons are Friends & Party Finder ONLY (Warband disabled) | Gearing your alts speeds up your Normal runs, while Heroics stay strictly Friends / Party Finder |
 | Shared gear floor per role, capped at Rare; Epic is earned on the hero | Alts never start cold, mains still mean something |
 | Gear is never put on for you: new pieces wait until you put them on in Gear | Putting it on yourself is the dopamine |
@@ -71,7 +72,7 @@ Dungeons and their collection logs are the core loop of the whole game: four-min
 | Finishing a dungeon's whole collection log (every drop, every role) gives a house look, a title and one big prize, for keeps and never power. The Barrow's big prize is the Risen, a race | The long chase that makes the log mean something |
 | Races: dwarf, elf and human from the start; gnome, goblin, the Risen (undead) and orc are earned, each in its own dungeon. Classes: warrior, cleric, mage, rogue | Races are the flex you earn; four classes keep it to four buttons |
 | Not every dungeon opens a race: a log's big prize can be a race, a race and class combo, or something else | There will be a lot of dungeons |
-| Every dungeon gets a Heroic version, open after 10 clears of it and made for full Epic: harder, the same drops gilded at the same power, its own kill counts and log, the dungeon's own Marks | Something to do after the gear cap, never more power |
+| Every dungeon gets a Heroic version, open after 10 clears of it and made for full Epic: harder, the same drops gilded at the same power, its own kill counts and log | Something to do after the gear cap, never more power |
 | One self-contained HTML file, no frameworks, no runtime dependencies | It has to run anywhere, including inside claude.ai |
 | A save never loses data: change its shape only with a version bump and a migration | People's progress is sacred |
 
@@ -81,8 +82,10 @@ The full systems design (abilities, sets, drop tables, achievements, balance rul
 ## Rules of the game's systems (as built)
 
 - **Loot** rolls when a boss dies (`resolveKill`): every line of its table rolls on its own, per player, and
-  kill counts are per boss. Bosses can also roll seed drops (`seeds` on `BossDef`: The Gravekeeper drops `glowcap` seeds at 1/5 on Normal and 1/3 on Heroic). Every clear also gives a Mark, a ladder piece (Common to Rare in eight clears),
+  kill counts are per boss. Bosses can also roll seed drops (`seeds` on `BossDef`: The Gravekeeper drops `glowcap` seeds at 1/5 on Normal and 1/3 on Heroic). Every clear also gives a ladder piece (Common to Rare in eight clears),
   a spare piece for another role, and advances planted garden beds by 1 clear (`growBeds`). Practice runs give nothing.
+  The save still counts each dungeon's `marks` (1 a clear, 3 a duplicate; a heroic clear adds to its normal
+  dungeon's), but nothing shows or spends them.
 - **The walkout:** the final boss's drops decide the lantern's tell. Normal: it gutters out. Unique: it
   flares gold and the chest knocks twice. Pet: every light dies, the sound cuts, the lantern lifts and the
   pet walks out. The first second is identical for all three on purpose.
@@ -90,7 +93,7 @@ The full systems design (abilities, sets, drop tables, achievements, balance rul
   renamed once. The active hero is the one by the fire in the house and the one a run plays; the others wait by their beds
   in the bunk room (tap one to play them, an empty bed makes a new hero). Each hero has its own
   male or female look (`sex`), ladder gear, title and clears. Shared by all heroes: the collection (a unique fits any hero of its role),
-  kill counts, Marks, achievements, titles, the hearth, the garden & cauldron (`p.vale`). A race and class combo is playable once it
+  kill counts, achievements, titles, the hearth, the garden & cauldron (`p.vale`). A race and class combo is playable once it
   has a ready class and art in `HERO_ART` (`HERO_ART_SEX` for male/female variants, keeping the same body and armour silhouette) and its race is open; the rest show as "Soon". Gnomes, goblins, and the Risen are drawn across all four classes (`warrior`, `cleric`, `mage`, `rogue`), both sexes (`m`, `f`), and all three visual armour tiers (`_rags`, `_iron`, and full armour). A race marked
   `earned` (gnome, goblin, the Risen, orc) opens with the achievement that gives it (`reward.race`), and
   stays locked until a dungeon does (or the testing switch / Hero Maker `Unlock` preview button is used).
@@ -114,7 +117,7 @@ The full systems design (abilities, sets, drop tables, achievements, balance rul
   Barrow's: Gilded Barrow Hall, the Undying, Gilded Bones (the Risen drawn in gold).
 - **Heroic:** a dungeon's heroic version is its own `DungeonInfo` (`heroicOf` the normal one): the same
   bosses, the same tables with gilded ids at the same rates (gilded pieces wear exactly like the plain ones),
-  its own kill counts, clears and log. It pays the normal dungeon's Marks and counts for its achievements. It
+  its own kill counts, clears and log. It counts for the normal dungeon's achievements. It
   opens after `HEROIC_AFTER` (10) clears of the normal one; the testing switch opens it.
 - **Groups & Warband (`src/meta/party.ts`):** a run has three seats, one per role. On **Normal**, you take your hero's seat and your own Warband heroes from your bunk room (`seats(p, false)`) automatically fill the other two seats wearing their real equipped gear, sets, traits, unique weapons, and sprites (falling back to bots Brannoc, Maren, or Ivy only for roles you haven't created a hero for yet), or you can group with friends. **Heroic** needs at least two real players (`partyProblem`, `HEROIC_MIN_PLAYERS`); with two, a bot takes the third seat, and your Warband heroes never sit in (`seatsFor(p, players, true)`). With no online play yet, Heroic opens only for practice, or with the "Everything open" testing switch.
 - **Threat & Crushing Blows:** every hit adds threat (the tank's 1.3 times, Slam's double), heals add a little on everything in the fight,

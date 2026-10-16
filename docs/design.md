@@ -16,8 +16,8 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 16 
 | Abilities | Four buttons per role plus the dodge; a perfect block stuns, counter-strikes, resets Cleave and opens a Boss `Exposed` window (+35% damage taken) | Ults |
 | Gear, Power Creep & Sets | 4 slots on a gear doll; steep power curve (`1.00` Common → `1.24` Uncommon → `1.48` Rare → `1.72` plain Epic → `1.96` full BiS with 3-piece set + Boss Weapon, plus up to `+14%` crit chance and `+48%` HP) so full BiS melts runs in roughly half the time; all four Barrow sets (*Barrowguard*, *Candlewake*, *Rimebone*, *Shadeveil*) with their per-piece perks, 2-piece bonuses, and **active 3-piece summon/ghost bonuses** (`S.thralls`); all four Gravekeeper Boss Weapons. Nothing goes on by itself | The wardrobe |
 | Threat, Difficulty & Boss Mechanics | The tank earns threat (Slam taunts and drags mobs in, Charge grabs one); Bosses and Brutes deal `1.85×` **Crushing Blows** to non-tanks in melee; unblocked telegraphs bypass passive armor and pierce 60% of `Ward` shields; Boss `Exposed` windows (+35% damage taken on Perfect Block, dodged Shield Charge wall-crash, last rally guard kill, Soul Chain cut, and `< 2.0s` Bone Cage break); Gravekeeper Phase 3 **moving green lantern circle** (`S.ring.followBoss`) with `Grave Stride` repositioning and **Lantern Zeal** (`+15%` cooldown recovery, `+10%` crit) inside; Room 4 **Crypt Seals** (10 3-seat rune patterns granting **Crypt Surge**: `+25%` speed, `+20%` damage for 18s); mid-run `MELTED!` and `New Personal Best!` banners |  |
-| Loot | Every line rolls on its own, kill counts, duplicates to Marks, the walkout and the chest reveal |  |
-| Heroic | Heroic Barrow: open after 10 clears, made for full Epic (`hit: 3.2, trashHp: 1.95, bossHp: 1.63`); the same drops gilded at the same rates and power, its own kill counts and log, Barrow Marks. A group run: at least two real players, a bot in any empty seat, never your Warband; opens only for practice until online play (or with "Everything open") | A heroic version of every new dungeon |
+| Loot | Every line rolls on its own, kill counts, duplicates counted in the collection log, the walkout and the chest reveal |  |
+| Heroic | Heroic Barrow: open after 10 clears, made for full Epic (`hit: 3.2, trashHp: 1.95, bossHp: 1.63`); the same drops gilded at the same rates and power, its own kill counts and log. A group run: at least two real players, a bot in any empty seat, never your Warband; opens only for practice until online play (or with "Everything open") | A heroic version of every new dungeon |
 | Collection log rewards | Each dungeon's whole log (every drop, every role) gives a house look, a title and one big prize: the Barrow's are Barrow Hall, the Gravewarden and the Risen; its heroic log's Gilded Barrow Hall, the Undying and Gilded Bones. The prize waits at the end of the log's bar | One per new dungeon: a race, a race and class combo, or something else |
 | Achievements | All 12, the meta and the 3 hidden ones, with titles, trophies, looks and the Lantern Ghost |  |
 | Home | The Hearth, a tall house cut open: zoom out to see every room, tap things to use them (the Barrow door, the 3 garden planter beds in the yard, the armour stand, the big book of the collection log, the cauldron, the larder); about 30 spots for pets, mounts, trophies and banners; Decorate; looks for a room or the whole house (the tavern; Barrow Hall from the Barrow's collection log, Gilded Barrow Hall from its heroic one); one big Dungeons button | Rooms that come with new dungeons, inviting people over |
@@ -85,7 +85,7 @@ A hero is one race and one class, picked when you make them and fixed after. You
 
 - **The bunk room & Warband party seats:** every hero you aren't playing waits by their bed in the house. Tap one to play them, check their gear, rename them (once) or let one go (the last one stays); an empty bed makes a new hero. When you enter a **Normal** dungeon, your own heroes from your bunk room (`seats(p, false)` in `src/meta/party.ts`) automatically fill the other two role seats wearing their real equipped gear, sets, traits, unique weapons, and sprites (bots stand in only for roles you haven't created a hero for yet), or you can group with friends. **Heroic** needs at least two real players (`partyProblem` in `src/meta/party.ts`); with two, a bot takes the third seat, and your Warband heroes never sit in (`seatsFor`). With no online play yet, Heroic opens only for practice, or with the "Everything open" testing switch.
 - **Each hero keeps:** their regular gear (the Common to Rare ladder), their equipped uniques, their title and their clears.
-- **Every hero shares:** the collection (a unique fits any hero of its role), kill counts, Marks, achievements, titles and the Hearth.
+- **Every hero shares:** the collection (a unique fits any hero of its role), kill counts, achievements, titles and the Hearth.
 - **Shared gear:** a floor per role, up to Rare. Spare pieces and your own ladder raise it, and every hero of that role can put it on, including heroes made later (a new hero starts wearing it). Epic is earned on the hero.
 - **Nothing goes on by itself.** A new piece waits in the hero's bag and glows on the gear doll with "Up" (a better regular piece) or "New" (a unique). Your hero's tag at the top of the house counts what's waiting; tap the slot, compare, and Put it on: the slot bursts, the item level counts up. The chest reveal says "Put it on in Gear".
 - **Races:** Dwarf, Elf and Human from the start. Gnome, Goblin, the Risen (undead) and Orc are earned, each in its own dungeon: the Risen from filling Barrow Crypt's whole collection log, the others with dungeons to come. The hero maker shows how close you are to each.
@@ -157,9 +157,9 @@ The weapon is the upgrade you feel; Helm, Shoulders and Chest are the set. Power
 - The weapon carries 40% of your power (`WEIGHT.weapon = 4` of `10`), so a Boss Weapon (`rar: 4`, `+38.4%` damage/healing and `+19.2%` health) is a massive power spike.
 - Every clear drops a regular item better than the best you have in your weakest slot. No dead drops. It waits until you put it on. It also drops a shared piece for another role, up to Rare, so a new alt never starts cold.
 - Tap any drop (in the collection log or the Dungeons sheet) to hold it up against what that role wears now: Upgrade, Downgrade, Same power or A trade, then what changes (item level, power, health, set count) and any effect it adds or takes away.
-- **Barrow Marks**: 1 per clear, 3 per duplicate. Spend 5 to swap your weapon's trait.
+- **No currency:** a duplicate counts in the collection log ("Seen 3×") and your weapon's trait swaps for free. The save still counts each dungeon's `marks` (1 per clear, 3 per duplicate), never shown or spent.
 
-**Weapon traits** (unlocked at Rare, swappable for 5 Barrow Marks, and stay active alongside Unique weapons)
+**Weapon traits** (unlocked at Rare, free to swap, and stay active alongside Unique weapons)
 
 | Role / Class | Trait | Trait | Trait |
 | --- | --- | --- | --- |
@@ -218,7 +218,7 @@ Loot runs on OSRS rules: every unique has its own drop rate, rare means properly
 
 - Rolls are independent, OSRS style: two uniques in one clear can happen, and so can a 200-clear dry streak (about 1 player in 60).
 - An Epic piece (3 set pieces at 1/35 + 1 weapon at 1/50) drops about once every 10 clears (~10.6% per clear), and completing the full 4/4 Epic kit averages ~50 clears (~3.5 hours).
-- No pity on uniques. Duplicates give 3 Barrow Marks each.
+- No pity on uniques. A duplicate counts in the collection log ("Seen 3×").
 - Kill count shows on every loot screen and in the collection log ("Rimebone Chest, KC 42"), so spoons and dry streaks become stories.
 
 ### The walkout
@@ -242,7 +242,7 @@ Every dungeon has a harder version, its Heroic, for after the gear cap. It never
 - **Players:** Normal can always be played solo with your Warband heroes, or with a group. Heroic needs at least two real players; with two, a bot takes the third seat, and your Warband heroes never sit in (`HEROIC_MIN_PLAYERS`, `partyProblem` and `seatsFor` in `src/meta/party.ts`); the players come through Group Finder or friends once online play is live. There is no online play yet, so Heroic opens only for practice (the "Everything open" testing switch lets you in); the Dungeons sheet says "Heroic needs at least two players. Bring a friend."
 - **Harder:** the same dungeon and mechanics, made for full Epic (`hit: 3.2, trashHp: 1.95, bossHp: 1.63`). Bots in full Epic clear it in about four minutes without wiping; in Common they get buried.
 - **Gilded drops:** every drop is the normal one gilded, at the same rate and the same power: a gilded set piece counts for the same set, a gilded weapon has the same effect. Heroic is a collection of its own, with its own kill counts and its own collection log.
-- **Marks and achievements:** a heroic clear pays the dungeon's own Marks and counts for its achievements.
+- **Achievements:** a heroic clear counts for the dungeon's own achievements.
 
 ## Collection log rewards
 
