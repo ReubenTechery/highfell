@@ -2,8 +2,8 @@
 
 # Notes for Claude
 
-AGENTS.md is the whole brief: the vision, the pillars, decisions already made, the rules of the systems, the
-code map, the commands and the code rules. Read it first. This file only adds what Claude can do here that
+AGENTS.md is the whole brief: the vision, the pillars, decisions already made, the code map, the commands and
+the code rules (how each system works is in `docs/design.md`). Read it first. This file only adds what Claude can do here that
 other agents can't. It is only for the one Claude that can publish the live game: Claude Code on claude.ai, on
 the owner's account that owns it. Any other Claude (Claude Code running on the owner's computer, a Claude on
 another account, or a Claude model picked inside Antigravity) works like the other agents: follow `GEMINI.md`,

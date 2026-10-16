@@ -32,14 +32,14 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 16 
 1. **Dungeons + Collection Logs are the core loop.** A run takes about 4 minutes in Common gear and melts down toward ~2 minutes in full BiS Epic gear, needs all three roles, and drops loot every time.
 2. **Four buttons plus the swipe dodge, never more.** Sets, weapon traits, and boss weapons transform what buttons do; they never add one.
 3. **Dramatic power creep, long collection chase.** Regular gear climbs Common → Rare in 8 clears, while Epic 3-piece sets (1/35 per piece) and Boss Weapons (1/50) push power up to `1.96×` (plus crit and summons) so grinding 100+ runs feels noticeably faster and more explosive as you gear up your Warband.
-4. **Normal solo with your Warband, Heroic in a group.** Normal dungeons can be run with your 3-hero Warband (so gearing your alts directly speeds up your runs) or with a group if you want. Heroic needs at least two real players; with two, a bot takes the third seat, and your Warband heroes never sit in. There is no online play yet, so Heroic opens only for practice (the "Everything open" testing switch lets you in).
+4. **Normal solo with your Warband, Heroic in a group.** Normal dungeons can be run with your 3-hero Warband (so gearing your alts directly speeds up your runs) or with a group if you want, and a Normal collection log can always be finished solo. Heroic is the optional group flex, at the same power as Normal with gilded looks and its own log: it needs at least two real players; with two, a bot takes the third seat, and your Warband heroes never sit in. There is no online play yet, so Heroic opens only for practice (the "Everything open" testing switch lets you in).
 5. **No drinking for mana and no waiting around:** mana refills between pulls.
 
 ## Combat, Difficulty & Boss Mechanics
 
 **Threat & Crushing Blows:** holding mobs is the tank's job, not a given. The tank's hits make a third more threat than anyone else's; the DPS out-damages him, and heals pull a little on everything in the fight. A mob switches once someone beats its target by a tenth.
 
-- **Slam** taunts everything around you for 4 seconds and drags it in to arm's reach (big mobs half as far, bosses not at all).
+- **Slam** taunts everything around you for 4 seconds and drags it in to arm's reach (big mobs half as far, bosses not at all). Its hits make double threat.
 - **Charge** makes the mob you hit turn on you; Ringing Blow makes everything it hits turn.
 - A mob that isn't on the tank for 3 seconds goes **wild**: it hits harder and faster.
 - **Crushing Blows (`1.85×`):** Bosses and Brutes (`m.isBoss || m.M.big`) landing a melee hit on a non-tank (`role !== 'tank'`) deal **1.85× Crushing Blow** damage with an alarm callout (`"Crushing blow! Let the tank hold him!"`), so a Rogue or Mage cannot facetank bosses.
@@ -47,7 +47,7 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 16 
 - **Chains and Wisps (Healer role mechanic):** only the **Healer** can swipe across chains to sever them (exposing the boss for 3s) or swipe/smite Wisps to banish them (triggering a `Soul Spark` backlash bolt on the boss and restoring +5 mana).
 - **Numbers:** you see only your own (your hits, your heals, what hits you). Your mates' spell effects still show.
 
-**Difficulty & Avoidable Telegraphs:** Barrow Crypt's `tune` scales all hero damage taken by `1.5×` and trash HP by `1.3×` (`heroic`: `hit: 3.2, trashHp: 1.95, bossHp: 1.63`). Ground hazards and boss telegraphs (`hazard: true`) bypass passive armor unless actively blocked AND **pierce 60% of `Ward` shields**, so standing in `Shield Charge`, `Cleaving Sweep`, `Burrow Erupt`, `Grasping Hands`, or `Shockwave Ring` in beginner gear will nearly kill you even through a shield.
+**Difficulty & Avoidable Telegraphs:** Barrow Crypt's `tune` scales all hero damage taken by `1.5×` and trash HP by `1.3×` (`heroic`: `hit: 3.2, trashHp: 1.95, bossHp: 1.63`). Each dungeon's `tune` lives in its engine file: `hit` scales everything that hurts a hero, `trashHp` the health of everything but the bosses, `bossHp` the bosses'. Ground hazards and boss telegraphs (`hazard: true`) bypass passive armor unless actively blocked AND **pierce 60% of `Ward` shields**, so standing in `Shield Charge`, `Cleaving Sweep`, `Burrow Erupt`, `Grasping Hands`, or `Shockwave Ring` in beginner gear will nearly kill you even through a shield.
 
 **Boss `Exposed` Windows (`+35%` damage taken):**
 - Perfect-blocking a heavy boss attack stuns the boss, resets `Cleave`, and exposes the boss for `3.5s`.
@@ -83,15 +83,17 @@ Skill trees and hero levels are omitted so that **Gear alone drives damage, heal
 
 A hero is one race and one class, picked when you make them and fixed after. You can have six, and the one you play stands by the fire on the Hearth.
 
-- **The bunk room & Warband party seats:** every hero you aren't playing waits by their bed in the house. Tap one to play them, check their gear, rename them (once) or let one go (the last one stays); an empty bed makes a new hero. When you enter a **Normal** dungeon, your own heroes from your bunk room (`seats(p, false)` in `src/meta/party.ts`) automatically fill the other two role seats wearing their real equipped gear, sets, traits, unique weapons, and sprites (bots stand in only for roles you haven't created a hero for yet), or you can group with friends. **Heroic** needs at least two real players (`partyProblem` in `src/meta/party.ts`); with two, a bot takes the third seat, and your Warband heroes never sit in (`seatsFor`). With no online play yet, Heroic opens only for practice, or with the "Everything open" testing switch.
+- **The bunk room & Warband party seats:** every hero you aren't playing waits by their bed in the house. Tap one to play them, check their gear, rename them (once) or let one go (the last one stays); an empty bed makes a new hero. When you enter a **Normal** dungeon, your own heroes from your bunk room (`seats(p, false)` in `src/meta/party.ts`) automatically fill the other two role seats wearing their real equipped gear, sets, traits, unique weapons, and sprites (bots, Brannoc, Maren and Ivy, stand in only for roles you haven't created a hero for yet), or you can group with friends. **Heroic** needs at least two real players (`partyProblem` in `src/meta/party.ts`); with two, a bot takes the third seat, and your Warband heroes never sit in (`seatsFor`). With no online play yet, Heroic opens only for practice, or with the "Everything open" testing switch.
 - **Each hero keeps:** their regular gear (the Common to Rare ladder), their equipped uniques, their title and their clears.
 - **Every hero shares:** the collection (a unique fits any hero of its role), kill counts, Marks, achievements, titles and the Hearth.
 - **Shared gear:** a floor per role, up to Rare. Spare pieces and your own ladder raise it, and every hero of that role can put it on, including heroes made later (a new hero starts wearing it). Epic is earned on the hero.
-- **Nothing goes on by itself.** A new piece waits in the hero's bag and glows on the gear doll with "Up" (a better regular piece) or "New" (a unique). Your hero's tag at the top of the house counts what's waiting; tap the slot, compare, and Put it on: the slot bursts, the item level counts up. The chest reveal says "Put it on in Gear".
+- **Nothing goes on by itself.** A new piece waits in the hero's bag and glows on the gear doll with "Up" (a better regular piece) or "New" (a unique). Your hero's tag at the top of the house counts what's waiting; tap the slot, compare, and Put it on: the slot bursts, the item level counts up. The chest reveal says "Put it on in Gear". A ladder piece (and the shared floor) waits in the hero's bag; a new unique waits in their `fresh` list. The armour stand counts what's waiting too, and the doll shows old and new side by side with exact item level, damage or healing, and health. A drop's sheet holds it up against what its role wears (`compareOn`): better is more item level or a new effect with nothing lost, worse is less or an effect lost for nothing, and both at once is a trade.
 - **Races:** Dwarf, Elf and Human from the start. Gnome, Goblin, the Risen (undead) and Orc are earned, each in its own dungeon: the Risen from filling Barrow Crypt's whole collection log, the others with dungeons to come. The hero maker shows how close you are to each.
 - **Classes:** Warrior (tank), Cleric (healer), Mage (ranged AoE/Shatter DPS) and Rogue (fast melee single-target venom/crit DPS with permanent +10% movement speed and twin daggers as a single pair item). That's all four.
-- **Drawn today:** Dwarf Warrior (tank), Human Cleric (healer), Elf Mage (DPS), Human/Elf Rogue (DPS), and Gnome, Goblin and the Risen as all four classes. The rest show in the hero maker as Soon.
+- **Drawn today:** Dwarf Warrior (tank), Human Cleric (healer), Elf Mage (DPS), Human/Elf Rogue (DPS), and Gnome, Goblin and the Risen as all four classes, both sexes and all three armour tiers (`_rags`, `_iron` and full armour). The rest show in the hero maker as Soon.
 - **Old saves:** became one hero, named for the role you last played, with a one-time rename.
+- **Who can be made:** a race and class combo is playable once it has a ready class and art in `HERO_ART` (`HERO_ART_SEX` for male and female variants, keeping the same body and armour silhouette) and its race is open; the rest show as "Soon". An earned race (gnome, goblin, the Risen, orc) opens with the achievement that gives it (`reward.race`) and stays locked until a dungeon does (or the testing switch or the hero maker's `Unlock` preview button is used).
+- **Also per hero:** their own male or female look (`sex`). **Also shared:** the garden and the cauldron (`p.vale`).
 
 ## Home: the house
 
@@ -108,13 +110,15 @@ Home is a tall house on the hill, cut open like a doll's house. Built 14 Oct aft
   - **Gilded Barrow Hall:** from the heroic Barrow's log. Gold bones, gold frames and lanterns, the green fire burning higher.
   - Every dungeon brings a look like this, and a gilded one from its heroic log.
 - **Next:** rooms that come with new dungeons (the cellar's bricked arches become new dungeons' doors).
+- **The plan is data** in `src/content/house.ts`: the rooms, the things you tap and the display spots. Zoomed out, a tap goes into a room; zoomed in, a tap uses a thing. The hearth's first eight spot ids never change; a spot a save has never had takes what isn't on show when the save loads (`settleSpots`); a spot you emptied stays empty; something new goes to the first free spot of its kind (the hall first).
+- **Looks, as built:** every room inside the house has a look (`p.hearth.looks`, room id to look id; a room not in it is the tavern). A look opens with the achievement that gives it (`reward.look`: finishing that dungeon's collection log); one you haven't earned is drawn as the tavern (the testing switch shows it). With every room in the same look, the frame (beams, outer walls, roof) follows it. What a look is lives in `src/content/house.ts` (`LOOKS`); how it's drawn, room by room, in `src/ui/houseart.ts`.
 
 ## The Garden & Brews
 
 Instead of riding out to a separate map or waiting on real-time timers, the Hearth's outdoor yard holds **3 planter beds** (`bed.0`, `bed.1`, `bed.2`) that feed directly into the dungeon loop:
 
 1. **Seeds from dungeon bosses:** Each dungeon drops its own seed from its final boss. In Barrow Crypt, The Gravekeeper drops **Glowcap** seeds (`1/5` on Normal, `1/3` on Heroic). Saves from before the garden were given one Glowcap seed to try it; a new player's first seed comes from the Gravekeeper (never on their first run), and a one-step Garden tip shows them the beds when it drops.
-2. **Grow in 3 dungeon clears (`GROW_CLEARS = 3`):** Tap an empty bed in the yard to plant a seed. Each Normal or Heroic dungeon clear advances all planted beds by 1 stage (`0/3` sprout → `1/3`, `2/3` growing → `3/3` ready). Practice runs and the Crypt Trial do not advance beds, and crops never wilt.
+2. **Grow in 3 dungeon clears (`GROW_CLEARS = 3`):** Tap an empty bed in the yard to plant a seed. Each Normal or Heroic dungeon clear advances all planted beds by 1 stage (`growBeds`; `0/3` sprout → `1/3`, `2/3` growing → `3/3` ready). Practice runs and the Crypt Trial do not advance beds, and crops never wilt.
 3. **Harvest in close-up:** Tap a ready bed to harvest in close-up (`snip` a stem on the dotted line or `pluck` a glowcap at its brightest). Three cuts per harvest: base yield is `8–10` herbs, each Perfect cut adds `+1` (up to `+3`), and Gathering ranks 4, 7 and 10 each add `+1` more. **Every cut pays Gathering XP as it lands**, with a bar at the foot of the close-up and a burst on a new rank.
 4. **Rares & Starlight Dew:** Your very first harvest grants the **Hill Goat** (`mount.goat`). Every harvest also rolls `GARDEN_TABLE` independently (OSRS style), has a `1/4` chance to shimmer and drop `1–2` **Starlight Dew**, and converts any duplicate rare into `2` Starlight Dew.
 5. **Brew at the cauldron:** Stirring at the cauldron by your fire turns herbs into bottles (every lap pays Brewing XP; a Perfect stir fills 1 extra bottle). The ingredients go in when the stir starts, so leaving mid-stir still bottles it.
@@ -144,6 +148,8 @@ Brews are strong **party-wide speed and power buffs** that make Normal, Heroic, 
 | Bramble Fizz (`fizz`) | 8 Brambleberry, 2 Moonpetal | `+25%` move speed, all ability and dodge cooldowns tick `25%` faster | Brewing 1 |
 | Starlight Elixir (`elixir`) | 8 Glowcap, 2 Starlight Dew | All Glowcap Draught buffs (`+25%` dmg/AoE, `+15%` speed, `+50%` threat) + once per run a lethal hit leaves each hero at `50%` HP | Brewing 3 |
 
+What each brew does lives in `BREW_FX` in `src/dungeon/entities.js` (`tonic`, `fizz`, `glow`, `elixir`).
+
 Achievements here: Green Fingers, Steady Hands, Something Brewing, Green-Thumbed (gold) and a hidden one for the Rootling (Odd Jobs is retired and only shown if earned on an older save).
 
 ## Gear and sets
@@ -153,7 +159,7 @@ The weapon is the upgrade you feel; Helm, Shoulders and Chest are the set. Power
 ### The ladder
 
 - 4 slots: Weapon, Helm, Shoulders, Chest.
-- Rarity climbs Common → Uncommon → Rare (8 clears) → Epic (from dungeon 3-piece sets and Boss Weapons).
+- Rarity climbs Common → Uncommon → Rare (8 clears) → Epic (from dungeon 3-piece sets and Boss Weapons). Heroes start in Common rags with bronze or wood weapons; item icons go `_0` (Common), `_1`, `_2` to `_3` (Epic), and a hero is drawn in `_rags`, `_iron` or full armour.
 - The weapon carries 40% of your power (`WEIGHT.weapon = 4` of `10`), so a Boss Weapon (`rar: 4`, `+38.4%` damage/healing and `+19.2%` health) is a massive power spike.
 - Every clear drops a regular item better than the best you have in your weakest slot. No dead drops. It waits until you put it on. It also drops a shared piece for another role, up to Rare, so a new alt never starts cold.
 - Tap any drop (in the collection log or the Dungeons sheet) to hold it up against what that role wears now: Upgrade, Downgrade, Same power or A trade, then what changes (item level, power, health, set count) and any effect it adds or takes away.
@@ -174,7 +180,7 @@ The weapon is the upgrade you feel; Helm, Shoulders and Chest are the set. Power
 - Set pieces are uniques from the drop table below at Epic Item Level 26 (`+19.2%` damage/healing and `+9.6%` health per piece), and each piece has its own immediate When-Worn ability perk even at 1 of 3 pieces.
 - **1 piece (per-piece perk)**: each Helm, Shoulders and Chest piece immediately buffs one of your core abilities when worn.
 - **2 pieces**: a set bonus that leans into your role's signature mechanic.
-- **3 pieces (`ready: true`)**: changes how one button works with spectral/skeletal summons (`S.thralls`) or ghost saves.
+- **3 pieces (`ready: true`)**: changes how one button works with spectral/skeletal summons (`S.thralls`) or ghost saves. All four Barrow 3-piece bonuses are on: `barrowguard3`, `candlewake3`, `rimebone3`, `shadeveil3`.
 
 ### Barrow Crypt sets: raise the dead
 
@@ -201,6 +207,8 @@ Dungeons 2 to 4 are placeholder themes; their names come with the races pass.
 ## Loot
 
 Loot runs on OSRS rules: every unique has its own drop rate, rare means properly rare, and a 1-in-5,000 pet is the flex. Each player rolls their own table on every clear, so nobody fights over drops.
+
+**As built:** loot rolls the moment a boss dies (`resolveKill`): every line of its table rolls on its own, per player, and kill counts are per boss. A dungeon's seed lines (`seeds` on its `DungeonInfo`, each a `SeedDrop` of `{ boss, seed, rate }`) roll there too. Finishing the run (`resolveClear`) adds the clear: a Mark, a ladder piece (Common to Rare in eight clears), a spare piece for another role, and a step of growth for every planted bed (`growBeds`). Practice runs give nothing.
 
 ### Barrow Crypt drop table
 
@@ -233,12 +241,14 @@ The final chest has a tell before the loot shows, and the game never explains it
 
 - Tells never lie and never fake out, so learning them always pays.
 - Every dungeon gets its own tell, so each new dungeon is something new to learn.
+- The final boss's drops decide the tell, and the first second is identical for all three on purpose.
 
 ## Heroic
 
 Every dungeon has a harder version, its Heroic, for after the gear cap. It never gives more power.
 
 - **Opens** after 10 clears of the dungeon, about when your gear tops out. The Dungeons sheet switches between Normal and Heroic on the dungeon's picture; until it opens, it shows how close you are.
+- **Built as** its own `DungeonInfo` (`heroicOf` the normal one) that opens after `HEROIC_AFTER` (10) clears of the normal one (the testing switch opens it early): the same bosses and the same tables with gilded ids at the same rates, and gilded pieces wear exactly like the plain ones.
 - **Players:** Normal can always be played solo with your Warband heroes, or with a group. Heroic needs at least two real players; with two, a bot takes the third seat, and your Warband heroes never sit in (`HEROIC_MIN_PLAYERS`, `partyProblem` and `seatsFor` in `src/meta/party.ts`); the players come through Group Finder or friends once online play is live. There is no online play yet, so Heroic opens only for practice (the "Everything open" testing switch lets you in); the Dungeons sheet says "Heroic needs at least two players. Bring a friend."
 - **Harder:** the same dungeon and mechanics, made for full Epic (`hit: 3.2, trashHp: 1.95, bossHp: 1.63`). Bots in full Epic clear it in about four minutes without wiping; in Common they get buried.
 - **Gilded drops:** every drop is the normal one gilded, at the same rate and the same power: a gilded set piece counts for the same set, a gilded weapon has the same effect. Heroic is a collection of its own, with its own kill counts and its own collection log.
@@ -256,6 +266,7 @@ Filling a dungeon's whole collection log (every drop for every role, so it takes
 - When the last slot fills, the chest reveal gives it the whole screen: the prize walks out, then a panel with what the log gave and the way to it (make a hero, put up the look).
 - The Dungeons sheet and the collection log show each log's bar with its prize at the end, and what finishing it gives.
 - Not every dungeon's prize is a race. With a lot of dungeons to come, a prize can be a race, a race and class combo (a Dwarf Mage, say), or something else.
+- **As built** (`src/meta/logs.ts`): filling a dungeon's whole log (`logDone`) earns its log achievement (tier `log`, checked whenever something new arrives). Its reward gives a title and can open a house look (`reward.look`), a race (`reward.race`) or a collectible (Gilded Bones). Earned stays earned, even if a slot is added to the log later.
 
 ## Achievements
 
@@ -286,6 +297,30 @@ Hidden: **Bravely Stupid** (go in solo as DPS and die to the first pack), **Last
 ## Making it fair
 
 Today's baseline (`tests/balance.test.ts`): bots clear Barrow Crypt in about 4:00 on Common gear with no wipes, full Epic is clearly faster, and a full BiS party (`power: 1.96` with 3-piece sets and Boss Weapons) melts the dungeon in roughly half the time (`~2:05`). The repo's `npm run sim` prints the full table.
+
+- **The bands `tests/balance.test.ts` keeps:** a Common bot clear in about 4:00 with no wipes, with the Gravekeeper about two minutes of it; full Epic clearly faster; full BiS melting the dungeon in roughly half the time (under 62% of the Common clear time); and a DPS alone dies before Sir Rattlebones. Heroic: full Epic clears in about four minutes with no wipes, and Common gets buried.
+
+## Onboarding
+
+A fresh save opens on the hero maker.
+
+- **The first hero** gets the Crypt Trial's chest at once (`grantTrialStarter`, once a save): an Uncommon weapon waiting in its bag and an Uncommon helm on another role's shared floor, so skipping or quitting the trial loses nothing.
+- **The Crypt Trial** (`start: 'intro'`): 60 seconds as that hero in full Epic test gear, in the Ossuary and Sir Rattlebones's tomb. Brannoc tanks unless you are the tank, and your seat gets its role's Barrow weapon and 2-piece bonus. A Welcome card offers the trial or a skip.
+- **Five teaching moments** drawn for your class (`TUT_BY_CLASS` in `src/ui/run.ts`): your opener, your pack or peel button, `Dodge` out of `Shield Charge`'s red lane, the heavy swing (a tank perfect-blocks it; a cleric Wards, a mage throws Icicle, a rogue Shadowsteps, and he staggers) and your big hit in the `Exposed` window. Each one pauses the game and spotlights the button to press. Heroes cannot drop below 20% health, and `Skip intro` is always there.
+- **The chest:** killing Sir Rattlebones plays the gold `unique` walkout and opens the trial's chest (`reveal.showTrial`): the two starter pieces, plus a 1/50 set piece and a 1/50 trophy stamped `Example` (that is what the gold lantern was about), with the Barrow's collection log and its three prizes.
+- **The Hearth tour:** then a 3-step guided tour of the Hearth (`hall` your hero's gear → `bunks` the empty bed → `cellar` Barrow door). The trial and the tour both replay from Settings; a replayed trial's chest is all examples.
+- **The garden tip:** fresh saves start with no seed, and a save's very first run never drops one. The first seed that does brings a one-step Garden tip on the yard's beds (not for anyone who has planted before).
+
+## Saves
+
+A save never loses data: its shape changes only with a `PROFILE_VERSION` bump and a migration step.
+
+- v2 to v3 turned one hero per role into the roster.
+- v3 to v4 added the Vale (`p.vale`).
+- v4 to v5 gave every hero an empty bag and fresh list (gear stopped going on by itself).
+- v5 to v6 added house looks (`p.hearth.looks`, every room the tavern).
+- v6 to v7 gave every hero a male or female look (`sex`).
+- v7 to v8 added `seeds` and the 3 yard planter `beds` (`p.vale.seeds`, `p.vale.beds`) with 1 starter `glowcap` seed.
 
 ## Content Scope, Release Tiers & Stepped Unique Treadmill
 
