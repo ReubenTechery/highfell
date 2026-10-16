@@ -277,3 +277,17 @@ Barrow's two collection logs). See the house in `docs/design.md`. Still open:
 - More for mounts to do: they already make rides out quicker. Later ones could reach places a goat can't
   (a lake for a strider, a cliff for a hound), never more power in a dungeon.
 - Pets following you into dungeons.
+
+## The collection log's wardrobe, next
+
+Parked while building the log as a wardrobe (16 Oct). Nothing here is decided.
+
+- **Sets drawn on the heroes themselves.** The log shows each set on an armour stand. Wearing a set's look on
+  your hero, in the house and in a run, means fitting every set to every race, class and sex: a much bigger art
+  job than the stands.
+- **Open the log on the dungeon you last ran.** Today it opens on the first dungeon whose log isn't finished.
+  Remembering the last one needs a field in the save (a version bump and a migration).
+- **The other sets' written looks.** The stands follow each set's `look` text, and Barrowguard, Candlewake and
+  Rimebone's icons were redrawn to match. Barrowguard's look also mentions a coffin-lid shield, which has no slot,
+  so it isn't shown anywhere.
+
