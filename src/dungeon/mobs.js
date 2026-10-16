@@ -227,7 +227,7 @@ export function curseHero(m, h) {
   h.st.curse = { id: 'cu' + S.seq++, t: 0, by: m };
   fx({ type: 'beam', x: m.x, y: m.y - 70, x2: h.x, y2: h.y - 120, col: CURSE_COL, dur: 0.3 });
   dots(h.x, h.y - 120, CURSE_COL, 8, 90);
-  sfx('curse');
+  sfx('curse', h.isPlayer || S.player.role === 'healer' ? 1 : 0.55);
   if (h.isPlayer || S.player.role === 'healer') fxText(h.x, h.y - 205, 'Cursed!', CURSE_COL, 22, { dur: 1.1 });
   emit({ type: 'curse.cast', player: !!h.isPlayer, name: h.isPlayer ? 'you' : h.name });
   return h.st.curse;

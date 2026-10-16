@@ -10,7 +10,7 @@ import { S } from '../src/dungeon/state.js';
 import { curseHero, makeChain } from '../src/dungeon/mobs.js';
 import { VIEW, toScreen } from '../src/dungeon/render.js';
 import { BARROW_ENGINE } from '../src/content/barrow/engine';
-import { IN, bindInput, resetInput } from '../src/ui/input';
+import { IN, bindFrameSwipes, bindInput, resetInput } from '../src/ui/input';
 
 type Handler = (e: unknown) => void;
 const on: Record<string, Handler> = {};
@@ -75,4 +75,21 @@ test('a healer swipe across a cursed mate lifts the curse, even one that starts 
   for (let i = 1; i <= 6; i++) touch('pointermove', x0 + i * 28, at.y);
   assert.equal(dps.st.curse, null, 'the curse is lifted');
   touch('pointerup', x0 + 168, at.y);
+});
+
+test('a healer swipe across a cursed mate\'s party frame lifts it, even one that starts on another frame; a wobbly tap does not', () => {
+  const { dps, mob } = phoneRun('healer');
+  const fh: Record<string, (e: unknown) => void> = {};
+  // the heal pad, bottom right on a phone: one frame per mate, stacked
+  const frame = (role: string, top: number) => ({ dataset: { role }, getBoundingClientRect: () => ({ left: 240, right: 380, top, bottom: top + 50 }) });
+  const frames = [frame('tank', 530), frame('healer', 586), frame('dps', 642)];
+  bindFrameSwipes({ addEventListener: (t: string, fn: (e: unknown) => void) => { fh[t] = fn; }, setPointerCapture: () => {}, querySelectorAll: () => frames } as unknown as HTMLElement);
+  const at = (x: number, y: number) => ({ pointerId: 3, clientX: x, clientY: y });
+  curseHero(mob, dps);
+  fh.pointerdown(at(300, 660)); fh.pointermove(at(306, 664)); fh.pointerup(at(306, 664));
+  assert.ok(dps.st.curse, 'a tap that wobbles a few pixels only heals');
+  fh.pointerdown(at(300, 600));
+  for (let y = 620; y <= 720; y += 20) fh.pointermove(at(300, y));
+  fh.pointerup(at(300, 720));
+  assert.equal(dps.st.curse, null, 'swiping from your own frame down across theirs lifts it');
 });
