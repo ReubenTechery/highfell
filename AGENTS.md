@@ -48,8 +48,9 @@ power as Normal, with gilded looks and its own log. Teamwork between roles is th
 4. **Respect the player's time.** No streaks, no daily chores, nothing lost for missing a day (things bank up),
    no inventory to manage, no drinking for mana, no waiting around.
 5. **Anti-bloat.** Every system is a cost forever. A feature earns its place by making the core loop better
-   (hearth → dungeon → loot → hearth). Deepen what exists before adding something new. One currency per
-   dungeon (Marks), one potion system (brews). When in doubt, leave it out and write it in `docs/ideas.md`.
+   (hearth → dungeon → loot → hearth). Deepen what exists before adding something new. No currency: every
+   reward is a drop, a log or an achievement. One potion system (brews). When in doubt, leave it out and
+   write it in `docs/ideas.md`.
 6. **Original and hand-made.** No names, characters, ability names or designs lifted from other games. The art
    is drawn as code in one locked style (`docs/art.md`). It must never look AI-generated.
 
@@ -60,8 +61,8 @@ power as Normal, with gilded looks and its own log. Teamwork between roles is th
 | 4 gear slots: weapon, helm, shoulders, chest | The weapon chase stays separate from the set chase |
 | Regular gear caps at Rare; Epic comes only from dungeon sets and boss weapons | A quick ladder, then a long chase |
 | A steep power curve: full BiS melts a dungeon in about half the time | Grinding 100+ runs has to feel it |
-| Duplicates become Marks; Marks swap weapon traits | Nothing that drops is wasted |
-| Race and class are for keeps; up to 6 heroes | Alts, like WoW, sharing the collection, kill counts and Marks |
+| No currency: duplicates count in the collection log, and weapon traits swap free at Rare | Nothing to grind or spend |
+| Race and class are for keeps; up to 6 heroes | Alts, like WoW, sharing the collection and kill counts |
 | Normal is fully solo with your Warband, and its collection log can always be finished solo | Nobody needs a group to finish a dungeon |
 | Heroic is the optional group flex: at least two real players plus a bot, never your Warband | Playing together is the flex, never a wall |
 | Shared gear floor per role, capped at Rare; Epic is earned on the hero | Alts never start cold, mains still mean something |
