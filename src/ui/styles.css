@@ -198,8 +198,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx { display: grid; gap: 14px; grid-template-areas: "pic" "log" "you"; }
 .dgx > .dgx-art, .dgx > .dgx-door { grid-area: pic; } .dgx > .dgx-logbar { grid-area: log; } .dgx > .dgx-you { grid-area: you; }
 .dgx-lootcol { grid-area: loot; display: none; }
-.dgx-side, .dgx-you { display: grid; gap: 14px; align-content: start; min-width: 0; }
-.dgx-side { gap: 8px; }
+.dgx-you { display: grid; gap: 14px; align-content: start; min-width: 0; }
 @media (min-width: 820px) {
   .dgx { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto 1fr; grid-template-areas: "pic loot" "log loot" "you loot"; gap: 14px 22px; align-items: start; }
   /* the log's line stays under the picture, as a line rather than a way in: the loot is right beside it */
@@ -216,10 +215,6 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
   .dgx-lootcol .dgx-row.yours .dgx-it .tile { width: 50px; height: 50px; }
   .dgx-lootcol .dgx-lbl { padding-top: 10px; }
 }
-/* a coming-soon dungeon keeps its two plain columns */
-.dgx.preview-dg { grid-template-areas: none; }
-.dgx.preview-dg > .dgx-you { grid-area: auto; }
-@media (min-width: 820px) { .dgx.preview-dg { grid-template-columns: minmax(0, 1.2fr) minmax(300px, 1fr); } }
 /* an inner page: back to the door, and the page's name */
 .dgx-sub { display: flex; align-items: center; gap: 12px; }
 .dgx-sub .icon-btn { flex: none; }
@@ -308,7 +303,6 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-bopt { grid-template-columns: 44px minmax(0, 1fr); align-items: start; padding: 8px 12px 10px 8px; }
 .dgx-bopt .dgx-bname small { font-family: var(--f-body); font-size: 14px; line-height: 1.4; color: var(--soft); }
 .dgx-bopt[aria-checked="true"] { box-shadow: 0 0 0 4px var(--ink), 0 3px 0 var(--ink); }
-.dgx-log { display: grid; gap: 10px; }
 .dgx-logbar { display: grid; grid-template-columns: auto auto minmax(40px, 1fr) auto auto; align-items: center; gap: 10px; min-height: 52px; padding: 4px 8px 4px 12px; border: 3px solid var(--ink); border-radius: 14px; background: var(--panel-2); box-shadow: 0 3px 0 var(--ink); font-family: var(--f-display); font-size: 17px; color: var(--ink); cursor: pointer; text-align: left; }
 .dgx-logbar b { font-family: var(--f-mono); font-weight: 500; font-size: 12px; }
 .dgx-logbar > i { position: relative; height: 12px; border-radius: 999px; background: var(--track); border: 2px solid var(--ink); overflow: hidden; }
@@ -1808,20 +1802,28 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
   .bw-art svg { max-width: 120px; }
 }
 
-/* ---- the Act 1 dungeons as name tabs: the one you're looking at in its own light, the ones still being built dashed ---- */
-.dgx-strip { display: flex; gap: 8px; }
-.dgx-tab { flex: 1 1 auto; min-width: 0; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0 10px; border: 3px solid var(--ink); border-radius: 999px; background: var(--panel); color: var(--ink); box-shadow: 0 3px 0 var(--ink); font-family: var(--f-display); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-.dgx-tab:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
-.dgx-tab.on { background: var(--dc); }
-.dgx-tab.soon { background: var(--panel-2); color: var(--dim); border-style: dashed; box-shadow: none; }
-.dgx-tab.soon.on { background: var(--dc); color: var(--ink); }
-.dgx-blurb { margin: 2px 2px 0; line-height: 1.4; }
-.dgx-ready { display: grid; gap: 3px; padding: 10px 12px; border-radius: 14px; background: var(--panel-2); font-size: 14px; }
-.dgx-ready.ok { background: #E8F6DF; }
-.dgx-ready.warn { background: #FFF3D1; }
-.dgx-ready b { font-family: var(--f-display); font-weight: 400; font-size: 17px; display: inline-flex; align-items: center; gap: 5px; }
-.dgx-ready b svg { width: 16px; height: 16px; }
-.dgx-ready span { font-family: var(--f-mono); font-size: 12px; color: var(--soft); line-height: 1.4; }
+/* ---- All dungeons, behind the dungeon's name: a card each, the one you're on ringed in its light ---- */
+.dgx-namebtn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.dgx-namebtn svg { width: 22px; height: 22px; flex: none; margin-top: 4px; }
+.dgx-eyebrow { margin: 0 2px -4px; font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #A3412F; }
+.dgx-card { display: grid; padding: 0; border: 3px solid var(--ink); border-radius: 18px; overflow: hidden; background: var(--panel); box-shadow: 0 3px 0 var(--ink); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.dgx-card:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.dgx-card.on { box-shadow: 0 0 0 4px var(--dc), 0 3px 0 var(--ink); }
+.dgx-card.soon { border-style: dashed; background: var(--panel-2); box-shadow: none; cursor: default; }
+.dgx-card-art { position: relative; display: block; height: 100px; border-bottom: 3px solid var(--ink); overflow: hidden; background: #241C33; }
+.dgx-card.soon .dgx-card-art { border-bottom-style: dashed; }
+.dgx-card.soon .dgx-svg { filter: saturate(0.6) brightness(0.7); }
+.dgx-card-name { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 8px; padding: 22px 12px 8px; background: linear-gradient(rgba(23, 18, 31, 0), rgba(23, 18, 31, 0.9) 60%); font-family: var(--f-display); font-size: 23px; line-height: 1; color: var(--panel); }
+.dgx-num { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 5px; box-sizing: border-box; border: 2px solid var(--ink); border-radius: 999px; background: var(--dc); color: var(--ink); font-family: var(--f-mono); font-size: 12px; font-weight: 500; }
+.dgx-soon { position: absolute; top: 8px; right: 8px; padding: 2px 12px; border: 3px solid var(--ink); border-radius: 999px; background: var(--panel); font-family: var(--f-display); font-size: 17px; color: var(--ink); }
+.dgx-card-info { display: grid; gap: 8px; padding: 10px 12px 12px; }
+.dgx-card-line { display: grid; grid-template-columns: auto minmax(30px, 1fr) auto; align-items: center; gap: 10px; font-family: var(--f-mono); font-size: 12px; color: var(--soft); }
+.dgx-card-line b, .dgx-card-sub b { color: var(--ink); font-weight: 500; }
+.dgx-card-sub { font-family: var(--f-mono); font-size: 12px; color: var(--soft); }
+.dgx-bar { position: relative; display: block; height: 12px; border: 2px solid var(--ink); border-radius: 999px; background: var(--track); overflow: hidden; }
+.dgx-bar > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--gold); }
+.dgx-card.soon .dgx-bar > i { background: #E08A2C; }
+.dgx-card .dgx-prize { margin: 0; }
 
 /* ---- Clickable chest drop comparison hint & Slot-First Armoury ---- */
 .lc-tap { margin-top: auto; padding: 2px 8px; border-radius: 999px; background: rgba(30, 26, 26, 0.08); border: 1.5px solid rgba(30, 26, 26, 0.22); font-family: var(--f-mono); font-size: 10px; font-weight: 600; color: var(--soft); }

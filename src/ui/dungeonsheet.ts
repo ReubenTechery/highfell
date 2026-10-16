@@ -1,5 +1,6 @@
 /**
- * The Dungeons sheet, opened by the big Dungeons button or the Barrow door. The dungeon's picture with
+ * The Dungeons sheet, opened by the big Dungeons button or the Barrow door. Its head is the dungeon's name,
+ * which opens All dungeons (each one's log and Heroic, and what the coming ones will ask). The door with
  * its Normal / Heroic switch (Heroic opens after ten clears and plays harder, for gilded drops), and right
  * under it one small line for that version's collection log: how full it is, with what finishing it gives
  * at the end of the bar (the Barrow's: a new kind of hero, the Risen). The line opens the Loot page: those
@@ -32,7 +33,7 @@ import { SFX } from './sound';
 import { seatAt, stageShape, stageSvg } from './stage';
 
 /** the sheet's pages: the door (the everyday one) and the ones a tap away, each with a back arrow */
-export type DgPage = 'door' | 'loot' | 'heroes' | 'brews' | 'practice';
+export type DgPage = 'door' | 'loot' | 'heroes' | 'brews' | 'practice' | 'list';
 
 /** what the sheet remembers while the page is open: which page, practice's options, Normal or Heroic, and
  *  which dungeon */
@@ -143,61 +144,18 @@ export function pickedDungeon(p: Profile, pick: DungeonPick, allOpen: boolean): 
   return { dg: hero, open: allOpen || heroicOpen(p, base.id) };
 }
 
-/** The Act 1 dungeons as name tabs above the picture: the one you're looking at in its own light, the ones
- *  still being built dashed. Everything else about a dungeon is said once, on its picture or its loot. */
-function dungeonStrip(activeId: string): string {
-  const tabs = ACT1_DUNGEONS.map((m) => {
-    const live = DUNGEONS[m.id], on = activeId === m.id, name = live?.name || m.name;
-    return `<button type="button" class="dgx-tab${on ? ' on' : ''}${live ? '' : ' soon'}" role="tab" aria-selected="${on}" aria-label="${esc(name)}${live ? '' : ', coming soon'}" data-act="dgpick" data-id="${esc(m.id)}" style="--dc: ${m.themeLight}">${esc(name.split(' ')[0])}</button>`;
-  }).join('');
-  return `<div class="dgx-strip" role="tablist" aria-label="Dungeons">${tabs}</div>`;
-}
-
 /** the one line of numbers on a dungeon's picture */
 const statLine = (clears: number, kc: number, pb: number | null | undefined): string =>
   clears ? `<b>${clears}</b> clear${clears === 1 ? '' : 's'} · KC <b>${kc}</b> · best <b>${fmtT(pb)}</b>` : 'No clears yet';
 
 export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): { head: string; body: string; foot: string } {
-  const reqId = pick.dungeon || 'barrow';
-  const meta = ACT1_DUNGEONS.find((m) => m.id === reqId) || ACT1_DUNGEONS[0];
-  const liveBase = DUNGEONS[reqId];
-  const strip = dungeonStrip(reqId);
+  // only a dungeon that's built can be picked; the list shows the ones still coming
+  const base = DUNGEONS[pick.dungeon || 'barrow'] || DUNGEONS.barrow;
+  const meta = ACT1_DUNGEONS.find((m) => m.id === base.id) || ACT1_DUNGEONS[0];
   const h = activeHero(p);
   const role: RoleId = h ? roleOf(h) : 'tank';
-  const myIlvl = h ? +ilvl(loadoutFor(p, h).score) : 10;
+  if (pick.page === 'list') return { head: subHead('Dungeons'), body: dungeonList(p, base.id), foot: '' };
 
-  // If the selected Act 1 dungeon is not yet registered in DUNGEONS, show its stepped preview + Warband readiness
-  if (!liveBase) {
-    const ready = myIlvl >= meta.recIlvl;
-    const body = `${strip}<div class="dgx preview-dg">
-      <div class="dgx-side">
-        <div class="dgx-art">${banner(false, meta.id)}
-          <div class="dgx-name"><p class="dgx-line">Bosses <b>${esc(meta.bossNames[0])}</b> &amp; <b>${esc(meta.bossNames[1])}</b></p></div>
-        </div>
-        <p class="fine dgx-blurb">${esc(meta.blurb)}</p>
-        <section class="dgx-log">
-          <div class="dgx-rewards">
-            <p class="dgx-rw-h">Fill the ${esc(meta.name)} log to earn</p>
-            <div class="dgx-rw main"><span class="dgx-rw-pic" aria-hidden="true">${tile(meta.prizeIcon)}</span><span><b>${esc(meta.prizeName)}</b><small>${esc(meta.prizeDesc)}</small></span></div>
-            <div class="dgx-rw"><span class="dgx-rw-pic" aria-hidden="true"><span class="lk-sw">${SWATCH.barrow || ''}</span></span><span><b>${esc(meta.lookName)}</b><small>A look for your house</small></span></div>
-            <div class="dgx-rw"><span class="dgx-rw-pic" aria-hidden="true"><span class="dgx-ttl">${GLYPH.pen}</span></span><span><b>${esc(meta.titleText)}</b><small>A title for every hero</small></span></div>
-          </div>
-        </section>
-      </div>
-      <div class="dgx-you">
-        <section class="dgx-main" aria-label="Your Warband Readiness">
-          <div class="dgx-ready ${ready ? 'ok' : 'warn'}">
-            <b>${ready ? `${GLYPH.check}Warband Ready (ilvl ${myIlvl} vs Rec. ${meta.recIlvl})` : `Gear up in Tier ${meta.tier === 2 ? 'I (Barrow Crypt)' : 'II (Thimblebriar)'} first`}</b>
-            <span>Your hero is <b>ilvl ${myIlvl}</b> · ${esc(meta.name)} recommends <b>ilvl ${meta.recIlvl}</b> and drops <b>ilvl ${meta.dropsIlvl}</b> sets &amp; boss weapons.</span>
-          </div>
-        </section>
-      </div>
-    </div>`;
-    const foot = `<p class="fine dgx-shut">${GLYPH.lock}${esc(meta.name)} is coming soon.</p>`;
-    return { head: `<h2>${esc(meta.name)}</h2><p>Tier ${meta.roman} · coming soon</p>`, body, foot };
-  }
-
-  const base = liveBase;
   const { dg, open } = pickedDungeon(p, pick, allOpen);
   const rec = p.dungeons[dg.id], keeper = p.bosses[`${dg.id}.${dg.finalBoss}`];
   const practice = pick.page === 'practice';
@@ -223,9 +181,9 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
   if (pick.page === 'heroes') return { head: subHead('Who goes in'), body: heroesPage(p, pick.heroic), foot };
   if (pick.page === 'brews') return { head: subHead('Your brew'), body: brewsPage(p), foot };
   if (practice) return { head: subHead(pick.heroic ? 'Heroic practice' : 'Practice'), body: practicePage(pick, starts), foot };
-  const head = `<h2>${esc(base.name)}</h2><p>Tier ${meta.roman}${pick.heroic ? ' · Heroic' : ''} · ${statLine(rec?.clears || 0, keeper?.kc || 0, rec?.pb)}</p>`;
+  const head = `<h2><button type="button" class="dgx-namebtn" data-act="dglist" aria-label="${esc(base.name)}. All dungeons">${esc(base.name)}${GLYPH.down}</button></h2><p>Tier ${meta.roman}${pick.heroic ? ' · Heroic' : ''} · ${statLine(rec?.clears || 0, keeper?.kc || 0, rec?.pb)}</p>`;
   // on a phone the log line opens the Loot page; on desktop the loot sits in its own column instead
-  const body = `${strip}<div class="dgx${pick.heroic ? ' heroic' : ''}">
+  const body = `<div class="dgx${pick.heroic ? ' heroic' : ''}">
     ${door(p, base, pick.heroic, diff)}
     ${logLine(p, dg, true)}
     <aside class="dgx-lootcol" aria-label="Loot">${loot}</aside>
@@ -240,6 +198,30 @@ function practicePage(pick: DungeonPick, starts: { id: string; name: string }[])
   return `<section class="dgx-group"><p class="dgx-gh">Start at</p>${seg('start', pick.start, starts.map((s) => [s.id, s.name] as [string, string]))}</section>
     <section class="dgx-group"><p class="dgx-gh">Gear</p>${seg('tgear', String(pick.gear), [['mine', 'Mine'], ['2', 'Try Rare'], ['3', 'Try Epic']])}</section>
     <p class="dgx-note">No loot, kill counts or achievements. Your brew works, and the bottle stays.</p>`;
+}
+
+/** All dungeons, act by act: each one's picture, its log and how close its Heroic is (tap one to go to its
+ *  door), and for the ones still coming, the item level they'll ask of you and what they drop. */
+function dungeonList(p: Profile, current: string): string {
+  const h = activeHero(p), mine = h ? +ilvl(loadoutFor(p, h).score) : 10;
+  const bar = (k: number): string => `<i class="dgx-bar" aria-hidden="true"><i style="width: ${(Math.min(1, k) * 100).toFixed(1)}%"></i></i>`;
+  const cards = ACT1_DUNGEONS.map((m) => {
+    const live = DUNGEONS[m.id];
+    const name = `<span class="dgx-card-name"><span class="dgx-num">${m.roman}</span>${esc(live?.name || m.name)}</span>`;
+    if (!live) {
+      return `<div class="dgx-card soon" style="--dc: ${m.themeLight}"><span class="dgx-card-art">${banner(false, m.id)}<span class="dgx-soon">Soon</span>${name}</span>
+        <span class="dgx-card-info"><span class="dgx-card-line"><span>Recommended <b>ilvl ${m.recIlvl}</b> · ${esc(h ? h.name.split(' ')[0] : 'you')} <b>${mine}</b></span>${bar(mine / m.recIlvl)}</span>
+          <span class="dgx-card-sub">Drops <b>ilvl ${m.dropsIlvl}</b> · its log gives <b>${esc(m.prizeName)}</b></span></span></div>`;
+    }
+    const { have, need } = logProgress(p, live.id), hp = heroicProgress(p, live.id);
+    const ach = logAchievement(live.id), main = ach ? mainReward(ach) : null, done = !!ach && !!p.achievements[ach.id];
+    const clears = p.dungeons[live.id]?.clears || 0;
+    return `<button type="button" class="dgx-card${live.id === current ? ' on' : ''}" data-act="dgpick" data-id="${esc(live.id)}" style="--dc: ${m.themeLight}" aria-label="${esc(live.name)}, log ${have} of ${need}">
+      <span class="dgx-card-art">${banner(false, m.id)}${name}</span>
+      <span class="dgx-card-info"><span class="dgx-card-line"><span>Log <b>${have}/${need}</b></span>${bar(have / Math.max(1, need))}${main ? `<span class="dgx-prize${done ? ' got' : ''}" aria-hidden="true">${tile(main.icon)}</span>` : ''}</span>
+        <span class="dgx-card-sub">${clears ? `<b>${clears}</b> clear${clears === 1 ? '' : 's'} · ` : ''}Heroic ${heroicOpen(p, live.id) ? '<b>open</b>' : `<b>${hp.have}/${hp.need}</b> clears`}</span></span></button>`;
+  }).join('');
+  return `<p class="dgx-eyebrow">Act 1</p>${cards}`;
 }
 
 /** an inner page's head: back to the door, and the page's name */
@@ -294,6 +276,7 @@ export function dungeonActions(d: DungeonHost): Record<string, (el: HTMLElement)
   };
   return {
     logx: () => page('loot'),
+    dglist: () => page('list'),
     dgback: () => page('door'),
     dgpick: (el) => { d.pick.dungeon = el.dataset.id || 'barrow'; d.pick.heroic = false; d.pick.page = 'door'; SFX.play('ui'); d.refresh(); },
     diff: (el) => { d.pick.heroic = el.dataset.v === 'heroic'; SFX.play('ui'); d.refresh(); },
