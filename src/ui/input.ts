@@ -1,7 +1,8 @@
 /**
  * Controls for a run. Phone: left thumb moves, swipe anywhere to dodge, buttons on the right, drag
  * an aimed button to place it, tap a name to heal, swipe through wisps and chains, tap cages. A touch
- * that lands on a cage, a chain or a wisp is never taken as the move stick, wherever it is.
+ * that lands on a cage, a chain or a wisp is never taken as the move stick, wherever it is, and a healer's
+ * swipe that starts as the move stick still cuts what it crosses.
  * Keyboard: WASD or arrows, Space dodges, 1 to 4 for the buttons (hold 2 to block as the tank),
  * Z X C heal the tank, you and the DPS, Esc pauses. Chains and wisps are cut with a mouse drag.
  */
@@ -120,7 +121,15 @@ export function bindInput(layer: HTMLElement, ui: InputUI): void {
   layer.addEventListener('pointermove', (e) => {
     const p = localXY(e);
     if (e.pointerType === 'mouse') IN.mouse = p;
-    if (IN.stick && IN.stick.id === e.pointerId) { IN.stick.x = p.x; IN.stick.y = p.y; ui.stick(IN.stick); return; }
+    if (IN.stick && IN.stick.id === e.pointerId) {
+      // the healer's finger still cuts what it crosses, and from then on the touch is a swipe, not a walk
+      if (!S?.paused && trySlice(IN.stick, p, ui)) {
+        IN.stick = null; ui.stick(null);
+        IN.gest.set(e.pointerId, { pts: [{ x: p.x, y: p.y, t: performance.now() }], sliced: true });
+        return;
+      }
+      IN.stick.x = p.x; IN.stick.y = p.y; ui.stick(IN.stick); return;
+    }
     const g = IN.gest.get(e.pointerId);
     if (!g) return;
     const last = g.pts[g.pts.length - 1];
