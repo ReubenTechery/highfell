@@ -34,9 +34,9 @@ power as Normal, with gilded looks and its own log. Teamwork between roles is th
 
 ## Pillars: if a change fights one of these, the change is wrong
 
-1. **Dungeons are the core loop.** About 4 minutes a run in beginner gear (about 2 when melted in full BiS), all
-   three roles needed, loot every time. Four buttons and a dodge, never more: sets and boss weapons change what
-   buttons do, they never add one. Mistakes in beginner gear are genuinely dangerous, and skilled play opens
+1. **Dungeons are the core loop.** About 3 to 4 minutes a run in beginner gear (about 2 when melted in full BiS),
+   all three roles needed, loot every time. Four buttons and a dodge, never more: sets and boss weapons change
+   what buttons do, they never add one. Mistakes in beginner gear are genuinely dangerous, and skilled play opens
    windows to hit back harder.
 2. **Power creep you can feel, collecting that lasts.** Regular gear climbs Common → Rare in eight clears; Epic
    comes from each dungeon's 3-piece sets and boss weapons, and power climbs steeply enough that a geared party
