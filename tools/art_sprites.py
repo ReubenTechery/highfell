@@ -492,6 +492,19 @@ def cage():
     sprite('cage', (-42, -122, 84, 130), o)
 
 
+def curse_skull():
+    # the Gravecaller's curse, floating over a hero's head: a bone skull with glowing eyes in a purple flame.
+    # The game draws its 4-second ring round it.
+    glow = '#B79CFF'
+    o = [halo(0, -20, 26, glow, 0.3)]
+    o.append(s('M0 -50 C6 -40 14 -38 13 -30 C20 -32 24 -24 21 -16 C26 -12 24 -2 16 1 C8 4 -8 4 -16 1 '
+               'C-24 -2 -26 -12 -21 -16 C-24 -24 -20 -32 -13 -30 C-14 -38 -6 -40 0 -50 Z', PURP, 3.5))
+    o.append(s('M0 -40 C4 -34 10 -32 9 -26 C14 -26 16 -20 14 -14 C10 -8 -10 -8 -14 -14 C-16 -20 -14 -26 -9 -26 '
+               'C-10 -32 -4 -34 0 -40 Z', '#8E6BD0', 0))
+    o.append(skull(0, -16, 0.66, glow, True))
+    sprite('curse_skull', (-28, -54, 56, 60), o)
+
+
 def arch():
     o = [s('M-96 0 V-120 C-96 -186 96 -186 96 -120 V0 H72 V-118 C72 -160 -72 -160 -72 -118 V0 Z', STONE)]
     for a in range(1, 8):
@@ -520,7 +533,7 @@ def build():
     SPRITES.update(art_heroes.build())
     rattler(); rattler(True); archer(); brute(); caller(); wisp(); knight(); keeper(); keeper_smash()
     pillar(); coffin(); coffin(True); torch(); candles(); bones(); skullpile(); urn(); banner()
-    tombstone(0); tombstone(1); tombstone(2); grave(); tree(); chest(); chest(True); gate(); hand(); cage(); arch()
+    tombstone(0); tombstone(1); tombstone(2); grave(); tree(); chest(); chest(True); gate(); hand(); cage(); arch(); curse_skull()
     projectiles()
     return SPRITES
 

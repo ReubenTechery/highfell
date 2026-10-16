@@ -34,9 +34,9 @@ power as Normal, with gilded looks and its own log. Teamwork between roles is th
 
 ## Pillars: if a change fights one of these, the change is wrong
 
-1. **Dungeons are the core loop.** About 4 minutes a run in beginner gear (about 2 when melted in full BiS), all
-   three roles needed, loot every time. Four buttons and a dodge, never more: sets and boss weapons change what
-   buttons do, they never add one. Mistakes in beginner gear are genuinely dangerous, and skilled play opens
+1. **Dungeons are the core loop.** About 3 to 4 minutes a run in beginner gear (about 2 when melted in full BiS),
+   all three roles needed, loot every time. Four buttons and a dodge, never more: sets and boss weapons change
+   what buttons do, they never add one. Mistakes in beginner gear are genuinely dangerous, and skilled play opens
    windows to hit back harder.
 2. **Power creep you can feel, collecting that lasts.** Regular gear climbs Common → Rare in eight clears; Epic
    comes from each dungeon's 3-piece sets and boss weapons, and power climbs steeply enough that a geared party
@@ -75,6 +75,9 @@ power as Normal, with gilded looks and its own log. Teamwork between roles is th
 | Every mount in the game has a place in the paddock beside the house; one you lack is a shadow with a "?" | Like the collection log, you see what's left to chase |
 | No trading or selling between players, ever | The collection log has to mean "I did this" |
 | A DPS alone dies before the mini boss (a test checks it) | All three roles are needed |
+| Only the healer lifts curses (a swipe or Sunburst); a missed curse drops its hero to a tenth and never kills | Something only the healer can do, in the packs as well as the bosses |
+| An idle healer wipes the party by Sir Rattlebones; you as tank in Common gear with a bot healer still clear (tests check both) | The healer matters, and the other seats are never punished for it |
+| Crypt Seals are Heroic only | Normal got curses instead, so it doesn't get busier |
 | Garden seeds drop from dungeon bosses and grow in clears, never on a clock | It feeds the dungeon loop with no timers or chores |
 | Brews are party-wide buffs that speed a run up, never needed to clear | Brewing pays off without being a chore |
 | Home is a tall house cut open that opens zoomed out on all of it: tap a room to go in (a room with one clear job opens it as you land), tap things to use them | Side things belong in the house, not in buttons, and the whole house is home |
@@ -120,7 +123,8 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   faces in `art_heads.py`), `art_sheet.py` (look at your art), `pw_check.py` (screenshot the built game),
   `pw_perf.py` (measure the house's speed on a slowed-down phone).
 - `tests/`: `balance.test.ts` (bot clears must stay in their bands), `dungeon.test.ts` (threat, cages,
-  numbers, tuning, where each hero's weapon and head are), `meta.test.ts`, `vale.test.ts`.
+  curses, numbers, tuning, where each hero's weapon and head are), `input.test.ts` (the touch controls, driven
+  without a browser), `meta.test.ts`, `vale.test.ts`.
 
 ## Commands
 

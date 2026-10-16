@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { makeRng } from '../src/core/rng';
 import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, SETS, checkContent, heroicVersion } from '../src/content';
 import { BARROW } from '../src/content/barrow';
-import { activeHero, createHero, dungeonRecord, finishHearthTour, finishIntroRun, freshProfile, migrate, nameProblem, needsHearthTour, needsIntroRun, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, startHearthTour, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
+import { activeHero, createHero, dungeonRecord, finishCurseTip, finishHearthTour, finishIntroRun, freshProfile, migrate, nameProblem, needsCurseTip, needsHearthTour, needsIntroRun, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, startHearthTour, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
 import { DUPE_MARKS, grantTrialStarter, heroicOpen, heroicProgress, resolveRun, rollTable, trialStarter } from '../src/meta/loot';
 import { bestRegular, buyTrait, compareFor, compareOn, effectsOf, equip, floorWorn, itemScore, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, wearerOf, worn } from '../src/meta/gear';
 import { CLASSES, FOUNDERS, HERO_ART, MAX_HEROES, RACES, allHeroArt, canMake, cleanName, defaultSex, heroArt } from '../src/content/folk';
@@ -340,7 +340,9 @@ test('achievements: counters, live checks, run checks, rewards and the meta', ()
   assert.deepEqual(a.event({ type: 'crit', amount: 1600, player: true }), ['barrow.bignumber']);
   const tankOnly = new Achiever(p, { dungeon: 'barrow', role: 'healer', practice: false, testGear: false });
   assert.deepEqual(tankOnly.event({ type: 'boss.killed', boss: 'keeper', time: 1, armorUp: false, onlyPlayerAlive: false, smashes: 5, smashPerfect: 5, playerIsTank: true }), []);
-  const sum: RunSummary = { dungeon: 'barrow', role: 'dps', practice: false, testGear: false, time: 190, deaths: 0, wipes: 0, handHits: 0, ringHits: 0, saves: 0, playerDeaths: 0, kicks: 0, perfectBlocks: 0 };
+  const sum: RunSummary = { dungeon: 'barrow', role: 'dps', practice: false, testGear: false, time: 165, deaths: 0, wipes: 0, handHits: 0, ringHits: 0, saves: 0, playerDeaths: 0, kicks: 0, perfectBlocks: 0 };
+  // Gravedigger's Sprint is a clear under 2:50
+  assert.ok(!new Achiever(freshProfile(), { dungeon: 'barrow', role: 'dps', practice: false, testGear: false }).cleared({ ...sum, time: 175 }).includes('barrow.sprint'));
   const got = a.cleared(sum);
   for (const id of ['barrow.into', 'barrow.nobody', 'barrow.sprint', 'barrow.flawless']) assert.ok(got.includes(id), id);
   assert.ok(p.collection['trophy.barrow_key']);
@@ -768,6 +770,14 @@ test('onboarding: a fresh profile sends its first hero into the Crypt Trial once
   assert.equal(needsHearthTour(p), true);
   finishHearthTour(p);
   assert.equal(needsHearthTour(p), false);
+});
+
+test('onboarding: the first curse a healer sees brings its tip once a save, with no change to the save\'s shape', () => {
+  const p = freshProfile();
+  assert.equal(needsCurseTip(p), true);
+  finishCurseTip(p);
+  assert.equal(needsCurseTip(p), false);
+  assert.equal(needsCurseTip(migrate(JSON.parse(JSON.stringify(p)))), false, 'it stays seen after a save and load');
 });
 
 test('onboarding: the Crypt Trial gives the first hero an Uncommon weapon and another role an Uncommon helm, once a save', () => {

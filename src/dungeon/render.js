@@ -6,7 +6,7 @@ import { S } from './state.js';
 import { BAKE_S, PAT, bakeAll, drawSpr, makePatterns, mkCanvas } from './art.js';
 import { PERFECT_WINDOW, dots } from './entities.js';
 import { drawWalkout, walkoutFocus } from './walkout.js';
-import { chainEnds } from './mobs.js';
+import { CURSE_COL, CURSE_TIME, chainEnds } from './mobs.js';
 import { roomIndexOf } from './world.js';
 
 /* ---------- drawing: the crypt, everyone in it, and the effects ---------- */
@@ -73,6 +73,7 @@ export function render() {
   drawAir(ctx, v);
   if (S.walkout) drawWalkout(ctx, drawSpr);
   if (S.dark > 0.02) drawDark(ctx);
+  drawCurses(ctx, v);
   drawTexts(ctx, v);
   drawAim(ctx);
 }
@@ -481,6 +482,25 @@ export function drawHero(ctx, h) {
   if (h.st.haunt > 0) { ctx.globalAlpha = 0.35; ctx.fillStyle = '#C8F5E8'; ctx.beginPath(); ctx.arc(h.x, h.y - 40, 34 + Math.sin(S.t * 8) * 4, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
   if (h.cast) { const k = h.cast.t / h.cast.dur; castBar(ctx, h.x, h.y + top - 14, 70, k, '#8FD6FF'); }
   if (h.say && h.sayT > 0) bubble(ctx, h.x, h.y + top - 14, h.say);
+}
+/* curses go over everything, the dark too: the healer has to see them */
+function drawCurses(ctx, v) {
+  for (const h of S.heroes) {
+    if (!h.alive || !h.st.curse || h.y < v.y0 || h.y > v.y1) continue;
+    const { top } = heroFit(h.sprite || ROLES[h.role].sprite, h.back);
+    curseMark(ctx, h.x, h.y + top - 12, h.st.curse.t / CURSE_TIME);
+  }
+}
+/* a curse over a hero's head: the skull, and its ring running down over the 4 seconds (red at the end) */
+function curseMark(ctx, x, y, k) {
+  const left = clamp(1 - k, 0, 1), cy = y - 24;
+  const beat = 1 + Math.sin(S.t * (8 + 16 * k)) * 0.05 * (0.5 + k);
+  ctx.globalAlpha = 0.45; ctx.lineWidth = 7; ctx.strokeStyle = K;
+  ctx.beginPath(); ctx.arc(x, cy, 36, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
+  ctx.beginPath(); ctx.arc(x, cy, 36, -Math.PI / 2, -Math.PI / 2 + TAU * left);
+  ctx.lineWidth = 10; ctx.strokeStyle = K; ctx.stroke();
+  ctx.lineWidth = 5; ctx.strokeStyle = left < 0.3 ? '#FF6B5E' : CURSE_COL; ctx.stroke();
+  drawSpr(ctx, 'curse_skull', x, y, { sx: beat, sy: beat });
 }
 export function stars(ctx, x, y, col) {
   for (let i = 0; i < 3; i++) {

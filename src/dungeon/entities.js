@@ -48,7 +48,7 @@ export function makeHero(role, isPlayer, loadout) {
     frenzyT: 0, nightstalkerT: 0, ghostSaved: false,
     target: null, picked: null, stillT: 1, dodgeT: 0, dodgeX: 0, dodgeY: -1, iframe: 0,
     blocking: false, blockT: 9, dash: null, cast: null,
-    st: { stun: 0, root: 0, haunt: 0, air: 0, ghost: 0, surge: 0, zeal: 0, kx: 0, ky: 0, chained: null, caged: null },
+    st: { stun: 0, root: 0, haunt: 0, air: 0, ghost: 0, surge: 0, zeal: 0, kx: 0, ky: 0, chained: null, caged: null, curse: null },
     absorb: 0, absorbT: 0, flash: 0, hurtT: 0, lunge: 0, lungeA: 0, walkT: 0, squash: 0, moving: 0,
     say: null, sayT: 0, deadT: 0, swings: 0, hots: [],
     intent: { mx: 0, my: 0, block: false },
@@ -59,8 +59,10 @@ export function makeHero(role, isPlayer, loadout) {
 
 export function makeMob(type, x, y, pack) {
   const M = S.dg.mobs[type];
-  // the dungeon's tuning: ordinary mobs get its health multiplier, bosses theirs (as written outside heroic)
-  const hp = Math.max(1, Math.round(M.hp * (M.boss ? S.tune.bossHp : S.tune.trashHp)));
+  // the dungeon's tuning: ordinary mobs get its health multiplier, bosses theirs (as written outside heroic),
+  // and a mob named in its hp gets that one instead
+  const own = S.tune.hp && S.tune.hp[type];
+  const hp = Math.max(1, Math.round(M.hp * (own !== undefined ? own : M.boss ? S.tune.bossHp : S.tune.trashHp)));
   return {
     id: 'm' + (S.seq++), kind: 'mob', type, M, name: M.name, x, y, r: M.r, home: { x, y }, home0: { x, y }, pack,
     hp, maxHp: hp, speed: M.speed, alive: true, state: 'idle',
@@ -231,6 +233,7 @@ export function killHero(h) {
   h.hp = 0; h.alive = false; h.blocking = false; h.cast = null; h.dash = null; h.deadT = 0; h.stats.deaths++; S.stats.deaths++;
   if (h.st.chained) cutChain(h.st.chained, false);
   if (h.st.caged) breakCage(h.st.caged, false);
+  h.st.curse = null;
   fxText(h.x, h.y - 100, h.isPlayer ? 'You went down' : h.name + ' is down', '#FF6B5E', 22, { dur: 1.8 });
   if (h.isPlayer && S.heroes.some((o) => o.alive && o !== h)) banner('You’re down. Your mates can still win this one.', 'warn', 3);
   sfx('down');
@@ -285,9 +288,11 @@ export function killMob(m, src) {
     dots(m.x, m.y - 40, '#C8F5E8', 10, 160); fx({ type: 'ring', x: m.x, y: m.y - 40, r0: 8, r1: 46, col: '#C8F5E8', dur: 0.25, w: 4 }); sfx('pop');
     // Soul Spark backlash: banishing a wisp during a boss fight zaps the boss and restores healer mana
     if (src && src.role === 'healer' && S.boss && S.boss.alive && !S.boss.hidden) {
+      // the bolt can finish him, so hold on to him for the beam
+      const b = S.boss;
       src.mana = Math.min(src.maxMana, src.mana + 5);
-      hurtMob(S.boss, 180, src, { raw: true, noCrit: true, col: '#C8F5E8', size: 19 });
-      fx({ type: 'beam', x: m.x, y: m.y - 40, x2: S.boss.x, y2: S.boss.y - 90, col: '#C8F5E8', dur: 0.22 });
+      hurtMob(b, 180, src, { raw: true, noCrit: true, col: '#C8F5E8', size: 19 });
+      fx({ type: 'beam', x: m.x, y: m.y - 40, x2: b.x, y2: b.y - 90, col: '#C8F5E8', dur: 0.22 });
     }
     return;
   }
@@ -301,10 +306,12 @@ export function killMob(m, src) {
   }
   // Sir Rattlebones Phase 2: killing a rallied guard lashes the boss and cracks his rally armour when the last one falls
   if (m.rally && S.boss && S.boss.alive && S.boss.type === 'knight') {
-    hurtMob(S.boss, Math.round(S.boss.maxHp * 0.04), src, { raw: true, noCrit: true, col: '#FFE08A', size: 19 });
-    if (!S.mobs.some((o) => o !== m && o.alive && o.rally)) {
-      S.boss.armorUp = 0;
-      exposeMob(S.boss, 3.0, 'Armour Cracked! Exposed!');
+    // the lash can finish him, and then there's no boss left to crack
+    const k = S.boss;
+    hurtMob(k, Math.round(k.maxHp * 0.04), src, { raw: true, noCrit: true, col: '#FFE08A', size: 19 });
+    if (k.alive && !S.mobs.some((o) => o !== m && o.alive && o.rally)) {
+      k.armorUp = 0;
+      exposeMob(k, 3.0, 'Armour Cracked! Exposed!');
     }
   }
   const big = m.M.big;
@@ -335,6 +342,12 @@ export function healHero(src, t, amt, o) {
   // a save: the player catches someone under 15% and they are still up three seconds later
   if (src && src.isPlayer && real > 0 && before < 0.15 && S.t >= (t.saveLock || 0)) {
     t.saveLock = S.t + 6;
+    if (src.role === 'healer') {
+      fxText(t.x, t.y - 130, 'SAVED!', '#F2C230', 30, { dur: 1.3 });
+      fx({ type: 'ring', x: t.x, y: t.y - 40, r0: 16, r1: 110, col: '#F2C230', dur: 0.4, w: 7 });
+      dots(t.x, t.y - 50, '#FFE08A', 14, 200);
+      sfx('saved'); hitstop(0.12);
+    }
     S.timers.push({ t: 3, fn: () => { if (t.alive) { S.stats.saves = (S.stats.saves || 0) + 1; emit({ type: 'heal.save', player: true }); } } });
   }
   return real;

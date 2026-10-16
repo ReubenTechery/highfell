@@ -12,15 +12,15 @@ export const MOBS = {
   knight: { name: 'Sir Rattlebones', kind: 'melee', hp: 11400, r: 36, speed: 100, dmg: 150, every: 2.0, wind: 0.45, reach: 34, aggro: 260, sp: 'knight', heavy: true, big: true, boss: true, skeleton: true,
     ai: knightTick, phases: 2, enrage: 180, acts: { sweep: 'Cleaving Sweep', charge: 'Shield Charge', rally: 'Rally the Dead' } },
   keeper: { name: 'The Gravekeeper', kind: 'melee', hp: 41600, r: 50, speed: 92, dmg: 180, every: 2.0, wind: 0.5, reach: 40, aggro: 0, sp: 'keeper', heavy: true, big: true, boss: true,
-    ai: keeperTick, phases: 3, enrage: 300, light: { dx: 104, dy: -90, r: 170 }, poseSprites: { smash: 'keeper_smash' },
-    acts: { smash: 'Shovel Smash', burrow: 'Burrowing', leap: 'Leap', bury: 'Bury the Yard', stride: 'Grave Stride' } },
+    ai: keeperTick, phases: 2, heroicPhases: 3, enrage: 300, light: { dx: 104, dy: -90, r: 170 }, poseSprites: { smash: 'keeper_smash' },
+    acts: { smash: 'Shovel Smash', hands: 'Grasping Hands', burrow: 'Burrowing', leap: 'Leap', bury: 'Bury the Yard', stride: 'Grave Stride' } },
 };
 
 /* packs: mobs and where they stand. Bots walk to `goTo` when the pack has no live mobs to aim at. */
 export const PACKS = [
-  { id: 'A', room: 1, label: 'skeletons', mobs: [['rattler', 455, 4850], ['rattler2', 548, 4846], ['rattler', 470, 4935], ['rattler2', 545, 4925]] },
+  { id: 'A', room: 1, label: 'skeletons', mobs: [['rattler', 455, 4850], ['rattler2', 548, 4846], ['rattler', 470, 4935], ['caller', 545, 4935]] },
   { id: 'B', room: 2, label: 'bonebrute', mobs: [['brute', 380, 4030], ['rattler', 320, 4100], ['rattler2', 440, 4100], ['rattler', 380, 4150]] },
-  { id: 'C', room: 2, label: 'archers', mobs: [['archer', 580, 3600], ['archer', 720, 3620], ['rattler', 620, 3700], ['rattler2', 690, 3712]] },
+  { id: 'C', room: 2, label: 'archers', mobs: [['archer', 580, 3600], ['archer', 720, 3620], ['rattler', 620, 3700], ['caller', 690, 3712]] },
   { id: 'K', room: 3, label: 'Sir Rattlebones', boss: 'knight', mobs: [['knight', 500, 2720]] },
   { id: 'D', room: 4, label: 'gravecaller', mobs: [['caller', 500, 1960], ['rattler', 440, 2030], ['rattler2', 560, 2030], ['archer', 650, 1880]] },
   { id: 'E', room: 4, label: 'ambush', ambush: true, goTo: { x: 500, y: 1730 }, mobs: [['rattler', 205, 1600], ['rattler2', 205, 1760], ['rattler', 205, 1920], ['rattler2', 795, 1600], ['rattler', 795, 1760], ['rattler2', 795, 1920], ['brute', 500, 1600]] },

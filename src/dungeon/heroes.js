@@ -4,7 +4,7 @@ import { rng } from '../core/rng';
 import { AB, MEND, abKey } from '../content/roles';
 import { HOOKS, S, emit } from './state.js';
 import { addThreat, aggro, banner, bits, brewFx, dots, fx, fxText, healHero, hitstop, hurtMob, say, sfx, shake, taunt } from './entities.js';
-import { interruptCast } from './mobs.js';
+import { interruptCast, liftCurse } from './mobs.js';
 import { canStand, moveEnt } from './world.js';
 
 export const heroBy = (role) => S.heroes.find((h) => h.role === role) || null;
@@ -488,6 +488,7 @@ function abSunburst(h) {
     if (!a.alive || dist(a, h) > 470) continue;
     healHero(h, a, 210, { show: true });
     a.st.root = 0; a.st.haunt = 0;
+    if (a.st.curse) liftCurse(a, h);
     if (h.unique === 'longnight') {
       a.absorb = Math.max(a.absorb, Math.round(75 * h.power));
       a.absorbT = Math.max(a.absorbT, 6);

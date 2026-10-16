@@ -4,7 +4,7 @@ import { MEND } from '../content/roles';
 import { S, emit } from './state.js';
 import { fx, killMob } from './entities.js';
 import { bestCluster, doDodge, heroBy, isFoe, mend, useAbility } from './heroes.js';
-import { chainEnds, cutChain, mashCage } from './mobs.js';
+import { chainEnds, cutChain, liftCurse, mashCage } from './mobs.js';
 import { canStand, freeSpot, navPoint } from './world.js';
 
 function ringCenter() {
@@ -118,16 +118,37 @@ export function leaderHero() {
   if (t && t.alive && !t.isPlayer) return t;
   return p;
 }
-export function partyReady(h) {
+/* how close the party gathers before the leader walks on */
+export const KEEP_UP = 340;
+/* skip: mates the leader has stopped waiting for (see stuckMates) */
+export function partyReady(h, skip) {
   for (const a of S.heroes) {
-    if (a === h) continue;
+    if (a === h || (skip && skip.has(a))) continue;
     if (!a.alive) return false;
-    if (dist(a, h) > 340) return false;
+    if (dist(a, h) > KEEP_UP) return false;
   }
   if (S.healerUp && S.heroes.some((a) => a.alive && a.hp < a.maxHp * 0.8)) return false;
   const hl = heroBy('healer');
   if (hl && hl.alive && hl.mana < 60) return false;
   return true;
+}
+/* the leader's safety net: a bot mate out of reach who hasn't closed the gap for about four seconds (caught on
+   a wall, say) stops holding the party up, and the next pull brings them along. A player is always waited for. */
+export const GIVE_UP = 4;
+export function stuckMates(h) {
+  const B = h.bot;
+  if (!B.mates) B.mates = new Map();
+  const out = new Set();
+  for (const a of S.heroes) {
+    if (a === h || !a.alive || !a.botDriven) continue;
+    const d = dist(a, h);
+    let w = B.mates.get(a);
+    // start the clock again when they're in reach, come closer, or the leader hasn't been waiting (a fight)
+    if (d <= KEEP_UP || !w || S.t - w.seen > 0.5 || d < w.d - 24) { w = { d, t: S.t, seen: S.t }; B.mates.set(a, w); }
+    w.seen = S.t;
+    if (S.t - w.t >= GIVE_UP) out.add(a);
+  }
+  return out;
 }
 export function nextObjective() {
   for (const p of S.packs) {
@@ -152,7 +173,7 @@ export function idleGoal(h) {
   }
   const L = leaderHero();
   if (h === L) {
-    if (!partyReady(h)) { h.bot.waiting = true; return null; }
+    if (!partyReady(h, stuckMates(h))) { h.bot.waiting = true; return null; }
     h.bot.waiting = false;
     const o = nextObjective();
     return o ? { x: o.x, y: o.y, tol: 18 } : null;
@@ -244,13 +265,23 @@ export function combatGoal(h) {
 export function botMechanics(h) {
   const B = h.bot;
   // Cooperative role responsibility: only the healer can swipe chains and wisps
-  if (h.role === 'healer') {
+  if (h.role === 'healer' && !S.opts.noHeal) {
     if (!B.chainAt) B.chainAt = new Map();
     for (const ch of S.chains) {
       if (!B.chainAt.has(ch.id)) B.chainAt.set(ch.id, ch.t + rand(0.9, 1.8) + (ch.hero === h ? 0.25 : 0));
       if (ch.t >= B.chainAt.get(ch.id) && !h.st.caged && !h.st.stun) {
         if (rng() < 0.95) { const e = chainEnds(ch); fx({ type: 'swipe', x: lerp(e.ax, e.bx, 0.4) - 40, y: lerp(e.ay, e.by, 0.4) - 30, x2: lerp(e.ax, e.bx, 0.6) + 40, y2: lerp(e.ay, e.by, 0.6) + 30, col: '#FFE08A', dur: 0.25 }); cutChain(ch, h); }
         else B.chainAt.set(ch.id, ch.t + 1.0);
+      }
+    }
+    if (!B.curseAt) B.curseAt = new Map();
+    for (const a of S.heroes) {
+      const c = a.st.curse;
+      if (!c || !a.alive) continue;
+      if (!B.curseAt.has(c.id)) B.curseAt.set(c.id, rng() < 0.95 ? c.t + rand(0.7, 1.4) : Infinity);
+      if (c.t >= B.curseAt.get(c.id) && !h.st.caged && !h.st.stun && dist(h, a) <= MEND.range) {
+        fx({ type: 'swipe', x: a.x - 34, y: a.y - 140, x2: a.x + 34, y2: a.y - 92, col: '#FFE08A', dur: 0.25 });
+        liftCurse(a, h);
       }
     }
     if (!B.wispAt) B.wispAt = new Map();
@@ -316,6 +347,7 @@ export function tankActions(h) {
   }
 }
 export function healerActions(h) {
+  if (S.opts.noHeal) return;
   if (h.gcd > 0 || h.st.stun > 0 || h.st.caged || h.st.air > 0) return;
   const pct = (a) => (a.hp + a.absorb * 0.6) / a.maxHp;
   const allies = S.heroes.filter((a) => a.alive && dist(a, h) <= MEND.range);
@@ -344,6 +376,8 @@ export function rogueActions(h) {
   if (cage) tgt = cage;
   const foes = fightingFoes();
   if (!tgt) { const caster = foes.find((m) => m.cast && m.cast.kick && dist(m, h) < 340); if (caster) tgt = caster; }
+  // Gravecallers next: they curse and raise, and they hang back where the tank can't grab them
+  if (!tgt) { const caller = foes.find((m) => m.M.kind === 'caller' && dist(m, h) < 540); if (caller) tgt = caller; }
   if (!tgt) {
     const onUs = foes.filter((m) => m.target && m.target.role !== 'tank' && dist(m, h) < 380);
     if (onUs.length) tgt = onUs.sort((a, b) => dist(a, h) - dist(b, h))[0];
@@ -376,6 +410,7 @@ export function dpsActions(h) {
   if (cage) tgt = cage;
   const foes = fightingFoes();
   if (!tgt) { const caster = foes.find((m) => m.cast && m.cast.kick && dist(m, h) < 520); if (caster) tgt = caster; }
+  if (!tgt) { const caller = foes.find((m) => m.M.kind === 'caller' && dist(m, h) < 560); if (caller) tgt = caller; }
   if (!tgt) {
     const onUs = foes.filter((m) => m.target && m.target.role !== 'tank' && dist(m, h) < 560);
     if (onUs.length) tgt = onUs.sort((a, b) => dist(a, h) - dist(b, h))[0];
