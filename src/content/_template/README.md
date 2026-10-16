@@ -33,14 +33,12 @@ not in the game. Its names, numbers and art are stand-ins.
 | `mobs.js` | Every mob, and the packs: who stands where, in the order the party meets them |
 | `bosses.js` | The two bosses, each a list of moves for `brain()` |
 | `signature.js` | The signature: its mobs, and the hooks the trash and the bosses call |
-| `script.js` | Gates, practice starts, pulls and the chest, from `makeDungeonScript`; the optional Heroic seal |
+| `script.js` | Gates, starts from a boss (for tests and sims), pulls and the chest, from `makeDungeonScript`; the optional Heroic seal |
 | `engine.ts` | The dungeon as the engine sees it: theme, layout, mobs, script, signature, how hard it hits |
-| `index.ts` | The dungeon as the rest of the game sees it: bosses, loot, collection log, achievements |
+| `index.ts` | The dungeon as the rest of the game sees it: bosses, loot, collection log, achievements, its door |
 | `items.ts`, `loot.ts`, `collectibles.ts`, `achievements.ts` | Sets, boss weapons, drops, pets, mounts, titles, the log's prize |
-| `heroic.ts` | Its Heroic (being reworked: Heroic gives the Normal loot plus gilding kits; follow that file) |
-
-The dungeon finder's door stage (the door, the final boss and room for three heroes) is being added to the
-template on another branch. When it lands, it is part of every new dungeon too.
+| `heroic.ts` | Its Heroic, from `makeHeroicDungeon`: the Normal loot, plus a gilding kit for each unique (`src/content/kits.ts`). Its log is the kits |
+| `stage.ts` | Its door on the Dungeons sheet: the door, the final boss in the doorway, and three clear spots for your heroes |
 
 ## Making a new dungeon
 
@@ -50,7 +48,8 @@ template on another branch. When it lands, it is part of every new dungeon too.
    on to a higher number. Give a boss's room `cp: 'out'` so a wipe puts you outside his door.
 4. Write the signature, the new enemy types, the packs and the two bosses.
 5. Register it in `src/content/index.ts` (`DUNGEONS`, `DUNGEON_ENGINES`, `ITEMS`, `SETS`, `COLLECTIBLES`,
-   `TITLES`, `ACHIEVEMENTS`). `checkContent()` and the tests catch broken ids.
+   `TITLES`, `ACHIEVEMENTS`, and its Heroic's `KITS`). `checkContent()` and the tests catch broken ids.
+   Draw its door in `stage.ts` (`tests/meta.test.ts` checks there's room for the heroes).
 6. Give it its own walkout tell. `src/dungeon/walkout.js` is the Barrow's lantern today.
 7. Give its final boss a garden seed (`seeds` in `index.ts`).
 8. Run `npm run sim -- --dungeon <id>` until the times land, then copy the checks in `tests/template.test.ts`.

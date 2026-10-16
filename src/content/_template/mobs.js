@@ -13,11 +13,11 @@ export const MOBS = {
   beaconkeeper: { name: 'Beaconkeeper', kind: 'ranged', hp: 770, r: 15, speed: 110, dmg: 32, every: 1.6, wind: 0.3, reach: 22, aggro: 300, sp: 'caller', ai: SIGNATURE.trashAi, ranged: { min: 200, max: 340, dmg: 48, every: 2.8, warn: 0.6, speed: 520 } },
   ...SIGNATURE.mobs,
   warden: {
-    name: 'Mini-Boss Warden', kind: 'melee', hp: 10400, r: 36, speed: 100, dmg: 150, every: 2.0, wind: 0.45, reach: 34, aggro: 260, sp: 'knight', heavy: true, big: true, boss: true,
+    name: 'Mini-Boss Warden', kind: 'melee', hp: 12000, r: 36, speed: 100, dmg: 150, every: 2.0, wind: 0.45, reach: 34, aggro: 260, sp: 'knight', heavy: true, big: true, boss: true,
     ai: wardenAi, phases: 2, enrage: 120, acts: { hammer: 'Hammer', bolt: 'Bolt', beacon: 'Beacon' },
   },
   sovereign: {
-    name: 'The Sovereign', kind: 'melee', hp: 19500, r: 50, speed: 92, dmg: 180, every: 2.0, wind: 0.5, reach: 40, aggro: 0, sp: 'keeper', heavy: true, big: true, boss: true,
+    name: 'The Sovereign', kind: 'melee', hp: 20900, r: 50, speed: 92, dmg: 180, every: 2.0, wind: 0.5, reach: 40, aggro: 0, sp: 'keeper', heavy: true, big: true, boss: true,
     ai: sovereignAi, phases: 2, enrage: 210, light: { dx: 104, dy: -90, r: 170 }, acts: { crush: 'Crush', beacons: 'Beacons', guards: 'Guards' },
   },
 };

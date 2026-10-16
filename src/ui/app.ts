@@ -15,6 +15,7 @@ import { activeHero, roleOf } from '../meta/profile';
 import type { RoleId } from '../content/types';
 import type { RaceId } from '../content/folk';
 import { $, GLYPH } from './dom';
+import { MUSIC } from './music';
 import { SFX } from './sound';
 import { Toasts } from './toasts';
 import { Hearth } from './hearth';
@@ -32,7 +33,7 @@ export interface Carry { sheet?: unknown; scene?: SceneId }
 
 /** Testing switches that live on this device only, never in the save. */
 /** testing switches, kept on this device: allOpen opens the log rewards (looks, the Risen) and Heroic before they're earned */
-export interface Dev { walkout: 'off' | 'normal' | 'unique' | 'pet'; valeFree: boolean; valeLuck: boolean; allOpen: boolean }
+export interface Dev { valeFree: boolean; valeLuck: boolean; allOpen: boolean }
 const DEV_KEY = 'highfell.dev';
 
 export class App {
@@ -45,9 +46,12 @@ export class App {
   readonly creator: Creator;
   readonly garden: Garden;
   readonly brew: Brewing;
+  /** the effects and the music, for testing in the page */
+  readonly sfx = SFX;
+  readonly music = MUSIC;
   scene: SceneId = 'hearth';
   touch = false;
-  dev: Dev = { walkout: 'off', valeFree: false, valeLuck: false, allOpen: false };
+  dev: Dev = { valeFree: false, valeLuck: false, allOpen: false };
   private last = 0;
   /** the frame loop, which only runs while a run is showing */
   private raf = 0;
@@ -86,6 +90,7 @@ export class App {
     const kick = () => SFX.unlock();
     window.addEventListener('pointerdown', kick, { capture: true });
     window.addEventListener('keydown', kick, { capture: true });
+    document.addEventListener('visibilitychange', () => { const c = SFX.ctx; if (c) void (document.hidden ? c.suspend() : c.resume()).catch(() => {}); });
     this.store.onChange((why) => {
       if (why === 'remote') { SFX.on = this.p.settings.sound; this.refresh(); }
       else this.hearth.syncState();
@@ -116,6 +121,8 @@ export class App {
   show(id: SceneId): void {
     this.scene = id;
     for (const s of SCENES) $('sc-' + s).hidden = s !== id;
+    // a run picks its own music; the reveal is quiet so every drop's sound lands
+    if (id !== 'run') { MUSIC.want(id === 'reveal' ? null : 'house'); MUSIC.duck(1); }
     if (id === 'hearth') { this.hearth.render(); }
     if (id === 'run') {
       resizeView();
@@ -211,7 +218,7 @@ const SHELL = `
         <div class="bb-sub" id="bb-sub"></div>
       </div>
     </div>
-    <div class="run-tags"><span class="chip dark heroic-tag" id="intro-tag" hidden>Crypt Trial · Full Epic</span><span class="chip dark heroic-tag" id="heroic-tag" hidden>Heroic</span><span class="chip dark practice-tag" id="practice-tag" hidden>Practice: no loot</span><span class="chip dark brew-tag" id="brew-tag" hidden></span></div>
+    <div class="run-tags"><span class="chip dark heroic-tag" id="intro-tag" hidden>Crypt Trial · Full Epic</span><span class="chip dark heroic-tag" id="heroic-tag" hidden>Heroic</span><span class="chip dark test-tag" id="test-tag" hidden>Test run: no loot</span><span class="chip dark brew-tag" id="brew-tag" hidden></span></div>
     <div class="banner" id="banner"></div>
     <div class="call" id="call"></div>
     <div class="hint glass" id="hint" hidden></div>

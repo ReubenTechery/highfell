@@ -14,7 +14,10 @@ with branches named `claude/<topic>`, pull requests, and no publishing.
 After `npm run all` passes and you've looked at phone and desktop screenshots:
 
 1. Publish `dist/highfell.html` to the live game (Artifact tool, `url` = the live game below). Leave
-   `capabilities` out so the declared `db` and `user` carry forward: they hold everyone's save.
+   `capabilities` out so the declared `db` and `user` carry forward: they hold everyone's save. The music
+   lives next to the page as its own files (`music/house.mp3`, `music/dungeon.mp3`, `music/boss.mp3`); a
+   publish without `files` keeps them. When a loop in `audio/music/` changes, publish it with the page through
+   `files` (`{"music/boss.mp3": "audio/music/boss.mp3"}`).
 2. Commit with a plain-English message, then `git push origin main`. When the owner asks Claude for a
    change, pushing `main` is the standing workflow; other agents use branches and pull requests. Push `main`
    only: never `--all`, tags or stashes. The repo is public.

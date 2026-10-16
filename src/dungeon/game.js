@@ -139,7 +139,7 @@ export function respawn() {
     p.mobs = p.mobs.filter((m) => m.alive && !m.extra);
     for (const m of p.mobs) {
       Object.assign(m, { x: m.home0 ? m.home0.x : m.home.x, y: m.home0 ? m.home0.y : m.home.y, hp: m.maxHp, state: 'idle', target: null, forced: null, forcedT: 0, wind: 0, cast: null, busy: 0, act: null, pose: null, ab: {}, phase: 1, armorUp: 0, exposed: 0, dmgMul: 1, hidden: false, untargetable: false, jumpZ: 0, calmUntil: S.t + 4 });
-      m.threat = new Map(); m.st = { stun: 0, freeze: 0, slow: 0, slowT: 0, kx: 0, ky: 0 };
+      m.threat = new Map(); m.st = { stun: 0, freeze: 0, chill: 0, stagger: 0, slow: 0, slowT: 0, kx: 0, ky: 0 };
       m.speed = m.M.speed;
       if (m.home0) m.home = { x: m.home0.x, y: m.home0.y };
     }
@@ -439,7 +439,7 @@ function tickFx(dt) {
     const p = S.parts[i];
     p.t += dt;
     p.x += p.vx * dt; p.y += p.vy * dt;
-    if (p.up) { p.z += 60 * dt; } else { p.vz -= 900 * dt; p.z += p.vz * dt; if (p.z < 0) { p.z = 0; p.vz *= -0.35; p.vx *= 0.6; p.vy *= 0.6; } }
+    if (p.up) { p.z += 60 * dt; } else if (p.fall) { p.z = Math.max(0, p.z - p.fall * dt); } else { p.vz -= 900 * dt; p.z += p.vz * dt; if (p.z < 0) { p.z = 0; p.vz *= -0.35; p.vx *= 0.6; p.vy *= 0.6; } }
     if (p.rot !== undefined) p.rot += (p.vr || 0) * dt * (p.z > 0 ? 1 : 0.2);
     if (p.t >= p.dur) S.parts.splice(i, 1);
   }

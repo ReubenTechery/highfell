@@ -48,6 +48,16 @@ export function dangerAt(h, x, y, horizon, forSpot) {
   }
   return best;
 }
+/* Rime burst reaches this far past a mob's edge (abNova) */
+const NOVA_REACH = 155;
+/* the boss a mage could Chill now: Rime burst is (nearly) ready, he isn't Chilled already, and it's a calm moment
+   to step in (he's on the tank and between moves, and nobody is caged) */
+export function chillTarget(h) {
+  const b = S.boss && S.boss.alive && !S.boss.hidden && S.boss.state === 'fight' ? S.boss : null;
+  if (!b || h.role !== 'dps' || h.cls === 'rogue' || h.cd.a2 > 0.3 || b.st.chill > 0) return null;
+  const calm = !b.act && b.target && b.target.role === 'tank' && !S.heroes.some((a) => a.st.caged);
+  return calm ? b : null;
+}
 export function okHere(h) {
   if (dangerAt(h, h.x, h.y, 1.6)) return false;
   const boss = S.boss && S.boss.alive && !S.boss.hidden ? S.boss : null;
@@ -67,6 +77,8 @@ export function okHere(h) {
   if (h.role === 'dps') {
     const t = h.picked || h.target;
     if (!t || !t.alive) return false;
+    const cb = chillTarget(h);
+    if (cb && dist(cb, h) > NOVA_REACH + cb.r - 8) return false;
     const d = dist(h, t);
     return d > 120 + t.r && d < 440;
   }
@@ -243,7 +255,8 @@ export function combatGoal(h) {
     }
     return ringClamp(standNear(h, t, 8), h);
   }
-  const want = h.role === 'dps' ? 255 : 225;
+  // a mage about to Chill the boss steps into Rime burst's reach, then back out
+  const want = chillTarget(h) ? boss.r + NOVA_REACH - 15 : h.role === 'dps' ? 255 : 225;
   if (boss && boss.state === 'fight') {
     const p = backSpot(h, boss, want, h.role === 'dps' ? -1 : 1);
     if (h.role === 'healer' && tank && tank.alive && distXY(p.x, p.y, tank.x, tank.y) > 470) { p.x = lerp(p.x, tank.x, 0.4); p.y = lerp(p.y, tank.y, 0.4); }
@@ -425,6 +438,9 @@ export function dpsActions(h) {
   if (h.cast || h.st.stun > 0 || h.st.caged) return;
   const close = foes.filter((m) => !m.isBoss && dist(m, h) <= 140 + m.r);
   const caster = foes.find((m) => m.cast && m.cast.kick && dist(m, h) <= 150 + m.r);
+  // Chill the boss when he is in reach, so Icicle and Comet shatter him
+  const cb = chillTarget(h);
+  if (cb && h.cd.a2 <= 0 && dist(cb, h) <= NOVA_REACH + cb.r - 4) { useAbility(h, 'a2'); return; }
   if (h.cd.a2 <= 0 && (close.length >= 2 || caster || close.some((m) => m.target === h))) { useAbility(h, 'a2'); return; }
   if (h.cd.a1 <= 0) {
     const c = bestCluster(h, 120, 520);

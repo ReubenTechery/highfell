@@ -62,7 +62,7 @@ function gain(p: Profile, skill: string, amt: number): XpGain {
 }
 
 /* ---------------------------------------------------------------- seeds */
-/** A boss kill rolls its seed lines, each on its own, for this player. Practice runs never call this.
+/** A boss kill rolls its seed lines, each on its own, for this player. A run that doesn't count never calls this.
  *  A seed flags the one-step Garden tip at the Hearth (the first one only, see startSeedTour). */
 export function rollSeeds(p: Profile, dg: DungeonInfo, boss: string, rng: Rng, luck = 1): Record<string, number> {
   const got: Record<string, number> = {};
@@ -107,7 +107,7 @@ export function plant(p: Profile, bed: number, seed: string, rng: Rng): boolean 
   return true;
 }
 
-/** A dungeon clear (Normal or Heroic, never practice): every planted bed grows a step. Returns how many just became ready. */
+/** A dungeon clear (Normal or Heroic, never a run that doesn't count): every planted bed grows a step. Returns how many just became ready. */
 export function growBeds(p: Profile): number {
   let ready = 0;
   for (const b of p.vale.beds) {
@@ -244,7 +244,7 @@ export function broughtBrew(p: Profile): string | null {
   const d = p.vale.drink;
   return d && RECIPES[d] && (p.vale.shelf[d] || 0) > 0 ? d : null;
 }
-/** Your bottle was the one poured for the party: one off the shelf (practice keeps it). */
+/** Your bottle was the one poured for the party: one off the shelf (a run that doesn't count keeps it). */
 export function spendBottle(p: Profile, id: string): void {
   if ((p.vale.shelf[id] || 0) > 0) p.vale.shelf[id]--;
 }

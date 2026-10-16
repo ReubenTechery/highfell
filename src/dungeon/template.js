@@ -1,7 +1,7 @@
 /* ---------- the dungeon template: themes, the layout builder, the Heroic seal and the run script ----------
    A new dungeon is data plus a few hooks (see src/content/_template/README.md): its layout goes through
    buildDungeonMap (layout.js), its bosses are built from the shared moves (moves.js), and its run script comes
-   from makeDungeonScript below: gates, practice starts, pulls, the chest. */
+   from makeDungeonScript below: gates, starts from a boss, pulls, the chest. */
 import { clamp, dist, distXY } from '../core/math';
 import { pick } from '../core/rng';
 import { HOOKS, S } from './state.js';
@@ -124,7 +124,7 @@ export function makeDungeonScript(cfg) {
     // the seal is a Heroic-only hook: Normal never gets a puzzle
     if (sealCfg && S.opts && S.opts.heroic) S.seal = makeSealTrial(sealCfg);
     if (!start || start === 'entrance') return;
-    // practice from a boss: every pack before his is already down (the Crypt Trial, Barrow's, names its own)
+    // starting at a boss (tests and sims): every pack before his is down (the Crypt Trial, Barrow's, names its own)
     const upto = start === 'intro' ? ['A', 'D', 'E', 'G'] : packsBefore(start === mini.id ? mini.id : fin.id);
     for (const p of S.packs) {
       if (upto.includes(p.def.id)) {
@@ -185,7 +185,7 @@ export function makeDungeonScript(cfg) {
       S.mobs.forEach((o) => { if (o.alive && o.add === m) { o.hp = 1; killMob(o, null); } });
       spawnChest(fin.chestX ?? 500, fin.chestY ?? 660, m);
       banner(fin.victoryText || `${fin.name} is defeated!`, 'good', 3.2);
-      sfx('victory');
+      sfx('fanfare');
     }
   }
 

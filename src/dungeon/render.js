@@ -399,7 +399,7 @@ export function drawHero(ctx, h) {
     if (S.frame % 9 === 0) S.parts.push({ x: h.x + fx_ + vrand(-12, 12), y: h.y, z: -wy + vrand(-10, 10), vx: 0, vy: 0, vz: 0, up: true, col: '#FFF6D0', size: vrand(2.5, 4), t: 0, dur: 0.8 });
   }
   const yy = h.dodgeT > 0 ? y + 26 : y;
-  // the Barrow dyes on your set: the Gravegold Dye (heroic) wins over the Ghostly one
+  // your set's look: gold (gilded pieces, or the old Gravegold Dye) or ghostly (the Ghostly Dye; run.ts lets it win)
   const gold = h.isPlayer && S.opts.gilded, ghost = (h.st && h.st.ghost > 0) || (!gold && h.isPlayer && S.opts.ghostly);
   drawSpr(ctx, name, x, yy, { flip: spinFlip, sx, sy, rot: rot, alpha: ghost ? 0.76 : 1, tint: h.flash > 0 ? 'flash' : gold ? 'gold' : ghost ? 'ghost' : null, tintA: h.flash > 0 ? Math.max(0, h.flash) / 0.12 : gold ? 0.4 : 0.45 });
   if (h.st && h.st.ghost > 0) {
@@ -494,16 +494,18 @@ export function drawMob(ctx, m) {
   if (m.lunge > 0) { const k = m.lunge / 0.18; x += Math.cos(m.lungeA) * 12 * k; y += Math.sin(m.lungeA) * 8 * k; }
   if (m.jumpZ) y -= m.jumpZ;
   sx = (2 - sy) * 1;
-  const frozen = m.st.freeze > 0;
+  const frozen = m.st.freeze > 0, chilled = !frozen && m.st.chill > 0;
   if (m.armorUp > 0) { ctx.globalAlpha = 0.12 + Math.sin(S.t * 6) * 0.05; ctx.fillStyle = '#F0E8D2'; ctx.beginPath(); ctx.ellipse(m.x, m.y - 90, 86, 110, 0, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; ctx.lineWidth = 4; ctx.strokeStyle = '#F0E8D2'; ctx.setLineDash([12, 10]); ctx.stroke(); ctx.setLineDash([]); }
   if (m.exposed > 0 && m.alive) {
     ctx.globalAlpha = 0.22 + Math.sin(S.t * 10) * 0.08; ctx.fillStyle = '#F2C230';
     ctx.beginPath(); ctx.ellipse(m.x, m.y + 2, m.r * 1.65, m.r * 0.65, 0, 0, TAU); ctx.fill();
     ctx.globalAlpha = 0.95; ctx.lineWidth = 4; ctx.strokeStyle = '#F2C230'; ctx.stroke(); ctx.globalAlpha = 1;
   }
-  drawSpr(ctx, name, x, y, { flip: m.flip, sx, sy, rot, alpha, tint: m.flash > 0 ? 'flash' : frozen ? 'frost' : null, tintA: m.flash > 0 ? (m.isBoss ? 0.4 : 0.7) : 1 });
+  // a Chilled boss wears a lighter frost than a frozen mob, and no ice block round him
+  drawSpr(ctx, name, x, y, { flip: m.flip, sx, sy, rot, alpha, tint: m.flash > 0 ? 'flash' : frozen || chilled ? 'frost' : null, tintA: m.flash > 0 ? (m.isBoss ? 0.4 : 0.7) : chilled ? 0.55 : 1 });
   if (frozen) { ctx.lineWidth = 3; ctx.strokeStyle = '#DDF3FF'; ctx.globalAlpha = 0.9; const hh = m.M.big ? 150 : 90; roundRect(ctx, m.x - m.r - 12, m.y - hh, (m.r + 12) * 2, hh + 4, 10); ctx.stroke(); ctx.globalAlpha = 1; }
   if (m.st.stun > 0) stars(ctx, m.x, m.y - (m.isBoss ? 220 : m.M.big ? 160 : 108), '#F2C230');
+  else if (m.st.stagger > 0) stars(ctx, m.x, m.y - 220, '#FFF8EC');
   if (m.wild && m.alive && !m.isBoss) { const yy = m.y - (m.M.big ? 168 : 112) - Math.abs(Math.sin(S.t * 8)) * 4; ctx.font = `26px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 6; ctx.strokeStyle = K; ctx.strokeText('!!', m.x, yy); ctx.fillStyle = '#FF6B5E'; ctx.fillText('!!', m.x, yy); }
   if (!m.alive) return;
   if (m.cast) castBar(ctx, m.x, m.y - (m.M.big ? 170 : 122), 80, m.cast.t / m.cast.dur, m.cast.kick ? '#9BE15D' : '#F2C230');

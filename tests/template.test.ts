@@ -145,7 +145,7 @@ test('the template: two bosses of two or three moves with a job for every role, 
   }
 });
 
-test('the template: practice from either boss starts at his door with the packs before him down', () => {
+test('the template: a run started at either boss (tests and sims) begins at his door with the packs before him down', () => {
   newGame(TEMPLATE_ENGINE, { role: 'tank', seed: 6, start: 'warden', quiet: true, noEvents: true, loadouts: {} });
   let s = S as any;
   assert.deepEqual(s.packs.filter((p: any) => p.cleared).map((p: any) => p.def.id), ['A', 'B', 'C', 'D']);

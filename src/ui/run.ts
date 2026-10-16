@@ -14,7 +14,7 @@ import { AB, MEND, ROLES, abKey } from '../content/roles';
 import type { Rar, RoleId } from '../content/types';
 import { newGame, respawn, update } from '../dungeon/game.js';
 import { S, setHooks } from '../dungeon/state.js';
-import { banner, exposeMob } from '../dungeon/entities.js';
+import { banner, exposeMob, stunned } from '../dungeon/entities.js';
 import { abCd, abMana, bestCluster, doDodge, heroBy, isFoe, mend, useAbility } from '../dungeon/heroes.js';
 import { momentFor } from '../dungeon/coach.js';
 import { CURSE_TIME } from '../dungeon/mobs.js';
@@ -23,8 +23,8 @@ import { render, resizeView, updateCam, VIEW } from '../dungeon/render.js';
 import { roomIndexOf } from '../dungeon/world.js';
 import { lootGlint, startWalkout } from '../dungeon/walkout.js';
 import { Achiever } from '../meta/achievements';
-import { loadoutFor, partyRar, plainLoadout, worn } from '../meta/gear';
-import { countBossWipe, countRunStart, resolveClear, resolveKill, runLoot, tellOf, type ClearLoot, type KillLoot } from '../meta/loot';
+import { gildedOn, loadoutFor, partyRar, plainLoadout, worn } from '../meta/gear';
+import { countBossWipe, countRunStart, gildOf, resolveClear, resolveKill, runLoot, tellOf, type ClearLoot, type KillLoot } from '../meta/loot';
 import { pourFor, seatsFor } from '../meta/party';
 import { activeHero, countClassRun, countLift, finishCurseTip, finishIntroRun, heroById, learnGlow, markClassTrial, needsClassTrial, needsCurseTip, needsSwipeHint, roleOf, type Hero } from '../meta/profile';
 import { CLASSES, heroArt, type ClassId } from '../content/folk';
@@ -34,11 +34,13 @@ import type { App } from './app';
 import { $, esc, flash, fmtT } from './dom';
 import { heroImg, heroSprite, nameOf, spriteURL, tile } from './art';
 import { IN, aimPoint, bindFrameSwipes, bindInput, mashCage, playerIntent, resetInput, type InputUI } from './input';
+import { MUSIC, runMusic } from './music';
 import { SFX } from './sound';
 
-/** A run plays the hero you are playing. `role` is for testing: it picks one of your heroes in that seat,
- *  and if you have none the run is practice in plain gear. `heroic` plays the heroic version: harder, its
- *  own kill counts and its gilded drops. */
+/** A run plays the hero you are playing, from the entrance. `start`, `testRar` and `role` are for the Crypt
+ *  Trial and for testing: a run that starts past the entrance or in test gear doesn't count (no loot, kill
+ *  counts, achievements or bottle), and `role` picks one of your heroes in that seat (plain gear if you have
+ *  none). `heroic` plays the heroic version: harder, the same drops plus gilding kits, and its own kill counts. */
 export interface RunOpts { start: string; testRar: Rar | null; role?: RoleId; heroic?: boolean; dungeon?: string }
 const STEP = 1 / 60;
 const KEY: Record<string, string> = { a1: '1', a2: '2', a3: '3', a4: '4', dodge: 'Space' };
@@ -291,7 +293,7 @@ export class RunScene implements InputUI {
       if (role === 'healer') loadouts.healer = { ...(loadouts.healer as object), unique: 'lantern', bonuses: ['candlewake2'] };
       else if (role === 'dps') loadouts.dps = { ...(loadouts.dps as object), unique: h?.cls === 'rogue' ? 'cryptfangs' : 'spire', bonuses: [h?.cls === 'rogue' ? 'shadeveil2' : 'rimebone2'] };
     }
-    // one bottle poured at the door for the whole party: only the poured one is spent (practice keeps it)
+    // one bottle poured at the door for the whole party: only the poured one is spent (a run that doesn't count keeps it)
     const poured = h && !intro ? pourFor([{ role, leader: true, brew: broughtBrew(p) }]) : null;
     const brew = poured?.brew || null;
     this.brew = brew;
@@ -307,7 +309,10 @@ export class RunScene implements InputUI {
     const baseDg = DUNGEONS[baseId] || BARROW;
     const dg = this.dg = o.heroic ? (heroicVersion(baseDg.id) || baseDg) : baseDg;
     const engine = DUNGEON_ENGINES[baseDg.id] || BARROW_ENGINE;
-    const gilded = looks.includes('dye.ghostly.gilded') && wornSet && !test;
+    // gold in the dungeon: a gilded piece you wear (its kit is yours and on), or the old Gravegold Dye on a Barrow
+    // set. The rarer Ghostly Dye wins: switch it off in Looks to shine gold
+    const gildedWorn = !!h && Object.values(worn(p, h)).some((w) => w.unique && gildedOn(p, w.def.id));
+    const gilded = !test && !ghostly && (gildedWorn || (looks.includes('dye.ghostly.gilded') && wornSet));
     if (!this.practice) countRunStart(p, dg);
     // a class's first runs glow the button whose moment has come (the trial teaches its own way)
     this.learn = h && !intro ? learnGlow(p, h.cls) : 0;
@@ -335,7 +340,7 @@ export class RunScene implements InputUI {
     this.clearTut();
     this.hintsDone = new Set(); this.hintKey = null; $('hint').hidden = true;
     $('ov-msg').hidden = true;
-    $('practice-tag').hidden = !this.practice || intro;
+    $('test-tag').hidden = !this.practice || intro;
     $('intro-tag').hidden = !intro;
     $('intro-skip').hidden = !intro;
     $('heroic-tag').hidden = !o.heroic;
@@ -443,13 +448,13 @@ export class RunScene implements InputUI {
         for (const d of kl.drops) if (d.isNew && this.ach) for (const id of this.ach.collected(d.id)) this.unlockedNow(id);
         if (last) {
           this.clear = resolveClear(p, this.dg, hero, S.t - S.startedAt, this.lootRng);
-          startWalkout(tellOf(kl.drops), x, y);
+          startWalkout(tellOf(kl.drops), x, y, gildOf(kl.drops));
         } else if (kl.drops.length) {
           lootGlint(x, y, nameOf(kl.drops[0].id));
           for (const d of kl.drops) if (d.isNew) this.app.toasts.collected(d.id, kl.kc);
         }
         this.app.store.save();
-      } else if (last && this.app.dev.walkout !== 'off') startWalkout(this.app.dev.walkout, x, y);
+      }
     } else if (e.type === 'run.wipe') {
       if (!this.practice && S.boss) { countBossWipe(p, this.dg, S.boss.type); this.app.store.save(); }
     } else if (e.type === 'run.cleared') {
@@ -485,7 +490,7 @@ export class RunScene implements InputUI {
       return;
     }
     const hero = this.hero();
-    if (this.practice || !hero) { this.showPracticeDone(summary.time); return; }
+    if (this.practice || !hero) { this.showTestDone(summary.time); return; }
     const loot = runLoot(this.app.p, this.dg, hero, this.kills, this.clear);
     this.stop();
     this.app.showReveal(loot, { unlocked: this.unlocked.slice(), hero: hero.id, role: this.role, deaths: summary.deaths, again: this.opts });
@@ -515,8 +520,8 @@ export class RunScene implements InputUI {
       ] });
       return;
     }
-    const leave = this.practice ? 'Leave practice' : 'Leave the run';
-    this.msg({ eyebrow: this.practice ? 'Practice' : this.dg.name, title: 'Paused', text: `${fmtT(S.t - S.startedAt)} in.${this.practice ? '' : ' Kill counts and drops you already have are kept if you leave.'}`, buttons: [
+    const leave = this.practice ? 'Leave the test run' : 'Leave the run';
+    this.msg({ eyebrow: this.practice ? 'Test run' : this.dg.name, title: 'Paused', text: `${fmtT(S.t - S.startedAt)} in.${this.practice ? '' : ' Kill counts and drops you already have are kept if you leave.'}`, buttons: [
       ['Keep going', () => this.pause()],
       [SFX.on ? 'Sound off' : 'Sound on', () => { const p = this.app.p; p.settings.sound = !p.settings.sound; SFX.on = p.settings.sound; this.app.store.save(); S.paused = false; this.pause(); }],
       ['Restart', () => { if (this.opts) this.start(this.opts); }],
@@ -530,9 +535,10 @@ export class RunScene implements InputUI {
       ['Back to the hearth', () => this.app.home()],
     ] });
   }
-  private showPracticeDone(time: number): void {
-    this.msg({ eyebrow: 'Practice', title: 'Down he goes', text: `${fmtT(time)}. Practice gives no loot. When you are ready, run it from the entrance.`, buttons: [
-      ['Practice again', () => { if (this.opts) this.start(this.opts); }],
+  /** the end of a run that doesn't count (one started for testing) */
+  private showTestDone(time: number): void {
+    this.msg({ eyebrow: 'Test run', title: 'Down he goes', text: `${fmtT(time)}. A test run gives no loot.`, buttons: [
+      ['Run it again', () => { if (this.opts) this.start(this.opts); }],
       ['Back to the hearth', () => this.app.home()],
     ] });
   }
@@ -567,6 +573,7 @@ export class RunScene implements InputUI {
     } else this.acc = 0;
     updateCam(dt);
     this.hudTick(dt);
+    const m = runMusic(S); MUSIC.want(m.track); MUSIC.duck(m.duck);
     render();
   }
 
@@ -738,16 +745,23 @@ function comboFor(p: any, slot: string): string {
     case 'charge': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 420) ? 'KICK!' : S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && !m.cage && dist(m, p) > 200 && dist(m, p) < 420) ? 'PEEL!' : '';
     case 'cleave': {
       const near = S.mobs.filter((m: any) => isFoe(m) && !m.cage && m.state === 'fight' && dist(m, p) < 115 + m.r);
-      return near.some((m: any) => m.st && m.st.stun > 0) || near.length >= 3 ? 'CRUSH!' : near.length >= 2 ? 'CLEAVE!' : '';
+      return near.some((m: any) => stunned(m)) || near.length >= 3 ? 'CRUSH!' : near.length >= 2 ? 'CLEAVE!' : '';
     }
     case 'circle': return S.heroes.filter((a: any) => a.alive && a.hp < a.maxHp * 0.78).length >= 2 ? 'CIRCLE!' : '';
     case 'sunburst': return S.heroes.some((a: any) => a.alive && (a.st.root > 0 || a.st.haunt > 0)) ? 'CLEANSE!' : S.heroes.filter((a: any) => a.alive && a.hp < a.maxHp * 0.6).length >= 2 ? 'BURST!' : '';
     case 'ward': { const t = heroBy('tank'); return (t && t.alive && t.absorb <= 0 && S.hazards.some((z: any) => z.tankBuster && !z.fired && (z.followT === t || inHaz(z, t.x, t.y, t.r)))) ? 'SHIELD!' : ''; }
     case 'smite': return S.inCombat && !!(heroBy('tank')?.target) && S.zones.some((z: any) => z.kind === 'heal') ? 'PULSE!' : S.inCombat && S.heroes.every((a: any) => !a.alive || a.hp > a.maxHp * 0.8) && !!(heroBy('tank')?.target) ? 'SMITE!' : '';
     case 'blizzard': { const c = bestCluster(p, 120, 560); return (c && c.score >= 3) ? 'STORM!' : ''; }
-    case 'nova': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 150 + m.r) ? 'KICK!' : S.mobs.filter((m: any) => isFoe(m) && !m.isBoss && !m.cage && m.state === 'fight' && dist(m, p) < 150 + m.r).length >= 2 ? 'FREEZE!' : '';
-    case 'comet': { const t = p.picked || p.target; return (t && t.alive && t.st && t.st.freeze > 0.6) ? 'SHATTER 2×!' : ''; }
-    case 'icicle': return S.mobs.some((m: any) => isFoe(m) && m.st && m.st.freeze > 0.3 && dist(m, p) < 500) ? 'SHATTER 3×!' : '';
+    case 'nova': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 150 + m.r) ? 'KICK!' : S.mobs.filter((m: any) => isFoe(m) && !m.isBoss && !m.cage && m.state === 'fight' && dist(m, p) < 150 + m.r).length >= 2 ? 'FREEZE!' : S.mobs.some((m: any) => isFoe(m) && m.isBoss && !m.cage && m.state === 'fight' && !(m.st.chill > 0) && dist(m, p) < 150 + m.r) ? 'CHILL!' : '';
+    case 'comet': {
+      const t = p.picked || p.target, lance = p.traits.has('shatterlance');
+      if (!(t && t.alive && t.st)) return '';
+      return t.st.freeze > 0.6 ? (lance ? 'SHATTER 3×!' : 'SHATTER 2×!') : t.st.chill > 0.6 ? (lance ? 'SHATTER 2×!' : 'SHATTER 1.5×!') : '';
+    }
+    case 'icicle': {
+      const near = S.mobs.filter((m: any) => isFoe(m) && m.st && dist(m, p) < 500);
+      return near.some((m: any) => m.st.freeze > 0.3) ? 'SHATTER 3×!' : near.some((m: any) => m.st.chill > 0.3) ? 'SHATTER 1.5×!' : '';
+    }
     case 'viper': { const t = p.picked || p.target; return (t && t.alive && !t.cage && (!t.bleed || t.bleed.left < 1.8) && dist(t, p) < 110 + t.r) ? 'VENOM!' : ''; }
     case 'ambush': { const t = p.picked || p.target; return (t && t.alive && t.bleed && t.bleed.left > 0 && dist(t, p) < 110 + t.r) ? 'CRIT!' : ''; }
     case 'flurry': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 135 + m.r) ? 'KICK!' : S.mobs.filter((m: any) => isFoe(m) && !m.cage && m.state === 'fight' && dist(m, p) < 135 + m.r).length >= 2 ? 'FLURRY!' : '';

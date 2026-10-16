@@ -63,8 +63,8 @@ New colours are fine when a thing needs one; keep them flat and in this family (
   entry in `HERO_FIT` (`src/dungeon/render.js`: where its weapon glows, where the top of its head is; a test
   checks). Mounts face right and carry a `saddle` offset in their collectible so a hero sits on them.
 - **Heroic drops are gilded:** `gild()` in `art_sprites.py` turns a picture's bone and steel to gold; on a 64x64
-  tile it also gives a dark gold ground and a sparkle in the corner. Every heroic drop uses it, so a gilded piece
-  reads as the heroic one at a glance.
+  tile it also gives a dark gold ground and a sparkle in the corner. Every heroic drop uses it (a gilding kit is
+  drawn as its piece, gilded), so a gilded piece reads as the heroic one at a glance.
 - **The wardrobe:** each set stands on its own armour stand in the collection log (`art_wardrobe.py`). The stand
   is drawn bare, then every piece (helm, shoulders, chest, and the boss weapon of the set's role) is a layer of its
   own around the stand's ground point, split into its silhouette (`sil`) and its details (`det`): a piece you

@@ -2,7 +2,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRng } from '../src/core/rng';
-import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, SETS, checkContent, heroicVersion } from '../src/content';
+import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, ITEMS, KITS, SETS, checkContent, heroicVersion, itemOf } from '../src/content';
+import { TEMPLATE_DUNGEON } from '../src/content/_template';
+import { TEMPLATE_ENGINE } from '../src/content/_template/engine';
 import { BARROW } from '../src/content/barrow';
 import { activeHero, classRuns, countClassRun, countLift, createHero, dungeonRecord, finishCurseTip, finishHearthTour, finishIntroRun, freshProfile, learnGlow, markClassTrial, migrate, nameProblem, needsClassTrial, needsCurseTip, needsHearthTour, needsIntroRun, needsSwipeHint, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, startHearthTour, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
 import { DUPE_MARKS, grantTrialStarter, heroicOpen, heroicProgress, resolveRun, rollTable, trialStarter } from '../src/meta/loot';
@@ -16,7 +18,7 @@ import { HEARTH_SPOTS, MOUNTS, autoPlace, lookOf, lookOpen, lookProgress, paddoc
 import { HOUSE_SPOTS, LOOK_ROOMS, OUTSIDE, PADDOCK, ROOMS, THINGS, paddockSlots } from '../src/content/house';
 import { groupOf, heroesFor, partyProblem, pickRole, seats, seatsFor } from '../src/meta/party';
 import { lootFor } from '../src/meta/loot';
-import type { GameEvent, RunSummary } from '../src/content/types';
+import type { DungeonStage, GameEvent, RunSummary } from '../src/content/types';
 import WARDROBE from '../art/wardrobe.json';
 
 test('content: every id a table, log, set or reward points at exists', () => {
@@ -473,15 +475,16 @@ test('the log as a wardrobe: each set on a stand with its role’s boss weapon, 
 
 test('the wardrobe: every set piece and boss weapon, plain and gilded, has its piece for the stands', () => {
   const pieces: Record<string, string> = WARDROBE.pieces, boxes: Record<string, number[]> = WARDROBE.boxes;
-  const worn = Object.values(ITEMS).filter((d) => d.setId || d.kind === 'unique');
-  assert.ok(worn.length >= 32, 'the Barrow’s 16 pieces and their gilded twins');
-  for (const d of worn) {
-    const g = pieces[d.id] || '', sil = g.slice(g.indexOf('<g class="sil">'), g.indexOf('<g class="det">'));
-    assert.ok(sil, `${d.id} has a stand piece, with a silhouette for its ghost`);
+  // each piece, and its gilding kit (the same piece, gilded, on the Heroic log's stands)
+  const worn = [...Object.values(ITEMS).filter((d) => d.setId || d.kind === 'unique').map((d) => d.id), ...Object.keys(KITS)];
+  assert.ok(worn.length >= 32, 'the Barrow’s 16 pieces and their kits');
+  for (const id of worn) {
+    const g = pieces[id] || '', sil = g.slice(g.indexOf('<g class="sil">'), g.indexOf('<g class="det">'));
+    assert.ok(sil, `${id} has a stand piece, with a silhouette for its ghost`);
     // a ghost is one line round its silhouette's shapes, so every one of them is filled: no bare lines (beams)
-    assert.ok(!/fill: none/.test(sil), `${d.id}'s silhouette is all shapes`);
-    const b = boxes[d.id.replace(/\.gilded$/, '')];
-    assert.ok(b && b.length === 4 && b[2] > 0 && b[3] > 0, `${d.id} has a box, to be shown on its own`);
+    assert.ok(!/fill: none/.test(sil), `${id}'s silhouette is all shapes`);
+    const b = boxes[itemOf(id)!.id];
+    assert.ok(b && b.length === 4 && b[2] > 0 && b[3] > 0, `${id} has a box, to be shown on its own`);
   }
   for (const c of Object.values(COLLECTIBLES).filter((x) => x.id.startsWith('dye.'))) assert.ok(c.sprite, `${c.id} can stand on the log's shelf`);
 });
@@ -572,8 +575,8 @@ test('collection log: filling the Barrow’s whole log opens Barrow Hall, a titl
   assert.equal(lookOpen(q, 'barrow'), false, 'and the Barrow’s own log is still its own');
 });
 
-test('heroic: opens after ten clears, drops the Barrow’s pieces gilded at the same rates, pays Barrow Marks, keeps its own kill counts', () => {
-  const { p, h } = withHero('tank');
+test('heroic: opens after ten clears of its normal dungeon (its loot is in heroic.test.ts)', () => {
+  const { p } = withHero('tank');
   assert.equal(heroicOpen(p, 'barrow'), false);
   dungeonRecord(p, 'barrow').clears = 9;
   assert.deepEqual(heroicProgress(p, 'barrow'), { have: 9, need: 10 });
@@ -581,22 +584,7 @@ test('heroic: opens after ten clears, drops the Barrow’s pieces gilded at the 
   assert.ok(heroicOpen(p, 'barrow'));
   const H = heroicVersion('barrow')!;
   assert.equal(H.id, 'barrow-heroic');
-  // every line of the Barrow's tables, gilded, at the same rate and for the same role
-  const plain = BARROW.loot.flatMap((t) => t.drops), gold = H.loot.flatMap((t) => t.drops);
-  assert.deepEqual(gold.map((d) => [d.id, d.rate, d.role]), plain.map((d) => [`${d.id}.gilded`, d.rate, d.role]));
-  assert.deepEqual(H.collection, BARROW.collection.map((id) => `${id}.gilded`));
-  // a heroic clear counts its own kills and clears, and pays Barrow Marks
-  const marks0 = p.dungeons.barrow.marks;
-  resolveRun(p, H, clear(h), makeRng(3));
-  assert.equal(p.bosses['barrow-heroic.keeper'].kc, 1);
-  assert.equal(p.bosses['barrow.keeper'], undefined);
-  assert.equal(p.dungeons['barrow-heroic'].clears, 1);
-  assert.ok(p.dungeons.barrow.marks > marks0, 'the clear paid a Barrow Mark');
-  assert.equal(p.dungeons['barrow-heroic'].marks, 0, 'there are no heroic Marks');
-  // a gilded piece wears exactly like the plain one: the same set, the same power
-  for (const id of ['barrowguard.helm.gilded', 'barrowguard.chest']) { p.collection[id] = { n: 1, kc: 1, at: 1 }; assert.ok(equip(p, h, ITEMS[id].slot, id)); }
-  assert.ok(loadoutFor(p, h).bonuses.includes('barrowguard2'), 'gilded and plain count for the same set');
-  assert.equal(compareFor(p, h, 'barrowguard.helm')!.verdict, 'same');
+  assert.equal(H.heroicOf, 'barrow');
 });
 
 test('party: you take your hero’s seat, your Warband heroes take the others on Normal (disabled on Heroic), and bots stand in for empty seats', () => {
@@ -642,7 +630,6 @@ test('party: Heroic needs at least two real players and a bot takes the third se
   // Heroic on your own: blocked, in plain words; until online play your group is just you
   assert.deepEqual(groupOf(p).map((h) => h.id), [tank.id]);
   assert.equal(partyProblem(groupOf(p), { heroic: true }), 'Heroic needs at least two players. Bring a friend.');
-  assert.equal(partyProblem([tank], { heroic: true, practice: true }), null, 'practice gives nothing, so it is open solo');
   // two players and a bot: allowed, and the empty seat is a bot, never your own DPS
   assert.equal(partyProblem([tank, friendHealer], { heroic: true }), null);
   assert.deepEqual(seatsFor(p, [tank, friendHealer], true).map((s) => s.hero?.id ?? s.bot), [tank.id, friendHealer.id, 'Ivy']);
@@ -732,6 +719,7 @@ test('art: every icon and sprite the content names exists', async () => {
   const sprites = { ...read('sprites.json'), ...read('hearth.json'), ...read('vale.json') };
   const missing: string[] = [];
   for (const it of Object.values(ITEMS)) if (!tiles[it.icon]) missing.push('icon ' + it.icon + ' for ' + it.id);
+  for (const k of Object.values(KITS)) if (!tiles[k.icon]) missing.push('icon ' + k.icon + ' for ' + k.id);
   for (const c of Object.values(COLLECTIBLES)) {
     if (!tiles[c.icon]) missing.push('icon ' + c.icon + ' for ' + c.id);
     if (c.sprite && !sprites[c.sprite]) missing.push('sprite ' + c.sprite + ' for ' + c.id);
@@ -750,6 +738,30 @@ test('art: every icon and sprite the content names exists', async () => {
   for (const c of Object.values(COLLECTIBLES)) if (c.kind === 'mount' && !c.saddle) missing.push('saddle for ' + c.id);
   for (const n of ['slam', 'cleave', 'smite', 'icicle', 'shield', 'charge', 'circle', 'ward', 'sunburst', 'blizzard', 'nova', 'comet', 'viper', 'ambush', 'flurry', 'shadowstep', 'dodge', 'mend', 'marks']) if (!tiles[n]) missing.push('icon ' + n);
   assert.deepEqual(missing, []);
+});
+
+test('stages: every dungeon has a door for the Dungeons sheet, its final boss in it and room for three heroes in front', async () => {
+  const fs = await import('node:fs');
+  const read = (f: string) => JSON.parse(fs.readFileSync(new URL('../../art/' + f, import.meta.url), 'utf8'));
+  const sprites = { ...read('sprites.json'), ...read('hearth.json'), ...read('vale.json') };
+  const spriteOf = (mobs: object, id: string): string => (mobs as Record<string, { sp: string }>)[id].sp;
+  const check = (id: string, st: DungeonStage | undefined, finalSprite: string) => {
+    assert.ok(st, `${id} has a stage`);
+    const [x, y, w, h] = st.view;
+    assert.ok(w > 0 && h > 0, `${id}: the picture has a size`);
+    for (const pc of [...st.back, st.boss, ...st.front]) assert.ok(sprites[pc.sprite], `${id}: no sprite ${pc.sprite}`);
+    assert.equal(st.boss.sprite, finalSprite, `${id}: the final boss stands in the doorway`);
+    assert.equal(st.heroes.x.length, 3);
+    assert.ok(st.heroes.x[0] < st.heroes.x[1] && st.heroes.x[1] < st.heroes.x[2], `${id}: tank, healer and DPS from left to right`);
+    for (const hx of st.heroes.x) assert.ok(hx - 60 >= x && hx + 60 <= x + w, `${id}: the hero at ${hx} stands inside the picture`);
+    assert.ok(st.heroes.y > st.boss.y, `${id}: the heroes stand in front of the boss`);
+    assert.ok(st.heroes.y + 40 <= y + h, `${id}: room for the name plates under the heroes' feet`);
+  };
+  for (const d of Object.values(DUNGEONS)) {
+    if (d.heroicOf) { assert.ok(DUNGEONS[d.heroicOf].stage, `${d.id} uses its normal dungeon's stage`); continue; }
+    check(d.id, d.stage, spriteOf(DUNGEON_ENGINES[d.id].mobs, d.finalBoss));
+  }
+  check('template', TEMPLATE_DUNGEON.stage, spriteOf(TEMPLATE_ENGINE.mobs, TEMPLATE_DUNGEON.finalBoss));
 });
 
 test('onboarding: a fresh profile sends its first hero into the Crypt Trial once, existing heroes skip it, and the first hero triggers the hearth tour', () => {
