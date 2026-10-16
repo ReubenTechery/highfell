@@ -9,10 +9,16 @@ import { RACES, type RaceId } from '../content/folk';
 import type { AchievementDef } from '../content/types';
 import type { Profile } from './profile';
 
-/** How full a dungeon's collection log is: slots filled, out of all of them. */
-export function logProgress(p: Profile, dungeon: string): { have: number; need: number } {
+/** The slots that count towards finishing a dungeon's log: all of them but the bonus ones (the pet). */
+export function logSlots(dungeon: string): string[] {
   const dg = DUNGEONS[dungeon];
-  return dg ? { have: dg.collection.filter((id) => p.collection[id]).length, need: dg.collection.length } : { have: 0, need: 0 };
+  return dg ? dg.collection.filter((id) => !(dg.bonus || []).includes(id)) : [];
+}
+
+/** How full a dungeon's collection log is: slots filled, out of the ones that count. */
+export function logProgress(p: Profile, dungeon: string): { have: number; need: number } {
+  const slots = logSlots(dungeon);
+  return { have: slots.filter((id) => p.collection[id]).length, need: slots.length };
 }
 export function logDone(p: Profile, dungeon: string): boolean {
   const { have, need } = logProgress(p, dungeon);

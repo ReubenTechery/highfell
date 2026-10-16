@@ -24,6 +24,6 @@ export const BARROW_LOOT: BossLootDef[] = [
     { id: 'gravekeeper.rogue', rate: 1 / 50, role: 'dps', cls: 'rogue' },
     { id: 'dye.ghostly', rate: 1 / 1000 },
     { id: 'mount.gravehound', rate: 1 / 1000 },
-    { id: 'pet.pint_gravekeeper', rate: 1 / 5000 },
+    { id: 'pet.pint_gravekeeper', rate: 1 / 2500 },
   ] },
 ];

@@ -23,12 +23,11 @@ import { lootGlint, startWalkout } from '../dungeon/walkout.js';
 import { Achiever } from '../meta/achievements';
 import { loadoutFor, partyRar, plainLoadout, worn } from '../meta/gear';
 import { countBossWipe, countRunStart, resolveClear, resolveKill, runLoot, tellOf, type ClearLoot, type KillLoot } from '../meta/loot';
-import { heroesFor } from '../meta/party';
+import { pourFor, seatsFor } from '../meta/party';
 import { activeHero, finishIntroRun, heroById, roleOf, type Hero } from '../meta/profile';
 import { heroArt, type ClassId } from '../content/folk';
 import { RECIPES } from '../content/vale';
 import { broughtBrew, spendBottle } from '../meta/vale';
-import { pourFor } from '../meta/party';
 import type { App } from './app';
 import { $, esc, flash, fmtT } from './dom';
 import { heroImg, heroSprite, nameOf, tile } from './art';
@@ -247,8 +246,10 @@ export class RunScene implements InputUI {
     const rar: Rar = intro ? 3 : o.testRar != null ? o.testRar : h ? partyRar(p, h) : 0;
     const tierSuffix = rar <= 0 ? '_rags' : rar === 1 ? '_iron' : '';
     const loadouts: Record<string, unknown> = {};
+    // who sits with you is party.ts's rule (your Warband on Normal, bots on Heroic); try-gear runs and the trial bring bots
+    const team = h && !test && !intro ? seatsFor(p, [h], !!o.heroic) : null;
     for (const r of ['tank', 'healer', 'dps'] as RoleId[]) {
-      const mate = r === role ? null : (!test && !intro && !o.heroic ? heroesFor(p, r)[0] || null : null);
+      const mate = r === role ? null : team?.find((s) => s.role === r)?.hero || null;
       if (mate) {
         const base = loadoutFor(p, mate);
         loadouts[r] = { ...base, cls: mate.cls, name: mate.name, sprite: heroSprite(mate, r, p) };

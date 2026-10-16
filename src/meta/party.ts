@@ -1,7 +1,8 @@
 /**
- * Who sits where in a run: three seats, one per role. On Normal, you take your hero's seat and your
- * own Warband heroes from your bunk room fill the others (or bots stand in for empty seats), or you can
- * group up. Heroic dungeons are Friends & Party Finder ONLY (Warband companions are disabled on Heroic).
+ * Who sits where in a run: three seats, one per role, and who may go in. Normal is fully playable on
+ * your own: you take your hero's seat and your own Warband heroes from your bunk room fill the others
+ * (bots stand in for roles you have no hero for), or you can group up. Heroic is the group run: it needs
+ * at least two real players, a bot takes the seat nobody fills, and your Warband heroes never sit in.
  */
 import { ORDER, ROLES } from '../content/roles';
 import type { RoleId } from '../content/types';
@@ -9,17 +10,38 @@ import { activeHero, roleOf, setActive, type Hero, type Profile } from './profil
 
 export interface Seat { role: RoleId; hero: Hero | null; bot: string | null }
 
-/** The three seats, tank first: yours holds your active hero. On Normal (`!heroic`), the other two seats
- *  hold your own Warband heroes of those roles from your bunk room (falling back to a stand-in bot only
- *  when you have none). On Heroic (`heroic = true`), Warband companions are disabled (Friends & Party Finder only). */
-export function seats(p: Profile, heroic = false): Seat[] {
-  const h = activeHero(p), mine = h ? roleOf(h) : null;
+/** Heroic needs at least this many real players. */
+export const HEROIC_MIN_PLAYERS = 2;
+
+/** The real players in your group, you first. Until online play arrives, that is only you. */
+export function groupOf(p: Profile): Hero[] {
+  const h = activeHero(p);
+  return h ? [h] : [];
+}
+
+/** Why a group can't go in, in plain words, or null when it can. Normal is fine on your own; Heroic
+ *  needs at least two real players, each in their own seat. Practice gives nothing, so anyone can. */
+export function partyProblem(players: Hero[], o: { heroic: boolean; practice?: boolean }): string | null {
+  if (!players.length) return 'Make a hero first.';
+  if (new Set(players.map(roleOf)).size < players.length) return 'Two players can’t take the same seat.';
+  if (o.heroic && !o.practice && players.length < HEROIC_MIN_PLAYERS) return 'Heroic needs at least two players. Bring a friend.';
+  return null;
+}
+
+/** The three seats, tank first, for a group of real players: each sits in their own role's seat. On Normal
+ *  the empty seats take your own Warband heroes of those roles (the one you played last), or a stand-in
+ *  bot where you have none. On Heroic the empty seats always take bots, never your Warband. */
+export function seatsFor(p: Profile, players: Hero[], heroic: boolean): Seat[] {
   return ORDER.map((role) => {
-    if (role === mine && h) return { role, hero: h, bot: null };
-    const mate = !heroic ? heroesFor(p, role)[0] || null : null;
+    const player = players.find((h) => roleOf(h) === role);
+    if (player) return { role, hero: player, bot: null };
+    const mate = heroic ? null : heroesFor(p, role)[0] || null;
     return mate ? { role, hero: mate, bot: null } : { role, hero: null, bot: ROLES[role].name };
   });
 }
+
+/** Your seats as things are: you, then your Warband on Normal or bots on Heroic. */
+export const seats = (p: Profile, heroic = false): Seat[] => seatsFor(p, groupOf(p), heroic);
 
 /** Your heroes who could take a seat, the one you played last first. */
 export function heroesFor(p: Profile, role: RoleId): Hero[] {

@@ -62,13 +62,23 @@ function innerOf(name: string): string {
   const s = ART[name]?.svg || '';
   return (inner[name] = s.slice(s.indexOf('>') + 1, s.lastIndexOf('</svg>')));
 }
-/** Place a sprite inside a parent SVG with its ground point at (x, y). */
-export function placeSprite(name: string, x: number, y: number, o: { k?: number; flip?: boolean; cls?: string; attrs?: string } = {}): string {
+/** A sprite as a shadow, for something you haven't got yet: every colour turned to one dark one, the ink
+ *  kept, and its glows left out. Cached. */
+const SHADE = '#2E2640';
+const shaded: Record<string, string> = {};
+function shadeOf(name: string): string {
+  if (shaded[name] !== undefined) return shaded[name];
+  const body = innerOf(name).replace(/<[a-z]+ [^>]*opacity:[^>]*\/>/g, '').replace(/(fill|stroke): #(?!1E1A1A)[0-9A-Fa-f]{3,6}\b/g, (_, k: string) => `${k}: ${SHADE}`);
+  return (shaded[name] = body);
+}
+/** Place a sprite inside a parent SVG with its ground point at (x, y); `shade` draws it as a shadow. */
+export function placeSprite(name: string, x: number, y: number, o: { k?: number; flip?: boolean; cls?: string; attrs?: string; shade?: boolean } = {}): string {
   const s = ART[name];
   if (!s) return '';
   const k = o.k ?? 1;
   const [vx, vy, w, h] = s.vb;
-  const body = `<svg x="${(x + vx * k).toFixed(1)}" y="${(y + vy * k).toFixed(1)}" width="${(w * k).toFixed(1)}" height="${(h * k).toFixed(1)}" viewBox="${vx} ${vy} ${w} ${h}" overflow="visible">${o.flip ? `<g transform="scale(-1 1) translate(${-(2 * vx + w)} 0)">${innerOf(name)}</g>` : innerOf(name)}</svg>`;
+  const art = o.shade ? shadeOf(name) : innerOf(name);
+  const body = `<svg x="${(x + vx * k).toFixed(1)}" y="${(y + vy * k).toFixed(1)}" width="${(w * k).toFixed(1)}" height="${(h * k).toFixed(1)}" viewBox="${vx} ${vy} ${w} ${h}" overflow="visible">${o.flip ? `<g transform="scale(-1 1) translate(${-(2 * vx + w)} 0)">${art}</g>` : art}</svg>`;
   return `<g class="${o.cls || ''}" ${o.attrs || ''}>${body}</g>`;
 }
 /** Something in the house that moves (your hero breathing, a pet bobbing, the fire): drawn as its own small

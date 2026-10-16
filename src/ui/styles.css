@@ -54,13 +54,13 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .h-world > svg { display: block; }
 .h-back { overflow: visible; }
 .bit { position: absolute; display: block; }
-.house .thing, .house .spot, .house .hero, .house .newhero { pointer-events: auto; cursor: pointer; }
+.house .thing, .house .spot, .house .hero, .house .newhero, .house .mount { pointer-events: auto; cursor: pointer; }
 .house .spot.empty, .house .spot.none, .hearth.dragging .house * { pointer-events: none; }
 .hearth:not(.dragging) .house.deco .spot.empty, .hearth:not(.dragging) .house.deco .spot.none { pointer-events: auto; }
 .house :focus { outline: none; }
 .house .hl { fill: transparent; stroke: transparent; stroke-width: 0; }
 @media (hover: hover) {
-  .house .thing:hover .hl, .house .hero:hover .hl, .house .newhero:hover .hl, .house .spot.has:hover .hl, .house.deco .spot:hover .hl { stroke: var(--gold); stroke-width: 6; fill: rgba(242, 194, 48, 0.1); }
+  .house .thing:hover .hl, .house .hero:hover .hl, .house .newhero:hover .hl, .house .spot.has:hover .hl, .house.deco .spot:hover .hl, .house .mount:hover .hl { stroke: var(--gold); stroke-width: 6; fill: rgba(242, 194, 48, 0.1); }
 }
 .house [tabindex]:focus-visible .hl, .house .tour-hl .hl { stroke: var(--gold); stroke-width: 6; fill: rgba(242, 194, 48, 0.14); }
 .house .spot .mark, .house .spot .plus { display: none; }
@@ -73,6 +73,8 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .house .a-dungeons .lbl { font-size: 30px; fill: #D8FFB8; }
 .bit.pip circle { fill: var(--red); stroke: var(--ink); stroke-width: 4; }
 .bit.pip text { font-family: var(--f-display); font-size: 27px; fill: #FFFFFF; text-anchor: middle; }
+/* a mount you haven't got, in the paddock: its shadow and a question mark */
+.bit .pq { font-family: var(--f-display); font-size: 64px; fill: #FFF8EC; stroke: var(--ink); stroke-width: 7px; paint-order: stroke; text-anchor: middle; }
 .room .lbl { font-family: var(--f-display); font-size: 22px; fill: #FFF8EC; stroke: var(--ink); stroke-width: 6px; paint-order: stroke; text-anchor: middle; pointer-events: none; }
 .room .lbl.small { font-size: 17px; }
 /* the house's moving bits: each is its own small picture, so the browser moves it without a redraw */
@@ -85,6 +87,11 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
   .bit.sway { animation: sway 4s ease-in-out infinite; transform-origin: 50% 0%; }
   .bit.new-pop { animation: newpop 0.7s cubic-bezier(.2, 1.6, .4, 1) both; transform-origin: 50% 100%; }
   .bit.pip { animation: bob 1.2s ease-in-out infinite; transform-origin: 50% 100%; }
+  /* mounts in the paddock wander a little each way (34 world units: PADDOCK.wander), stop, turn round; each at its own pace */
+  .bit.wander { animation: wander 17s ease-in-out infinite; transform-origin: 50% 100%; }
+  .bit.wander.w1 { animation-duration: 21s; animation-delay: -7s; }
+  .bit.wander.w2 { animation-duration: 19s; animation-delay: -12s; animation-direction: reverse; }
+  .bit.wander.w3 { animation-duration: 23s; animation-delay: -4s; }
 }
 @keyframes fireA { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
 @keyframes fireB { 0%, 49% { opacity: 0; } 50%, 100% { opacity: 1; } }
@@ -94,12 +101,20 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
 @keyframes sway { 0%, 100% { transform: rotate(-1.2deg); } 50% { transform: rotate(1.2deg); } }
 @keyframes newpop { from { transform: scale(0.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes wander {
+  0% { transform: translateX(0) scaleX(1); }
+  28%, 44% { transform: translateX(34px) scaleX(1); }
+  47%, 52% { transform: translateX(34px) scaleX(-1); }
+  80%, 92% { transform: translateX(-34px) scaleX(-1); }
+  95% { transform: translateX(-34px) scaleX(1); }
+  100% { transform: translateX(0) scaleX(1); }
+}
 
 /* the room signs: you see them when you are zoomed out, and tap one to go in */
 .h-signs { position: absolute; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
 .h-sign { position: absolute; left: 0; top: 0; will-change: transform; padding: 4px 12px 5px; border-radius: 12px; border: 3px solid var(--ink); background: var(--panel); color: var(--ink); box-shadow: 0 3px 0 var(--ink); font-family: var(--f-display); font-size: 16px; white-space: nowrap; cursor: pointer; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
 .hearth.far .h-sign { opacity: 1; pointer-events: auto; }
-/* the top bar: your hero, Marks, decorate, settings */
+/* the top bar: your hero, the save chip, decorate, settings */
 .h-top { position: absolute; top: calc(var(--pad-t) + 10px); left: 10px; right: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; pointer-events: none; z-index: 3; }
 .h-top > * { pointer-events: auto; }
 .h-top .right { display: flex; align-items: center; gap: 6px; }

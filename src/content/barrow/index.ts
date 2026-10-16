@@ -27,5 +27,6 @@ export const BARROW: DungeonInfo = {
     'gravekeeper.tank', 'gravekeeper.healer', 'gravekeeper.dps', 'gravekeeper.rogue',
     'trophy.rattlebones_plume', 'dye.ghostly', 'mount.gravehound', 'pet.pint_gravekeeper',
   ],
+  bonus: ['dye.ghostly', 'mount.gravehound', 'pet.pint_gravekeeper'],
   achievements: BARROW_ACHIEVEMENTS.map((a) => a.id),
 };

@@ -12,16 +12,16 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 16 
 
 | Part | Built | Still design |
 | --- | --- | --- |
-| Heroes & Warband | Race, class and male or female look picked once, for keeps; up to 6 heroes in the bunk room; on Normal, your own Warband heroes automatically fill the other two party seats wearing their real gear, sets, traits, and Boss Weapons (bots stand in only for empty roles) or you can group with friends; Heroic is Friends & Party Finder ONLY (Warband disabled). Dwarf, Elf and Human from the start; the Risen (undead) earned from the Barrow's collection log; Gnomes and Goblins drawn as pint-sized heroes across all 4 classes (`Warrior`, `Cleric`, `Mage`, `Rogue`), both sexes, and all 3 visual gear tiers (`_rags`, `_iron`, and full armour) | Gnomes', goblins' and orcs' own dungeons; the remaining starter race/class combos; racial tricks |
+| Heroes & Warband | Race, class and male or female look picked once, for keeps; up to 6 heroes in the bunk room; on Normal, your own Warband heroes automatically fill the other two party seats wearing their real gear, sets, traits, and Boss Weapons (bots stand in only for empty roles) or you can group with friends; Heroic needs at least two real players, a bot in any empty seat, never your Warband. Dwarf, Elf and Human from the start; the Risen (undead) earned from the Barrow's collection log; Gnomes and Goblins drawn as pint-sized heroes across all 4 classes (`Warrior`, `Cleric`, `Mage`, `Rogue`), both sexes, and all 3 visual gear tiers (`_rags`, `_iron`, and full armour) | Gnomes', goblins' and orcs' own dungeons; the remaining starter race/class combos; racial tricks |
 | Abilities | Four buttons per role plus the dodge; a perfect block stuns, counter-strikes, resets Cleave and opens a Boss `Exposed` window (+35% damage taken) | Ults |
 | Gear, Power Creep & Sets | 4 slots on a gear doll; steep power curve (`1.00` Common → `1.24` Uncommon → `1.48` Rare → `1.72` plain Epic → `1.96` full BiS with 3-piece set + Boss Weapon, plus up to `+14%` crit chance and `+48%` HP) so full BiS melts runs in roughly half the time; all four Barrow sets (*Barrowguard*, *Candlewake*, *Rimebone*, *Shadeveil*) with their per-piece perks, 2-piece bonuses, and **active 3-piece summon/ghost bonuses** (`S.thralls`); all four Gravekeeper Boss Weapons. Nothing goes on by itself | The wardrobe |
 | Threat, Difficulty & Boss Mechanics | The tank earns threat (Slam taunts and drags mobs in, Charge grabs one); Bosses and Brutes deal `1.85×` **Crushing Blows** to non-tanks in melee; unblocked telegraphs bypass passive armor and pierce 60% of `Ward` shields; Boss `Exposed` windows (+35% damage taken on Perfect Block, dodged Shield Charge wall-crash, last rally guard kill, Soul Chain cut, and `< 2.0s` Bone Cage break); Gravekeeper Phase 3 **moving green lantern circle** (`S.ring.followBoss`) with `Grave Stride` repositioning and **Lantern Zeal** (`+15%` cooldown recovery, `+10%` crit) inside; Room 4 **Crypt Seals** (10 3-seat rune patterns granting **Crypt Surge**: `+25%` speed, `+20%` damage for 18s); mid-run `MELTED!` and `New Personal Best!` banners |  |
-| Loot | Every line rolls on its own, kill counts, duplicates to Marks, the walkout and the chest reveal |  |
-| Heroic | Heroic Barrow: open after 10 clears, made for full Epic (`hit: 3.2, trashHp: 1.95, bossHp: 1.63`); the same drops gilded at the same rates and power, its own kill counts and log, Barrow Marks. Friends & Party Finder ONLY (Warband disabled; Practice / Dev "Everything open" playable for testing) | A heroic version of every new dungeon |
-| Collection log rewards | Each dungeon's whole log (every drop, every role) gives a house look, a title and one big prize: the Barrow's are Barrow Hall, the Gravewarden and the Risen; its heroic log's Gilded Barrow Hall, the Undying and Gilded Bones. The prize waits at the end of the log's bar | One per new dungeon: a race, a race and class combo, or something else |
+| Loot | Every line rolls on its own, kill counts, duplicates counted in the collection log, the walkout and the chest reveal |  |
+| Heroic | Heroic Barrow: open after 10 clears, made for full Epic (`hit: 3.2, trashHp: 1.95, bossHp: 1.63`); the same drops gilded at the same rates and power, its own kill counts and log. A group run: at least two real players, a bot in any empty seat, never your Warband; opens only for practice until online play (or with "Everything open") | A heroic version of every new dungeon |
+| Collection log rewards | Each dungeon's whole log (every drop, every role; the pet, mount and dye are bonus slots and never needed) gives a house look, a title and one big prize: the Barrow's are Barrow Hall, the Gravewarden and the Risen; its heroic log's Gilded Barrow Hall, the Undying and Gilded Bones. The prize waits at the end of the log's bar | One per new dungeon: a race, a race and class combo, or something else |
 | Achievements | All 12, the meta and the 3 hidden ones, with titles, trophies, looks and the Lantern Ghost |  |
-| Home | The Hearth, a tall house cut open: zoom out to see every room, tap things to use them (the Barrow door, the 3 garden planter beds in the yard, the armour stand, the big book of the collection log, the cauldron, the larder); about 30 spots for pets, mounts, trophies and banners; Decorate; looks for a room or the whole house (the tavern; Barrow Hall from the Barrow's collection log, Gilded Barrow Hall from its heroic one); one big Dungeons button | Rooms that come with new dungeons, inviting people over |
-| Dungeon picker | Dungeons: Act 1 stepped 3-dungeon selector (`ilvl 26 → 34 → 42`), Normal or Heroic, its collection log line with the prize at the end (inside: what finishing it gives and the loot per role; tap a drop to hold it up against what that role wears), then your role, hero and brew, loot or practice; Normal shows your Warband companions & Group option, while Heroic enforces Friends & Party Finder ONLY (Warband disabled) | Online Party Finder for Heroics and friends in seats, more dungeons |
+| Home | The Hearth, a tall house cut open: zoom out to see every room, tap things to use them (the Barrow door, the 3 garden planter beds in the yard, the armour stand, the big book of the collection log, the cauldron, the larder); about 30 spots for pets, trophies and banners; the paddock outside, with a place for every mount in the game; Decorate; looks for a room or the whole house (the tavern; Barrow Hall from the Barrow's collection log, Gilded Barrow Hall from its heroic one); one big Dungeons button | Rooms that come with new dungeons, inviting people over |
+| Dungeon picker | Dungeons: Act 1 stepped 3-dungeon selector (`ilvl 26 → 34 → 42`), Normal or Heroic, its collection log line with the prize at the end (inside: what finishing it gives and the loot per role; tap a drop to hold it up against what that role wears), then your role, hero and brew, loot or practice; Normal shows your Warband companions & Group option, while Heroic says it needs at least two players (locked outside practice until online play) | Online Party Finder for Heroics and friends in seats, more dungeons |
 | Logs | Collection log by boss and garden, OSRS style: drops, kill count, fastest kill, wipes; Normal or Heroic; each dungeon's whole log with what finishing it gives; achievements; stats |  |
 | The Garden | 3 planter beds (`bed.0`, `bed.1`, `bed.2`) in the Hearth's outdoor yard; seeds drop from dungeon bosses (Gravekeeper drops Glowcap seeds at 1/5 Normal, 1/3 Heroic) and grow over 3 dungeon clears (`GROW_CLEARS = 3`); harvesting uses the `snip`/`pluck` close-up toys and yields 8–10+ herbs plus Gathering XP; first harvest gives the Hill Goat; every harvest rolls `GARDEN_TABLE` for trophies, kettle, bunting, hare and pets | New seeds from future dungeons |
 | Brews | The cauldron by your fire, 4 party-wide brews, 1 bottle poured at the dungeon door (`pourFor`) buffs all 3 seats for faster clears | More recipes as new dungeon seeds open |
@@ -32,7 +32,7 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 16 
 1. **Dungeons + Collection Logs are the core loop.** A run takes about 4 minutes in Common gear and melts down toward ~2 minutes in full BiS Epic gear, needs all three roles, and drops loot every time.
 2. **Four buttons plus the swipe dodge, never more.** Sets, weapon traits, and boss weapons transform what buttons do; they never add one.
 3. **Dramatic power creep, long collection chase.** Regular gear climbs Common → Rare in 8 clears, while Epic 3-piece sets (1/35 per piece) and Boss Weapons (1/50) push power up to `1.96×` (plus crit and summons) so grinding 100+ runs feels noticeably faster and more explosive as you gear up your Warband.
-4. **Warband & Group on Normal, Friends & Party Finder ONLY on Heroic.** Normal dungeons can be run with your 3-hero Warband (so gearing your alts directly speeds up your runs) or with a group if you want; Heroic dungeons are strictly Friends & Party Finder ONLY (Warband disabled on Heroic; solo Warband entry is blocked for loot on Heroic while Practice / Dev "Everything open" remains playable for testing).
+4. **Normal solo with your Warband, Heroic in a group.** Normal dungeons can be run with your 3-hero Warband (so gearing your alts directly speeds up your runs) or with a group if you want. Heroic needs at least two real players; with two, a bot takes the third seat, and your Warband heroes never sit in. There is no online play yet, so Heroic opens only for practice (the "Everything open" testing switch lets you in).
 5. **No drinking for mana and no waiting around:** mana refills between pulls.
 
 ## Combat, Difficulty & Boss Mechanics
@@ -83,9 +83,9 @@ Skill trees and hero levels are omitted so that **Gear alone drives damage, heal
 
 A hero is one race and one class, picked when you make them and fixed after. You can have six, and the one you play stands by the fire on the Hearth.
 
-- **The bunk room & Warband party seats:** every hero you aren't playing waits by their bed in the house. Tap one to play them, check their gear, rename them (once) or let one go (the last one stays); an empty bed makes a new hero. When you enter a **Normal** dungeon, your own heroes from your bunk room (`seats(p, false)` in `src/meta/party.ts`) automatically fill the other two role seats wearing their real equipped gear, sets, traits, unique weapons, and sprites (bots stand in only for roles you haven't created a hero for yet), or you can group with friends. **Heroic** dungeons are **Friends & Party Finder ONLY** (`seats(p, true)` disables Warband companions, and solo Warband entry is blocked on Heroic for loot while Practice / Dev "Everything open" remains playable for testing).
+- **The bunk room & Warband party seats:** every hero you aren't playing waits by their bed in the house. Tap one to play them, check their gear, rename them (once) or let one go (the last one stays); an empty bed makes a new hero. When you enter a **Normal** dungeon, your own heroes from your bunk room (`seats(p, false)` in `src/meta/party.ts`) automatically fill the other two role seats wearing their real equipped gear, sets, traits, unique weapons, and sprites (bots stand in only for roles you haven't created a hero for yet), or you can group with friends. **Heroic** needs at least two real players (`partyProblem` in `src/meta/party.ts`); with two, a bot takes the third seat, and your Warband heroes never sit in (`seatsFor`). With no online play yet, Heroic opens only for practice, or with the "Everything open" testing switch.
 - **Each hero keeps:** their regular gear (the Common to Rare ladder), their equipped uniques, their title and their clears.
-- **Every hero shares:** the collection (a unique fits any hero of its role), kill counts, Marks, achievements, titles and the Hearth.
+- **Every hero shares:** the collection (a unique fits any hero of its role), kill counts, achievements, titles and the Hearth.
 - **Shared gear:** a floor per role, up to Rare. Spare pieces and your own ladder raise it, and every hero of that role can put it on, including heroes made later (a new hero starts wearing it). Epic is earned on the hero.
 - **Nothing goes on by itself.** A new piece waits in the hero's bag and glows on the gear doll with "Up" (a better regular piece) or "New" (a unique). Your hero's tag at the top of the house counts what's waiting; tap the slot, compare, and Put it on: the slot bursts, the item level counts up. The chest reveal says "Put it on in Gear".
 - **Races:** Dwarf, Elf and Human from the start. Gnome, Goblin, the Risen (undead) and Orc are earned, each in its own dungeon: the Risen from filling Barrow Crypt's whole collection log, the others with dungeons to come. The hero maker shows how close you are to each.
@@ -99,12 +99,13 @@ Home is a tall house on the hill, cut open like a doll's house. Built 14 Oct aft
 
 - **Zoom:** pinch or scroll. Zoomed out you see the whole house, each room with a sign; tap one to go in. Zoomed in, tap things to use them. It opens on the hall.
 - **One big button: Dungeons.** Everything else is a thing in the house: the Barrow door in the cellar, the 3 garden planter beds in the yard, the armour stand (gear), the big book in the trophy loft (the collection log), the cauldron and the larder (the satchel). Your hero's tag at the top opens gear too.
-- **Rooms:** the trophy loft, the bunk room (your other heroes), the armory, the hall (your hero, the fire, the mantel), the stable, the brewing room, the cellar with the Barrow door and two bricked arches for dungeons to come, and the yard (with the 3 planter beds).
-- **Trophies everywhere:** about 30 spots: the mantel, the loft's shelves, banners on the walls and the roof's flagpoles, pets by the fire, on the rug, on the table and in the loft, the stall and the yard. Decorate shows the empty ones; the rest of the time they're hidden.
+- **Rooms:** the trophy loft, the bunk room (your other heroes), the armory, the hall (your hero, the fire, the mantel), the brewing room (the whole ground floor, with the door out to the garden), the cellar with the Barrow door and two bricked arches for dungeons to come. Outside: the yard on the left (with the 3 planter beds) and the paddock on the right.
+- **The paddock:** a fenced field at ground level, right of the house, with a trough and hay. Every mount in the game has its own place in it. The ones you own stand there and wander a little; the ones you haven't got are a shadow with a "?", like the collection log. Tap a mount for its card: its name, where it drops, its rate, and the kill count you got it at. It replaced the indoor stable (16 Oct): a mount that was in the stall is in the paddock, nothing lost.
+- **Trophies everywhere:** about 30 spots: the mantel, the loft's shelves, banners on the walls and the roof's flagpoles, pets by the fire, on the rug, on the table and in the loft. Decorate shows the empty ones; the rest of the time they're hidden.
 - **Dungeons** (the big button or the Barrow door): the dungeon's picture, with one small collection log line under it that opens to show what each role can get. Then you: pick a role and you play your hero of that role you played last (Change picks another or makes one), your brew, and loot or practice. Your own Warband heroes from your bunk room take the other seats in their own gear (or bots stand in until you make them).
 - **Looks:** Decorate, then Looks: pick a look and put it on a room or the whole house. Looks only; everything you placed stays where it is.
   - **Tavern:** the default. Wood, plaster, lamplight and a crackling fire.
-  - **Barrow Hall:** opens when you fill the Barrow's whole collection log, and shows how close you are until then. The Barrow's own brick and flagstones, burial niches with skulls, green lanterns, the Gravekeeper's green fire in the hall, a coffin in the armory, a gravestone in the stable, wisps in the cellar. Put it on the whole house and the beams and outer walls turn to stone and the roof to slate.
+  - **Barrow Hall:** opens when you fill the Barrow's whole collection log, and shows how close you are until then. The Barrow's own brick and flagstones, burial niches with skulls, green lanterns, the Gravekeeper's green fire in the hall, a coffin in the armory, a gravestone in the brewing room, wisps in the cellar. Put it on the whole house and the beams and outer walls turn to stone and the roof to slate.
   - **Gilded Barrow Hall:** from the heroic Barrow's log. Gold bones, gold frames and lanterns, the green fire burning higher.
   - Every dungeon brings a look like this, and a gilded one from its heroic log.
 - **Next:** rooms that come with new dungeons (the cellar's bricked arches become new dungeons' doors).
@@ -157,9 +158,9 @@ The weapon is the upgrade you feel; Helm, Shoulders and Chest are the set. Power
 - The weapon carries 40% of your power (`WEIGHT.weapon = 4` of `10`), so a Boss Weapon (`rar: 4`, `+38.4%` damage/healing and `+19.2%` health) is a massive power spike.
 - Every clear drops a regular item better than the best you have in your weakest slot. No dead drops. It waits until you put it on. It also drops a shared piece for another role, up to Rare, so a new alt never starts cold.
 - Tap any drop (in the collection log or the Dungeons sheet) to hold it up against what that role wears now: Upgrade, Downgrade, Same power or A trade, then what changes (item level, power, health, set count) and any effect it adds or takes away.
-- **Barrow Marks**: 1 per clear, 3 per duplicate. Spend 5 to swap your weapon's trait.
+- **No currency:** a duplicate counts in the collection log ("Seen 3×") and your weapon's trait swaps for free. The save still counts each dungeon's `marks` (1 per clear, 3 per duplicate), never shown or spent.
 
-**Weapon traits** (unlocked at Rare, swappable for 5 Barrow Marks, and stay active alongside Unique weapons)
+**Weapon traits** (unlocked at Rare, free to swap, and stay active alongside Unique weapons)
 
 | Role / Class | Trait | Trait | Trait |
 | --- | --- | --- | --- |
@@ -200,7 +201,7 @@ Dungeons 2 to 4 are placeholder themes; their names come with the races pass.
 
 ## Loot
 
-Loot runs on OSRS rules: every unique has its own drop rate, rare means properly rare, and a 1-in-5,000 pet is the flex. Each player rolls their own table on every clear, so nobody fights over drops.
+Loot runs on OSRS rules: every unique has its own drop rate, rare means properly rare, and a 1-in-2,500 pet is the flex: a bonus slot in the log (like the mount and dye), never needed to finish it. Each player rolls their own table on every clear, so nobody fights over drops.
 
 ### Barrow Crypt drop table
 
@@ -212,13 +213,13 @@ Loot runs on OSRS rules: every unique has its own drop rate, rare means properly
 | Set chest | 1/35 | About 2 hours 20 |  |
 | Sir Rattlebones' Plume | 1/50 | About 3 hours 20 | From the mini boss; a trophy for the mantel |
 | Gravekeeper's weapon for your role | 1/50 | About 3 hours 20 | The Gravedigger, Lantern of the Long Night, Gravefrost Staff or The Cryptfangs, each with its own effect |
-| Gravehound (mount) | 1/1,000 | About 67 hours | Waits in the Hearth's stall |
+| Gravehound (mount) | 1/1,000 | About 67 hours | Waits in the Hearth's paddock |
 | Ghostly Dye | 1/1,000 | About 67 hours | Your Barrow set goes pale and see-through. Looks only |
-| Pint-sized Gravekeeper (pet) | 1/5,000 | About 333 hours | Sits by the fire at home |
+| Pint-sized Gravekeeper (pet) | 1/2,500 | About 165 hours | Sits by the fire at home |
 
 - Rolls are independent, OSRS style: two uniques in one clear can happen, and so can a 200-clear dry streak (about 1 player in 60).
-- An Epic piece (3 set pieces at 1/35 + 1 weapon at 1/50) drops about once every 10 clears (~10.6% per clear), and completing the full 4/4 Epic kit averages ~50 clears (~3.5 hours).
-- No pity on uniques. Duplicates give 3 Barrow Marks each.
+- An Epic piece (3 set pieces at 1/35 + 1 weapon at 1/50) drops about once every 10 clears (~10.6% per clear), and completing the full 4/4 Epic kit takes ~70 clears for a typical player (~4 hours) and ~145 for an unlucky one (simulated: the last piece is the dry streak).
+- No pity on uniques. A duplicate counts in the collection log ("Seen 3×").
 - Kill count shows on every loot screen and in the collection log ("Rimebone Chest, KC 42"), so spoons and dry streaks become stories.
 
 ### The walkout
@@ -239,10 +240,10 @@ The final chest has a tell before the loot shows, and the game never explains it
 Every dungeon has a harder version, its Heroic, for after the gear cap. It never gives more power.
 
 - **Opens** after 10 clears of the dungeon, about when your gear tops out. The Dungeons sheet switches between Normal and Heroic on the dungeon's picture; until it opens, it shows how close you are.
-- **Group Finder / Friends Only (online):** Normal dungeons can be played either with a group or solo alongside your Warband heroes; Heroic dungeons are built for real 3-player groups via Group Finder or friends once online play is live (kept playable with your Warband while offline).
+- **Players:** Normal can always be played solo with your Warband heroes, or with a group. Heroic needs at least two real players; with two, a bot takes the third seat, and your Warband heroes never sit in (`HEROIC_MIN_PLAYERS`, `partyProblem` and `seatsFor` in `src/meta/party.ts`); the players come through Group Finder or friends once online play is live. There is no online play yet, so Heroic opens only for practice (the "Everything open" testing switch lets you in); the Dungeons sheet says "Heroic needs at least two players. Bring a friend."
 - **Harder:** the same dungeon and mechanics, made for full Epic (`hit: 3.2, trashHp: 1.95, bossHp: 1.63`). Bots in full Epic clear it in about four minutes without wiping; in Common they get buried.
 - **Gilded drops:** every drop is the normal one gilded, at the same rate and the same power: a gilded set piece counts for the same set, a gilded weapon has the same effect. Heroic is a collection of its own, with its own kill counts and its own collection log.
-- **Marks and achievements:** a heroic clear pays the dungeon's own Marks and counts for its achievements.
+- **Achievements:** a heroic clear counts for the dungeon's own achievements.
 
 ## Collection log rewards
 
