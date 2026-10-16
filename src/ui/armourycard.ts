@@ -3,12 +3,14 @@
  * collection log's closer look (the verdict over three numbers, each with its change), so the two always
  * match. Then the set it joins or breaks, each bonus marked On, Turns on, Turns off or how many more it
  * needs; what the piece adds, takes away or keeps; and where it drops and when you got it (for a piece not
- * found yet, where it drops comes first). The weapon's trait has its own row under the card.
+ * found yet, where it drops comes first). A piece whose gilding kit is yours has the Plain / Gilded switch
+ * by its kind. The weapon's trait has its own row under the card.
  */
-import { ITEMS, SETS } from '../content';
+import { ITEMS, KITS, SETS } from '../content';
 import { ROLE_SLOTS, TRAITS, gearId, gearKey, traitDef } from '../content/gear';
+import { gilded } from '../content/kits';
 import { roleOf, type Hero, type Profile } from '../meta/profile';
-import { compareOn, itemShare, setChange, weaponTrait, worn, type Effect, type ShelfPiece } from '../meta/gear';
+import { compareOn, gildedOn, itemShare, lookId, setChange, weaponTrait, worn, type Effect, type ShelfPiece } from '../meta/gear';
 import { cap, esc, fmtN, fmtRate } from './dom';
 import { iconOf, nameOf, rarLook } from './art';
 import { ROLE_STAT, VERDICT, tag } from './itemsheet';
@@ -44,25 +46,32 @@ export function pieceCard(p: Profile, h: Hero, x: ShelfPiece): string {
   }
   const where = whereFrom(p, d.id), drop = !x.found && where ? `<p class="ar-drop">${esc(where)}</p>` : '';
   const src = d.flavor || (x.found && where) ? `<p class="ar-src">${d.flavor ? `<q>${esc(d.flavor)}</q>` : ''}${x.found ? esc(where) : ''}</p>` : '';
-  // the right side of the kind line is kept for the piece's Plain / Gilded switch (the Heroic kits' gold look)
   return `<article class="pk-cmp v-${v.cls} ar-card" aria-live="polite">
-    <p class="pk-v">${v.mark}<b>${esc(v.word)}</b><span>${esc(d.name)}</span></p>
-    <p class="ar-kind"><span>${esc(kind)}</span></p>${drop}
+    <p class="pk-v">${v.mark}<b>${esc(v.word)}</b><span>${esc(nameOf(x.found ? lookId(p, d.id) : d.id))}</span></p>
+    <div class="ar-kind"><span>${esc(kind)}</span>${gildSwitch(p, d.id)}</div>${drop}
     <div class="pk-ss">${nums}</div>
-    ${setRow(now, d, on)}${fx ? `<ul class="ar-fx">${fx}</ul>` : ''}${src}
+    ${setRow(p, now, d, on)}${fx ? `<ul class="ar-fx">${fx}</ul>` : ''}${src}
   </article>`;
 }
 
-/** the set a piece joins or breaks: its three pieces as they would be worn (the one coming on ringed gold,
- *  the one coming off ringed red), how many before and after, and each bonus's state */
-function setRow(now: ReturnType<typeof worn>, d: ShelfPiece['def'], on: boolean): string {
+/** a piece you own whose gilding kit is yours (from Heroic): plain or gilded, the same power */
+function gildSwitch(p: Profile, id: string): string {
+  if (!KITS[gilded(id)] || !p.collection[gilded(id)] || !p.collection[id]) return '';
+  const on = gildedOn(p, id);
+  return `<span class="seg gild-sw" role="radiogroup" aria-label="Its look">${['Plain', 'Gilded'].map((w, i) => `<button type="button" class="sg" role="radio" data-act="gild" data-id="${esc(id)}" data-v="${i}" aria-checked="${on === !!i}">${w}</button>`).join('')}</span>`;
+}
+
+/** the set a piece joins or breaks: its three pieces as they would be worn and as they look (the one coming
+ *  on ringed gold, the one coming off ringed red), how many before and after, and each bonus's state */
+function setRow(p: Profile, now: ReturnType<typeof worn>, d: ShelfPiece['def'], on: boolean): string {
   const sc = setChange(now, d), st = sc ? SETS[sc.id] : undefined;
   if (!sc || !st) return '';
   const after = on ? sc.before : sc.after;
   const pcs = st.pieces.map((pid) => {
     const slot = ITEMS[pid].slot, there = slot === d.slot ? d : now[slot].def, lit = there.setId === sc.id;
     const ring = slot === d.slot && !on ? (sc.after > sc.before ? ' in' : sc.after < sc.before ? ' out' : '') : '';
-    return `<span class="tile${lit ? '' : ' off'}${ring}" style="--rc: ${rarLook(pid).color}" title="${esc(nameOf(pid))}">${iconOf(lit ? there.id : pid)}</span>`;
+    const shown = lit ? lookId(p, there.id) : pid;
+    return `<span class="tile${lit ? '' : ' off'}${ring}" style="--rc: ${rarLook(pid).color}" title="${esc(nameOf(shown))}">${iconOf(shown)}</span>`;
   }).join('');
   const line = (n: number, desc: string, ready: boolean): string => {
     const was = sc.before >= n, will = after >= n;

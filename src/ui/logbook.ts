@@ -7,7 +7,8 @@
  * kill count you got it at. Tapping any slot (a piece under a stand, the shelf, a set's rows, a tile) opens a
  * closer look at it over the page (logpeek.ts).
  */
-import { ACHIEVEMENT_LIST, COLLECTIBLES, DUNGEONS, ITEMS, TITLES, heroicVersion } from '../content';
+import { ACHIEVEMENT_LIST, COLLECTIBLES, DUNGEONS, ITEMS, KITS, TITLES, heroicVersion, itemOf } from '../content';
+import { KIT_RATE } from '../content/kits';
 import { CLASSES, type ClassId } from '../content/folk';
 import { LOOKS } from '../content/house';
 import { ROLES } from '../content/roles';
@@ -77,20 +78,20 @@ function prize(p: Profile, dg: DungeonInfo, flipped: boolean): string {
   const ach = logAchievement(dg.id), pr = logProgress(p, dg.id), won = !!ach && !!p.achievements[ach.id];
   const main = ach ? mainReward(ach) : null, art = ach ? PRIZE_ART[ach.id] : undefined;
   const left = pr.need - pr.have;
-  const ORDER = ['pet', 'mount', 'dye'];
+  const ORDER = ['pet', 'mount', 'dye', 'trophy'];
   const bonus = (dg.bonus || []).map((id) => (id.startsWith('dye.') ? 'dye' : COLLECTIBLES[id]?.kind || 'drop')).sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
   const line = won ? `Log complete on <b>${esc(fmtDate(p.achievements[ach!.id].at))}</b>.`
     : `<b>${left} to go</b> for ${esc(main ? main.name.replace(/^The /, 'the ') : 'its prize')}.${bonus.length ? ` The ${esc(andList(bonus))} ${bonus.length > 1 ? 'are' : 'is'} a bonus.` : ''}`;
   const kcs = dg.bosses.map((b) => `<span class="lb-kc">${esc(b.name)} <b>KC ${fmtN(p.bosses[`${dg.id}.${b.id}`]?.kc || 0)}</b></span>`).join('')
     + (p.dungeons[dg.id]?.pb ? `<span class="lb-kc">Best <b>${fmtT(p.dungeons[dg.id].pb)}</b></span>` : '');
   const race = ach?.reward.race, look = ach?.reward.look;
-  // Normal or Heroic: a toggle across the top of the stage, its thumb on the side you're on. Heroic's pieces are the
-  // same ones gilded, at the same power, and the page says so: it's a rarer look and a log of its own, not an upgrade
+  // Normal or Heroic: a toggle across the top of the stage, its thumb on the side you're on. Heroic's log is its gilding
+  // kits, the gilded look of each piece at the same power, and the page says so: a rarer look, not an upgrade
   const base = dg.heroicOf ? DUNGEONS[dg.heroicOf] : dg, hero = heroicVersion(base.id), on = !!dg.heroicOf;
   const side = (d: DungeonInfo, label: string, mine: boolean): string =>
     `<button type="button" role="radio" aria-checked="${mine}" data-act="entry" data-id="${esc(d.id)}.log"${mine ? '' : ' data-flip="1"'}>${label}</button>`;
   const mode = hero ? `<div class="lb-mode${on ? ' on' : ''}${flipped ? ' flip' : ''}" role="radiogroup" aria-label="Normal or Heroic log">${side(base, 'Normal', !on)}${side(hero, '<span class="gem" aria-hidden="true"><i></i></span>Heroic', on)}</div>
-    ${on ? '<p class="lb-mode-note">Gilded pieces: the same power as Normal, a rarer look, and a log of their own.</p>' : ''}` : '';
+    ${on ? '<p class="lb-mode-note">Heroic drops the Normal loot, plus gilding kits: each turns one piece gold, for good. Same power.</p>' : ''}` : '';
   const acts = won ? `<div class="lb-acts">${race && main ? `<button type="button" class="btn gold small" data-act="makerace" data-race="${esc(race)}">${GLYPH.plus}Make a ${esc(main.name.replace(/^The /, ''))}</button>` : ''}${look ? '<button type="button" class="btn small" data-act="putlook">Put up the look</button>' : ''}</div>` : '';
   return `<section class="lb-prize${won ? ' done' : ''}" aria-label="${esc(dg.name)} log">${mode}
     <div class="lb-plinth">${art ? `<img src="${spriteURL(art)}" alt="${esc(main?.name || '')}">` : ''}<span class="lb-base" aria-hidden="true"></span>${won ? '' : `<span class="lb-lock">${GLYPH.lock}${left} to go</span>`}</div>
@@ -115,7 +116,8 @@ function wardrobe(p: Profile, dg: DungeonInfo, peek: string | null): string {
   const stands = standsOf(dg.id);
   if (!stands.length) return '';
   const piece = dropOf(dg, stands[0].pieces[0]).rate, weapon = stands[0].weapon ? dropOf(dg, stands[0].weapon).rate : undefined;
-  return `<section class="lb-sec"><header class="lb-h"><h3>The wardrobe</h3><small>${piece ? `Pieces ${fmtRate(piece)}` : ''}${weapon ? ` · weapons ${fmtRate(weapon)}` : ''}</small></header>
+  const rates = dg.heroicOf ? `Kits ${fmtRate(KIT_RATE)} each, any seat` : `${piece ? `Pieces ${fmtRate(piece)}` : ''}${weapon ? ` · weapons ${fmtRate(weapon)}` : ''}`;
+  return `<section class="lb-sec"><header class="lb-h"><h3>The wardrobe</h3><small>${rates}</small></header>
     <div class="lb-stands">${stands.map((s) => standCard(p, dg, s, peek)).join('')}</div></section>`;
 }
 
@@ -162,7 +164,8 @@ function shelf(p: Profile, dg: DungeonInfo): string {
 
 /** a set's own page: its stand big, Try it on, its bonuses, and a row for every piece */
 function setPage(p: Profile, dg: DungeonInfo, s: Stand, view: LogView): string {
-  const ids = standPieces(s), have = ids.filter((id) => p.collection[id]).length, worn = s.pieces.filter((id) => p.collection[id]).length;
+  // the bonuses light by the pieces you have (a heroic stand's kits gild them, they don't add to them)
+  const ids = standPieces(s), have = ids.filter((id) => p.collection[id]).length, worn = s.set.pieces.filter((id) => p.collection[id]).length;
   const who = whoOf(s.set.role, s.set.cls), base = dg.heroicOf ? DUNGEONS[dg.heroicOf] : dg;
   const tryOn = view.tryOn && have < ids.length;
   const rows = ids.map((id) => pieceRow(p, dg, id)).join('');
@@ -176,11 +179,12 @@ function setPage(p: Profile, dg: DungeonInfo, s: Stand, view: LogView): string {
 }
 
 function pieceRow(p: Profile, dg: DungeonInfo, id: string): string {
-  const it = ITEMS[id], c = p.collection[id], t = slotTag(id), d = dropOf(dg, id);
+  const it = itemOf(id), c = p.collection[id], t = slotTag(id), d = dropOf(dg, id);
+  const what = KITS[id] && it ? `Turns the ${it.name} gold. Same power.` : it?.effectDesc;
   const side = c ? `<b>KC ${fmtN(c.kc)}</b><small>${esc(fmtDate(c.at))}</small>${c.n > 1 ? `<span class="seen">Seen ${fmtN(c.n)}×</span>` : ''}` : `<b>${fmtRate(d.rate)}</b><small>Not yet</small>`;
   return `<button type="button" class="lb-pc ${c ? 'got' : 'miss'}${c && !p.seen[id] ? ' new' : ''}" data-act="peek" data-id="${esc(id)}" style="--rc: ${t.bg}; --ri: ${t.ink}" aria-label="${esc(`${nameOf(id)}, ${t.word}, ${fmtRate(d.rate)}${c ? `, yours since kill count ${fmtN(c.kc)}` : ', not yet'}`)}">
     <span class="lb-pc-t" aria-hidden="true"><span class="tile">${iconOf(id)}</span><i class="cl-rar${t.pale ? ' pale' : ''}">${esc(t.word)}</i></span>
-    <span class="lb-pc-main"><b>${esc(nameOf(id))}</b><small>${esc([SLOT_WORD[it?.slot || ''], fmtRate(d.rate)].filter(Boolean).join(' · '))}</small>${it?.effectDesc ? `<em>${esc(it.effectDesc)}</em>` : ''}</span>
+    <span class="lb-pc-main"><b>${esc(nameOf(id))}</b><small>${esc([SLOT_WORD[it?.slot || ''], fmtRate(d.rate)].filter(Boolean).join(' · '))}</small>${what ? `<em>${esc(what)}</em>` : ''}</span>
     <span class="lb-pc-side">${side}</span></button>`;
 }
 
@@ -197,7 +201,7 @@ function gardenPage(p: Profile): string {
 /** the rewards that aren't drops: from achievements and firsts */
 function otherPage(p: Profile): string {
   const drops = new Set([...Object.values(DUNGEONS).flatMap((d) => d.loot.flatMap((t) => t.drops.map((x) => x.id))), ...GARDEN_TABLE.map((d) => d.id)]);
-  const ids = Object.values(COLLECTIBLES).filter((c) => !drops.has(c.id)).map((c) => c.id), got = ids.filter((id) => p.collection[id]).length;
+  const ids = Object.values(COLLECTIBLES).filter((c) => !drops.has(c.id) && (!c.retired || p.collection[c.id])).map((c) => c.id), got = ids.filter((id) => p.collection[id]).length;
   return `<div class="cl-head plain"><div><p class="eyebrow">Other</p><h3>Rewards</h3><p class="cl-obt">Obtained: <b class="${state(got, ids.length)}">${got}/${ids.length}</b></p>
       <p class="fine">Pets, mounts, trophies, banners and looks that achievements and firsts give. Never power.</p></div></div>
     <div class="cl-grid">${ids.map((id) => { const a = ACHIEVEMENT_LIST.find((x) => x.reward.collectible === id); return slot(p, id, { note: a ? a.name : COLLECTIBLES[id]?.source || '' }); }).join('')}</div>`;
@@ -220,6 +224,7 @@ export function dropOf(dg: DungeonInfo, id: string): { rate?: number; who?: stri
  *  for everything else. `pale` grounds take ink-coloured words. */
 export function slotTag(id: string, bonus = false): { word: string; bg: string; ink: string; pale: boolean } {
   if (bonus) return { word: 'Bonus', bg: '#9BE15D', ink: '#2E6B2A', pale: true };
+  if (KITS[id]) return { word: 'Kit', bg: '#F2C230', ink: '#8A5A10', pale: true };
   if (ITEMS[id]) { const r = rarLook(id); return { word: r.name, bg: r.color, ink: r.ink, pale: r.key === 'unique' }; }
   const k = COLLECTIBLES[id]?.kind;
   if (k === 'pet') return { word: 'Pet', bg: '#9BE15D', ink: '#2E6B2A', pale: true };

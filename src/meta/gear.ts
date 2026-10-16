@@ -2,7 +2,8 @@
  *  wait in the hero's bag (regular gear) or as fresh uniques until you put them on. */
 import type { GearKey, ItemDef, Rar, RoleId, SlotId } from '../content/types';
 import type { RegularSlot } from './profile';
-import { ITEMS, SETS } from '../content';
+import { ITEMS, KITS, SETS } from '../content';
+import { gilded } from '../content/kits';
 import { EPIC, RARITY, SLOTS, SLOT_IDS, TRAITS, gearId, gearKey, hpMultiplier, powerFromScore, traitDef, weightedScore } from '../content/gear';
 import type { ClassId, RaceId } from '../content/folk';
 import { activeHero, createHero, roleOf, type Hero, type Profile } from './profile';
@@ -98,7 +99,7 @@ export function effectsOf(l: Loadout, role: GearKey): Effect[] {
   const u = l.unique ? Object.values(ITEMS).find((d) => d.effect === l.unique) : undefined;
   if (u && l.unique) out.push({ kind: 'unique', id: l.unique, name: u.name, desc: u.effectDesc || '' });
   for (const b of l.bonuses) {
-    const piece = Object.values(ITEMS).find((d) => d.kind === 'set' && d.effect === b && !d.id.endsWith('.gilded'));
+    const piece = Object.values(ITEMS).find((d) => d.kind === 'set' && d.effect === b);
     if (piece && piece.effectDesc) out.push({ kind: 'unique', id: b, name: piece.name, desc: piece.effectDesc });
   }
   for (const t of l.traits) { const d = traitDef(role, t); if (d) out.push({ kind: 'trait', id: d.id, name: d.name, desc: d.desc }); }
@@ -212,6 +213,20 @@ export function freshForRole(p: Profile, id: string): void {
   if (!it || it.kind === 'gear') return;
   for (const h of p.roster) if (fitsHero(it, h) && h.equip[it.slot] !== id && !h.fresh.includes(id)) h.fresh.push(id);
 }
+
+/** A piece's gilded look is yours (its gilding kit dropped in Heroic) and switched on, for every hero who wears
+ *  it. It starts on, like every look; it never changes power. */
+export const gildedOn = (p: Profile, id: string): boolean => { const k = gilded(id); return !!KITS[k] && !!p.collection[k] && !p.settings.looksOff.includes(k); };
+/** Switch a piece you own between plain and gilded, once you have its kit. */
+export function setGilded(p: Profile, id: string, on: boolean): boolean {
+  const k = gilded(id);
+  if (!KITS[k] || !p.collection[k] || !p.collection[id]) return false;
+  p.settings.looksOff = p.settings.looksOff.filter((x) => x !== k);
+  if (!on) p.settings.looksOff.push(k);
+  return true;
+}
+/** What a piece looks like: its kit's id (the gilded picture and name) while it's gilded, else its own. */
+export const lookId = (p: Profile, id: string): string => (gildedOn(p, id) ? gilded(id) : id);
 
 /** Uniques the roster owns that this hero could wear in a slot, sorted highest item level first. */
 export function ownedFor(p: Profile, h: Hero, slot: SlotId): ItemDef[] {

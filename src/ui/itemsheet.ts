@@ -2,14 +2,17 @@
  * One thing's sheet, opened from the collection log, the dungeon picker or the gear doll. A piece of
  * gear is held up against what its role wears now (your hero of that role, the one you played last, or
  * what a new one would start in): better or worse at a glance, then what changes, then what the piece
- * gives and does on its own. Pets, mounts, trophies and looks say what they are and where they come from.
+ * gives and does on its own, and its gilded look: where its gilding kit drops, or, once you have the piece
+ * and its kit, the switch between plain and gilded. A kit's sheet is its piece, gilded. Pets, mounts,
+ * trophies and looks say what they are and where they come from.
  */
-import { DUNGEONS, SETS, thing } from '../content';
+import { DUNGEONS, ITEMS, KITS, SETS, thing } from '../content';
+import { gilded } from '../content/kits';
 import { ROLES } from '../content/roles';
 import { ROLE_SLOTS, gearKey } from '../content/gear';
 import type { CollectibleKind, ItemDef, RoleId } from '../content/types';
 import { FIRST_HARVEST_GIFT, GARDEN_TABLE } from '../content/vale';
-import { bestRegular, compareFor, compareOn, floorWorn, itemShare, wearerOf, type Compare, type Effect, type Verdict } from '../meta/gear';
+import { bestRegular, compareFor, compareOn, floorWorn, gildedOn, itemShare, lookId, wearerOf, type Compare, type Effect, type Verdict } from '../meta/gear';
 import { spotById, spotOf } from '../meta/hearth';
 import type { Profile } from '../meta/profile';
 import { cap, esc, fmtDate, fmtN, fmtRate, GLYPH } from './dom';
@@ -29,11 +32,36 @@ function valeSource(id: string): { rate: number; key: string; word: string } | n
   return d ? { rate: d.rate, key: 'vale.harvests', word: 'harvested the garden' } : null;
 }
 
+/** where a drop comes from: its dungeon, its boss's name and its rate */
+function dropLine(id: string): { heroic: boolean; boss: string; rate: number; role?: RoleId; kc: string } | null {
+  for (const dg of Object.values(DUNGEONS)) for (const tb of dg.loot) for (const d of tb.drops) if (d.id === id) return { heroic: !!dg.heroicOf, boss: dg.bosses.find((b) => b.id === tb.boss)?.name || '', rate: d.rate, role: d.role, kc: `${dg.id}.${tb.boss}` };
+  return null;
+}
+
+/** a piece's gilded look: where its kit drops, or that it's yours, and with the piece and its kit, the switch */
+function gildBox(p: Profile, d: ItemDef): string {
+  const k = KITS[gilded(d.id)], src = k && dropLine(k.id);
+  if (!k || !src) return '';
+  const kit = !!p.collection[k.id], own = !!p.collection[d.id], on = gildedOn(p, d.id);
+  const line = kit && own ? 'Plain or gilded, the same power.' : kit ? 'Its kit is yours: when the piece drops, it comes gilded.'
+    : `Its gilding kit drops in Heroic, ${fmtRate(src.rate)} from ${src.boss}, for any seat. Same power.`;
+  const sw = kit && own ? `<div class="seg gild-sw" role="radiogroup" aria-label="Its look">${['Plain', 'Gilded'].map((w, i) => `<button type="button" class="sg" role="radio" data-act="gild" data-id="${esc(d.id)}" data-v="${i}" aria-checked="${on === !!i}">${w}</button>`).join('')}</div>` : '';
+  return `<div class="box gild-box${on ? ' on' : ''}"><b style="font-family: var(--f-display); font-weight: 400">Gilded look</b>
+    <div class="gild-row"><span class="tile${kit ? '' : ' dim'}" aria-hidden="true">${iconOf(k.id)}</span><span class="fine">${esc(line)}</span></div>${sw}</div>`;
+}
+
 export function itemSheet(p: Profile, id: string, hasBack: boolean): { head: string; body: string } {
   const t = thing(id);
   const e = p.collection[id];
   let kind = '', side = '', more = '', vs = '', act = '';
-  if (t?.kind === 'item') {
+  if (t?.kind === 'kit') {
+    // a gilding kit: its piece, gilded, and the way to the piece
+    const d = ITEMS[t.def.item];
+    kind = `Gilding kit · ${d.setId ? `${SETS[d.setId].name} ${d.slot}` : `boss weapon`} · ${ROLES[d.role].title}`;
+    side = `<p class="lede">Turns the ${esc(d.name)} gold for every hero who wears it. Never more power.${e ? '' : ' Any seat can get it.'}</p>`;
+    if (e) more = gildBox(p, d);
+    act = `<button type="button" class="btn small" data-act="item" data-id="${esc(d.id)}">${GLYPH.shield}The ${d.slot === 'weapon' ? 'weapon' : 'piece'}</button>`;
+  } else if (t?.kind === 'item') {
     const d: ItemDef = t.def, gk = gearKey(d);
     const look = rarLook(id);
     const tierTag = d.tier && d.tier > 1 ? ` · Tier ${d.tier}` : '';
@@ -46,29 +74,32 @@ export function itemSheet(p: Profile, id: string, hasBack: boolean): { head: str
     // the effect is already in the comparison when wearing it would add it
     if (d.effectDesc && !cmp?.c.gains.some((x) => x.kind === 'unique')) more += `<div class="box"><b style="font-family: var(--f-display); font-weight: 400">When worn</b><span class="fine">${esc(d.effectDesc)}</span></div>`;
     if (d.setId) { const s = SETS[d.setId]; more += `<div class="box setbox"><b style="font-family: var(--f-display); font-weight: 400">${esc(s.name)} set</b><div class="setline"><i>2</i><span>${esc(s.bonus2.desc)}</span></div><div class="setline ${s.bonus3.ready ? '' : 'later'}"><i>3</i><span>${esc(s.bonus3.desc)}</span></div></div>`; }
+    more += gildBox(p, d);
     if (d.flavor) more += `<p class="fine it-fl">“${esc(d.flavor)}”</p>`;
   } else if (t?.kind === 'collectible') {
     kind = KIND_WORD[t.def.kind];
     side = `<p class="lede">${esc(t.def.desc)}</p>`;
   }
-  let source = '';
-  for (const dg of Object.values(DUNGEONS)) for (const tb of dg.loot) for (const d of tb.drops) if (d.id === id) source = `${dg.heroicOf ? 'Heroic: ' : ''}${dg.bosses.find((b) => b.id === tb.boss)?.name}, ${fmtRate(d.rate)}${d.role ? ` (${ROLES[d.role].title})` : ''}`;
+  const line = dropLine(id);
+  let source = line ? `${line.heroic ? 'Heroic: ' : ''}${line.boss}, ${fmtRate(line.rate)}${line.role ? ` (${ROLES[line.role].title})` : ''}` : '';
   if (!source && t?.kind === 'item' && t.def.kind === 'gear') source = 'Every dungeon clear upgrades your weakest regular slot up to Rare';
   if (!source && t?.kind === 'collectible') source = t.def.source;
-  const kc = (() => { for (const dg of Object.values(DUNGEONS)) for (const tb of dg.loot) if (tb.drops.some((d) => d.id === id)) return p.bosses[`${dg.id}.${tb.boss}`]?.kc || 0; return null; })();
+  const kc = line ? p.bosses[line.kc]?.kc || 0 : null;
   const vsrc = valeSource(id);
   const got = e ? `Got it${e.kc ? ` at ${vsrc || id === FIRST_HARVEST_GIFT ? 'harvest' : 'kill count'} ${fmtN(e.kc)}` : ''} on ${fmtDate(e.at)}${e.n > 1 ? `. Seen ${e.n} times.` : '.'}`
     : t?.kind === 'item' && t.def.kind === 'gear' ? 'Regular progression gear from dungeon clears.' : kc !== null ? `Not yet. Your kill count is ${fmtN(kc)}.` : vsrc ? `Not yet. You’ve ${vsrc.word} ${fmtN(p.counters[vsrc.key] || 0)} times.` : 'Not yet.';
   const spot = e ? spotOf(p, id) : null;
   const home = spot ? ` It is in your house: ${spotById(spot)?.label.toLowerCase() || ''}.` : e && t?.kind === 'collectible' && t.def.kind === 'mount' ? ' It lives in your paddock.' : '';
   const acts = [hasBack ? `<button type="button" class="btn small" data-act="back">${GLYPH.left}Back</button>` : '', act].filter(Boolean).join('');
-  const body = `<div class="detail"><span class="tile" aria-hidden="true" style="box-shadow: 0 3px 0 var(--ink), inset 0 0 0 4px ${colourOf(id)}">${iconOf(id)}</span>
+  // a piece you own shows as it looks: gilded, once its kit is yours and on
+  const pic = t?.kind === 'item' ? lookId(p, id) : id;
+  const body = `<div class="detail"><span class="tile" aria-hidden="true" style="box-shadow: 0 3px 0 var(--ink), inset 0 0 0 4px ${colourOf(id)}">${iconOf(pic)}</span>
       <div class="detail-side">${side}</div></div>
     ${vs}${more}
     <div class="stats"><span class="chip">From <b>${esc(source || 'Unknown')}</b></span></div>
     <p class="fine">${esc(got + home)}</p>
     ${acts ? `<div class="actions">${acts}</div>` : ''}`;
-  return { head: `<h2>${esc(nameOf(id))}</h2><p>${esc(kind)}</p>`, body };
+  return { head: `<h2>${esc(nameOf(pic))}</h2><p>${esc(kind)}</p>`, body };
 }
 
 /** each verdict's word, its colour class and its mark */

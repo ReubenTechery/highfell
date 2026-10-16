@@ -3,10 +3,11 @@
  * one clear can happen and so can a long dry streak. Kill counts go up with every kill. Duplicates
  * turn into marks. On top of that, every full clear drops one regular piece that climbs the
  * Common to Epic ladder for the hero you played, and one shared piece for another role, so no run
- * is ever empty. Uniques go into the collection, which the whole roster shares.
+ * is ever empty. Uniques go into the collection, which the whole roster shares. A Heroic kill rolls
+ * its normal dungeon's tables first, then its own: the gilding kits (content/kits.ts).
  */
 import type { BossLootDef, DropDef, DungeonInfo, Rar, RoleId, SlotId } from '../content/types';
-import { COLLECTIBLES, ITEMS } from '../content';
+import { COLLECTIBLES, DUNGEONS, ITEMS, KITS } from '../content';
 import { EPIC, SLOT_IDS, TRAITS, gearId, gearKey } from '../content/gear';
 import { ORDER } from '../content/roles';
 import type { Rng } from '../core/rng';
@@ -15,7 +16,8 @@ import { bagIt, bestRegular, fitsHero, freshForRole } from './gear';
 import { WARBAND_CAP, bossRecord, dungeonRecord, roleOf, type Hero, type Profile } from './profile';
 import { growBeds, rollSeeds } from './vale';
 
-export type Tell = 'normal' | 'unique' | 'pet';
+/** What the lantern tells about the last boss's drops: nothing rare, a gilding kit, a unique, or the pet. */
+export type Tell = 'normal' | 'kit' | 'unique' | 'pet';
 
 export interface Drop {
   id: string;
@@ -56,6 +58,8 @@ export interface RunLoot {
   seeds?: Record<string, number>;
   /** garden beds this clear made ready */
   bedsReady?: number;
+  /** a gilding kit came from the last boss: the lantern sifts gold dust onto the chest, whatever its tell */
+  gild?: boolean;
 }
 
 export const DUPE_MARKS = 3;
@@ -149,8 +153,13 @@ export function takeTrait(h: Hero, trait: string): void {
   if (reg.rar >= REG_CAP && TRAITS[gKey].some((t) => t.id === trait)) reg.trait = trait;
 }
 
-export const tellOf = (drops: Drop[]): Tell =>
-  drops.some((d) => d.source === 'table' && COLLECTIBLES[d.id]?.kind === 'pet') ? 'pet' : drops.some((d) => d.source === 'table') ? 'unique' : 'normal';
+/** The lantern's tell: the pet beats a unique, and a unique beats a gilding kit. */
+export function tellOf(drops: Drop[]): Tell {
+  const table = drops.filter((d) => d.source === 'table');
+  return table.some((d) => COLLECTIBLES[d.id]?.kind === 'pet') ? 'pet' : table.some((d) => !KITS[d.id]) ? 'unique' : table.length ? 'kit' : 'normal';
+}
+/** A gilding kit is in the chest: the lantern sifts gold dust onto it, even when its tell is a unique. */
+export const gildOf = (drops: Drop[]): boolean => drops.some((d) => d.source === 'table' && !!KITS[d.id]);
 
 export interface RunEnd {
   hero: Hero;
@@ -188,16 +197,24 @@ export function grantTrialStarter(p: Profile, h: Hero): boolean {
   return true;
 }
 
-/** A kill counts and rolls its table (and its seed lines after your first clear). Practice runs never call this. */
+/** One dungeon's table for a boss, rolled for one player, its drops granted at that table's kill count. */
+function rollKill(p: Profile, dg: DungeonInfo, boss: string, h: Hero, kc: number, rng: Rng, now: number): Drop[] {
+  const table = dg.loot.find((t) => t.boss === boss);
+  return table ? rollTable(table, roleOf(h), rng, h.cls).map((d) => grant(p, h, d.id, { source: 'table', boss, rate: d.rate, kc }, now)) : [];
+}
+
+/** A kill counts and rolls its table (and its seed lines after your first clear). A Heroic kill rolls its normal
+ *  dungeon's table first, and counts on that boss's kill count too: what drops there is the normal piece, for
+ *  the normal log. Then its own table, the gilding kits, on its own kill count. Practice runs never call this. */
 export function resolveKill(p: Profile, dg: DungeonInfo, boss: string, h: Hero, time: number | null, rng: Rng, now = Date.now()): KillLoot {
-  const role = roleOf(h);
   const br = bossRecord(p, dg.id, boss);
   br.kc++;
   const newPb = typeof time === 'number' && (br.pb === null || time < br.pb);
   if (newPb) br.pb = time;
   const out: KillLoot = { boss, kc: br.kc, time: time ?? 0, newPb: newPb && br.kc > 1, drops: [], marks: 0 };
-  const table = dg.loot.find((t) => t.boss === boss);
-  if (table) for (const d of rollTable(table, role, rng, h.cls)) out.drops.push(grant(p, h, d.id, { source: 'table', boss, rate: d.rate, kc: br.kc }, now));
+  const base = dg.heroicOf ? DUNGEONS[dg.heroicOf] : undefined;
+  if (base) { const nb = bossRecord(p, base.id, boss); nb.kc++; out.drops.push(...rollKill(p, base, boss, h, nb.kc, rng, now)); }
+  out.drops.push(...rollKill(p, dg, boss, h, br.kc, rng, now));
   out.marks = out.drops.reduce((a, d) => a + d.marks, 0);
   dungeonRecord(p, marksOf(dg)).marks += out.marks;
   // a save's very first run never drops a seed: the garden comes in later, with its own tip, when one drops
@@ -236,6 +253,7 @@ export function runLoot(p: Profile, dg: DungeonInfo, h: Hero, kills: KillLoot[],
   if (clear) { out.drops.push(...clear.drops); out.marks += clear.marks; }
   const last = kills.find((k) => k.boss === dg.finalBoss);
   out.tell = last ? tellOf(last.drops) : 'normal';
+  out.gild = !!last && gildOf(last.drops);
   return out;
 }
 
@@ -253,11 +271,13 @@ export function resolveRun(p: Profile, dg: DungeonInfo, end: RunEnd, rng: Rng, n
 }
 
 /** What a dungeon can drop for one role: that role's own pieces (its set and its weapon), then what
- *  anyone can get, the likeliest first. Each line keeps its drop rate, so the showcase never lies. */
+ *  anyone can get, the likeliest first. Each line keeps its drop rate, so the showcase never lies. A
+ *  gilding kit drops for any seat, but it's listed with the role whose piece it gilds. */
 export function lootFor(dg: DungeonInfo, role: RoleId, cls?: string): { mine: DropDef[]; shared: DropDef[] } {
   const all = dg.loot.flatMap((t) => t.drops);
+  const who = (d: DropDef): { role?: RoleId; cls?: string } => { const it = KITS[d.id] && ITEMS[KITS[d.id].item]; return it ? { role: it.role, cls: it.cls } : d; };
   return {
-    mine: all.filter((d) => d.role === role && (!cls || (cls === 'rogue' ? d.cls === 'rogue' : !d.cls))),
-    shared: all.filter((d) => !d.role).sort((a, b) => b.rate - a.rate),
+    mine: all.filter((d) => { const w = who(d); return w.role === role && (!cls || (cls === 'rogue' ? w.cls === 'rogue' : !w.cls)); }),
+    shared: all.filter((d) => !who(d).role).sort((a, b) => b.rate - a.rate),
   };
 }

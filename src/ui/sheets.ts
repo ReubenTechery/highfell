@@ -12,10 +12,13 @@ import { INGREDIENTS, INGREDIENT_ORDER, LORE, PLANTS, RECIPES, RECIPE_ORDER, SEE
 import { rankProgress, recipeUnlocked } from '../meta/vale';
 import { freshProfile, heroById, nameProblem, removeHero, renameHero, roleOf, setActive, type Hero } from '../meta/profile';
 import { pickRole } from '../meta/party';
+import { setGilded } from '../meta/gear';
+import type { Tell } from '../meta/loot';
 import { HEARTH_SPOTS, place, setLook, spotById, spotOf } from '../meta/hearth';
 import type { App } from './app';
 import { actions, esc, fmtN, GLYPH } from './dom';
 import { tile } from './art';
+import { MUSIC } from './music';
 import { SFX } from './sound';
 import { heroesSheet, heroSheet, type HeroSheetState } from './herosheet';
 import { dungeonSheet, pickedDungeon, type DungeonPick } from './dungeonsheet';
@@ -126,6 +129,7 @@ export class Sheets {
         if (removeHero(p, h.id)) { SFX.play('ui'); this.close(); this.app.save(); this.app.toasts.text(`${name} has gone`, 'Their uniques stay in your collection.'); }
       },
       item: (el) => { SFX.play('ui'); this.open({ kind: 'item', id: el.dataset.id!, back: this.spec || undefined }); },
+      gild: (el) => { if (setGilded(this.app.p, el.dataset.id!, el.dataset.v === '1')) { SFX.play(el.dataset.v === '1' ? 'gild' : 'ui'); this.app.save(); } else SFX.play('nope'); },
       place: (el) => { const s = this.spec; if (!s || s.kind !== 'picker') return; if (place(this.app.p, s.spot, el.dataset.id || null)) { SFX.play('place'); this.app.save(); this.close(); } },
       sound: () => { const p = this.app.p; p.settings.sound = !p.settings.sound; SFX.on = p.settings.sound; if (SFX.on) SFX.play('ui'); this.app.save(); },
       reset: () => {
@@ -135,7 +139,7 @@ export class Sheets {
         this.app.store.replace(freshProfile());
         this.app.toasts.text('Fresh start', 'Everything is back to zero. Make a hero to begin.');
       },
-      preview: (el) => { this.close(); this.app.reveal.preview(el.dataset.v as 'normal' | 'unique' | 'pet' | 'log'); },
+      preview: (el) => { this.close(); this.app.reveal.preview(el.dataset.v as Tell | 'log'); },
       intro: () => { SFX.play('ui'); this.close(); this.app.startIntro(); },
       tour: () => { SFX.play('ui'); this.close(); this.app.hearth.startTour(); },
       walkout: (el) => { this.app.setDev({ walkout: el.dataset.v as 'off' }); SFX.play('ui'); this.refresh(); },
@@ -167,6 +171,7 @@ export class Sheets {
       this.app.save();
     });
     window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.spec) { if (this.logView.peek) root.querySelector<HTMLElement>('.pk-x')?.click(); else this.close(); } });
+    root.addEventListener('input', (e) => { const el = e.target as HTMLInputElement; if (el.dataset.act === 'music') MUSIC.setVolume(+el.value / 100); });
   }
 
   open(to: SheetSpec): void {

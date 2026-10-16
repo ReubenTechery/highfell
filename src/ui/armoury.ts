@@ -12,10 +12,10 @@ import { ROLE_SLOTS, SLOT_IDS, gearKey } from '../content/gear';
 import { CLASSES, RACES, type ClassId, type RaceId } from '../content/folk';
 import type { AbilitySlot, SlotId } from '../content/types';
 import { activeHero, heroById, roleOf, setActive, type Hero, type Profile } from '../meta/profile';
-import { betterFor, buyTrait, compareOn, effectsOf, healthPct, itemScore, loadoutFor, powerPct, seenSlot, shelfFor, waiting, waitingFor, wear, worn, type ShelfPiece, type Worn } from '../meta/gear';
+import { betterFor, buyTrait, compareOn, effectsOf, healthPct, itemScore, loadoutFor, lookId, powerPct, seenSlot, shelfFor, waiting, waitingFor, wear, worn, type ShelfPiece, type Worn } from '../meta/gear';
 import type { App } from './app';
 import { cap, esc, fmtRate, GLYPH } from './dom';
-import { heroImg, heroSprite, iconOf, rarLook, tile } from './art';
+import { heroImg, heroSprite, iconOf, nameOf, rarLook, tile } from './art';
 import { SFX } from './sound';
 import { ilvl } from './hearth';
 import { ROLE_STAT } from './itemsheet';
@@ -163,21 +163,22 @@ function gear(p: Profile, h: Hero, s: GearSpec, view: ArmouryView): { body: stri
 /** one slot in the row: its piece in its rarity's frame, its item level, a set count or the unique star,
  *  New while something waits to go on, then a quiet arrow while something you have still beats it */
 function slotTile(p: Profile, h: Hero, it: Worn, sets: Record<string, number>, on: boolean, just: boolean): string {
-  const d = it.def, look = rarLook(d.id), name = ROLE_SLOTS[gearKey(h)][it.slot].name;
+  const d = it.def, look = rarLook(d.id), name = ROLE_SLOTS[gearKey(h)][it.slot].name, shown = lookId(p, d.id);
   const isNew = !!waitingFor(p, h, it.slot), up = !isNew && betterFor(p, h, it.slot);
   const set = d.setId ? SETS[d.setId] : undefined;
-  return `<button type="button" class="ar-slot${isNew ? ' new' : ''}${just ? ' just-on' : ''}" role="tab" aria-selected="${on}" data-act="arslot" data-slot="${it.slot}" style="--rc: ${look.color}" aria-label="${esc(name)}: ${esc(d.name)}, ${esc(look.name)}, item level ${itemScore(d)}${isNew ? ', something new to put on' : up ? ', something better to put on' : ''}">
-    <span class="ar-st"><span class="tile">${iconOf(d.id)}</span>${isNew ? '<i class="ar-new">New</i>' : ''}${up ? `<i class="ar-up" title="Something better">${GLYPH.rise}</i>` : ''}${set ? `<i class="ar-setn">${sets[set.id] || 0}/3</i>` : d.kind === 'unique' ? `<i class="ar-star">${STAR}</i>` : ''}<i class="ar-lv">${itemScore(d)}</i>${just ? BURST : ''}</span>
+  return `<button type="button" class="ar-slot${isNew ? ' new' : ''}${just ? ' just-on' : ''}" role="tab" aria-selected="${on}" data-act="arslot" data-slot="${it.slot}" style="--rc: ${look.color}" aria-label="${esc(name)}: ${esc(nameOf(shown))}, ${esc(look.name)}, item level ${itemScore(d)}${isNew ? ', something new to put on' : up ? ', something better to put on' : ''}">
+    <span class="ar-st"><span class="tile">${iconOf(shown)}</span>${isNew ? '<i class="ar-new">New</i>' : ''}${up ? `<i class="ar-up" title="Something better">${GLYPH.rise}</i>` : ''}${set ? `<i class="ar-setn">${sets[set.id] || 0}/3</i>` : d.kind === 'unique' ? `<i class="ar-star">${STAR}</i>` : ''}<i class="ar-lv">${itemScore(d)}</i>${just ? BURST : ''}</span>
     <span class="ar-sn">${esc(name)}</span></button>`;
 }
 
-/** one piece in a slot's row: worn (a tick), new, picked, or not found yet (dimmed, with its drop rate) */
+/** one piece in a slot's row as it looks (gilded, once its kit is yours): worn (a tick), new, picked, or not
+ *  found yet (dimmed, with its drop rate) */
 function pieceTile(p: Profile, x: ShelfPiece, on: boolean): string {
-  const d = x.def, look = rarLook(d.id);
+  const d = x.def, look = rarLook(d.id), shown = x.found ? lookId(p, d.id) : d.id;
   const chip = x.worn ? `<i class="ar-on" title="Wearing">${GLYPH.check}</i>` : `<i class="ar-lv">${x.found ? itemScore(d) : fmtRate(dropSource(p, d.id)?.rate) || '?'}</i>`;
-  return `<button type="button" class="ar-pc${x.found ? '' : ' ghost'}" data-act="arpick" data-id="${esc(d.id)}" aria-pressed="${on}" style="--rc: ${look.color}; --rk: ${look.ink}" aria-label="${esc(d.name)}${x.worn ? ', wearing' : x.isNew ? ', new' : x.found ? '' : ', not found yet'}">
-    <span class="ar-pt"><span class="tile">${iconOf(d.id)}</span>${x.found ? '' : '<span class="ar-q" aria-hidden="true">?</span>'}${x.isNew ? '<i class="ar-new">New</i>' : ''}${chip}</span>
-    <b>${esc(d.name)}</b></button>`;
+  return `<button type="button" class="ar-pc${x.found ? '' : ' ghost'}" data-act="arpick" data-id="${esc(d.id)}" aria-pressed="${on}" style="--rc: ${look.color}; --rk: ${look.ink}" aria-label="${esc(nameOf(shown))}${x.worn ? ', wearing' : x.isNew ? ', new' : x.found ? '' : ', not found yet'}">
+    <span class="ar-pt"><span class="tile">${iconOf(shown)}</span>${x.found ? '' : '<span class="ar-q" aria-hidden="true">?</span>'}${x.isNew ? '<i class="ar-new">New</i>' : ''}${chip}</span>
+    <b>${esc(nameOf(shown))}</b></button>`;
 }
 
 /** the bottom: Put it on (gold unless it's a downgrade), or what's worn or not found yet, and the next slot
@@ -224,7 +225,7 @@ function looks(p: Profile, h: Hero): string {
     <button type="button" class="sg" role="radio" data-act="title" data-id="" aria-checked="${!h.title}">None</button>
     ${titles.map((t) => `<button type="button" class="sg" role="radio" data-act="title" data-id="${t}" aria-checked="${h.title === t}">${esc(TITLES[t].text)}</button>`).join('')}</div>` : '<p class="fine">Some achievements give a title. Every hero can wear the ones you earn.</p>'}</div>`;
   const ids = ['cosmetic.glow_shield', 'cosmetic.glow_staff', 'cosmetic.crit_ice', 'cosmetic.trail_wisp', 'dye.ghostly', 'dye.ghostly.gilded', 'cosmetic.gilded_bones']
-    .filter((id) => (id === 'cosmetic.glow_shield' ? role === 'tank' : id === 'cosmetic.glow_staff' ? role === 'healer' : id === 'cosmetic.crit_ice' ? role === 'dps' : id === 'cosmetic.gilded_bones' ? h.race === 'risen' : true));
+    .filter((id) => (id === 'cosmetic.glow_shield' ? role === 'tank' : id === 'cosmetic.glow_staff' ? role === 'healer' : id === 'cosmetic.crit_ice' ? role === 'dps' : id === 'cosmetic.gilded_bones' ? h.race === 'risen' : true) && (!COLLECTIBLES[id].retired || !!p.collection[id]));
   const looksBox = `<div class="box"><h3 class="section-title">Looks<small>never power</small></h3><div class="picks">${ids.map((id) => {
     const c = COLLECTIBLES[id], own = !!p.collection[id], on = own && !p.settings.looksOff.includes(id);
     return `<button type="button" class="pick" data-act="${own ? 'look' : 'item'}" data-id="${id}" aria-pressed="${on}"><span class="tile" aria-hidden="true" ${own ? '' : 'style="filter: grayscale(1) opacity(0.5)"'}>${tile(c.icon)}</span><span><b>${esc(c.name)}</b><span>${own ? (on ? 'On' : 'Off') : esc(c.source)}</span></span></button>`;

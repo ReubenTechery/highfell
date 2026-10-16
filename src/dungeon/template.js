@@ -216,7 +216,7 @@ export function makeDungeonScript(cfg) {
       S.mobs.forEach((o) => { if (o.alive && (o.M.wisp || o.cage)) { if (o.cage) breakCage(o, false); else { o.alive = false; o.state = 'dead'; } } });
       spawnChest(fin.chestX ?? 500, fin.chestY ?? 660, m);
       banner(fin.victoryText || `${fin.name} is defeated!`, 'good', 3.2);
-      sfx('victory');
+      sfx('fanfare');
     }
   }
 

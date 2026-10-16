@@ -296,7 +296,7 @@ export function hurtMob(m, amt, src, o) {
   if (iceCrit) bits(m.x, m.y - (m.isBoss ? 150 : 60), 'shard_ice', 6, 220);
   if (!o.quiet && src && src.isPlayer) fxText(m.x, m.y - (m.isBoss ? 170 : m.M.big ? 120 : 70), (crit ? a + '!' : '' + a), iceCrit ? '#8FD6FF' : o.col || (crit || m.exposed > 0 ? '#F2C230' : '#FFFFFF'), o.size || (a >= 600 ? 40 : big ? 30 : 21), { dur: big ? 1.15 : 0.9, crit });
   if (o.knock && !m.isBoss && !m.M.big) { const an = Math.atan2(m.y - src.y, m.x - src.x); m.st.kx += Math.cos(an) * o.knock; m.st.ky += Math.sin(an) * o.knock; }
-  if (crit && src && src.isPlayer) hitstop(0.035);
+  if (crit && src && src.isPlayer) { hitstop(0.035); if (!o.quiet) sfx('crit', 0.9); }
   if (crit && src && src.kind === 'hero') emit({ type: 'crit', amount: a, player: !!src.isPlayer });
   if (m.hp <= 0) killMob(m, src);
   return a;
