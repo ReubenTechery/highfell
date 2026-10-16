@@ -64,6 +64,9 @@ Dungeons and their collection logs are the core loop of the whole game: four-min
 | Mounts live out in the paddock, on the right of the house: one place for every mount in the game; yours wander a little, the rest are a shadow with a "?" | Like the collection log, you see what's left to chase; tap one for where it drops, its rate and the kill count you got it at |
 | No trading or selling between players, ever | The collection log has to mean "I did this" |
 | A DPS alone dies before the mini boss (a test checks it) | All three roles are needed |
+| Gravecallers curse a hero; only the healer lifts a curse (a swipe across them, or Sunburst); one left alone drops its hero to a tenth of their health and never kills on its own | Something only the healer can do, in the packs as well as the bosses, and every miss is a chance for a save |
+| A healer who does nothing wipes the party by Sir Rattlebones; the player as tank in Common gear, with a bot healer, clears with no wipes (tests check both) | The healer matters, and the other seats are never punished for it |
+| Crypt Seals are Heroic only | Normal got the curses, so it doesn't get busier |
 | The Hearth yard has 3 planter beds (`bed.0..2`); seeds drop from dungeon bosses and grow in 3 clears (`GROW_CLEARS = 3`) | Feeds directly into the dungeon loop with no real-time timers or chores |
 | Brews are strong party-wide buffs (1 bottle poured at the door buffs all 3 seats for faster clears), never required to clear | Rewards farming seeds and brewing without wasting duplicate bottles |
 | Home is a tall house cut open: zoom out to see it all, tap things in the rooms to use them | A play test: side things belong in the house, not in buttons |
@@ -131,14 +134,25 @@ The full systems design (abilities, sets, drop tables, achievements, balance rul
 - **Threat & Crushing Blows:** every hit adds threat (the tank's 1.3 times, Slam's double), heals add a little on everything in the fight,
   and a mob switches once someone beats its target by a tenth. Slam taunts and drags mobs in; Charge makes its
   target turn. Mobs off the tank for 3 seconds go wild, and Bosses or Brutes landing melee hits on a non-tank deal `1.85×` **Crushing Blows**. A caged tank can't be targeted and loses half his threat.
+- **Curses (the healer's job on trash):** a Gravecaller (in packs A, C and D, and one rises with Sir Rattlebones'
+  rally) curses one hero 1.8 seconds into its fight, then every 8.5 (`callerTick` in `src/dungeon/mobs.js`):
+  a purple skull and a 4-second ring over their head (`CURSE_TIME`), and their name goes purple. Only the
+  healer lifts it: a swipe across them (`trySlice` in `src/ui/input.ts`, from anywhere on the screen) or
+  Sunburst, for +5 mana; the bot healer lifts one about a second in, 95 times in 100. Left alone it bursts
+  and drops its hero to a tenth of their health; on its own it never kills. A curse ends with its fight or
+  its hero, never comes in the Crypt Trial, and the rally's Gravecaller curses but doesn't raise. Bot DPS go
+  for Gravecallers right after kickable casts. The first curse a healer sees brings a one-line tip, once a
+  save (`needsCurseTip`).
+- **Saves:** the healer's heal landing on a mate under 15% pops a gold `SAVED!` with a chime and a short
+  stop (once per mate every 6 seconds); as the healer, a mate under 15% throbs red and a heartbeat plays.
 - **Boss Mechanics, Exposed Windows & Crypt Seals:**
   - **Exposed (`+35%` damage taken):** Bosses become `Exposed` when their heavy attack is Perfect-Blocked, when Sir Rattlebones's `Shield Charge` misses everyone and crashes into the wall, when his last Phase 2 rally guard falls, when the Gravekeeper's `Soul Chain` is cut by the Healer, or when `Bone Cage` is broken in `< 2.0s` (which also resets Tank `Charge`).
   - **Gravekeeper Phase 3 Moving Green Circle:** At `< 35%` HP, the green lantern safe zone (`S.ring.followBoss = true`) anchors to the Gravekeeper as he strides between graveyard waypoints every `8.5s`. Standing inside grants **Lantern Zeal** (`+15%` cooldown recovery speed, `+10%` crit chance); standing outside burns with green fire (`34` damage/tick).
-  - **Crypt Seals:** Room 4 features a randomized 3-seat rune formation (`SEAL_PATTERNS`, 10 patterns) after Pack D. Stepping onto the 3 role pads shatters the seal for **Crypt Surge** (`+25%` move speed, `+20%` damage for 18s), auto-fading after 6.5s so it never blocks a run.
+  - **Crypt Seals (Heroic only, `heroicOnly` on the script's `seal`):** Room 4 features a randomized 3-seat rune formation (`SEAL_PATTERNS`, 10 patterns) after Pack D. Stepping onto the 3 role pads shatters the seal for **Crypt Surge** (`+25%` move speed, `+20%` damage for 18s), auto-fading after 6.5s so it never blocks a run.
 - **Difficulty:** each dungeon's `tune` in its engine file: `hit` scales everything that hurts a hero,
   `trashHp` the health of everything but the bosses, `bossHp` the bosses'. Barrow Crypt: 1.5 and 1.3. Its
-  `heroic` tune: 3.2, 1.95 and bosses 1.63.
-- **Balance targets** (guarded by `tests/balance.test.ts`): a Common bot clear in about 4:00 with no wipes, the Gravekeeper about two minutes, full Epic clearly faster, full BiS melting the dungeon in roughly half the time (`< 62%` of Common clear time), and the DPS alone dies before Sir Rattlebones. Heroic: full Epic clears in about four minutes with no wipes, Common gets buried.
+  `heroic` tune: 2.8, 1.95 and bosses 1.63 (hits came down from 3.2 when curses arrived).
+- **Balance targets** (guarded by `tests/balance.test.ts`): a Common bot clear in about 4:00 with no wipes, the Gravekeeper about two minutes, full Epic clearly faster, full BiS melting the dungeon in roughly half the time (`< 62%` of Common clear time), and the DPS alone dies before Sir Rattlebones. A healer who does nothing (no heals, no lifts) wipes the party by Sir Rattlebones; the player as tank in Common gear, with a bot healer, clears with no wipes. Heroic: full Epic clears in about four minutes with no wipes, Common gets buried.
 - **Save versions:** v2 to v3 turned one hero per role into the roster; v3 to v4 added the Vale (`p.vale`);
   v4 to v5 gave every hero an empty bag and fresh list (gear stopped going on by itself); v5 to v6 added house
   looks (`p.hearth.looks`, every room the tavern); v6 to v7 gave every hero a male or female look (`sex`); v7 to v8
@@ -196,7 +210,8 @@ The full systems design (abilities, sets, drop tables, achievements, balance rul
   faces in `art_heads.py`), `art_sheet.py` (look at your art), `pw_check.py` (screenshot the built game),
   `pw_perf.py` (measure the house's speed on a slowed-down phone).
 - `tests/`: `balance.test.ts` (bot clears must stay in their bands), `dungeon.test.ts` (threat, cages,
-  numbers, tuning, where each hero's weapon and head are), `meta.test.ts`, `vale.test.ts`.
+  curses, numbers, tuning, where each hero's weapon and head are), `input.test.ts` (the touch controls, driven
+  without a browser), `meta.test.ts`, `vale.test.ts`.
 
 ## Commands
 
