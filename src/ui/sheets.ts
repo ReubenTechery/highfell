@@ -14,7 +14,8 @@ import { INGREDIENTS, INGREDIENT_ORDER, LORE, PLANTS, RECIPES, RECIPE_ORDER, SEE
 import { rankProgress, recipeUnlocked } from '../meta/vale';
 import { activeHero, freshProfile, heroById, nameProblem, removeHero, renameHero, roleOf, setActive, type Hero } from '../meta/profile';
 import { pickRole } from '../meta/party';
-import { bestRegular, buyTrait, effectsOf, equip, healthPct, itemShare, loadoutFor, ownedFor, powerPct, putOn, seenSlot, waitingFor, worn, type Waiting, type Worn } from '../meta/gear';
+import { bestRegular, buyTrait, effectsOf, equip, healthPct, itemShare, loadoutFor, lookId, ownedFor, powerPct, putOn, seenSlot, setGilded, waitingFor, worn, type Waiting, type Worn } from '../meta/gear';
+import type { Tell } from '../meta/loot';
 import { HEARTH_SPOTS, place, setLook, spotById, spotOf } from '../meta/hearth';
 import type { App } from './app';
 import { actions, cap, esc, fmtN, fmtRate, GLYPH } from './dom';
@@ -159,6 +160,7 @@ export class Sheets {
       trait: (el) => { const h = this.gearHero(); if (!h) return; if (buyTrait(this.app.p, h, 'barrow', el.dataset.trait!)) { SFX.play('coin'); this.app.save(); } else SFX.play('nope'); },
       playas: () => { const h = this.gearHero(); if (!h) return; setActive(this.app.p, h.id); SFX.play('ui'); this.app.save(); },
       look: (el) => { const p = this.app.p, id = el.dataset.id!; const off = new Set(p.settings.looksOff); if (off.has(id)) off.delete(id); else off.add(id); p.settings.looksOff = [...off]; SFX.play('ui'); this.app.save(); },
+      gild: (el) => { if (setGilded(this.app.p, el.dataset.id!, el.dataset.v === '1')) { SFX.play(el.dataset.v === '1' ? 'gild' : 'ui'); this.app.save(); } else SFX.play('nope'); },
       item: (el) => { SFX.play('ui'); this.open({ kind: 'item', id: el.dataset.id!, back: this.spec || undefined }); },
       gearat: (el) => {
         const h = heroById(this.app.p, el.dataset.hero || null);
@@ -178,7 +180,7 @@ export class Sheets {
         this.app.store.replace(freshProfile());
         this.app.toasts.text('Fresh start', 'Everything is back to zero. Make a hero to begin.');
       },
-      preview: (el) => { this.close(); this.app.reveal.preview(el.dataset.v as 'normal' | 'unique' | 'pet' | 'log'); },
+      preview: (el) => { this.close(); this.app.reveal.preview(el.dataset.v as Tell | 'log'); },
       intro: () => { SFX.play('ui'); this.close(); this.app.startIntro(); },
       tour: () => { SFX.play('ui'); this.close(); this.app.hearth.startTour(); },
       walkout: (el) => { this.app.setDev({ walkout: el.dataset.v as 'off' }); SFX.play('ui'); this.refresh(); },
@@ -396,7 +398,7 @@ export class Sheets {
       const have = set.pieces.filter((id) => p.collection[id]).length;
       return `<div class="box setbox">
         <h3 class="section-title">${esc(set.name)} set<small>wearing ${n} of 3 · own ${have} of 3</small></h3>
-        <div class="setpieces">${set.pieces.map((id) => { const own = !!p.collection[id], on = Object.values(w).some((x) => x.def.id === id); return `<button type="button" class="sp ${on ? 'on' : own ? 'own' : ''}" data-act="item" data-id="${id}"><span class="tile" aria-hidden="true">${iconOf(id)}</span><span>${esc(nameOf(id))}<small>${on ? 'Wearing' : own ? 'Owned' : fmtRate(1 / 35)}</small></span></button>`; }).join('')}</div>
+        <div class="setpieces">${set.pieces.map((id) => { const own = !!p.collection[id], on = Object.values(w).some((x) => x.def.id === id); return `<button type="button" class="sp ${on ? 'on' : own ? 'own' : ''}" data-act="item" data-id="${id}"><span class="tile" aria-hidden="true">${iconOf(lookId(p, id))}</span><span>${esc(nameOf(lookId(p, id)))}<small>${on ? 'Wearing' : own ? 'Owned' : fmtRate(1 / 35)}</small></span></button>`; }).join('')}</div>
         <div class="setline ${n >= 2 ? 'on' : ''}"><i>2</i><span>${esc(set.bonus2.desc)}</span></div>
         <div class="setline ${n >= 3 ? 'on' : ''} ${set.bonus3.ready ? '' : 'later'}"><i>3</i><span>${esc(set.bonus3.desc)}${set.bonus3.ready ? '' : ' <em>(coming in a later update)</em>'}</span></div>
         <p class="fine">Epic set pieces drop from the Gravekeeper, 1 in 35 each. ${esc(set.look)}.</p></div>`;
@@ -414,7 +416,7 @@ export class Sheets {
       ${titles.map((t) => `<button type="button" class="sg" role="radio" data-act="title" data-id="${t}" aria-checked="${h.title === t}">${esc(TITLES[t].text)}</button>`).join('')}</div>` : '<p class="fine">Some achievements give a title. Every hero can wear the ones you earn.</p>'}</div>`;
     // looks
     const looks = ['cosmetic.glow_shield', 'cosmetic.glow_staff', 'cosmetic.crit_ice', 'cosmetic.trail_wisp', 'dye.ghostly', 'dye.ghostly.gilded', 'cosmetic.gilded_bones']
-      .filter((id) => (id === 'cosmetic.glow_shield' ? role === 'tank' : id === 'cosmetic.glow_staff' ? role === 'healer' : id === 'cosmetic.crit_ice' ? role === 'dps' : id === 'cosmetic.gilded_bones' ? h.race === 'risen' : true));
+      .filter((id) => (id === 'cosmetic.glow_shield' ? role === 'tank' : id === 'cosmetic.glow_staff' ? role === 'healer' : id === 'cosmetic.crit_ice' ? role === 'dps' : id === 'cosmetic.gilded_bones' ? h.race === 'risen' : true) && (!COLLECTIBLES[id].retired || !!p.collection[id]));
     const looksBox = `<div class="box"><h3 class="section-title">Looks<small>never power</small></h3><div class="picks">${looks.map((id) => {
       const c = COLLECTIBLES[id], own = !!p.collection[id], on = own && !p.settings.looksOff.includes(id);
       return `<button type="button" class="pick" data-act="${own ? 'look' : 'item'}" data-id="${id}" aria-pressed="${on}"><span class="tile" aria-hidden="true" ${own ? '' : 'style="filter: grayscale(1) opacity(0.5)"'}>${tile(c.icon)}</span><span><b>${esc(c.name)}</b><span>${own ? (on ? 'On' : 'Off') : esc(c.source)}</span></span></button>`;
@@ -426,7 +428,7 @@ export class Sheets {
 
   /** one slot on the doll: rarity frame, set count, unique star and what it adds. It glows while something better waits to go on. */
   private slotCard(it: Worn, role: RoleId, gk: GearKey, sets: Record<string, number>, on: boolean, wait: Waiting | null, just: boolean): string {
-    const d = it.def, look = rarLook(d.id);
+    const d = it.def, look = rarLook(d.id), shown = lookId(this.app.p, d.id);
     const share = itemShare(d);
     const set = d.setId ? SETS[d.setId] : null;
     const slotName = ROLE_SLOTS[gk][it.slot].name;
@@ -434,8 +436,8 @@ export class Sheets {
     const dp = wShare ? Math.round((wShare.power - share.power) * 10) / 10 : 0;
     const badge = wait ? `<i class="sl-up" aria-hidden="true">${dp > 0 ? `+${dp}%` : wait.kind === 'unique' ? 'New' : 'Up'}</i>` : '';
     return `<button type="button" class="slot r-${look.key}${wait ? ' up' : ''}${just ? ' just-on' : ''}" data-act="slot" data-slot="${it.slot}" aria-pressed="${on}" style="--rc: ${look.color}; --rl: ${look.light}" aria-label="${esc(slotName)}: ${esc(d.name)}, ${esc(look.name)}${set ? `, ${esc(set.name)} set` : ''}${wait ? '. Upgrade ready — tap to view and equip' : '. Tap to view slot armoury'}">
-      ${badge}${just ? '<span class="sl-burst" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' : ''}<span class="sl-tile"><span class="tile">${iconOf(d.id)}</span>${set ? `<i class="sl-set" title="${esc(set.name)} set">${sets[set.id] || 0}/3</i>` : ''}${d.kind === 'unique' ? `<i class="sl-star" title="Unique">${STAR}</i>` : ''}</span>
-      <span class="sl-tx"><span class="sl-kind">${esc(slotName)}</span><b class="sl-name" style="color: ${look.ink}">${esc(d.name)}</b>
+      ${badge}${just ? '<span class="sl-burst" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' : ''}<span class="sl-tile"><span class="tile">${iconOf(shown)}</span>${set ? `<i class="sl-set" title="${esc(set.name)} set">${sets[set.id] || 0}/3</i>` : ''}${d.kind === 'unique' ? `<i class="sl-star" title="Unique">${STAR}</i>` : ''}</span>
+      <span class="sl-tx"><span class="sl-kind">${esc(slotName)}</span><b class="sl-name" style="color: ${look.ink}">${esc(nameOf(shown))}</b>
         <span class="sl-meta"><b style="color: ${look.ink}">${esc(look.name)}</b><span class="sl-il"> · ${share.ilvl}</span></span>
         <span class="sl-stat">${share.power > 0 ? `+${share.power}% ${ROLE_STAT[role].short}` : 'Starter rags'}</span>${wait ? `<span class="sl-up-line">${GLYPH.rise}${dp > 0 ? `Tap for +${dp}% ${ROLE_STAT[role].short}` : `Tap for ${esc(ITEMS[wait.id].name)}`}</span>` : set ? `<span class="sl-setname">${esc(set.name)} ${sets[set.id] || 0}/3</span>` : ''}</span>
     </button>`;
@@ -457,9 +459,9 @@ export class Sheets {
     return `<div class="tip tip-wait" style="--rc: ${look.color}; --rl: ${look.light}">
       <span class="tw-eye">${wt.kind === 'unique' ? 'New unique upgrade' : 'Upgrade ready for this slot'} · compare &amp; equip</span>
       <div class="tw-vs">
-        <div class="tw-side old"><span class="tile" style="--c: ${oldLook.color}">${iconOf(wornDef.id)}</span><div><small>Wearing now</small><b style="color: ${oldLook.ink}">${esc(wornDef.name)}</b><span>${esc(oldLook.name)} · ilvl ${now.ilvl}</span></div></div>
+        <div class="tw-side old"><span class="tile" style="--c: ${oldLook.color}">${iconOf(lookId(this.app.p, wornDef.id))}</span><div><small>Wearing now</small><b style="color: ${oldLook.ink}">${esc(nameOf(lookId(this.app.p, wornDef.id)))}</b><span>${esc(oldLook.name)} · ilvl ${now.ilvl}</span></div></div>
         <i class="tw-arrow" aria-hidden="true">${GLYPH.right}</i>
-        <div class="tw-side new"><span class="tile" style="--c: ${look.color}">${iconOf(d.id)}</span><div><small>New ${esc(slotName.toLowerCase())}</small><b style="color: ${look.ink}">${esc(d.name)}</b><span>${esc(look.name)} · ilvl ${share.ilvl}</span></div></div>
+        <div class="tw-side new"><span class="tile" style="--c: ${look.color}">${iconOf(lookId(this.app.p, d.id))}</span><div><small>New ${esc(slotName.toLowerCase())}</small><b style="color: ${look.ink}">${esc(nameOf(lookId(this.app.p, d.id)))}</b><span>${esc(look.name)} · ilvl ${share.ilvl}</span></div></div>
       </div>
       <div class="cmp-rows tw-rows">
         <div class="cmp-row"><span>Item level <small>${now.ilvl} → ${share.ilvl}</small></span>${delta(dil)}</div>
@@ -518,9 +520,9 @@ export class Sheets {
           : `<button type="button" class="btn small${dp > 0 || dil > 0 ? ' gold' : ''}" data-act="equip" data-slot="${it.slot}" data-id="${isReg ? '' : esc(optDef.id)}">Equip</button>`;
       return `<div class="armoury-opt${isWorn ? ' on' : ''}" style="--rc: ${oLook.color}">
         <button type="button" class="ao-main" data-act="item" data-id="${esc(optDef.id)}" title="Tap to inspect full stats">
-          <span class="tile" aria-hidden="true">${iconOf(optDef.id)}</span>
+          <span class="tile" aria-hidden="true">${iconOf(lookId(p, optDef.id))}</span>
           <span class="ao-tx">
-            <b style="color: ${oLook.ink}">${esc(optDef.name)}</b>
+            <b style="color: ${oLook.ink}">${esc(nameOf(lookId(p, optDef.id)))}</b>
             <small>${esc(oLook.name)} · ilvl ${oShare.ilvl} · ${esc(diffTxt)}</small>
           </span>
         </button>
@@ -544,7 +546,7 @@ export class Sheets {
       ${armouryList}
       <div class="tip" style="--rc: ${look.color}; --rl: ${look.light}" aria-live="polite">
         <span class="tw-eye now">Equipped in ${esc(slotName.toLowerCase())} slot</span>
-        <div class="tip-head"><span class="tile" aria-hidden="true">${iconOf(d.id)}</span><div><b class="tip-n">${esc(d.name)}</b><span class="tip-k">${esc(look.name)} ${esc(slotName.toLowerCase())} · Item level ${share.ilvl}</span></div></div>
+        <div class="tip-head"><span class="tile" aria-hidden="true">${iconOf(lookId(p, d.id))}</span><div><b class="tip-n">${esc(nameOf(lookId(p, d.id)))}</b><span class="tip-k">${esc(look.name)} ${esc(slotName.toLowerCase())} · Item level ${share.ilvl}</span></div></div>
         <ul class="tip-stats">${lines.join('')}</ul>${extra}<p class="tip-src">${esc(src)}</p>
       </div>
     </div>`;

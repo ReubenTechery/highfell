@@ -29,8 +29,9 @@ not the core loop. Nothing else gets added to that shape without the owner sayin
 **Normal is solo, Heroic is the group flex.** Normal is fully playable on your own: your own Warband heroes from
 your bunk room fill the other two seats in their real gear (bots stand in for roles you have no hero for), and a
 Normal collection log can always be finished solo. You can group up on Normal if you want. Heroic is the optional
-group flex: at least two real players, plus a bot if there are only two, never your Warband. It has the same
-power as Normal, with gilded looks and its own log. Teamwork between roles is the heart of the combat.
+group flex: at least two real players, plus a bot if there are only two, never your Warband. It drops the Normal
+loot (for the Normal log, so grouping up is never a worse evening than playing solo) plus gilding kits: gilded
+looks at the same power, in a log of their own. Teamwork between roles is the heart of the combat.
 
 ## Pillars: if a change fights one of these, the change is wrong
 
@@ -86,10 +87,10 @@ power as Normal, with gilded looks and its own log. Teamwork between roles is th
 | Your other heroes wait by their beds in the house; there is no camp | One place, one less screen |
 | House looks come only from finishing a dungeon's log (a gilded one from its Heroic log) | The house shows what you've done; a look can't be faked |
 | A finished collection log gives a house look, a title and one big prize, never power | The long chase that makes the log mean something |
-| A log's pet, mount and dye are bonus slots, never needed to finish it | The rarest drops stay a flex, and finishing never waits on them |
+| A log's pet, mount and dye (on Heroic: the gilded pet, mount and plume) are bonus slots, never needed to finish it | The rarest drops stay a flex, and finishing never waits on them |
 | Dwarf, elf and human from the start; the other races are earned in dungeons; four classes | Races are the flex you earn; four classes keep it to four buttons |
 | A log's big prize can be a race, a race and class combo, or something else | There will be a lot of dungeons |
-| Every dungeon gets a Heroic: harder, the same drops gilded at the same power, its own log | Something to do after the gear cap, never more power |
+| Every dungeon gets a Heroic: harder; it drops the Normal loot plus a gilding kit per unique (its gilded look for good, any seat, same power); its log is the kits | Grouping up is never a worse evening than solo; something to chase after the gear cap, never more power |
 | One self-contained HTML file, no frameworks, no runtime dependencies; only the music streams, from the live page's own files, and the game is whole without it | It has to run anywhere, including inside claude.ai |
 | A save never loses data: change its shape only with a version bump and a migration | People's progress is sacred |
 
@@ -104,7 +105,8 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
 - `src/content`: data only. Roles and abilities, gear and traits, `folk.ts` (the races, which are earned, the
   four classes, which race and class combos have art in `HERO_ART`, name lists), one folder per dungeon
   (`barrow/`: map, mobs, bosses, script, items, loot tables, collectibles, achievements, and `heroic.ts`, its
-  heroic version and gilded drops), and `vale/` (ingredients, recipes, ranks, and `garden.ts`).
+  heroic version: its gilding kits and gilded twins), `kits.ts` (gilding kits, Heroic's own drops, built from any
+  dungeon's tables), and `vale/` (ingredients, recipes, ranks, and `garden.ts`).
   `house.ts` is the house's plan (each room's `main`, what a tap from far away opens, and the paddock's places). Register new content in `src/content/index.ts`; `checkContent()`
   and the tests catch broken ids.
 - `src/dungeon`: the engine, plain JS with no DOM: state `S`, entities, heroes, mobs, bots, the loop,

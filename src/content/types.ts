@@ -63,6 +63,18 @@ export interface CollectibleDef {
   source: string;       // where it comes from, in plain words
   /** mounts: where the rider sits on the sprite, and how big the rider is drawn */
   saddle?: { x: number; y: number; k: number };
+  /** doesn't drop any more: kept, and still works, for whoever has it; hidden from everyone else */
+  retired?: boolean;
+}
+
+/** A gilding kit, Heroic's own drop: the gilded look of one unique (a set piece or a boss weapon), for good
+ *  and for every hero. It isn't gear and never changes power. Its id is the piece's with `.gilded` on the end. */
+export interface KitDef {
+  id: string;
+  /** the piece it gilds */
+  item: string;
+  name: string;
+  icon: string;
 }
 
 /* ---------------------------------------------------------------- the garden: seeds, harvests, brewing */
@@ -160,6 +172,7 @@ export interface DungeonInfo {
   /** bonus slots: shown in the log, never needed to finish it (the pet, the pure flex) */
   bonus?: string[];
   achievements: string[];
-  /** a heroic dungeon: the normal one it is the harder version of. It pays that one's Marks and counts for its achievements. */
+  /** a heroic dungeon: the normal one it is the harder version of. Its kills roll that one's tables first (and
+   *  count on its kill counts), then its own: the gilding kits. It pays that one's Marks and counts for its achievements. */
   heroicOf?: string;
 }

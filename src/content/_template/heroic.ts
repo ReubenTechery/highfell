@@ -1,19 +1,22 @@
 /**
  * Dungeon Template: Reusable Heroic Generator (`makeHeroicDungeon`).
- * Automatically creates the gilded items, gilded loot tables, gilded log achievement,
- * and Heroic `DungeonInfo` for any dungeon so we never duplicate heroic boilerplate.
+ * From a dungeon's own items, tables and log it builds its Heroic, so every new dungeon gets the same shape
+ * for free: a Heroic kill rolls the dungeon's normal tables first (normal pieces, for the normal log), then
+ * the Heroic's own tables built here: a gilding kit for each unique (any seat, `KIT_RATE`) and the gilded
+ * twins of its trophy, mount and pet. Its log is the kits, with the twins as bonus slots, and finishing it
+ * earns its log achievement. Register the kits in `src/content/index.ts` with the rest.
  */
-import type { AchievementDef, BossLootDef, CollectibleDef, DungeonInfo, ItemDef, TitleDef } from '../types';
+import type { AchievementDef, BossLootDef, CollectibleDef, DungeonInfo, ItemDef, KitDef, TitleDef } from '../types';
+import { gilded, kitLog, kitTables, kitsOf } from '../kits';
 import { TEMPLATE_DUNGEON } from './index';
 import { TEMPLATE_ITEMS } from './items';
 import { TEMPLATE_LOOT } from './loot';
-
-export const gildedId = (id: string): string => `${id}.gilded`;
 
 export interface HeroicBuilderConfig {
   base: DungeonInfo;
   items: ItemDef[];
   loot: BossLootDef[];
+  /** the gilded twins of the dungeon's trophy, mount and pet (`gilded(id)` of each): Heroic's bonus slots */
   collectibles: CollectibleDef[];
   logAchievement: {
     id: string;
@@ -29,22 +32,14 @@ export interface HeroicBuilderConfig {
 
 export function makeHeroicDungeon(cfg: HeroicBuilderConfig): {
   dungeon: DungeonInfo;
-  items: ItemDef[];
+  kits: KitDef[];
   collectibles: CollectibleDef[];
   titles: TitleDef[];
   achievements: AchievementDef[];
 } {
   const heroicId = `${cfg.base.id}-heroic`;
-  const items: ItemDef[] = cfg.items.map((d) => ({
-    ...d,
-    id: gildedId(d.id),
-    icon: `${d.icon}_gilded`,
-    name: d.name.startsWith('The ') ? `The Gilded ${d.name.slice(4)}` : `Gilded ${d.name}`,
-  }));
-  const loot: BossLootDef[] = cfg.loot.map((t) => ({
-    boss: t.boss,
-    drops: t.drops.map((d) => ({ ...d, id: gildedId(d.id) })),
-  }));
+  const kits = kitsOf(cfg.items);
+  const log = kitLog(cfg.base.collection, kits, cfg.collectibles);
   const collectibles: CollectibleDef[] = [
     ...cfg.collectibles,
     ...(cfg.logAchievement.collectible ? [cfg.logAchievement.collectible] : []),
@@ -73,14 +68,14 @@ export function makeHeroicDungeon(cfg: HeroicBuilderConfig): {
     blurb: `The same dungeon with the gloves off: everything hits harder and lasts longer. Made for full Epic.`,
     bosses: cfg.base.bosses,
     finalBoss: cfg.base.finalBoss,
-    loot,
+    loot: kitTables(cfg.loot, kits, cfg.collectibles),
     marksName: 'Warband Marks',
-    collection: cfg.base.collection.map(gildedId),
-    bonus: (cfg.base.bonus || []).map(gildedId),
+    collection: log.collection,
+    bonus: log.bonus,
     achievements: achievements.map((a) => a.id),
     heroicOf: cfg.base.id,
   };
-  return { dungeon, items, collectibles, titles, achievements };
+  return { dungeon, kits, collectibles, titles, achievements };
 }
 
 export const TEMPLATE_HEROIC_BUNDLE = makeHeroicDungeon({
@@ -88,15 +83,14 @@ export const TEMPLATE_HEROIC_BUNDLE = makeHeroicDungeon({
   items: TEMPLATE_ITEMS,
   loot: TEMPLATE_LOOT,
   collectibles: [
-    { id: gildedId('pet.pint_sovereign'), kind: 'pet', name: 'Pint-sized Gilded Sovereign', desc: 'Solid gold brasswork and cap.', icon: 'c_pet_keeper_gilded', sprite: 'pet_keeper_gilded', source: 'Heroic: The Sovereign, 1 in 2,500' },
-    { id: gildedId('mount.clockwork_beetle'), kind: 'mount', name: 'Gilded Clockwork Beetle', desc: 'Polished gold plating and sapphire gears.', icon: 'c_mount_hound_gilded', sprite: 'mount_hound_gilded', source: 'Heroic: The Sovereign, 1 in 1,000', saddle: { x: -4, y: -94, k: 0.9 } },
-    { id: gildedId('dye.sporeglow'), kind: 'cosmetic', name: 'Gilded Sporeglow Dye', desc: 'Turns your dungeon set to gleaming gold.', icon: 'c_dye_gilded', sprite: 'tr_dye_gilded', source: 'Heroic: The Sovereign, 1 in 1,000' },
-    { id: gildedId('trophy.warden_crest'), kind: 'trophy', name: 'Warden’s Gilded Crest', desc: 'Gleaming gold brasswork for the mantel.', icon: 'c_plume_gilded', sprite: 'tr_plume_gilded', source: 'Heroic: Mini-Boss Warden, 1 in 50' },
+    { id: gilded('pet.pint_sovereign'), kind: 'pet', name: 'Pint-sized Gilded Sovereign', desc: 'Solid gold brasswork and cap.', icon: 'c_pet_keeper_gilded', sprite: 'pet_keeper_gilded', source: 'Heroic: The Sovereign, 1 in 2,500' },
+    { id: gilded('mount.clockwork_beetle'), kind: 'mount', name: 'Gilded Clockwork Beetle', desc: 'Polished gold plating and sapphire gears.', icon: 'c_mount_hound_gilded', sprite: 'mount_hound_gilded', source: 'Heroic: The Sovereign, 1 in 1,000', saddle: { x: -4, y: -94, k: 0.9 } },
+    { id: gilded('trophy.warden_crest'), kind: 'trophy', name: 'Warden’s Gilded Crest', desc: 'Gleaming gold brasswork for the mantel.', icon: 'c_plume_gilded', sprite: 'tr_plume_gilded', source: 'Heroic: Mini-Boss Warden, 1 in 50' },
   ],
   logAchievement: {
     id: 'template-heroic.log',
     name: 'Gilded Clockwork',
-    how: 'Fill every slot of Heroic Template Sanctum’s collection log.',
+    how: 'Fill every slot of Heroic Template Sanctum’s collection log: a gilding kit for every piece (the pet, mount and crest are a bonus).',
     look: 'barrow-gilded',
     titleId: 'title.archtinker',
     titleText: 'the Arch-Tinker',
@@ -105,4 +99,3 @@ export const TEMPLATE_HEROIC_BUNDLE = makeHeroicDungeon({
 });
 
 export const TEMPLATE_HEROIC = TEMPLATE_HEROIC_BUNDLE.dungeon;
-

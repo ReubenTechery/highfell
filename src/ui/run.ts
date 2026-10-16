@@ -23,8 +23,8 @@ import { render, resizeView, updateCam, VIEW } from '../dungeon/render.js';
 import { roomIndexOf } from '../dungeon/world.js';
 import { lootGlint, startWalkout } from '../dungeon/walkout.js';
 import { Achiever } from '../meta/achievements';
-import { loadoutFor, partyRar, plainLoadout, worn } from '../meta/gear';
-import { countBossWipe, countRunStart, resolveClear, resolveKill, runLoot, tellOf, type ClearLoot, type KillLoot } from '../meta/loot';
+import { gildedOn, loadoutFor, partyRar, plainLoadout, worn } from '../meta/gear';
+import { countBossWipe, countRunStart, gildOf, resolveClear, resolveKill, runLoot, tellOf, type ClearLoot, type KillLoot } from '../meta/loot';
 import { pourFor, seatsFor } from '../meta/party';
 import { activeHero, countClassRun, countLift, finishCurseTip, finishIntroRun, heroById, learnGlow, markClassTrial, needsClassTrial, needsCurseTip, needsSwipeHint, roleOf, type Hero } from '../meta/profile';
 import { CLASSES, heroArt, type ClassId } from '../content/folk';
@@ -38,8 +38,8 @@ import { MUSIC, runMusic } from './music';
 import { SFX } from './sound';
 
 /** A run plays the hero you are playing. `role` is for testing: it picks one of your heroes in that seat,
- *  and if you have none the run is practice in plain gear. `heroic` plays the heroic version: harder, its
- *  own kill counts and its gilded drops. */
+ *  and if you have none the run is practice in plain gear. `heroic` plays the heroic version: harder, the
+ *  same drops plus gilding kits, and its own kill counts. */
 export interface RunOpts { start: string; testRar: Rar | null; role?: RoleId; heroic?: boolean; dungeon?: string }
 const STEP = 1 / 60;
 const KEY: Record<string, string> = { a1: '1', a2: '2', a3: '3', a4: '4', dodge: 'Space' };
@@ -308,7 +308,10 @@ export class RunScene implements InputUI {
     const baseDg = DUNGEONS[baseId] || BARROW;
     const dg = this.dg = o.heroic ? (heroicVersion(baseDg.id) || baseDg) : baseDg;
     const engine = DUNGEON_ENGINES[baseDg.id] || BARROW_ENGINE;
-    const gilded = looks.includes('dye.ghostly.gilded') && wornSet && !test;
+    // gold in the dungeon: a gilded piece you wear (its kit is yours and on), or the old Gravegold Dye on a Barrow
+    // set. The rarer Ghostly Dye wins: switch it off in Looks to shine gold
+    const gildedWorn = !!h && Object.values(worn(p, h)).some((w) => w.unique && gildedOn(p, w.def.id));
+    const gilded = !test && !ghostly && (gildedWorn || (looks.includes('dye.ghostly.gilded') && wornSet));
     if (!this.practice) countRunStart(p, dg);
     // a class's first runs glow the button whose moment has come (the trial teaches its own way)
     this.learn = h && !intro ? learnGlow(p, h.cls) : 0;
@@ -444,7 +447,7 @@ export class RunScene implements InputUI {
         for (const d of kl.drops) if (d.isNew && this.ach) for (const id of this.ach.collected(d.id)) this.unlockedNow(id);
         if (last) {
           this.clear = resolveClear(p, this.dg, hero, S.t - S.startedAt, this.lootRng);
-          startWalkout(tellOf(kl.drops), x, y);
+          startWalkout(tellOf(kl.drops), x, y, gildOf(kl.drops));
         } else if (kl.drops.length) {
           lootGlint(x, y, nameOf(kl.drops[0].id));
           for (const d of kl.drops) if (d.isNew) this.app.toasts.collected(d.id, kl.kc);

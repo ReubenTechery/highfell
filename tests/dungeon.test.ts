@@ -404,7 +404,9 @@ test('barrow revamp: Crushing Blows on non-tanks, hazard Ward bleed-through, Exp
 test('dungeon template: starter _template dungeon builds map, packs, seal, themes, heroic gilded log, and runs in engine', () => {
   assert.ok(DUNGEON_THEMES.barrow && DUNGEON_THEMES.thimblebriar && DUNGEON_THEMES.moonmere);
   assert.equal(TEMPLATE_DUNGEON.collection.length, 20);
-  assert.equal(TEMPLATE_HEROIC.collection.length, 20);
+  // its Heroic log: a gilding kit for each of its 16 uniques, and the gilded trophy, mount and pet as bonus slots
+  assert.equal(TEMPLATE_HEROIC.collection.length, 19);
+  assert.equal(TEMPLATE_HEROIC.bonus?.length, 3);
   assert.ok(TEMPLATE_HEROIC.collection.every((id: string) => id.endsWith('.gilded')));
   newGame(TEMPLATE_ENGINE, { role: 'tank', seed: 123, start: 'entrance', auto: true, quiet: true, noEvents: true, loadouts: {} });
   const s = S as any;

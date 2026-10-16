@@ -58,3 +58,7 @@ Every dungeon in Highfell shares the same **4-minute, 6-room vertical spine** so
    - **3-Seat Trial (`S.seal`):** Fast 2-second 3-hero formation pad puzzle (`makeSealTrial`) that shatters for an 18s speed/damage surge.
    - **Prop-Swap Ambush (`Pack E`):** Stepping past the midpoint pops room props open (`makeAmbush`: coffins, giant spore-pods, or briar cocoons) and spawns a fast swarm + Brute.
 6. **Room 5 (`r5`) — Final Boss Yard/Sanctum (Pack G):** Circular arena (`MAP.arena`), 3 phases, signature role mechanics (tank cage/peel, healer chain/wisp/cleanse, DPS burn during **Exposed** windows, and Phase 3 boss-anchored moving safe-zone ring), ending with the **Chest & Lantern Walkout**.
+
+### Heroic, for free (`src/content/_template/heroic.ts`)
+
+`makeHeroicDungeon({ base, items, loot, collectibles, logAchievement })` builds a dungeon's Heroic. Heroic = Normal loot + gilding kits: a Heroic kill rolls the dungeon's own tables first (the normal pieces, for the normal log and kill counts), then the Heroic's own tables, built by `src/content/kits.ts`: a gilding kit for each unique (any seat, `KIT_RATE`, 1/20) and the gilded twins of its trophy, mount and pet at their normal rates. Its log is the kits; the twins are bonus slots. Register the kits in `KITS` in `src/content/index.ts`. A kit is drawn as its piece gilded: the gilded icon (`<icon>_gilded`) and the wardrobe's gilded piece (`<id>.gilded`), both through `gild()`.

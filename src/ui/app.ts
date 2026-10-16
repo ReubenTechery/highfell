@@ -33,7 +33,7 @@ export interface Carry { sheet?: unknown; scene?: SceneId }
 
 /** Testing switches that live on this device only, never in the save. */
 /** testing switches, kept on this device: allOpen opens the log rewards (looks, the Risen) and Heroic before they're earned */
-export interface Dev { walkout: 'off' | 'normal' | 'unique' | 'pet'; valeFree: boolean; valeLuck: boolean; allOpen: boolean }
+export interface Dev { walkout: 'off' | 'normal' | 'kit' | 'unique' | 'pet'; valeFree: boolean; valeLuck: boolean; allOpen: boolean }
 const DEV_KEY = 'highfell.dev';
 
 export class App {

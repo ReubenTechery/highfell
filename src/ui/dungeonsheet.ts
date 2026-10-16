@@ -1,7 +1,7 @@
 /**
  * The Dungeons sheet, opened by the big Dungeons button or the Barrow door. The dungeon's picture with
- * its Normal / Heroic switch (Heroic opens after ten clears and plays harder, for gilded drops), and right
- * under it one small line for that version's collection log: how full it is, with what finishing it gives
+ * its Normal / Heroic switch (Heroic opens after ten clears and plays harder: the same drops, plus gilding
+ * kits), and right under it one small line for that version's collection log: how full it is, with what finishing it gives
  * at the end of the bar (the Barrow's: a new kind of hero, the Risen). It opens to show those rewards and
  * what each role can get (what you have lit up, every drop rate; tap one to hold it up against what you
  * wear). Then the main thing: your role, your hero (picking a role picks the hero of that role you played
@@ -10,6 +10,7 @@
  * Heroic needs at least two players (party.ts), so for now it opens only for practice.
  */
 import { COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, TITLES, heroicVersion } from '../content';
+import { KIT_RATE } from '../content/kits';
 import { MAX_HEROES, RACES, type RaceId } from '../content/folk';
 import { LOOKS } from '../content/house';
 import { ORDER, ROLES } from '../content/roles';
@@ -231,12 +232,12 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
   const body = `${strip}<div class="dgx${pick.heroic ? ' heroic' : ''}">
     <div class="dgx-side">
       <div class="dgx-art">${banner(pick.heroic, base.id)}${diff}
-        <div class="dgx-name"><div class="dgx-tier-badge"><span>Tier ${meta.roman} · Rec. ilvl <b>${recIlvl}</b> · Drops up to <b>ilvl ${dropsIlvl}${pick.heroic ? ' (Gilded)' : ''}</b></span></div>
+        <div class="dgx-name"><div class="dgx-tier-badge"><span>Tier ${meta.roman} · Rec. ilvl <b>${recIlvl}</b> · Drops up to <b>ilvl ${dropsIlvl}</b>${pick.heroic ? ' + gilding kits' : ''}</span></div>
           <h3>${esc(base.name)}${pick.heroic ? ' <em class="dgx-h">Heroic</em>' : ''}</h3><span class="dg-stats"><span>Clears <b>${rec ? rec.clears : 0}</b></span><span>Best <b>${fmtT(rec?.pb)}</b></span><span>KC <b>${keeper ? keeper.kc : 0}</b></span></span></div>
       </div>
       <section class="dgx-log">
         <button type="button" class="dgx-logbar${done ? ' done' : ''}" data-act="logx" aria-expanded="${pick.log}"><span>Collection log</span><b>${got}/${all}</b><i aria-hidden="true"><i style="width: ${((got / all) * 100).toFixed(1)}%"></i></i>${main ? `<span class="dgx-prize${done ? ' got' : ''}" title="${esc(main.name)}" aria-hidden="true">${tile(main.icon)}</span>` : ''}<span class="dgx-more">${pick.log ? 'Hide' : 'Loot'}${pick.log ? GLYPH.up : GLYPH.down}</span></button>
-        ${pick.log ? `<div class="dgx-loot">${ach ? rewards(ach, done) : ''}${ORDER.flatMap((r) => r === 'dps' ? [lootRow(p, 'Mage', 'dps', lootFor(dg, 'dps', 'mage').mine, role === 'dps' && h?.cls !== 'rogue'), lootRow(p, 'Rogue', 'dps', lootFor(dg, 'dps', 'rogue').mine, role === 'dps' && h?.cls === 'rogue')] : [lootRow(p, ROLES[r].title, r, lootFor(dg, r).mine, r === role)]).join('')}${lootRow(p, 'Anyone', null, lootFor(dg, role).shared, false)}
+        ${pick.log ? `<div class="dgx-loot">${ach ? rewards(ach, done) : ''}${pick.heroic ? `<p class="dgx-rw-h">Everything Normal drops, plus a gilding kit for every piece: any seat, ${fmtRate(KIT_RATE)} each. Same power.</p>` : ''}${ORDER.flatMap((r) => r === 'dps' ? [lootRow(p, 'Mage', 'dps', lootFor(dg, 'dps', 'mage').mine, role === 'dps' && h?.cls !== 'rogue'), lootRow(p, 'Rogue', 'dps', lootFor(dg, 'dps', 'rogue').mine, role === 'dps' && h?.cls === 'rogue')] : [lootRow(p, ROLES[r].title, r, lootFor(dg, r).mine, r === role)]).join('')}${lootRow(p, 'Anyone', null, lootFor(dg, role).shared, false)}
           <button type="button" class="btn small" data-act="entry" data-id="${dg.id}.${dg.finalBoss}">${GLYPH.book}Open the collection log</button></div>` : ''}
       </section>
     </div>
