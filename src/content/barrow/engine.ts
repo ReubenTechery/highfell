@@ -13,6 +13,8 @@ export const BARROW_ENGINE = {
   // 30% more health, so tanking and healing matter and a run lands near four minutes.
   tune: { hit: 1.5, trashHp: 1.3, bossHp: 1 },
   // heroic: made for full Epic (1.72 base power). Bots in full Epic clear it in about four minutes
-  // without wiping; in Common they get buried (tests/balance.test.ts).
-  heroic: { hit: 3.2, trashHp: 1.95, bossHp: 1.63 },
+  // without wiping; in Common they get buried (tests/balance.test.ts). Its hits came down from 3.2 to 2.8
+  // when the Gravecallers' curses arrived: at 3.2 a full Epic bot party already wiped at the Gravekeeper about
+  // one run in five.
+  heroic: { hit: 2.8, trashHp: 1.95, bossHp: 1.63 },
 };

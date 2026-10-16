@@ -163,7 +163,7 @@ export function makeDungeonScript(cfg) {
   ];
 
   function setup(start) {
-    if (sealCfg) S.seal = makeSealTrial(sealCfg);
+    if (sealCfg && (!sealCfg.heroicOnly || (S.opts && S.opts.heroic))) S.seal = makeSealTrial(sealCfg);
     if (!start || start === 'entrance') return;
     const upto = start === 'intro' ? ['A', 'D', 'E', 'G'] : start === mini.id ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'K', 'D', 'E'];
     for (const p of S.packs) {

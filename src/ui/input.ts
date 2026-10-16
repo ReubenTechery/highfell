@@ -11,7 +11,7 @@ import { AB, abKey } from '../content/roles';
 import { S, emit } from '../dungeon/state.js';
 import { fx, killMob } from '../dungeon/entities.js';
 import { autoTarget, bestCluster, clampRange, doDodge, heroBy, isFoe, mend, useAbility } from '../dungeon/heroes.js';
-import { chainEnds, cutChain, mashCage as mashEngine } from '../dungeon/mobs.js';
+import { chainEnds, cutChain, liftCurse, mashCage as mashEngine } from '../dungeon/mobs.js';
 import { AIM, VIEW, toWorld } from '../dungeon/render.js';
 import { segPointDist, segsCross } from '../dungeon/world.js';
 
@@ -80,11 +80,12 @@ function chainHalves(ch: any): [{ x: number; y: number }, { x: number; y: number
 }
 /** a mate's cage under this world point */
 const cageAt = (w: { x: number; y: number }) => S.mobs.find((m: any) => m.alive && m.cage && m.hero !== S.player && distXY(w.x, w.y, m.x, m.y - 50) < 80) || null;
-/** is there a chain or a wisp under this screen point? Only the healer can swipe them; for others it is the stick/dodge */
+/** is there a chain, a wisp or a cursed hero under this screen point? Only the healer can swipe them; for others it is the stick/dodge */
 function onMechanic(x: number, y: number): boolean {
   if (!S || !S.player || S.player.role !== 'healer') return false;
   const w = toWorld(x, y);
   for (const m of S.mobs) if (m.alive && m.M.wisp && distXY(w.x, w.y, m.x, m.y - 40) < 70) return true;
+  for (const h of S.heroes) if (h.alive && h.st.curse && distXY(w.x, w.y, h.x, h.y - 40) < 60) return true;
   for (const ch of S.chains) {
     const [a, mid, b] = chainHalves(ch);
     if (segPointDist(a.x, a.y, mid.x, mid.y, w.x, w.y) < 60 || segPointDist(mid.x, mid.y, b.x, b.y, w.x, w.y) < 60) return true;
@@ -195,7 +196,7 @@ export function bindInput(layer: HTMLElement, ui: InputUI): void {
   window.addEventListener('blur', () => { IN.keys = {}; IN.block = false; IN.stick = null; ui.stick(null); });
 }
 
-/** a swipe by the healer that crosses a wisp or a chain cuts it */
+/** a swipe by the healer that crosses a wisp or a chain cuts it, and one across a cursed hero lifts the curse */
 export function trySlice(a: { x: number; y: number }, b: { x: number; y: number }, _ui: InputUI): boolean {
   if (!S || !S.player.alive || S.player.st.caged || S.player.role !== 'healer') return false;
   const p = toWorld(a.x, a.y), q = toWorld(b.x, b.y);
@@ -207,6 +208,9 @@ export function trySlice(a: { x: number; y: number }, b: { x: number; y: number 
   for (const ch of S.chains.slice()) {
     const [ca, mid, cb] = chainHalves(ch);
     if (segsCross(p, q, ca, mid) || segsCross(p, q, mid, cb)) { cutChain(ch, S.player); hit = true; }
+  }
+  for (const h of S.heroes) {
+    if (h.alive && h.st.curse && segPointDist(p.x, p.y, q.x, q.y, h.x, h.y - 40) < h.r + 26) { liftCurse(h, S.player); hit = true; }
   }
   if (hit) {
     const trail = S.looks && S.looks.has('cosmetic.trail_wisp');
