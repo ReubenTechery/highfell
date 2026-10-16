@@ -9,6 +9,7 @@ export const THIMBLEBRIAR: DungeonInfo = {
   id: 'thimblebriar',
   name: 'Thimblebriar Hollow',
   blurb: 'A gnome burrow of mushrooms and brass, where the inventions went wrong. Knock their bombs back at them. About three and a half minutes in Barrow epics.',
+  season: 0,
   tier: 2,
   recIlvl: 22,
   dropsIlvl: 34,

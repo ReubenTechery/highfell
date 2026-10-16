@@ -167,6 +167,7 @@ export class Sheets {
     // still to come shows what it will ask of you)
     if (spec.kind === 'dungeon' && !inDungeon(this.spec)) {
       this.pick.page = 'door';
+      this.pick.warn = false;
       if (spec.dungeon) { this.pick.dungeon = spec.dungeon; this.pick.heroic = false; }
       else if (!DUNGEONS[this.pick.dungeon || '']) this.pick.dungeon = 'barrow';
     }

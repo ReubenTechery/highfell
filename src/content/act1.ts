@@ -3,10 +3,12 @@
  * Dungeons sheet steps through them and lists them, and the house's cellar has a door for each.
  */
 
-/** Act 1 stepped dungeon progression ladder (Tier I -> II -> III: ilvl 26 -> 34 -> 42).
+/** Act 1 stepped dungeon progression ladder (Tier I -> II -> III: ilvl 26 -> 34 -> 42), shown as Season 0.
  *  When a dungeon is registered in DUNGEONS, it uses its live content & engine; otherwise it displays its Act 1 preview card. */
 export interface Act1DungeonMeta {
   id: string;
+  /** a dungeon still being built: the season it comes in (a built one's is on its DungeonInfo) */
+  season?: number;
   tier: 1 | 2 | 3;
   roman: string;
   name: string;
@@ -60,6 +62,7 @@ export const ACT1_DUNGEONS: Act1DungeonMeta[] = [
   },
   {
     id: 'moonmere',
+    season: 0,
     tier: 3,
     roman: 'III',
     name: 'Moonmere Sanctum',

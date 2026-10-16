@@ -123,10 +123,11 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   and `emit`.
 - `src/meta`: TypeScript rules for everything that lasts: the profile and its migrations (heroes live here),
   loot (and when heroic opens), gear, achievements, what the collection log gives (`logs.ts`), the hearth,
-  the party's seats (`party.ts`), and `vale.ts` (seeds, planter beds, harvests, ranks, brewing).
+  the party's seats and the under-powered warning (`party.ts`), `vale.ts` (seeds, planter beds, harvests,
+  ranks, brewing) and `tips.ts` (which first-time tip the house and the Dungeons door show).
 - `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, its drawing
   `houseart.ts`, every room in each look, the Toadstool Workshop's in `houseworkshop.ts`, the cellar's doors
-  `halldoors.ts`, your hero's name tag `nametag.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
+  `halldoors.ts`, your hero's name tag `nametag.ts`, its tour and tips as data `tours.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
   close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons
   (`dungeonsheet.ts`, its door's picture in `stage.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
   (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`), settings (`settingssheet.ts`), a hero's gear in the armoury
@@ -142,7 +143,8 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
 - `tests/`: `balance.test.ts` (bot clears must stay in their bands), `dungeon.test.ts` (threat, cages,
   curses, numbers, tuning, where each hero's weapon and head are), `coach.test.ts` (which button the coach
   names), `combos.test.ts` (the combos on bosses), `input.test.ts` (the touch controls and party-frame swipes,
-  driven without a browser), `meta.test.ts`, `vale.test.ts`.
+  driven without a browser), `meta.test.ts`, `power.test.ts` (seasons, Power and the under-powered warning),
+  `vale.test.ts`, `tips.test.ts` (which first-time tip shows when).
 
 ## Commands
 
@@ -193,8 +195,10 @@ Settings has testing switches (walkout and log-complete previews of the dungeon 
   about 600 lines; split by responsibility, not by size alone.
 - **Read before you write.** Find the existing helper before making a new one (art helpers, `actions()`,
   `placeSprite`, `tile`, the sheet pattern, toasts, `SFX`).
-- **Visible text is plain and short,** and never uses the word "stroke" (the build warns). The game's name
-  isn't final: it lives in one constant, `GAME_NAME` in `src/content/index.ts`.
+- **Visible text is plain and short,** and never uses the word "stroke" (the build warns). Say "Power", never
+  "item level" or "ilvl", and show it as a whole number (Power 13, never 13.2); the code and the save keep
+  their own names (`score`, `ilvl`). The game's name isn't final: it lives in one constant, `GAME_NAME` in
+  `src/content/index.ts`.
 - **Done means:** `npm run all` passes, you looked at the change on a phone-sized screenshot (390×844) and a
   desktop one (1440×900) and fixed what looked wrong, and the docs that describe it are updated
   (`docs/design.md` for how a system works, this file for decisions and rules for agents).
