@@ -16,6 +16,8 @@ import { newGame, respawn, update } from '../dungeon/game.js';
 import { S, setHooks } from '../dungeon/state.js';
 import { banner, exposeMob } from '../dungeon/entities.js';
 import { abCd, abMana, bestCluster, doDodge, heroBy, isFoe, mend, useAbility } from '../dungeon/heroes.js';
+import { momentFor } from '../dungeon/coach.js';
+import { CURSE_TIME } from '../dungeon/mobs.js';
 import { inHaz } from '../dungeon/bots.js';
 import { render, resizeView, updateCam, VIEW } from '../dungeon/render.js';
 import { roomIndexOf } from '../dungeon/world.js';
@@ -24,14 +26,14 @@ import { Achiever } from '../meta/achievements';
 import { loadoutFor, partyRar, plainLoadout, worn } from '../meta/gear';
 import { countBossWipe, countRunStart, resolveClear, resolveKill, runLoot, tellOf, type ClearLoot, type KillLoot } from '../meta/loot';
 import { pourFor, seatsFor } from '../meta/party';
-import { activeHero, finishCurseTip, finishIntroRun, heroById, needsCurseTip, roleOf, type Hero } from '../meta/profile';
-import { heroArt, type ClassId } from '../content/folk';
+import { activeHero, countClassRun, countLift, finishCurseTip, finishIntroRun, heroById, learnGlow, markClassTrial, needsClassTrial, needsCurseTip, needsSwipeHint, roleOf, type Hero } from '../meta/profile';
+import { CLASSES, heroArt, type ClassId } from '../content/folk';
 import { RECIPES } from '../content/vale';
 import { broughtBrew, spendBottle } from '../meta/vale';
 import type { App } from './app';
 import { $, esc, flash, fmtT } from './dom';
-import { heroImg, heroSprite, nameOf, tile } from './art';
-import { IN, aimPoint, bindInput, mashCage, playerIntent, resetInput, type InputUI } from './input';
+import { heroImg, heroSprite, nameOf, spriteURL, tile } from './art';
+import { IN, aimPoint, bindFrameSwipes, bindInput, mashCage, playerIntent, resetInput, type InputUI } from './input';
 import { SFX } from './sound';
 
 /** A run plays the hero you are playing. `role` is for testing: it picks one of your heroes in that seat,
@@ -104,12 +106,19 @@ export class RunScene implements InputUI {
   private trail = 1;
   /** seconds to the next heartbeat while a mate is nearly down (the healer's) */
   private beatT = 0;
+  /** how strongly the coach glows the button whose moment has come: only a class's first runs (learnGlow) */
+  private learn = 0;
+  /** the run you asked for, waiting while its class's Crypt Trial is offered first */
+  private after: RunOpts | null = null;
+  /** the swipe arrow across a cursed mate, until you've lifted three curses */
+  private swipeHint = false;
   private lastRoom = -1;
   private bound = false;
 
   constructor(private app: App, private root: HTMLElement) {
     $('pause-btn').addEventListener('click', (e) => { e.stopPropagation(); this.pause(); });
     $('intro-skip').addEventListener('click', (e) => { e.stopPropagation(); SFX.play('ui'); this.skipIntro(); });
+    bindFrameSwipes($('pad')); bindFrameSwipes($('frames'));
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.active() && S && !S.paused && !S.over) this.pause(); });
   }
 
@@ -233,13 +242,30 @@ export class RunScene implements InputUI {
   }
 
   /* ---------------------------------------------------------------- starting and stopping */
+  /** the hero a run plays: yours, or for `role` (testing) one of yours in that seat */
+  private heroFor(o: RunOpts): Hero | null {
+    const p = this.app.p, h = activeHero(p);
+    if (!o.role || (h && roleOf(h) === o.role)) return h;
+    return p.roster.find((x) => roleOf(x) === o.role) || (o.start === 'intro' ? h : null);
+  }
   start(o: RunOpts): void {
     const app = this.app, p = app.p;
+    // the first run on a class that isn't your first hero's offers that class's Crypt Trial first, once
+    if (o.start !== 'intro') {
+      this.after = null;
+      const first = this.heroFor(o);
+      if (first && needsClassTrial(p, first)) {
+        markClassTrial(p, first.cls);
+        app.store.save();
+        this.after = o;
+        this.start({ start: 'intro', testRar: 3, role: roleOf(first) });
+        return;
+      }
+    }
     this.stop();
     this.opts = o;
     const intro = this.intro = o.start === 'intro';
-    let h: Hero | null = activeHero(p);
-    if (o.role && (!h || roleOf(h) !== o.role)) h = p.roster.find((x) => roleOf(x) === o.role) || (intro ? h : null);
+    const h = this.heroFor(o);
     const role: RoleId = h ? roleOf(h) : o.role || 'tank';
     this.heroId = h ? h.id : null;
     this.role = role;
@@ -282,7 +308,12 @@ export class RunScene implements InputUI {
     const dg = this.dg = o.heroic ? (heroicVersion(baseDg.id) || baseDg) : baseDg;
     const engine = DUNGEON_ENGINES[baseDg.id] || BARROW_ENGINE;
     const gilded = looks.includes('dye.ghostly.gilded') && wornSet && !test;
-    if (!this.practice) { countRunStart(p, dg); app.store.save(); }
+    if (!this.practice) countRunStart(p, dg);
+    // a class's first runs glow the button whose moment has come (the trial teaches its own way)
+    this.learn = h && !intro ? learnGlow(p, h.cls) : 0;
+    if (h) { if (intro) markClassTrial(p, h.cls); else countClassRun(p, h.cls); }
+    this.swipeHint = role === 'healer' && !intro && needsSwipeHint(p);
+    app.store.save();
     if (!this.bound) { bindInput($('touch'), this); this.bound = true; }
     setHooks({
       nope: (slot: string) => { flash(this.root.querySelector(`.ab[data-slot="${slot}"]`), 'nope', 260); SFX.play('nope'); },
@@ -294,7 +325,7 @@ export class RunScene implements InputUI {
       onChest: () => this.finish(),
       playerIntent,
     });
-    newGame(engine, { role, loadouts, start: o.start, seed: (Math.random() * 0x7fffffff) | 1, looks, ghostly, gilded, testGear: test, heroic: !!o.heroic, ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) });
+    newGame(engine, { role, loadouts, start: o.start, seed: (Math.random() * 0x7fffffff) | 1, looks, ghostly, gilded, testGear: test, heroic: !!o.heroic, swipeHint: this.swipeHint, ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) });
     S.startedAt = S.t;
     // a heroic run counts for the Barrow's own achievements
     this.ach = this.practice ? null : new Achiever(p, { dungeon: dg.heroicOf || dg.id, role, practice: false, testGear: false });
@@ -312,6 +343,8 @@ export class RunScene implements InputUI {
     bt.hidden = !brew;
     if (brew) bt.innerHTML = `<span class="ic">${tile(RECIPES[brew].icon)}</span>${esc(RECIPES[brew].name)}`;
     this.app.root.classList.add('in-run');
+    this.root.style.setProperty('--learn', this.learn.toFixed(2));
+    this.root.classList.toggle('swipe-hint', this.swipeHint);
     this.buildHud();
     resizeView();
     updateCam(0, true);
@@ -339,10 +372,12 @@ export class RunScene implements InputUI {
     if (!S) return;
     S.paused = true;
     const hero = this.hero(), me = this.role;
+    // the trial offered on a class's first run (the run you asked for waits in `after`)
+    const offer = this.after;
     const ov = $('ov-msg');
     ov.classList.add('welcome');
-    $('msg-eyebrow').textContent = '3-Hero Co-Op Dungeons';
-    $('msg-title').textContent = 'Welcome to Highfell';
+    $('msg-eyebrow').textContent = offer ? 'New class' : '3-Hero Co-Op Dungeons';
+    $('msg-title').textContent = offer && hero ? `First time as a ${CLASSES[hero.cls as ClassId]?.name || 'new class'}?` : 'Welcome to Highfell';
     // you in the middle, in your own looks and full Epic, with the two party mates either side
     const fig = (r: RoleId): string => {
       const mine = r === me, spr = (mine && hero && heroArt(hero.race, hero.cls, hero.sex)) || ROLES[r].sprite;
@@ -355,20 +390,20 @@ export class RunScene implements InputUI {
         <span class="wk-stage-tag">Barrow Crypt · Trinity Party</span>
         <div class="wk-party">${fig(left)}${fig(me)}${fig(right)}</div>
       </div>
-      <div class="wk-pills">
+      ${offer ? '' : `<div class="wk-pills">
         <span class="wk-pill"><span class="tile">${tile('shield')}</span><b>4-Min Runs</b></span>
         <span class="wk-pill"><span class="tile">${tile('u_gravedigger')}</span><b>1/50 Uniques</b></span>
         <span class="wk-pill"><span class="tile">${tile('c_pet_keeper')}</span><b>Pets & Hearth</b></span>
-      </div>`;
+      </div>`}`;
     const acts = $('msg-actions');
     acts.innerHTML = `
       <button type="button" class="btn gold big wk-btn" data-w="play">
-        <span class="tile wk-ic" aria-hidden="true">${tile('cleave')}</span>
+        <span class="tile wk-ic" aria-hidden="true">${tile(offer && hero ? AB[abKey({ cls: hero.cls, role: me })].a1.key : 'cleave')}</span>
         <span class="wk-tx"><b>Play the Crypt Trial</b><small>1 minute, in full Epic gear</small></span>
       </button>
       <button type="button" class="btn big wk-btn" data-w="skip">
         <span class="tile wk-ic" aria-hidden="true">${tile('c_dwarf')}</span>
-        <span class="wk-tx"><b>${hero ? 'Skip the trial' : 'Skip · Make My Hero'}</b><small>${hero ? 'Straight to your Hearth' : 'Jump straight to hero creation'}</small></span>
+        <span class="wk-tx"><b>${offer ? 'Skip, go in' : hero ? 'Skip the trial' : 'Skip · Make My Hero'}</b><small>${offer ? 'Straight into the dungeon' : hero ? 'Straight to your Hearth' : 'Jump straight to hero creation'}</small></span>
       </button>`;
     acts.querySelector('[data-w="play"]')?.addEventListener('click', () => {
       SFX.play('ui');
@@ -380,6 +415,7 @@ export class RunScene implements InputUI {
     acts.querySelector('[data-w="skip"]')?.addEventListener('click', () => {
       SFX.play('ui');
       ov.classList.remove('welcome');
+      if (offer) { this.after = null; this.start(offer); return; }
       this.skipIntro();
     });
     ov.hidden = false;
@@ -424,6 +460,10 @@ export class RunScene implements InputUI {
     } else if (e.type === 'curse.cast' && S.player.role === 'healer' && needsCurseTip(p)) {
       finishCurseTip(p);
       banner(`Cursed! Swipe across ${e.player ? 'yourself' : e.name} to lift it.`, 'warn', 3.2);
+      this.app.store.save();
+    } else if (e.type === 'curse.lifted' && e.player) {
+      countLift(p);
+      if (this.swipeHint && !needsSwipeHint(p)) { this.swipeHint = false; S.opts.swipeHint = false; this.root.classList.remove('swipe-hint'); }
       this.app.store.save();
     }
   }
@@ -535,7 +575,7 @@ export class RunScene implements InputUI {
     const p = S.player, A = AB[abKey(p)];
     $('frames').innerHTML = S.heroes.map((h: any) => `<li class="fr${h.isPlayer ? ' me' : ''}" data-heal="${h.role}" data-role="${h.role}">
       <span class="fr-top"><span class="fi">${tile(h.cls === 'rogue' ? 'viper' : ROLE_ICON[h.role])}</span><span class="fr-n">${h.isPlayer ? 'You' : h.name}</span><i class="ag" aria-hidden="true"></i></span>
-      <span class="fb"><i class="hpf"></i><i class="abf"></i></span>${h.role === 'healer' ? '<span class="fb mp"><i class="mpf"></i></span>' : ''}</li>`).join('');
+      <span class="fb"><i class="hpf"></i><i class="abf"></i></span>${h.role === 'healer' ? '<span class="fb mp"><i class="mpf"></i></span>' : ''}${CURSE_MARK()}</li>`).join('');
     $('frames').querySelectorAll<HTMLElement>('.fr').forEach((li) => li.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (S.player.role === 'healer') mend(S.player, heroBy(li.dataset.role)); }));
     const btn = (slot: string) => {
       const def = slot === 'dodge' ? { key: 'dodge', name: 'Dodge', desc: 'Roll out of trouble.' } as { key: string; name: string; desc: string; mana?: number; hold?: boolean; combo?: string } : A[slot as 'a1'];
@@ -551,7 +591,7 @@ export class RunScene implements InputUI {
     const pad = $('pad');
     if (p.role === 'healer') {
       pad.hidden = false;
-      pad.innerHTML = S.heroes.map((h: any) => `<button type="button" class="pd" data-heal="${h.role}" data-role="${h.role}" aria-label="Heal ${h.isPlayer ? 'yourself' : h.name}"><span class="pd-n">${h.isPlayer ? 'You' : h.name}</span><span class="fb"><i class="hpf"></i><i class="abf"></i></span></button>`).join('');
+      pad.innerHTML = S.heroes.map((h: any) => `<button type="button" class="pd" data-heal="${h.role}" data-role="${h.role}" aria-label="Heal ${h.isPlayer ? 'yourself' : h.name}"><span class="pd-n">${h.isPlayer ? 'You' : h.name}</span><span class="fb"><i class="hpf"></i><i class="abf"></i></span>${CURSE_MARK()}</button>`).join('');
       pad.querySelectorAll<HTMLElement>('.pd').forEach((b) => b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); mend(S.player, heroBy(b.dataset.role)); }));
     } else { pad.hidden = true; pad.innerHTML = ''; }
     this.root.dataset.role = p.role;
@@ -595,6 +635,7 @@ export class RunScene implements InputUI {
   private hudTick(dt: number): void {
     if (!S) return;
     const p = S.player;
+    const coach = this.learn > 0 && !this.tutKey ? momentFor(p) : null;
     const targeted = new Set<string>();
     for (const m of S.mobs) if (m.alive && m.state === 'fight' && m.target && !m.cage && !m.M.wisp) targeted.add(m.target.role);
     this.root.querySelectorAll<HTMLElement>('[data-heal]').forEach((el) => {
@@ -606,7 +647,14 @@ export class RunScene implements InputUI {
       el.classList.toggle('dead', !h.alive);
       el.classList.toggle('low', h.alive && h.hp < h.maxHp * 0.35);
       el.classList.toggle('danger', h.alive && h.hp < h.maxHp * 0.15);
-      el.classList.toggle('cursed', h.alive && !!h.st.curse);
+      const c = h.alive ? h.st.curse : null;
+      el.classList.toggle('cursed', !!c);
+      if (c) {
+        const left = Math.max(0, CURSE_TIME - c.t), txt = String(Math.ceil(left));
+        el.style.setProperty('--k', (left / CURSE_TIME).toFixed(3));
+        const n = el.querySelector('.cu-t'); if (n && n.textContent !== txt) n.textContent = txt;
+      }
+      el.classList.toggle('teach', !!coach && coach.frame === el.dataset.role);
       el.classList.toggle('aggro', h.alive && h.role !== 'tank' && targeted.has(h.role));
       el.classList.toggle('far', p.role === 'healer' && h.alive && dist(h, p) > MEND.range);
     });
@@ -643,9 +691,12 @@ export class RunScene implements InputUI {
       const pr = cd > 0 ? cd / max : 0;
       const sw = b.querySelector<HTMLElement>('.sweep')!; const v = pr.toFixed(3); if (sw.dataset.p !== v) { sw.style.setProperty('--p', v); sw.dataset.p = v; }
       const cdn = b.querySelector('.cdn')!; const txt = cd > 0.95 ? String(Math.ceil(cd)) : ''; if (cdn.textContent !== txt) cdn.textContent = txt;
-      const ctag = usable && cd <= 0 ? comboFor(p, slot) : '';
+      // a class's first runs: only the coach's button glows; after that, every button's own combo prompt
+      const teach = !!coach && coach.slot === slot;
+      const ctag = teach ? coach.tag : usable && cd <= 0 && !this.learn ? comboFor(p, slot) : '';
       const tagEl = b.querySelector('.c-tag'); if (tagEl && tagEl.textContent !== ctag) tagEl.textContent = ctag;
       b.classList.toggle('dim', !usable);
+      b.classList.toggle('teach', teach);
       b.classList.toggle('proc', !!ctag || (usable && cd <= 0 && !!this.tutKey && this.tutStep(this.tutKey)?.slot === slot));
     });
     const bn = $('banner');
@@ -672,6 +723,8 @@ export class RunScene implements InputUI {
   }
 }
 
+/** a cursed mate's frame: the skull, its ring running down, and the seconds left (styles.css shows it) */
+const CURSE_MARK = (): string => `<span class="cu" aria-hidden="true"><img src="${spriteURL('curse_skull')}" alt="" draggable="false"><b class="cu-t"></b></span>`;
 function setW(el: Element | null, k: number): void { if (!el) return; const v = (clamp(k, 0, 1) * 100).toFixed(1) + '%'; const s = (el as HTMLElement).style; if (s.width !== v) s.width = v; }
 
 /** a gold glow and combo prompt label on a button when a combo chain or reactive window is live */

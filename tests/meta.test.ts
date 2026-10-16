@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { makeRng } from '../src/core/rng';
 import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, SETS, checkContent, heroicVersion } from '../src/content';
 import { BARROW } from '../src/content/barrow';
-import { activeHero, createHero, dungeonRecord, finishCurseTip, finishHearthTour, finishIntroRun, freshProfile, migrate, nameProblem, needsCurseTip, needsHearthTour, needsIntroRun, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, startHearthTour, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
+import { activeHero, classRuns, countClassRun, countLift, createHero, dungeonRecord, finishCurseTip, finishHearthTour, finishIntroRun, freshProfile, learnGlow, markClassTrial, migrate, nameProblem, needsClassTrial, needsCurseTip, needsHearthTour, needsIntroRun, needsSwipeHint, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, startHearthTour, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
 import { DUPE_MARKS, grantTrialStarter, heroicOpen, heroicProgress, resolveRun, rollTable, trialStarter } from '../src/meta/loot';
 import { bestRegular, buyTrait, compareFor, compareOn, effectsOf, equip, floorWorn, itemScore, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, wearerOf, worn } from '../src/meta/gear';
 import { CLASSES, FOUNDERS, HERO_ART, MAX_HEROES, RACES, allHeroArt, canMake, cleanName, defaultSex, heroArt } from '../src/content/folk';
@@ -858,3 +858,37 @@ test('stepped dungeon tiers: Tier 1 is ilvl 26, Tier 2 is ilvl 34, and Tier 3 is
   assert.equal(itemScore(tier3Weapon), 42);
 });
 
+
+test('learning a class: its first five runs glow the button whose moment has come, fading out, and older saves count their clears', () => {
+  const { p, h } = withHero('healer');
+  assert.equal(classRuns(p, h.cls), 0);
+  const glows: number[] = [];
+  for (let i = 0; i < 6; i++) { glows.push(+learnGlow(p, h.cls).toFixed(2)); countClassRun(p, h.cls); }
+  assert.deepEqual(glows, [1, 0.85, 0.7, 0.55, 0.4, 0], 'full on the first run, fading, gone after five');
+  assert.equal(learnGlow(p, 'mage'), 1, 'another class starts fresh');
+  // a save from before the count: heroes with clears have played their class already
+  const old = withHero('tank');
+  old.h.clears = 7;
+  assert.equal(classRuns(old.p, old.h.cls), 7);
+  assert.equal(learnGlow(old.p, old.h.cls), 0);
+  // it's only counters, so the save keeps its shape and the count survives a save and load
+  assert.equal(classRuns(migrate(JSON.parse(JSON.stringify(p))), h.cls), 6);
+});
+
+test('learning a class: the first run on a class that isn\'t your first hero\'s offers its Crypt Trial, once', () => {
+  const { p, h } = withHero('healer');
+  assert.equal(needsClassTrial(p, h), false, 'the first hero played the trial when it was made');
+  const mage = newHero(p, { name: 'Ivo Brightwick', race: 'elf', cls: 'mage' })!;
+  assert.equal(needsClassTrial(p, mage), true);
+  markClassTrial(p, 'mage');
+  assert.equal(needsClassTrial(p, mage), false, 'offered once');
+  const rogue = newHero(p, { name: 'Wren Ashdown', race: 'human', cls: 'rogue' })!;
+  countClassRun(p, 'rogue');
+  assert.equal(needsClassTrial(p, rogue), false, 'not for a class you have already played');
+});
+
+test('curses: the swipe arrow over a cursed mate shows until you have lifted three', () => {
+  const p = freshProfile();
+  for (let i = 0; i < 3; i++) { assert.equal(needsSwipeHint(p), true, `after ${i} lifts`); countLift(p); }
+  assert.equal(needsSwipeHint(p), false);
+});
