@@ -193,11 +193,39 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .box { border: 3px solid var(--ink); border-radius: 16px; background: var(--panel-2); padding: 12px 14px; display: grid; gap: 10px; }
 
 /* the dungeon picker: the dungeon's picture with one small line for its collection log right under it
-   (it opens to show what each role can get), then you (role, hero, brew), then loot or practice */
-.dgx { display: grid; gap: 14px; }
+   (it opens the Loot page: what finishing the log gives and what each role can get), then you (role, hero,
+   brew), then loot or practice. On desktop the loot has its own column instead of a page. */
+.dgx { display: grid; gap: 14px; grid-template-areas: "pic" "log" "you"; }
+.dgx > .dgx-art { grid-area: pic; } .dgx > .dgx-logbar { grid-area: log; } .dgx > .dgx-you { grid-area: you; }
+.dgx-lootcol { grid-area: loot; display: none; }
 .dgx-side, .dgx-you { display: grid; gap: 14px; align-content: start; min-width: 0; }
 .dgx-side { gap: 8px; }
-@media (min-width: 820px) { .dgx { grid-template-columns: minmax(0, 1.2fr) minmax(300px, 1fr); gap: 20px; align-items: start; } }
+@media (min-width: 820px) {
+  .dgx { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto 1fr; grid-template-areas: "pic loot" "log loot" "you loot"; gap: 14px 22px; align-items: start; }
+  /* the log's line stays under the picture, as a line rather than a way in: the loot is right beside it */
+  .dgx > .dgx-logbar { border-color: transparent; background: var(--panel-2); box-shadow: none; pointer-events: none; }
+  .dgx > .dgx-logbar .dgx-go, .dgx-lootcol > .dgx-logbar { display: none; }
+  /* the loot column is as tight as it can be and still be read, so the whole door fits a laptop screen */
+  .dgx-lootcol { display: grid; gap: 10px; padding: 12px; border-radius: 18px; background: var(--panel-2); min-width: 0; }
+  .dgx-lootcol .dgx-rewards { background: var(--panel); padding: 10px; }
+  .dgx-lootcol .dgx-rw-pic { width: 46px; height: 46px; }
+  .dgx-lootcol .dgx-rw.main .dgx-rw-pic { width: 52px; height: 52px; }
+  .dgx-lootcol .dgx-rows { gap: 2px; }
+  .dgx-lootcol .dgx-row { padding: 6px 8px; }
+  .dgx-lootcol .dgx-it .tile { width: 44px; height: 44px; }
+  .dgx-lootcol .dgx-row.yours .dgx-it .tile { width: 50px; height: 50px; }
+  .dgx-lootcol .dgx-lbl { padding-top: 10px; }
+}
+/* a coming-soon dungeon keeps its two plain columns */
+.dgx.preview-dg { grid-template-areas: none; }
+.dgx.preview-dg > .dgx-you { grid-area: auto; }
+@media (min-width: 820px) { .dgx.preview-dg { grid-template-columns: minmax(0, 1.2fr) minmax(300px, 1fr); } }
+/* an inner page: back to the door, and the page's name */
+.dgx-sub { display: flex; align-items: center; gap: 12px; }
+.dgx-sub .icon-btn { flex: none; }
+.dgx-lootpage { display: grid; gap: 12px; }
+.dgx-rows { display: grid; gap: 4px; }
+.dgx-open { justify-self: stretch; }
 .dgx-mode { display: grid; gap: 10px; }
 /* The sheet keeps to five sizes (28 titles, 23 the big button and your hero, 17 buttons, names and labels,
    14 notes, 12 numbers), nothing under 12px, and a black line with a shadow only on what you can tap. */
@@ -244,9 +272,9 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-prize svg { display: block; width: 100%; height: 100%; }
 .dgx-prize.got { filter: none; box-shadow: 0 0 0 3px var(--gold); }
 .dgx-logbar.done > i > i { background: #3E9B3A; }
-.dgx-more { display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; border-radius: 10px; background: var(--panel); border: 2px solid var(--ink); font-size: 14px; }
-.dgx-more svg { width: 16px; height: 16px; }
-.dgx-loot { display: grid; gap: 10px; padding: 12px 10px; border-radius: 16px; background: var(--panel-2); }
+.dgx-go { display: grid; width: 24px; height: 24px; }
+.dgx-go svg { width: 100%; height: 100%; }
+.dgx-logbar.still { grid-template-columns: auto auto minmax(40px, 1fr) auto; border-color: transparent; background: var(--panel); box-shadow: none; cursor: default; }
 .dgx-ilvl { margin: 0; font-family: var(--f-mono); font-size: 12px; color: var(--soft); }
 .dgx-ilvl b { color: var(--ink); font-weight: 500; }
 /* Normal or Heroic, on the picture; Heroic turns the picture's light gold */
@@ -277,10 +305,11 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-rw-pic .lk-sw { width: 100%; height: 100%; border: 0; border-radius: 0; aspect-ratio: auto; }
 .dgx-ttl { display: grid; place-items: center; width: 100%; height: 100%; background: #6A4BA3; color: #FFFFFF; }
 .dgx-ttl svg { width: 28px; height: 28px; }
-.dgx-loot > .btn { justify-self: start; }
 .dgx-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 8px; justify-items: center; padding: 8px; border-radius: 12px; }
 .dgx-row.yours { background: color-mix(in srgb, var(--rc) 20%, var(--panel)); box-shadow: inset 0 0 0 3px var(--rc); }
-.dgx-lbl { grid-column: 1 / -1; justify-self: start; display: inline-flex; align-items: center; gap: 6px; font-family: var(--f-display); font-size: 17px; }
+.dgx-row.yours .dgx-it .tile { width: 58px; height: 58px; }
+.dgx-yours { font-style: normal; padding: 0 8px; border: 2px solid var(--ink); border-radius: 999px; background: var(--rc); color: #FFFFFF; font-family: var(--f-mono); font-size: 12px; line-height: 1.5; }
+.dgx-lbl { grid-column: 1 / -1; justify-self: start; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-family: var(--f-display); font-size: 17px; }
 .dgx-row:not(:last-of-type) .dgx-lbl::before { content: ""; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--ink); background: var(--rc); }
 @media (min-width: 820px) {
   .dgx-row { grid-template-columns: 96px repeat(4, minmax(0, 1fr)); align-items: start; }
