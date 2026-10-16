@@ -15,7 +15,7 @@ import { COLLECTIBLES } from '../content';
 import { CLASSES, MAX_HEROES, RACES, type ClassId, type RaceId } from '../content/folk';
 import { BUNK_SLOTS, FLOORS, HOUSE_SPOTS, LOOK_ROOMS, PADDOCK, ROOMS, THINGS, paddockSlots, roomAt, type HouseAction, type HouseSpot, type ThingDef } from '../content/house';
 import { lookOf, ownedOfKind, paddock } from '../meta/hearth';
-import { loadoutFor, waiting } from '../meta/gear';
+import { loadoutFor, waiting, wholeIlvl } from '../meta/gear';
 import { activeHero, finishHearthTour, finishSeedTour, needsHearthTour, needsSeedTour, roleOf, type Hero } from '../meta/profile';
 import { bedToOpen } from '../meta/vale';
 import type { App } from './app';
@@ -548,8 +548,8 @@ export class Hearth {
     const up = waiting(p, h).length;
     // the bars and the signs are only rebuilt when they change, so a save keeps the name tag bobbing and the focus where it was
     const top = this.draw(this.top, `
-      <button type="button" class="h-tag" data-act="gear" style="--light: ${race?.light || '#F4B942'}" aria-label="${esc(h.name)}, item level ${ilvl(loadoutFor(p, h).score)}: gear${up ? `, ${up} new to put on` : ''}">
-        <i class="rdot ${role}" aria-hidden="true"></i><span><b>${esc(h.name)}</b><small><span class="long">${esc(race?.name || h.race)} ${esc(cls?.name || h.cls)} · </span>Item level ${ilvl(loadoutFor(p, h).score)}</small></span>
+      <button type="button" class="h-tag" data-act="gear" style="--light: ${race?.light || '#F4B942'}" aria-label="${esc(h.name)}, Power ${ilvl(loadoutFor(p, h).score)}: gear${up ? `, ${up} new to put on` : ''}">
+        <i class="rdot ${role}" aria-hidden="true"></i><span><b>${esc(h.name)}</b><small><span class="long">${esc(race?.name || h.race)} ${esc(cls?.name || h.cls)} · </span>Power ${ilvl(loadoutFor(p, h).score)}</small></span>
         ${up ? `<i class="badge" aria-hidden="true">${up}</i>` : ''}
       </button>
       <div class="right">
@@ -583,8 +583,8 @@ export class Hearth {
   }
 }
 
-/** Item level: the weighted gear score, where the weapon counts twice. */
-export const ilvl = (score: number): string => (Math.round(score * 10) / 10).toString();
+/** Item level, shown as Power: the weighted gear score, where the weapon counts twice, as a whole number. */
+export const ilvl = (score: number): string => String(wholeIlvl(score));
 const plus = (x: number, y: number): string => `<path class="plus" d="M${x - 10} ${y} H${x + 10} M${x} ${y - 10} V${y + 10}"/>`;
 /** a little red count, like the one on a button, bobbing over what it counts */
 const pip = (x: number, y: number, t: string): Bit => ({ box: [x - 27, y - 27, 54, 54], body: `<circle cx="${x}" cy="${y}" r="24"/><text x="${x}" y="${y + 9}">${esc(t)}</text>`, cls: 'pip' });
