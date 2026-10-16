@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { makeRng } from '../src/core/rng';
 import { COLLECTIBLES, DUNGEONS, checkContent } from '../src/content';
 import { BEDS, FIRST_HARVEST_GIFT, GARDEN_TABLE, GROW_CLEARS, PLANTS, RECIPES, SHIMMER } from '../src/content/vale';
-import { freshProfile, migrate, PROFILE_VERSION } from '../src/meta/profile';
+import { finishSeedTour, freshProfile, migrate, needsSeedTour, PROFILE_VERSION } from '../src/meta/profile';
 import { newHero } from '../src/meta/gear';
 import { Achiever } from '../src/meta/achievements';
 import { resolveRun } from '../src/meta/loot';
@@ -27,12 +27,12 @@ const BARROW = DUNGEONS.barrow, HEROIC = DUNGEONS['barrow-heroic'];
 /** a bed that has finished growing */
 const readyBed = (p: Profile, bed = 0, seed = 'glowcap', shimmer = false) => { p.vale.beds[bed] = { seed, grown: GROW_CLEARS, shimmer }; };
 
-test('garden: content ids exist, a fresh save has empty beds and one seed, the save keeps its shape', () => {
+test('garden: content ids exist, a fresh save has empty beds and no seed yet, the save keeps its shape', () => {
   assert.deepEqual(checkContent(), []);
   const p = freshProfile(T0);
   assert.equal(p.vale.beds.length, BEDS);
   assert.ok(p.vale.beds.every((b) => b.seed === null));
-  assert.deepEqual(p.vale.seeds, { glowcap: 1 }, 'one seed to try the garden with');
+  assert.deepEqual(p.vale.seeds, {}, 'the first seed comes from the Gravekeeper');
   const back = migrate(JSON.parse(JSON.stringify({ ...p, vale: { ...p.vale, satchel: { moonpetal: 3, bad: -2 }, lore: ['bw.under', 'bw.under'], beds: [{ seed: 'glowcap', grown: 2, shimmer: true }, 'junk'] } })));
   assert.deepEqual(back.vale.satchel, { moonpetal: 3 }, 'negative counts are dropped');
   assert.deepEqual(back.vale.lore, ['bw.under']);
@@ -86,8 +86,31 @@ test('garden: the Barrow drops only Glowcap seeds, 1 in 5 (Heroic 1 in 3), each 
   assert.equal(q.vale.beds[0].grown, 0);
 });
 
+test('garden: a save’s very first run never drops a seed, and the first seed that does brings a one-step tip, once', () => {
+  const p = freshProfile(T0);
+  const hero = newHero(p, { name: 'Edda Brightwater', race: 'human', cls: 'cleric' })!;
+  const run = { hero, practice: false, cleared: true, bosses: ['knight', 'keeper'], bossTimes: {}, time: 240 };
+  // a roll of 0 drops every line, but not on the first run
+  assert.deepEqual(resolveRun(p, BARROW, run, () => 0, T0).seeds, {});
+  assert.deepEqual(p.vale.seeds, {});
+  assert.equal(needsSeedTour(p), false);
+  assert.deepEqual(resolveRun(p, BARROW, run, () => 0, T0).seeds, { glowcap: 1 }, 'from the second run on');
+  assert.equal(needsSeedTour(p), true, 'the first seed brings the garden tip');
+  finishSeedTour(p);
+  resolveRun(p, BARROW, run, () => 0, T0);
+  assert.equal(needsSeedTour(p), false, 'once');
+  // someone who has planted before (a save from before the tip) never gets it
+  const q = freshProfile(T0);
+  newHero(q, { name: 'Edda Brightwater', race: 'human', cls: 'cleric' });
+  q.counters['vale.planted'] = 2;
+  rollSeeds(q, BARROW, 'keeper', () => 0);
+  assert.equal(needsSeedTour(q), false);
+});
+
 test('garden: a seed grows one step per clear, is ready after three, and never wilts', () => {
   const p = freshProfile(T0);
+  assert.equal(plant(p, 0, 'glowcap', () => 0.5), false, 'no seed yet');
+  p.vale.seeds.glowcap = 1;
   assert.equal(plant(p, 0, 'moonpetal', () => 0.5), false, 'no moonpetal seeds');
   assert.ok(plant(p, 0, 'glowcap', () => 0.5));
   assert.equal(p.vale.seeds.glowcap, undefined, 'the seed is used up');
@@ -110,7 +133,7 @@ test('garden: a seed grows one step per clear, is ready after three, and never w
   assert.equal(loot.bedsReady, 0);
   // shimmer is rolled at planting, about one in seven
   let shim = 0;
-  for (let i = 0; i < 7000; i++) { const q = freshProfile(T0); plant(q, 0, 'glowcap', makeRng(i + 11)); if (q.vale.beds[0].shimmer) shim++; }
+  for (let i = 0; i < 7000; i++) { const q = freshProfile(T0); q.vale.seeds.glowcap = 1; plant(q, 0, 'glowcap', makeRng(i + 11)); if (q.vale.beds[0].shimmer) shim++; }
   assert.ok(Math.abs(shim / 7000 - SHIMMER) < 0.02, `shimmer rate ${shim / 7000}`);
 });
 
@@ -137,6 +160,7 @@ test('garden: a harvest rolls at the start, gives 8 or more herbs, Perfects add 
   readyBed(p, 1);
   assert.equal(beginHarvest(p, 1, makeRng(6), T0)!.gift, null);
   // the testing switch harvests a bed that is still growing
+  p.vale.seeds.glowcap = 1;
   plant(p, 2, 'glowcap', () => 0.5);
   p.vale.seeds.glowcap = 0;
   assert.ok(beginHarvest(p, 2, makeRng(7), T0, { free: true }));

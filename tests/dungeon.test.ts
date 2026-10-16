@@ -161,6 +161,20 @@ test('intro: starts in the Ossuary, protects the party from dying, and spawns th
   assert.equal(s.over, 'victory');
 });
 
+test('intro: the Crypt Trial plays as any class, and every one of them gets Sir Rattlebones down to the chest', () => {
+  for (const [role, cls] of [['healer', 'cleric'], ['dps', 'mage'], ['dps', 'rogue']] as const) {
+    newGame(BARROW_ENGINE, { role, seed: 99, start: 'intro', auto: false, quiet: true, noEvents: true, loadouts: { [role]: { cls } } });
+    const s = S as any;
+    assert.equal(s.player.role, role);
+    for (const h of s.heroes) h.power = 1.45;
+    s.auto = true;
+    for (let i = 0; i < 60 * 90 && s.over !== 'victory'; i++) update(1 / 60);
+    assert.ok(s.hints.dodge && s.hints.block, `${cls}: the dodge and the heavy swing were both shown`);
+    assert.equal(s.over, 'victory', `${cls}: the trial ends at the chest, not stuck on a lesson only a tank can do`);
+    assert.ok(s.chest && s.chest.open);
+  }
+});
+
 test('combat & gear look: heroes start in visual _rags, step to _iron and heroic armour, Cleave is a1 (2.2s cd), Perfect Block resets Cleave, and Boss Weapons buff core abilities', () => {
   // Visual progression: Common -> _rags, Uncommon -> _iron, Rare/Epic -> full heroic armour
   assert.equal(heroSprite({ race: 'dwarf', cls: 'warrior', sex: 'm', regular: { weapon: { rar: 0 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'tank'), 'tank_rags');

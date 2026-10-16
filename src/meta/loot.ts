@@ -166,7 +166,29 @@ export interface RunEnd {
 /** What one boss kill gave: rolled the moment it dies, like loot hitting the floor. */
 export interface KillLoot { boss: string; kc: number; time: number; newPb: boolean; drops: Drop[]; marks: number; seeds?: Record<string, number> }
 
-/** A kill counts and rolls its table (and its seed lines). Practice runs never call this. */
+/** The Crypt Trial's chest: an Uncommon weapon for your first hero and an Uncommon helm for another role's
+ *  shared floor, so the first real run starts a step up. As drops, for the chest to show. */
+export function trialStarter(h: Hero): Drop[] {
+  const role = roleOf(h), spare = trialSpare(role);
+  return [
+    { id: gearId(gearKey({ role, cls: h.cls }), 'weapon', 1), source: 'regular', role, slot: 'weapon', rar: 1, prevRar: 0, isNew: true, dupe: false, marks: 0, toEquip: true },
+    { id: gearId(spare, 'helm', 1), source: 'spare', role: spare, slot: 'helm', rar: 1, prevRar: 0, isNew: true, dupe: false, marks: 0 },
+  ];
+}
+const trialSpare = (role: RoleId): RoleId => (role === 'tank' ? 'healer' : 'tank');
+
+/** Give the trial's chest, once a save, to the first hero you make (played or skipped, the trial gives the
+ *  same). Like ladder pieces, both raise their role's shared floor; nothing goes on by itself. */
+export function grantTrialStarter(p: Profile, h: Hero): boolean {
+  if (p.counters['intro.starter']) return false;
+  p.counters['intro.starter'] = 1;
+  const role = roleOf(h);
+  raiseFloor(p, role, 'weapon', 1);
+  raiseFloor(p, trialSpare(role), 'helm', 1);
+  return true;
+}
+
+/** A kill counts and rolls its table (and its seed lines after your first clear). Practice runs never call this. */
 export function resolveKill(p: Profile, dg: DungeonInfo, boss: string, h: Hero, time: number | null, rng: Rng, now = Date.now()): KillLoot {
   const role = roleOf(h);
   const br = bossRecord(p, dg.id, boss);
@@ -178,7 +200,9 @@ export function resolveKill(p: Profile, dg: DungeonInfo, boss: string, h: Hero, 
   if (table) for (const d of rollTable(table, role, rng, h.cls)) out.drops.push(grant(p, h, d.id, { source: 'table', boss, rate: d.rate, kc: br.kc }, now));
   out.marks = out.drops.reduce((a, d) => a + d.marks, 0);
   dungeonRecord(p, marksOf(dg)).marks += out.marks;
-  out.seeds = rollSeeds(p, dg, boss, rng);
+  // a save's very first run never drops a seed: the garden comes in later, with its own tip, when one drops
+  const firstRun = Object.values(p.dungeons).every((d) => !d.clears) && br.kc <= 1;
+  out.seeds = firstRun ? {} : rollSeeds(p, dg, boss, rng);
   return out;
 }
 

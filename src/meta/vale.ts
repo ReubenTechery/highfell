@@ -17,7 +17,7 @@ import { FIRST_HARVEST_GIFT, GARDEN_TABLE, GROW_CLEARS, INGREDIENTS, PLANTS, RAN
 import type { DropDef, DungeonInfo, NodeDef } from '../content/types';
 import type { Rng } from '../core/rng';
 import { autoPlace } from './hearth';
-import { count, emptyBed, type BedState, type Profile } from './profile';
+import { count, emptyBed, startSeedTour, type BedState, type Profile } from './profile';
 
 /** Testing switches from the settings sheet: never saved, never on for anyone else. free: beds are ready at once. */
 export interface ValeDev { free?: boolean; luck?: number }
@@ -62,7 +62,8 @@ function gain(p: Profile, skill: string, amt: number): XpGain {
 }
 
 /* ---------------------------------------------------------------- seeds */
-/** A boss kill rolls its seed lines, each on its own, for this player. Practice runs never call this. */
+/** A boss kill rolls its seed lines, each on its own, for this player. Practice runs never call this.
+ *  A seed flags the one-step Garden tip at the Hearth (the first one only, see startSeedTour). */
 export function rollSeeds(p: Profile, dg: DungeonInfo, boss: string, rng: Rng, luck = 1): Record<string, number> {
   const got: Record<string, number> = {};
   for (const sd of dg.seeds || []) {
@@ -70,6 +71,7 @@ export function rollSeeds(p: Profile, dg: DungeonInfo, boss: string, rng: Rng, l
     got[sd.seed] = (got[sd.seed] || 0) + 1;
     p.vale.seeds[sd.seed] = (p.vale.seeds[sd.seed] || 0) + 1;
     count(p, 'vale.seeds');
+    startSeedTour(p);
   }
   return got;
 }

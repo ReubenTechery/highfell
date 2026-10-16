@@ -14,7 +14,7 @@ import { AB, MEND, ROLES, abKey } from '../content/roles';
 import type { Rar, RoleId } from '../content/types';
 import { newGame, respawn, update } from '../dungeon/game.js';
 import { S, setHooks } from '../dungeon/state.js';
-import { banner } from '../dungeon/entities.js';
+import { banner, exposeMob } from '../dungeon/entities.js';
 import { abCd, abMana, bestCluster, doDodge, heroBy, isFoe, mend, useAbility } from '../dungeon/heroes.js';
 import { inHaz } from '../dungeon/bots.js';
 import { render, resizeView, updateCam, VIEW } from '../dungeon/render.js';
@@ -25,7 +25,7 @@ import { loadoutFor, partyRar, plainLoadout, worn } from '../meta/gear';
 import { countBossWipe, countRunStart, resolveClear, resolveKill, runLoot, tellOf, type ClearLoot, type KillLoot } from '../meta/loot';
 import { heroesFor } from '../meta/party';
 import { activeHero, finishIntroRun, heroById, roleOf, type Hero } from '../meta/profile';
-import { heroArt } from '../content/folk';
+import { heroArt, type ClassId } from '../content/folk';
 import { RECIPES } from '../content/vale';
 import { broughtBrew, spendBottle } from '../meta/vale';
 import { pourFor } from '../meta/party';
@@ -48,51 +48,34 @@ const HINTS: Record<string, [string, string, string, number?]> = {
 };
 
 interface TutStep { slot: string; icon: string; step: string; title: string; badge: string; text: string; btn: string }
-const TUT_STEPS: Record<string, TutStep> = {
-  introAb: {
-    slot: 'a1',
-    icon: 'cleave',
-    step: '1 / 5',
-    title: '1 · Cleave',
-    badge: 'Wide front sweep',
-    text: 'Tap glowing Cleave to smash the pack!',
-    btn: 'Use Cleave',
+const TUT_BY_CLASS: Record<ClassId, Record<string, TutStep>> = {
+  warrior: {
+    introAb: { slot: 'a1', icon: 'cleave', step: '1 / 5', title: '1 · Cleave', badge: 'Wide front sweep', text: 'Tap glowing Cleave to smash the pack!', btn: 'Use Cleave' },
+    slam: { slot: 'a3', icon: 'slam', step: '2 / 5', title: '3 · Slam (Taunt)', badge: 'Ivy has aggro! ➔ Pull pack in', text: 'Tap Slam to yank mobs back onto you.', btn: 'Use Slam' },
+    dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Tap Roll to dodge his charge!', btn: 'Dodge roll' },
+    block: { slot: 'a4', icon: 'shield', step: '4 / 5', title: '4 · Block Gold Hits', badge: 'Gold cone ➔ Block right before hit', text: 'Tap Block to parry the heavy swing!', btn: 'Raise shield' },
+    stagger: { slot: 'a2', icon: 'charge', step: '5 / 5', title: '2 · Boss Exposed!', badge: 'Perfect Block = Stun + +35% DMG!', text: 'Tap Charge to rush in and punish him!', btn: 'Use Charge' },
   },
-  slam: {
-    slot: 'a3',
-    icon: 'slam',
-    step: '2 / 5',
-    title: '3 · Slam (Taunt)',
-    badge: 'Ivy has aggro! ➔ Pull pack in',
-    text: 'Tap Slam to yank mobs back onto you.',
-    btn: 'Use Slam',
+  cleric: {
+    introAb: { slot: 'a1', icon: 'circle', step: '1 / 5', title: '1 · Prayer Circle', badge: 'Ground healing zone', text: 'Drop a glowing Prayer Circle under your party!', btn: 'Drop Circle' },
+    slam: { slot: 'a4', icon: 'smite', step: '2 / 5', title: '4 · Smite (Pulse & Mana)', badge: 'Hit foes + pulse your Circle', text: 'Cast Smite to blast foes, restore mana, and pulse your Circle!', btn: 'Cast Smite' },
+    dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Tap Roll to dodge Sir Rattlebones’s charge!', btn: 'Dodge roll' },
+    block: { slot: 'a2', icon: 'ward', step: '4 / 5', title: '2 · Ward the Tank', badge: 'Heavy boss swing incoming!', text: 'Shield your Tank before the heavy swing lands!', btn: 'Cast Ward' },
+    stagger: { slot: 'a3', icon: 'sunburst', step: '5 / 5', title: '3 · Boss Exposed!', badge: 'Boss staggered (+35% DMG taken)!', text: 'Unleash Sunburst to top up the party and sear the boss!', btn: 'Cast Sunburst' },
   },
-  dodge: {
-    slot: 'dodge',
-    icon: 'dodge',
-    step: '3 / 5',
-    title: 'Roll Out of Red',
-    badge: 'Red lane ➔ Dodge aside',
-    text: 'Tap Roll to dodge his charge!',
-    btn: 'Dodge roll',
+  mage: {
+    introAb: { slot: 'a1', icon: 'blizzard', step: '1 / 5', title: '1 · Blizzard', badge: 'Chilling ice storm', text: 'Call down Blizzard to slow and melt the pack!', btn: 'Cast Blizzard' },
+    slam: { slot: 'a2', icon: 'nova', step: '2 / 5', title: '2 · Rime Burst (Freeze)', badge: 'Freeze pack ➔ Shatter combo!', text: 'Freeze nearby foes solid so your ice spells Shatter!', btn: 'Cast Rime Burst' },
+    dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Tap Roll to dodge Sir Rattlebones’s charge!', btn: 'Dodge roll' },
+    block: { slot: 'a4', icon: 'icicle', step: '4 / 5', title: '4 · Instant Icicle', badge: 'Fast instant-cast shard', text: 'Fire Icicle while the Tank blocks the heavy swing!', btn: 'Fire Icicle' },
+    stagger: { slot: 'a3', icon: 'comet', step: '5 / 5', title: '3 · Boss Exposed!', badge: 'Boss staggered (+35% DMG taken)!', text: 'Drop a massive Comet during the Exposed window!', btn: 'Cast Comet' },
   },
-  block: {
-    slot: 'a4',
-    icon: 'shield',
-    step: '4 / 5',
-    title: '4 · Block Gold Hits',
-    badge: 'Gold cone ➔ Block right before hit',
-    text: 'Tap Block to parry the heavy swing!',
-    btn: 'Raise shield',
-  },
-  stagger: {
-    slot: 'a2',
-    icon: 'charge',
-    step: '5 / 5',
-    title: '2 · Boss Staggered!',
-    badge: 'Perfect Block = 0 dmg + Stun!',
-    text: 'Tap Charge to rush in and punish him!',
-    btn: 'Use Charge',
+  rogue: {
+    introAb: { slot: 'a1', icon: 'viper', step: '1 / 5', title: '1 · Viper Blades', badge: 'Apply Viper Venom', text: 'Slash with Viper Blades to poison your target!', btn: 'Use Viper Blades' },
+    slam: { slot: 'a3', icon: 'flurry', step: '2 / 5', title: '3 · Fan of Blades', badge: 'AoE knives + refresh venom', text: 'Spin Fan of Blades to slice the pack and spread venom!', btn: 'Use Fan of Blades' },
+    dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Tap Roll to dodge Sir Rattlebones’s charge!', btn: 'Dodge roll' },
+    block: { slot: 'a4', icon: 'shadowstep', step: '4 / 5', title: '4 · Shadowstep Behind', badge: 'Gold cone ➔ Blink behind boss', text: 'Shadowstep behind him while the Tank parries his swing!', btn: 'Use Shadowstep' },
+    stagger: { slot: 'a2', icon: 'ambush', step: '5 / 5', title: '2 · Boss Exposed!', badge: 'Poisoned + Exposed (+35% DMG)!', text: 'Strike with Shadowstrike for a guaranteed massive crit!', btn: 'Use Shadowstrike' },
   },
 };
 
@@ -143,9 +126,15 @@ export class RunScene implements InputUI {
   hintDone(key: string): void { this.hintsDone.add(key); if (this.hintKey === key) { $('hint').hidden = true; this.hintKey = null; } }
   holdBtn(slot: string, on: boolean): void { this.root.querySelector(`.ab[data-slot="${slot}"]`)?.classList.toggle('held', on); }
 
-  /** freeze the game in the prologue to explain a mechanic and highlight the button to press */
+  private tutStep(key: string | null): TutStep | null {
+    if (!key) return null;
+    const cls: ClassId = (S?.player?.cls as ClassId) || this.hero()?.cls || 'warrior';
+    return (TUT_BY_CLASS[cls] || TUT_BY_CLASS.warrior)[key] || null;
+  }
+
+  /** freeze the game in the Crypt Trial to explain a mechanic and highlight the button to press */
   showTut(key: string): void {
-    const step = TUT_STEPS[key];
+    const step = this.tutStep(key);
     if (!step || !S || S.over) return;
     this.tutKey = key;
     this.hintKey = null;
@@ -157,7 +146,7 @@ export class RunScene implements InputUI {
     this.root.classList.add('tut-pause');
     this.root.querySelectorAll('.tut-spot').forEach((el) => el.classList.remove('tut-spot'));
     this.root.querySelector(`.ab[data-slot="${step.slot}"]`)?.classList.add('tut-spot');
-    if (key === 'slam') $('frames').classList.add('tut-spot');
+    if (key === 'slam' && p.role === 'tank') $('frames').classList.add('tut-spot');
     const h = $('hint');
     h.className = 'hint glass tut-card';
     h.innerHTML = `<div class="tut-row"><span class="tile tut-ic" aria-hidden="true">${tile(step.icon)}</span><div class="tut-tx">
@@ -182,7 +171,7 @@ export class RunScene implements InputUI {
 
   onTutInput(slot: string): boolean {
     if (!this.tutKey || !S) return false;
-    const step = TUT_STEPS[this.tutKey];
+    const step = this.tutStep(this.tutKey);
     if (!step || (slot !== 'any' && slot !== step.slot)) return false;
     const key = this.tutKey;
     this.clearTut();
@@ -198,7 +187,7 @@ export class RunScene implements InputUI {
       doDodge(p, Math.cos(a), Math.sin(a));
       if (z) z.t = Math.max(z.t, 1.38);
       if (S.boss && S.boss.act && S.boss.act.k === 'charge') S.boss.act.t = Math.max(S.boss.act.t, 1.38);
-    } else if (step.slot === 'a4') {
+    } else if (key === 'block' && p.role === 'tank') {
       const z = S.hazards.find((x: any) => x.shape === 'cone');
       if (z && !inHaz(z, p.x, p.y, p.r)) {
         p.x = z.x + Math.cos(z.a) * 90;
@@ -220,14 +209,19 @@ export class RunScene implements InputUI {
       this.holdBtn('a4', false);
       p.cd[step.slot] = 0;
       p.gcd = 0;
-      useAbility(p, step.slot, key === 'stagger' && S.boss ? S.boss : null);
+      useAbility(p, step.slot, (key === 'stagger' || key === 'block') && S.boss ? S.boss : null);
+      if (key === 'block' && p.role !== 'tank' && S.boss && S.boss.alive) {
+        S.boss.st.stun = Math.max(S.boss.st.stun || 0, 3.2);
+        exposeMob(S.boss, 3.8, 'Staggered!');
+        setTimeout(() => { if (S && !S.hints.stagger) { S.hints.stagger = 1; this.hint('stagger'); } }, 320);
+      }
     }
     return true;
   }
 
   private hint(key: string): void {
     if (!this.intro || !S || S.quiet || S.auto || this.hintsDone.has(key)) return;
-    if (TUT_STEPS[key]) { this.showTut(key); return; }
+    if (this.tutStep(key)) { this.showTut(key); return; }
     const t = HINTS[key];
     if (!t) return;
     const h = $('hint');
@@ -243,9 +237,9 @@ export class RunScene implements InputUI {
     this.stop();
     this.opts = o;
     const intro = this.intro = o.start === 'intro';
-    let h: Hero | null = intro ? null : activeHero(p);
-    if (!intro && o.role && (!h || roleOf(h) !== o.role)) h = p.roster.find((x) => roleOf(x) === o.role) || null;
-    const role: RoleId = intro ? 'tank' : h ? roleOf(h) : o.role || 'tank';
+    let h: Hero | null = activeHero(p);
+    if (o.role && (!h || roleOf(h) !== o.role)) h = p.roster.find((x) => roleOf(x) === o.role) || (intro ? h : null);
+    const role: RoleId = h ? roleOf(h) : o.role || 'tank';
     this.heroId = h ? h.id : null;
     this.role = role;
     const test = o.testRar != null || !h;
@@ -263,7 +257,11 @@ export class RunScene implements InputUI {
         loadouts[r] = { ...base, sprite: `${ROLES[r].sprite}${tierSuffix}` };
       }
     }
-    if (intro) loadouts.tank = { ...(loadouts.tank as object), unique: 'gravedigger', bonuses: ['barrowguard2'], name: 'Brannoc', sprite: 'tank' };
+    if (intro) {
+      loadouts.tank = { ...(loadouts.tank as object), unique: 'gravedigger', bonuses: ['barrowguard2'], name: 'Brannoc', sprite: 'tank' };
+      if (role === 'healer') loadouts.healer = { ...(loadouts.healer as object), unique: 'lantern', bonuses: ['candlewake2'] };
+      else if (role === 'dps') loadouts.dps = { ...(loadouts.dps as object), unique: h?.cls === 'rogue' ? 'cryptfangs' : 'spire', bonuses: [h?.cls === 'rogue' ? 'shadeveil2' : 'rimebone2'] };
+    }
     // one bottle poured at the door for the whole party: only the poured one is spent (practice keeps it)
     const poured = h && !intro ? pourFor([{ role, leader: true, brew: broughtBrew(p) }]) : null;
     const brew = poured?.brew || null;
@@ -337,20 +335,22 @@ export class RunScene implements InputUI {
   private showWelcome(): void {
     if (!S) return;
     S.paused = true;
-    const hasHero = !!activeHero(this.app.p);
+    const hero = this.hero(), me = this.role;
     const ov = $('ov-msg');
     ov.classList.add('welcome');
     $('msg-eyebrow').textContent = '3-Hero Co-Op Dungeons';
     $('msg-title').textContent = 'Welcome to Highfell';
+    // you in the middle, in your own looks and full Epic, with the two party mates either side
+    const fig = (r: RoleId): string => {
+      const mine = r === me, spr = (mine && hero && heroArt(hero.race, hero.cls, hero.sex)) || ROLES[r].sprite;
+      return `<div class="wk-fig ${mine ? 'lead' : 'side'}">${heroImg(spr, { cls: 'wk-img' })}<span class="wk-role"><i class="rdot ${r}"></i>${ROLES[r].title}${mine ? ' (You)' : ''}</span></div>`;
+    };
+    const [left, right] = (['tank', 'healer', 'dps'] as RoleId[]).filter((r) => r !== me);
     $('msg-text').innerHTML = `
       <div class="wk-stage" aria-hidden="true">
         <div class="wk-glow"></div>
         <span class="wk-stage-tag">Barrow Crypt · Trinity Party</span>
-        <div class="wk-party">
-          <div class="wk-fig side">${heroImg(ROLES.healer.sprite, { cls: 'wk-img' })}<span class="wk-role"><i class="rdot healer"></i>Healer</span></div>
-          <div class="wk-fig lead">${heroImg(ROLES.tank.sprite, { cls: 'wk-img' })}<span class="wk-role"><i class="rdot tank"></i>Tank (You)</span></div>
-          <div class="wk-fig side">${heroImg(ROLES.dps.sprite, { cls: 'wk-img' })}<span class="wk-role"><i class="rdot dps"></i>DPS</span></div>
-        </div>
+        <div class="wk-party">${fig(left)}${fig(me)}${fig(right)}</div>
       </div>
       <div class="wk-pills">
         <span class="wk-pill"><span class="tile">${tile('shield')}</span><b>4-Min Runs</b></span>
@@ -361,11 +361,11 @@ export class RunScene implements InputUI {
     acts.innerHTML = `
       <button type="button" class="btn gold big wk-btn" data-w="play">
         <span class="tile wk-ic" aria-hidden="true">${tile('cleave')}</span>
-        <span class="wk-tx"><b>Play 1-Min Tutorial</b><small>Smash the boss in full Epic gear</small></span>
+        <span class="wk-tx"><b>Play the Crypt Trial</b><small>1 minute, in full Epic gear</small></span>
       </button>
       <button type="button" class="btn big wk-btn" data-w="skip">
         <span class="tile wk-ic" aria-hidden="true">${tile('c_dwarf')}</span>
-        <span class="wk-tx"><b>${hasHero ? 'Back to the Hearth' : 'Skip · Make My Hero'}</b><small>${hasHero ? 'Return to your house' : 'Jump straight to hero creation'}</small></span>
+        <span class="wk-tx"><b>${hero ? 'Skip the trial' : 'Skip · Make My Hero'}</b><small>${hero ? 'Straight to your Hearth' : 'Jump straight to hero creation'}</small></span>
       </button>`;
     acts.querySelector('[data-w="play"]')?.addEventListener('click', () => {
       SFX.play('ui');
@@ -431,10 +431,10 @@ export class RunScene implements InputUI {
     const summary = { time: S.clearTime || S.t - S.startedAt, deaths: S.stats.deaths, perfect: S.player.stats.perfect, dmg: S.player.stats.dmg, heal: S.player.stats.heal };
     this.live = false;
     if (this.intro) {
-      finishIntroRun(this.app.p);
+      const first = finishIntroRun(this.app.p);
       this.app.store.save();
       this.stop();
-      this.app.reveal.showIntro(summary.time);
+      this.app.reveal.showTrial(summary.time, this.hero(), first);
       return;
     }
     const hero = this.hero();
@@ -460,10 +460,10 @@ export class RunScene implements InputUI {
     if (S.paused && !$('ov-msg').hidden) { S.paused = !!this.tutKey; $('ov-msg').hidden = true; return; }
     S.paused = true;
     if (this.intro) {
-      this.msg({ eyebrow: 'Prologue', title: 'Paused', text: 'You are playing Brannoc in full Epic gear to get a feel for tanking, dodging, blocking and teamwork.', buttons: [
+      this.msg({ eyebrow: 'Crypt Trial', title: 'Paused', text: `You are playing ${this.hero()?.name || 'your hero'} in full Epic gear to learn your four buttons, the dodge and teamwork.`, buttons: [
         ['Keep going', () => this.pause()],
         [SFX.on ? 'Sound off' : 'Sound on', () => { const p = this.app.p; p.settings.sound = !p.settings.sound; SFX.on = p.settings.sound; this.app.store.save(); S.paused = false; this.pause(); }],
-        ['Restart intro', () => { if (this.opts) this.start(this.opts); }],
+        ['Restart the trial', () => { if (this.opts) this.start(this.opts); }],
         [activeHero(this.app.p) ? 'Back to the hearth' : 'Skip to hero maker', () => this.skipIntro()],
       ] });
       return;
@@ -632,7 +632,7 @@ export class RunScene implements InputUI {
       const ctag = usable && cd <= 0 ? comboFor(p, slot) : '';
       const tagEl = b.querySelector('.c-tag'); if (tagEl && tagEl.textContent !== ctag) tagEl.textContent = ctag;
       b.classList.toggle('dim', !usable);
-      b.classList.toggle('proc', !!ctag || (usable && cd <= 0 && !!this.tutKey && TUT_STEPS[this.tutKey]?.slot === slot));
+      b.classList.toggle('proc', !!ctag || (usable && cd <= 0 && !!this.tutKey && this.tutStep(this.tutKey)?.slot === slot));
     });
     const bn = $('banner');
     const btxt = S.banner ? S.banner.str : '';
@@ -646,7 +646,8 @@ export class RunScene implements InputUI {
     if (this.intro) {
       if (S.inCombat && !this.hintsDone.has('introAb') && S.mobs.some((m: any) => m.alive && m.state === 'fight' && dist(m, p) < 120)) { this.hintDone('introMove'); this.hint('introAb'); }
       if (this.hintsDone.has('introAb') && !this.hintsDone.has('slam')) {
-        const loose = S.mobs.find((m: any) => m.alive && m.state === 'fight' && m.pack === 'C' && dist(m, p) < 160);
+        // a tank's lesson is peeling: one of pack C goes for a party mate so Slam can drag it back
+        const loose = p.role === 'tank' && S.mobs.find((m: any) => m.alive && m.state === 'fight' && m.pack === 'C' && dist(m, p) < 160);
         const sq = heroBy('dps') || heroBy('healer');
         if (loose && sq && loose.target === p) { loose.target = sq; loose.threat[sq.id] = (loose.threat[p.id] || 0) + 500; }
         if (S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && dist(m, p) < 190)) this.hint('slam');
