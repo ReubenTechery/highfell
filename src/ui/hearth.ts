@@ -24,7 +24,8 @@ import { actions, esc, GLYPH } from './dom';
 import { ART, bitsHtml, heroSprite, placeSprite, spriteBit, type Bit } from './art';
 import { SFX } from './sound';
 import { Camera } from './camera';
-import { HOUSE_BOUNDS, HOUSE_FIT, houseBack, houseBits, houseDefs, houseFront } from './houseart';
+import { BACKDROP, HOUSE_BOUNDS, HOUSE_FIT, houseBack, houseBits, houseDefs, houseFront } from './houseart';
+import { HousePaint } from './housepaint';
 import { bedLook } from './garden';
 import { NameTag } from './nametag';
 import { TOUR_STEPS, tipSteps, type TourStep } from './tours';
@@ -41,6 +42,8 @@ const HOME_ROOM = 'hall';
 const WHOLE = 'house';
 /** the world's top left: every layer of the house is drawn from here, in world units */
 const [X0, Y0] = HOUSE_BOUNDS;
+/** screen pixels per CSS pixel the house is drawn for: a 3x phone gets 2x, scaled up a touch (as camera.ts) */
+const pxPerUnit = (): number => Math.min(2, window.devicePixelRatio || 1);
 /** what a scene draws besides the layer you tap: the bits that move (y-sorted like the layer) and the pips */
 interface Extras { bits: { y: number; bit: Bit }[]; pips: Bit[] }
 
@@ -49,7 +52,8 @@ export class Hearth {
   fresh = new Set<string>();
   private cam: Camera;
   private svg: SVGSVGElement;
-  private back: SVGSVGElement;
+  /** the back layer (sky, hill, walls, furniture) as pictures: housepaint.ts */
+  private paint: HousePaint;
   private front: SVGSVGElement;
   private fx: HTMLElement;
   private bits: HTMLElement;
@@ -85,7 +89,7 @@ export class Hearth {
         <svg class="h-front" ${size} aria-hidden="true"></svg><div class="h-pips" aria-hidden="true"></div></div></div>
       <div class="h-signs no-cam"></div><div class="h-top no-cam"></div><div class="h-bottom no-cam"></div>`;
     this.svg = root.querySelector('svg.house')!;
-    this.back = root.querySelector('svg.h-back')!;
+    this.paint = new HousePaint(root.querySelector('.h-world')!, root.querySelector('svg.h-back')!, [X0, Y0]);
     this.front = root.querySelector('svg.h-front')!;
     this.fx = root.querySelector('.h-fx')!;
     this.bits = root.querySelector('.h-bits')!;
@@ -94,7 +98,7 @@ export class Hearth {
     this.top = root.querySelector('.h-top')!;
     this.bottom = root.querySelector('.h-bottom')!;
     this.tag = new NameTag(root, this.top, this.bottom);
-    this.cam = new Camera(root, root.querySelector('.h-cam')!, root.querySelector('.h-world')!, { bounds: HOUSE_BOUNDS, onChange: () => this.onView() });
+    this.cam = new Camera(root, root.querySelector('.h-cam')!, root.querySelector('.h-world')!, { bounds: HOUSE_BOUNDS, onChange: () => this.onView(), onRest: () => this.rested() });
     actions(root, {
       dungeon: () => { SFX.play('ui'); if (this.tourStep !== null) this.endTour(true); else { this.out = this.far(); app.sheets.open({ kind: 'dungeon' }); } },
       gear: () => { SFX.play('ui'); if (this.tourStep !== null) this.endTour(false); this.act('gear'); },
@@ -216,7 +220,7 @@ export class Hearth {
     const looks = LOOK_ROOMS.map(look).join(' ');
     if (looks !== this.looks) {
       this.looks = looks;
-      this.back.innerHTML = `<defs>${houseDefs()}</defs>${houseBack(look)}`;
+      this.paint.set(houseDefs(), houseBack(look));
       this.front.innerHTML = houseFront(look);
       this.fx.innerHTML = bitsHtml(houseBits(look), X0, Y0);
     }
@@ -228,6 +232,7 @@ export class Hearth {
     this.root.classList.toggle('decorating', this.decorating);
     this.hud(h);
     this.layout();
+    this.paintWhole();
     if (this.fresh.size) setTimeout(() => this.fresh.clear(), 1200);
   }
 
@@ -240,6 +245,29 @@ export class Hearth {
     return true;
   }
 
+  /** the back layer's whole picture: over all the camera can show (a portrait screen clips to the house's
+   *  bounds), sharp enough for the whole-house zoom with a little to spare */
+  private paintWhole(): void {
+    if (this.cam.w < 2) return;
+    const [bx0, by0, bx1, by1] = HOUSE_BOUNDS, [ax0, ay0, ax1, ay1] = BACKDROP;
+    let r: [number, number, number, number] = [bx0, by0, bx1 - bx0, by1 - by0];
+    if (this.cam.w > this.cam.h) {
+      // wider than tall: as far as the screen reaches at the furthest zoom out, but never past the backdrop
+      const vw = Math.max(bx1 - bx0, this.cam.w / this.cam.zMin), vh = Math.max(by1 - by0, this.cam.h / this.cam.zMin);
+      const cx = (bx0 + bx1) / 2, cy = (by0 + by1) / 2;
+      const x0 = Math.max(ax0, cx - vw / 2), y0 = Math.max(ay0, cy - vh / 2), x1 = Math.min(ax1, cx + vw / 2), y1 = Math.min(ay1, cy + vh / 2);
+      r = [x0, y0, x1 - x0, y1 - y0];
+    }
+    this.paint.whole(r, this.fitZ * pxPerUnit() * 1.25);
+  }
+  /** the camera has stopped: the part on screen gets drawn sharp, if the whole picture is too soft for it */
+  private rested(): void {
+    const c = this.cam, w = c.w / c.z, h = c.h / c.z;
+    this.paint.rest([c.cx - w / 2, c.cy - h / 2, w, h], c.z * pxPerUnit());
+  }
+  /** The house is off screen: its pictures let go of their memory. */
+  sleep(): void { this.paint.sleep(); }
+
   /** fit the camera to the screen: on the first look, and coming home, show the whole house */
   layout(): void {
     const w0 = this.cam.w, h0 = this.cam.h;
@@ -251,6 +279,7 @@ export class Hearth {
     this.roomZ = Math.min(this.cam.w / 640, this.cam.h / 1000);
     this.cam.zMin = this.fitZ * 0.9;
     this.cam.zMax = this.roomZ * 2.4;
+    this.paintWhole();
     if (this.cam.w !== w0 || this.cam.h !== h0) this.tag.measure();
     if (this.want) { const r = this.want; this.want = null; this.placed = true; if (r === WHOLE) this.overview(true); else this.goRoom(r, !this.root.offsetParent); return; }
     if (!this.placed) { this.placed = true; this.overview(true); return; }

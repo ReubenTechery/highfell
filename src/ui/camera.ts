@@ -14,6 +14,8 @@ export interface CameraOpts {
   bounds: [number, number, number, number];
   /** called after the view changes, at most once a frame */
   onChange: () => void;
+  /** called once the camera has come to rest (no finger down, no flight, drawn sharp) */
+  onRest?: () => void;
 }
 type Pt = { x: number; y: number };
 
@@ -144,7 +146,7 @@ export class Camera {
     const was = this.base;
     this.rebase();
     if (this.base !== was) this.write();
-    else this.still();
+    else { this.still(); this.o.onRest?.(); }
   }
   /** At rest the layer stops being marked as moving, so the browser paints the whole world fresh at the zoom
    *  it's at now. Marked as moving for good, a phone keeps the first zoom's sharpness and, after a flight out

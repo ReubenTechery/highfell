@@ -63,7 +63,10 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
   .hearth { background: linear-gradient(#2E2A55 50%, #6B4A3A 50%); }
 }
 .h-world > svg { display: block; }
+/* the back layer, drawn once as pictures (housepaint.ts); its gradients stay live in .h-defs for the other layers */
 .h-back { overflow: visible; }
+.h-world > .h-paint { visibility: hidden; pointer-events: none; }
+.h-world > .h-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 .bit { position: absolute; display: block; }
 .house .thing, .house .spot, .house .hero, .house .newhero, .house .mount { pointer-events: auto; cursor: pointer; }
 .house .spot.empty, .house .spot.none, .hearth.dragging .house * { pointer-events: none; }

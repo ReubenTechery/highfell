@@ -33,6 +33,8 @@ function rnd(seed: number): () => number {
 
 /** where the view may go, in house units: left, top, right, bottom */
 export const HOUSE_BOUNDS: [number, number, number, number] = [-1100, -2900, 2500, 1060];
+/** how far the sky and the ground reach, past the view's bounds (a wide screen sees them): left, top, right, bottom */
+export const BACKDROP: [number, number, number, number] = [-3400, -3600, 4600, 1306];
 /** the whole house, for the zoomed-out view */
 export const HOUSE_FIT: [number, number, number, number] = [-440, -2640, 1640, 560];
 /** which look each room is drawn in, by room id */

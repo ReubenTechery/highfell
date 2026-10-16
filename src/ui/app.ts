@@ -124,7 +124,7 @@ export class App {
     for (const s of SCENES) $('sc-' + s).hidden = s !== id;
     // a run picks its own music; the reveal is quiet so every drop's sound lands
     if (id !== 'run') { MUSIC.want(id === 'reveal' ? null : 'house'); MUSIC.duck(1); }
-    if (id === 'hearth') { this.hearth.render(); }
+    if (id === 'hearth') { this.hearth.render(); } else this.hearth.sleep();
     if (id === 'run') {
       resizeView();
       if (!this.raf) { this.last = 0; this.raf = requestAnimationFrame((t) => this.frame(t)); }
