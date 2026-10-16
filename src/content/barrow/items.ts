@@ -20,7 +20,7 @@ export const BARROW_SETS: SetDef[] = [
     id: 'rimebone', name: 'Rimebone', role: 'dps', dungeon: 'barrow',
     look: 'A frosted bone crown, icicle shoulders',
     pieces: ['rimebone.helm', 'rimebone.shoulders', 'rimebone.chest'],
-    bonus2: { id: 'rimebone2', desc: 'Comet on a frozen mob gives back half its cooldown.' },
+    bonus2: { id: 'rimebone2', desc: 'Comet on a frozen mob or a Chilled boss gives back half its cooldown.' },
     bonus3: { id: 'rimebone3', desc: 'Blizzard rains bone shards and raises frost skeletons that fight for you for 6 seconds.', ready: true },
   },
   {
@@ -73,11 +73,11 @@ export const BARROW_ITEMS: ItemDef[] = [
     'sv_chest', 'Viper Blades venom ticks 30% harder and lasts 1 second longer.',
     'Oiled leather that drinks the lantern light.', 'rogue'),
   { id: 'gravekeeper.tank', name: 'The Gravedigger', role: 'tank', slot: 'weapon', kind: 'unique', rar: 3, icon: 'u_gravedigger', dungeon: 'barrow',
-    effect: 'gravedigger', effectDesc: 'Every fifth swing digs in with a stunning tremor, and Charge resets Cleave’s cooldown.', flavor: 'Half axe, half shovel, all argument.' },
+    effect: 'gravedigger', effectDesc: 'Every fifth swing digs in with a stunning tremor (a boss staggers), and Charge resets Cleave’s cooldown.', flavor: 'Half axe, half shovel, all argument.' },
   { id: 'gravekeeper.healer', name: 'Lantern of the Long Night', role: 'healer', slot: 'weapon', kind: 'unique', rar: 3, icon: 'u_longnight', dungeon: 'barrow',
     effect: 'longnight', effectDesc: 'Mend wards its target for 60, and Sunburst sears nearby foes for 90 holy damage and wards the party for 75.', flavor: 'The Gravekeeper’s own light. It still knows the way home.' },
   { id: 'gravekeeper.dps', name: 'Gravefrost Staff', role: 'dps', slot: 'weapon', kind: 'unique', rar: 3, icon: 'u_gravefrost', dungeon: 'barrow',
-    effect: 'gravefrost', effectDesc: 'Comet freezes everything it hits for 2 seconds, and Rime burst resets Icicle and summons a 3s frost storm.', flavor: 'Cold enough to keep the dead where you put them.' },
+    effect: 'gravefrost', effectDesc: 'Comet freezes everything it hits for 2 seconds (a boss is Chilled), and Rime burst resets Icicle and summons a 3s frost storm.', flavor: 'Cold enough to keep the dead where you put them.' },
   { id: 'gravekeeper.rogue', name: 'The Cryptfangs', role: 'dps', cls: 'rogue', slot: 'weapon', kind: 'unique', rar: 3, icon: 'u_cryptfangs', dungeon: 'barrow',
     effect: 'cryptfangs', effectDesc: 'Every fourth twin-dagger slash strikes twice and refreshes Viper Venom, and Shadowstep resets Shadowstrike.', flavor: 'Twin fangs pried from something older than the crypt. Always found as a pair.' },
 ];

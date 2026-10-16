@@ -126,8 +126,8 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   `pw_perf.py` (measure the house's speed on a slowed-down phone).
 - `tests/`: `balance.test.ts` (bot clears must stay in their bands), `dungeon.test.ts` (threat, cages,
   curses, numbers, tuning, where each hero's weapon and head are), `coach.test.ts` (which button the coach
-  names), `input.test.ts` (the touch controls and party-frame swipes, driven without a browser), `meta.test.ts`,
-  `vale.test.ts`.
+  names), `combos.test.ts` (the combos on bosses), `input.test.ts` (the touch controls and party-frame swipes,
+  driven without a browser), `meta.test.ts`, `vale.test.ts`.
 
 ## Commands
 
