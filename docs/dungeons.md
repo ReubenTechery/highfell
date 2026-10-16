@@ -44,17 +44,11 @@ Per Pillar 5 (*Anti-bloat: every cosmetic and item comes from boss drops, logs, 
 
 ---
 
-## 4. The Dungeon Template Architecture (`src/dungeon/template.js` & `src/content/_template/`)
+## 4. The Dungeon Template
 
-Every dungeon in Highfell shares the same **4-minute, 6-room vertical spine** so bots, cameras, touch controls, checkpoints, walkouts, and balance sims work out of the box—while looking and playing completely differently through **Themes, Set-Piece Toys, Mob Archetypes, and Boss Scripts**.
-
-### Standard 6-Room Spine (Bottom to Top, `x = 500`)
-1. **Room 0 (`r0`) — Entrance Threshold:** Where the party spawns and drinks their Cauldron brew.
-2. **Room 1 (`r1`) — Warm-Up Hall (Pack A):** 4 melee trash mobs to build rhythm and test AoE/threat.
-3. **Room 2 (`r2`) — Two-Pack Hall (Packs B & C):** Pack B introduces the dungeon's heavy **Brute** (deals 1.85× Crushing Blows to non-tanks); Pack C introduces **Ranged/Casters**.
-4. **Room 3 (`r3`) — Mini-Boss Arena (Pack K):** Gate closes behind the party (`g3b`), northern gate (`g3t`) stays locked until the Mini-Boss falls. 2-phase fight with Perfect-Block and Dodge-Crash **Exposed** (`+35%` damage taken) windows.
-5. **Room 4 (`r4`) — Set-Piece & Ambush Hall (Pack D + 3-Seat Trial + Ambush Pack E):**
-   - **Pack D:** Caller/Caster pack guarding the room.
-   - **3-Seat Trial (`S.seal`):** Fast 2-second 3-hero formation pad puzzle (`makeSealTrial`) that shatters for an 18s speed/damage surge.
-   - **Prop-Swap Ambush (`Pack E`):** Stepping past the midpoint pops room props open (`makeAmbush`: coffins, giant spore-pods, or briar cocoons) and spawns a fast swarm + Brute.
-6. **Room 5 (`r5`) — Final Boss Yard/Sanctum (Pack G):** Circular arena (`MAP.arena`), 3 phases, signature role mechanics (tank cage/peel, healer chain/wisp/cleanse, DPS burn during **Exposed** windows, and Phase 3 boss-anchored moving safe-zone ring), ending with the **Chest & Lantern Walkout**.
+A new dungeon starts as a copy of `src/content/_template/`, a small working dungeon that isn't in the game.
+Its `README.md` is the guide, and `docs/design.md` (Making a new dungeon) has the rules: one signature idea
+used by the trash and both bosses, one or two new enemy types, two bosses of two or three moves (the mini boss
+about 40 seconds, the final boss two phases and about 80), a different layout shape (layouts are data, any
+shape: `src/dungeon/layout.js`), no puzzle on Normal, and the art budget (the 3-piece sets, the boss weapons and
+their armour stands) as the main cost.

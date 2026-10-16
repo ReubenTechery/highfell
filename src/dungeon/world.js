@@ -3,18 +3,22 @@ import { clamp, distXY } from '../core/math';
 import { rng } from '../core/rng';
 import { S } from './state.js';
 
+/* is (x, y) at least r inside walk area w: a box, or a circle for a round room */
+function inside(w, x, y, r) {
+  if (w.round) return distXY(x, y, w.x, w.y) <= w.r - r;
+  return x >= w.x0 + r && x <= w.x1 - r && y >= w.y0 + r && y <= w.y1 - r;
+}
 export function inWalk(x, y, r) {
   const W = S.dg.map.walk;
-  for (let i = 0; i < W.length; i++) {
-    const a = W[i];
-    if (x >= a.x0 + r && x <= a.x1 - r && y >= a.y0 + r && y <= a.y1 - r) return true;
-  }
+  for (let i = 0; i < W.length; i++) if (inside(W[i], x, y, r)) return true;
   return false;
 }
+/* a closed gate blocks its door: across a north or south door at y, or (with x) across an east or west one */
 export function gateBlocks(x, y, r) {
   for (const g of Object.values(S.gates)) {
     if (!g.closed) continue;
-    if (x > g.x0 - r && x < g.x1 + r && Math.abs(y - g.y) < 16 + r) return true;
+    if (g.x !== undefined) { if (y > g.y0 - r && y < g.y1 + r && Math.abs(x - g.x) < 16 + r) return true; }
+    else if (x > g.x0 - r && x < g.x1 + r && Math.abs(y - g.y) < 16 + r) return true;
   }
   return false;
 }
@@ -69,15 +73,20 @@ export function moveEnt(e, dx, dy) {
 /* chain index of the area a point is in (rooms first) */
 export function areaOf(x, y) {
   const C = S.dg.map.chain;
-  for (let i = 0; i < C.length; i += 2) { const a = C[i]; if (x >= a.x0 && x <= a.x1 && y >= a.y0 && y <= a.y1) return i; }
-  for (let i = 1; i < C.length; i += 2) { const a = C[i]; if (x >= a.x0 - 10 && x <= a.x1 + 10 && y >= a.y0 && y <= a.y1) return i; }
+  for (let i = 0; i < C.length; i++) { const a = C[i]; if (a.kind === 'room' && (a.round ? distXY(x, y, a.x, a.y) <= a.r : x >= a.x0 && x <= a.x1 && y >= a.y0 && y <= a.y1)) return i; }
+  for (let i = 0; i < C.length; i++) {
+    const a = C[i];
+    if (a.kind !== 'corridor') continue;
+    if (a.dir === 'h' ? x >= a.x0 && x <= a.x1 && y >= a.y0 - 10 && y <= a.y1 + 10 : x >= a.x0 - 10 && x <= a.x1 + 10 && y >= a.y0 && y <= a.y1) return i;
+  }
   let best = 0, bd = 1e9;
   C.forEach((a, i) => { const cx = (a.x0 + a.x1) / 2, cy = (a.y0 + a.y1) / 2; const d = Math.abs(cy - y) + Math.abs(cx - x) * 0.2; if (d < bd) { bd = d; best = i; } });
   return best;
 }
 export function roomIndexOf(x, y) { const i = areaOf(x, y); const a = S.dg.map.chain[i]; return a.kind === 'room' ? a.idx : -1; }
 
-/* next point to walk to on the way to (tx, ty) */
+/* next point to walk to on the way to (tx, ty): through the doorway into the next area on the shortest way
+   there (the layout works the way out, see src/dungeon/layout.js), a step past it */
 export function navPoint(e, tx, ty) {
   const M = S.dg.map;
   const a = areaOf(e.x, e.y), b = areaOf(tx, ty);
@@ -86,11 +95,10 @@ export function navPoint(e, tx, ty) {
   // wide for it, and a straight line walks you into the corner
   const r = e.r || 0;
   for (const w of M.walk) {
-    if (e.x >= w.x0 + r && e.x <= w.x1 - r && e.y >= w.y0 + r && e.y <= w.y1 - r && tx >= w.x0 && tx <= w.x1 && ty >= w.y0 && ty <= w.y1) return { x: tx, y: ty };
+    if (inside(w, e.x, e.y, r) && inside(w, tx, ty, 0)) return { x: tx, y: ty };
   }
-  const cur = M.chain[a];
-  if (b > a) return { x: M.CX, y: cur.y0 - 24 };
-  return { x: M.CX, y: cur.y1 + 24 };
+  const g = M.gaps[a][M.next[a][b]];
+  return { x: g.x + g.dx * 24, y: g.y + g.dy * 24 };
 }
 
 /* walk e toward (tx, ty) at speed; returns remaining distance. Unsticks itself around pillars. */
