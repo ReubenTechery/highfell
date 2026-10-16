@@ -42,6 +42,8 @@ export class Camera {
   private raf = 0;
   /** the zoom the world was last drawn at, and the timer that redraws it when the camera rests */
   private base = 0;
+  /** whether the layer is marked as moving (will-change), from the first move until the camera rests */
+  private moving = false;
   private rest = 0;
 
   constructor(private root: HTMLElement, private layer: HTMLElement, private world: HTMLElement, private o: CameraOpts) {
@@ -142,10 +144,21 @@ export class Camera {
     const was = this.base;
     this.rebase();
     if (this.base !== was) this.write();
+    else this.still();
+  }
+  /** At rest the layer stops being marked as moving, so the browser paints the whole world fresh at the zoom
+   *  it's at now. Marked as moving for good, a phone keeps the first zoom's sharpness and, after a flight out
+   *  of a room, paints only the patch that was on screen before. */
+  private still(): void {
+    if (!this.moving) return;
+    this.moving = false;
+    this.layer.style.willChange = 'auto';
   }
   /** write the view now: move and scale the layer, in whole device pixels so it stays crisp at rest */
   private write(): void {
     if (!this.base) this.rebase();
+    // while the camera moves, the browser slides and scales the layer as one picture, with no repaints
+    if (!this.moving) { this.moving = true; this.layer.style.willChange = 'transform'; }
     const [x0, y0] = this.o.bounds;
     const dpr = window.devicePixelRatio || 1, snap = (v: number): number => Math.round(v * dpr) / dpr;
     this.layer.style.transform = `translate(${snap(this.w / 2 - (this.cx - x0) * this.z)}px, ${snap(this.h / 2 - (this.cy - y0) * this.z)}px) scale(${(this.z / this.base).toFixed(5)})`;
