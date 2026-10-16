@@ -8,8 +8,9 @@
  * slate too. Outside: the garden's yard on the left, the paddock's field and fences on the right (a look
  * never goes outside). What you can tap, and what it does, lives in the scene (hearth.ts) and the
  * house's plan (content/house.ts). House units: x across, y down, the ground floor's floor at y = 0.
- * What moves (the fire, the smoke, the wisps) is drawn as bits (houseBits), so the house never redraws for
- * it. See-through shapes use fill-opacity, not opacity, which would make the browser draw each one apart.
+ * What moves (the fire, the smoke, the birds, the fireflies, the wisps) is drawn as bits (houseBits), so the
+ * house never redraws for it. See-through shapes use fill-opacity, not opacity, which would make the browser
+ * draw each one apart.
  */
 import { FLOORS, HOUSE_W, LOOK_ROOMS, PADDOCK } from '../content/house';
 import { placeSprite, spriteBit, type Bit } from './art';
@@ -79,6 +80,7 @@ export function houseDefs(): string {
     <radialGradient id="h-warm"><stop offset="0" stop-color="#FFC870" stop-opacity="0.42"/><stop offset="1" stop-color="#FFC870" stop-opacity="0"/></radialGradient>
     <radialGradient id="h-fire"><stop offset="0" stop-color="#FF9A4C" stop-opacity="0.4"/><stop offset="0.55" stop-color="#FF8A4C" stop-opacity="0.12"/><stop offset="1" stop-color="#FF8A4C" stop-opacity="0"/></radialGradient>
     <radialGradient id="h-green"><stop offset="0" stop-color="#9BE15D" stop-opacity="0.5"/><stop offset="1" stop-color="#9BE15D" stop-opacity="0"/></radialGradient>
+    <radialGradient id="h-fly"><stop offset="0" stop-color="#F2FFB0" stop-opacity="0.8"/><stop offset="0.4" stop-color="#C8F27A" stop-opacity="0.3"/><stop offset="1" stop-color="#9BE15D" stop-opacity="0"/></radialGradient>
     <radialGradient id="h-gfire"><stop offset="0" stop-color="#9BE15D" stop-opacity="0.44"/><stop offset="0.55" stop-color="#9BE15D" stop-opacity="0.14"/><stop offset="1" stop-color="#9BE15D" stop-opacity="0"/></radialGradient>
     ${WINDOWS.filter((w) => w.low).map((w) => `<clipPath id="${w.id}"><path d="${w.d}"/></clipPath>`).join('')}`;
 }
@@ -159,9 +161,10 @@ export function houseFront(look: LookAt): string {
   return o.join('');
 }
 
-/** what moves: the smoke from the chimney, and each room's own (the fire, the wisps) */
+/** what moves: the smoke from the chimney, the birds and the fireflies outside, and each room's own (the
+ *  fire, the wisps) */
 export function houseBits(look: LookAt): Bit[] {
-  const out = [smoke()];
+  const out = [...smoke(), ...birds(), ...fireflies()];
   for (const id of LOOK_ROOMS) out.push(...(roomArt(look(id), id).bits?.() || []));
   return out;
 }
@@ -262,13 +265,59 @@ function roof(fr: Frame): string {
   return o.join('');
 }
 
-/** the smoke over the chimney: three puffs drifting up together */
-function smoke(): Bit {
-  const puffs = [0, 1, 2].map((i) => ({ x: 600 + (i % 2 ? 24 : -18), y: ROOF.peak - 200 - i * 70, r: 26 + i * 10, o: 0.85 - i * 0.2 }));
-  const x0 = Math.min(...puffs.map((p) => p.x - p.r)) - 3, x1 = Math.max(...puffs.map((p) => p.x + p.r)) + 3;
-  const y0 = Math.min(...puffs.map((p) => p.y - p.r)) - 3, y1 = Math.max(...puffs.map((p) => p.y + p.r)) + 3;
-  const body = puffs.map((p) => C(p.x, p.y, p.r, '#C9BCD6', 3.5).replace('fill: #C9BCD6', `fill: #C9BCD6; opacity: ${f(p.o)}`)).join('');
-  return { box: [x0, y0, x1 - x0, y1 - y0], body, cls: 'float' };
+/* ---------------------------------------------------------------- life outside: it moves, so it is bits.
+ * The fire, the smoke, the birds' wings and the fireflies keep one slow beat, a new frame every 0.45s
+ * (styles.css), and each frame is drawn once: the browser only shows, hides and slides them. */
+type Puff = { x: number; y: number; r: number; o: number };
+/** The smoke over the chimney: puffs climbing out of it, drifting right as they grow and fade. Four frames
+ *  take turns, each with every puff a quarter of the way on to the next one's place, so the puffs climb. */
+function smoke(): Bit[] {
+  const n = 4, frames = 4, mouth = ROOF.peak - 140;
+  // a puff s of the way up: still coming out of the chimney at 0, gone at 1
+  const at = (s: number): Puff => ({ x: 600 + 56 * s + 8 * Math.sin(s * 2 * Math.PI), y: mouth + 4 - 290 * s, r: 16 + 24 * s, o: 0.9 * Math.pow(1 - s, 0.7) });
+  const all = Array.from({ length: n * frames }, (_, i) => at(i / (n * frames)));
+  const x0 = Math.min(...all.map((p) => p.x - p.r)) - 3, x1 = Math.max(...all.map((p) => p.x + p.r)) + 3;
+  const y0 = Math.min(...all.map((p) => p.y - p.r)) - 3, y1 = mouth + 3;
+  return Array.from({ length: frames }, (_, k) => ({
+    box: [x0, y0, x1 - x0, y1 - y0],
+    body: Array.from({ length: n }, (_, i) => puff(all[i * frames + k], mouth)).join(''),
+    cls: `smoke s${k}`,
+  }));
+}
+/** a puff of smoke, cut flat where it is still down the chimney */
+function puff(p: Puff, cut: number): string {
+  const style = `fill: #C9BCD6; stroke: ${K}; stroke-width: 3.5; opacity: ${f(p.o)}`;
+  if (p.y + p.r <= cut) return `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(p.r)}" style="${style}"/>`;
+  const dx = Math.sqrt(p.r * p.r - (cut - p.y) ** 2);
+  return `<path d="M${f(p.x - dx)} ${cut} A${f(p.r)} ${f(p.r)} 0 ${p.y < cut ? 1 : 0} 1 ${f(p.x + dx)} ${cut} Z" style="${style}"/>`;
+}
+
+/** A few birds crossing the dusk sky now and then, in an arc over the roof and past the moon (styles.css:
+ *  flight). The flock is two frames, its wings up and down by turns; it starts past the left edge. */
+function birds(): Bit[] {
+  // each bird: where it flies in the flock, its size, and whether its wings are up in the first frame
+  const flock: [number, number, number, boolean][] = [[0, 0, 1.3, true], [-120, 38, 1.12, false], [-226, -14, 1, true]];
+  const x = -3600, y = -1600;
+  const x0 = Math.min(...flock.map(([dx, , k]) => dx - 36 * k)), x1 = Math.max(...flock.map(([dx, , k]) => dx + 36 * k));
+  const y0 = Math.min(...flock.map(([, dy, k]) => dy - 20 * k)), y1 = Math.max(...flock.map(([, dy, k]) => dy + 17 * k));
+  return [true, false].map((first) => ({
+    box: [x + x0, y + y0, x1 - x0, y1 - y0],
+    body: flock.map(([dx, dy, k, up]) => bird(x + dx, y + dy, k, up === first)).join(''),
+    cls: first ? 'flock' : 'flock b',
+  }));
+}
+/** a bird far off, its body at (x, y), lit by the sunset: two wings, up or down, and a body */
+function bird(x: number, y: number, k: number, up: boolean): string {
+  const wing = up ? 'M-3 -2 C-7 -12 -10 -16 -15 -16 C-22 -16 -28 -11 -33 -4 C-26 -6 -20 -7 -15 -5 C-10 -3 -6 1 -3 5 Z'
+    : 'M-3 -3 C-8 -5 -12 -5 -16 -3 C-22 0 -27 6 -31 13 C-25 10 -20 8 -15 6 C-10 5 -6 5 -3 5 Z';
+  const ink = `fill: #F6C9A8; stroke: ${K}; stroke-width: ${f(3 / k)}; stroke-linejoin: round`;
+  return `<g transform="translate(${f(x)} ${f(y)}) scale(${k})"><path d="${wing}" style="${ink}"/><path d="${wing}" transform="scale(-1 1)" style="${ink}"/><ellipse rx="7" ry="5" style="${ink}"/></g>`;
+}
+
+/** fireflies over the garden and the paddock, low against the hills, each blinking and drifting a little */
+const FLIES: [number, number][] = [[-610, -190], [-420, -270], [-260, -180], [1520, -260], [1800, -330], [2050, -230]];
+function fireflies(): Bit[] {
+  return FLIES.map(([x, y], i) => ({ box: [x - 34, y - 34, 68, 68], body: glow(x, y, 34, 'h-fly') + C(x, y, 6, '#FFF3A0', 0), cls: `firefly f${i % 3}` }));
 }
 
 /* ---------------------------------------------------------------- pieces both looks use */
