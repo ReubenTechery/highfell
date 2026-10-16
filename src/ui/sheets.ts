@@ -5,7 +5,7 @@
  * profile every time, so whatever changed is always shown. This file opens and closes them and wires up
  * their buttons; most of them draw in a file of their own.
  */
-import { COLLECTIBLES, ITEMS, thing } from '../content';
+import { COLLECTIBLES, DUNGEONS, ITEMS, thing } from '../content';
 import { SLOT_IDS } from '../content/gear';
 import type { SlotId } from '../content/types';
 import { INGREDIENTS, INGREDIENT_ORDER, LORE, PLANTS, RECIPES, RECIPE_ORDER, SEED_ICON, SEED_ORDER, SKILLS } from '../content/vale';
@@ -20,7 +20,7 @@ import { tile } from './art';
 import { MUSIC } from './music';
 import { SFX } from './sound';
 import { heroesSheet, heroSheet, type HeroSheetState } from './herosheet';
-import { dungeonActions, dungeonBack, dungeonSheet, type DungeonPick } from './dungeonsheet';
+import { dungeonActions, dungeonBack, dungeonSheet, dungeonStep, type DungeonPick } from './dungeonsheet';
 import { itemSheet, KIND_WORD, ROLE_STAT } from './itemsheet';
 import { LOG_TABS, logActions, logsSheet, mountsSheet, type LogTab } from './logsheet';
 import type { LogView } from './logbook';
@@ -144,7 +144,10 @@ export class Sheets {
       this.app.save();
     });
     window.addEventListener('keydown', (e) => {
-      if (e.key !== 'Escape' || !this.spec) return;
+      if (!this.spec) return;
+      // on the door, the arrow keys step between dungeons like the arrows on the picture
+      if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && this.spec.kind === 'dungeon' && this.pick.page === 'door') { dungeonStep(this.pick, e.key === 'ArrowLeft' ? -1 : 1); SFX.play('ui'); this.refresh(); return; }
+      if (e.key !== 'Escape') return;
       if (this.logView.peek) root.querySelector<HTMLElement>('.pk-x')?.click();
       else if (this.spec.kind === 'dungeon' && dungeonBack(this.pick)) { this.refresh(); const b = root.querySelector('.sheet-body'); if (b) b.scrollTop = 0; }
       else this.close();
@@ -158,7 +161,8 @@ export class Sheets {
     const spec = to.kind === 'gear' ? settle(this.app.p, to) : to;
     // the dungeon picker starts fresh when it opens, but not when you come back to it from one of its drops
     const inDungeon = (s: SheetSpec | null): boolean => !!s && (s.kind === 'dungeon' || (s.kind === 'item' && s.back?.kind === 'dungeon'));
-    if (spec.kind === 'dungeon' && !inDungeon(this.spec)) this.pick.page = 'door';
+    // the sheet opens on the door of a dungeon you can go into
+    if (spec.kind === 'dungeon' && !inDungeon(this.spec)) { this.pick.page = 'door'; if (!DUNGEONS[this.pick.dungeon || '']) this.pick.dungeon = 'barrow'; }
     if (spec.kind === 'hero' && !(this.spec && this.spec.kind === 'hero' && this.spec.hero === spec.hero)) { clearTimeout(this.heroTimer); this.heroSt = { delArmed: false, renaming: false, err: '' }; }
     if (spec.kind !== 'logs' && spec.kind !== 'item') this.logView.peek = null;
     const looked = leftSlot(this.app.p, this.spec, spec);

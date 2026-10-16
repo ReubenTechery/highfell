@@ -144,12 +144,14 @@ const statLine = (clears: number, kc: number, pb: number | null | undefined): st
   clears ? `<b>${clears}</b> clear${clears === 1 ? '' : 's'} · KC <b>${kc}</b> · best <b>${fmtT(pb)}</b>` : 'No clears yet';
 
 export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): { head: string; body: string; foot: string } {
-  // only a dungeon that's built can be picked; the list shows the ones still coming
+  // a dungeon that's built has its door; one still coming has a door that says what it will ask of you
   const base = DUNGEONS[pick.dungeon || 'barrow'] || DUNGEONS.barrow;
   const meta = ACT1_DUNGEONS.find((m) => m.id === base.id) || ACT1_DUNGEONS[0];
   const h = activeHero(p);
   const role: RoleId = h ? roleOf(h) : 'tank';
-  if (pick.page === 'list') return { head: subHead('Dungeons'), body: dungeonList(p, base.id), foot: '' };
+  if (pick.page === 'list') return { head: subHead('Dungeons'), body: dungeonList(p, pick.dungeon || base.id), foot: '' };
+  const soon = ACT1_DUNGEONS.find((m) => m.id === pick.dungeon && !DUNGEONS[m.id]);
+  if (soon) return soonSheet(p, soon);
 
   const { dg, open } = pickedDungeon(p, pick, allOpen);
   const rec = p.dungeons[dg.id], keeper = p.bosses[`${dg.id}.${dg.finalBoss}`];
@@ -174,7 +176,7 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
   const head = `<h2><button type="button" class="dgx-namebtn" data-act="dglist" aria-label="${esc(base.name)}. All dungeons">${esc(base.name)}${GLYPH.down}</button></h2><p>Tier ${meta.roman}${pick.heroic ? ' · Heroic' : ''} · ${statLine(rec?.clears || 0, keeper?.kc || 0, rec?.pb)}</p>`;
   // on a phone the log line opens the Loot page; on desktop the loot sits in its own column instead
   const body = `<div class="dgx${pick.heroic ? ' heroic' : ''}">
-    ${door(p, base, pick.heroic, diff)}
+    ${door(p, base, pick.heroic, diff + steps(base.id))}
     ${logLine(p, dg, true)}
     <aside class="dgx-lootcol" aria-label="Loot">${loot}</aside>
     <div class="dgx-you">${brewButton(p)}</div>
@@ -191,9 +193,9 @@ function dungeonList(p: Profile, current: string): string {
     const live = DUNGEONS[m.id];
     const name = `<span class="dgx-card-name"><span class="dgx-num">${m.roman}</span>${esc(live?.name || m.name)}</span>`;
     if (!live) {
-      return `<div class="dgx-card soon" style="--dc: ${m.themeLight}"><span class="dgx-card-art">${banner(false, m.id)}<span class="dgx-soon">Soon</span>${name}</span>
+      return `<button type="button" class="dgx-card soon${m.id === current ? ' on' : ''}" data-act="dgpick" data-id="${esc(m.id)}" style="--dc: ${m.themeLight}" aria-label="${esc(m.name)}, coming soon"><span class="dgx-card-art">${banner(false, m.id)}<span class="dgx-soon">Soon</span>${name}</span>
         <span class="dgx-card-info"><span class="dgx-card-line"><span>Recommended <b>ilvl ${m.recIlvl}</b> · ${esc(h ? h.name.split(' ')[0] : 'you')} <b>${mine}</b></span>${bar(mine / m.recIlvl)}</span>
-          <span class="dgx-card-sub">Drops <b>ilvl ${m.dropsIlvl}</b> · its log gives <b>${esc(m.prizeName)}</b></span></span></div>`;
+          <span class="dgx-card-sub">Drops <b>ilvl ${m.dropsIlvl}</b> · its log gives <b>${esc(m.prizeName)}</b></span></span></button>`;
     }
     const { have, need } = logProgress(p, live.id), hp = heroicProgress(p, live.id);
     const ach = logAchievement(live.id), main = ach ? mainReward(ach) : null, done = !!ach && !!p.achievements[ach.id];
@@ -204,6 +206,32 @@ function dungeonList(p: Profile, current: string): string {
         <span class="dgx-card-sub">${clears ? `<b>${clears}</b> clear${clears === 1 ? '' : 's'} · ` : ''}Heroic ${heroicOpen(p, live.id) ? '<b>open</b>' : `<b>${hp.have}/${hp.need}</b> clears`}</span></span></button>`;
   }).join('');
   return `<p class="dgx-eyebrow">Act 1</p>${cards}`;
+}
+
+/** the arrows on the door: the dungeon before and after this one in Act 1, going round at the ends */
+function steps(id: string): string {
+  const n = ACT1_DUNGEONS.length, i = Math.max(0, ACT1_DUNGEONS.findIndex((m) => m.id === id));
+  const nameAt = (k: number): string => { const m = ACT1_DUNGEONS[(i + k + n) % n]; return DUNGEONS[m.id]?.name || m.name; };
+  return `<button type="button" class="dgx-step prev" data-act="dgstep" data-v="-1" aria-label="Previous dungeon: ${esc(nameAt(-1))}">${GLYPH.left}</button>
+    <button type="button" class="dgx-step next" data-act="dgstep" data-v="1" aria-label="Next dungeon: ${esc(nameAt(1))}">${GLYPH.right}</button>`;
+}
+
+/** A dungeon still being built: its picture marked Soon, the item level it will want against your hero's, and
+ *  what finishing its log will give. The gold button stays locked. */
+function soonSheet(p: Profile, m: Act1DungeonMeta): { head: string; body: string; foot: string } {
+  const h = activeHero(p), mine = h ? +ilvl(loadoutFor(p, h).score) : 10;
+  const rw = (pic: string, name: string, cls = ''): string => `<div class="dgx-rw ${cls}"><span class="dgx-rw-pic" aria-hidden="true">${pic}</span><span><b>${esc(name)}</b></span></div>`;
+  const head = `<h2><button type="button" class="dgx-namebtn" data-act="dglist" aria-label="${esc(m.name)}. All dungeons">${esc(m.name)}${GLYPH.down}</button></h2><p>Tier ${m.roman} · coming soon</p>`;
+  const body = `<div class="dgx soon-dg">
+    <div class="dgx-door"><div class="dgx-stage soon" style="--stage-bg: ${m.themeBg}; --stage-shape: 448 / 456; --stage-k: 1.0179">${banner(false, m.id)}<span class="dgx-soon">Soon</span>${steps(m.id)}</div></div>
+    <div class="dgx-you">
+      <div class="dgx-ready"><p class="dgx-gh">Recommended ilvl ${m.recIlvl}</p>
+        <span class="dgx-card-line"><span>${esc(h ? h.name.split(' ')[0] : 'You')} <b>${mine}</b> · drops <b>ilvl ${m.dropsIlvl}</b></span><i class="dgx-bar" aria-hidden="true"><i style="width: ${(Math.min(1, mine / m.recIlvl) * 100).toFixed(1)}%"></i></i></span></div>
+      <div class="dgx-rewards"><p class="dgx-rw-h">Finish its log to earn</p>
+        ${rw(tile(m.prizeIcon), m.prizeName, 'main')}${rw(`<span class="dgx-ttl">${GLYPH.home}</span>`, m.lookName)}${rw(`<span class="dgx-ttl">${GLYPH.pen}</span>`, m.titleText)}</div>
+    </div>
+  </div>`;
+  return { head, body, foot: `<button type="button" class="btn gold big dgx-enter" disabled>${GLYPH.lock}Coming soon</button>` };
 }
 
 /** an inner page's head: back to the door, and the page's name */
@@ -263,6 +291,7 @@ export function dungeonActions(d: DungeonHost): Record<string, (el: HTMLElement)
     dglist: () => page('list'),
     dgback: () => page('door'),
     dgpick: (el) => { d.pick.dungeon = el.dataset.id || 'barrow'; d.pick.heroic = false; d.pick.page = 'door'; SFX.play('ui'); d.refresh(); },
+    dgstep: (el) => { dungeonStep(d.pick, +(el.dataset.v || 1)); SFX.play('ui'); d.refresh(); },
     diff: (el) => { d.pick.heroic = el.dataset.v === 'heroic'; SFX.play('ui'); d.refresh(); },
     seats: () => page('heroes'),
     brews: () => page('brews'),
@@ -280,6 +309,14 @@ export function dungeonActions(d: DungeonHost): Record<string, (el: HTMLElement)
     newseat: (el) => { const r = el.dataset.role as RoleId; SFX.play('ui'); d.close(); d.app.showCreate(r); },
     go: () => goIn(d),
   };
+}
+
+/** the arrows (and the arrow keys): to the dungeon before or after this one in Act 1, on its Normal door */
+export function dungeonStep(pick: DungeonPick, by: number): void {
+  const n = ACT1_DUNGEONS.length, i = Math.max(0, ACT1_DUNGEONS.findIndex((m) => m.id === (pick.dungeon || 'barrow')));
+  pick.dungeon = ACT1_DUNGEONS[(((i + by) % n) + n) % n].id;
+  pick.heroic = false;
+  pick.page = 'door';
 }
 
 /** Escape on an inner page goes back to the door; true when it did */
