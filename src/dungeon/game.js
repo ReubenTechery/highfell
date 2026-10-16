@@ -439,7 +439,7 @@ function tickFx(dt) {
     const p = S.parts[i];
     p.t += dt;
     p.x += p.vx * dt; p.y += p.vy * dt;
-    if (p.up) { p.z += 60 * dt; } else { p.vz -= 900 * dt; p.z += p.vz * dt; if (p.z < 0) { p.z = 0; p.vz *= -0.35; p.vx *= 0.6; p.vy *= 0.6; } }
+    if (p.up) { p.z += 60 * dt; } else if (p.fall) { p.z = Math.max(0, p.z - p.fall * dt); } else { p.vz -= 900 * dt; p.z += p.vz * dt; if (p.z < 0) { p.z = 0; p.vz *= -0.35; p.vx *= 0.6; p.vy *= 0.6; } }
     if (p.rot !== undefined) p.rot += (p.vr || 0) * dt * (p.z > 0 ? 1 : 0.2);
     if (p.t >= p.dur) S.parts.splice(i, 1);
   }

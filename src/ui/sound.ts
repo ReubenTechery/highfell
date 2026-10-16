@@ -123,6 +123,8 @@ export const SOUNDS: Record<string, Play> = {
   gutter: (t, v) => { N(t, 0.5, 0.18 * v, 1200, 'bandpass', 2, 200); T(t, 220, 0.4, 'sine', 0.06 * v, 110); },
   flare: (t, v) => { N(t, 0.4, 0.2 * v, 900, 'lowpass', 1, 4000); [784, 1175, 1568].forEach((f, i) => T(t, f, 0.5, 'triangle', 0.09 * v, null, 0.05 + i * 0.06)); },
   knock: (t, v) => { T(t, 120, 0.12, 'sine', 0.5 * v, 70); N(t, 0.08, 0.35 * v, 800); },
+  // a gilding kit: the chest's lid rings once, like a little bell
+  gild: (t, v) => { [2093, 2637, 3136].forEach((f, i) => T(t, f, 1.1 - i * 0.25, 'sine', (0.1 - i * 0.025) * v, null, i * 0.004)); T(t, 1046, 0.5, 'triangle', 0.05 * v); N(t, 0.08, 0.05 * v, 8000, 'highpass'); },
   lightsout: (t, v) => { T(t, 160, 0.9, 'sine', 0.3 * v, 40); N(t, 0.7, 0.2 * v, 600, 'lowpass', 1, 80); },
   petchime: (t, v) => { [1046, 1318, 1568, 2093, 1568, 2637].forEach((f, i) => T(t, f, 0.6, 'sine', 0.08 * v, null, i * 0.22)); },
   petfound: (t, v) => { [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => T(t, f, 0.7, 'triangle', 0.12 * v, null, i * 0.08)); N(t, 1, 0.08 * v, 7000, 'highpass', 0.7, null, 0.3); },

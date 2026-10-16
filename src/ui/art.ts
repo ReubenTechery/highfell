@@ -7,7 +7,7 @@ import PORTRAITS from '../../art/portraits.json';
 import VALE from '../../art/vale.json';
 import VALE_ICONS from '../../art/vale_icons.json';
 import WARDROBE from '../../art/wardrobe.json';
-import { COLLECTIBLES, ITEMS } from '../content';
+import { COLLECTIBLES, ITEMS, KITS, itemOf } from '../content';
 import { RARITY, ROLE_SLOTS, gearKey } from '../content/gear';
 import { heroArt } from '../content/folk';
 import { ROLES } from '../content/roles';
@@ -22,18 +22,22 @@ export const PORTRAIT: Record<string, string> = PORTRAITS as Record<string, stri
 /** An icon tile as markup. */
 export const tile = (name: string): string => TILES[name] || TILES.mend || '';
 
-/** The icon for anything with an id: regular gear, set pieces, uniques, collectibles. */
+/** The icon for anything with an id: regular gear, set pieces, uniques, gilding kits (the piece, gilded), collectibles. */
 export function iconOf(id: string): string {
   const it = ITEMS[id];
   if (it) return tile(it.icon || ROLE_SLOTS[gearKey(it)][it.slot].icon);
+  if (KITS[id]) return tile(KITS[id].icon);
   const c = COLLECTIBLES[id];
   if (c) return tile(c.icon);
   return tile('mend');
 }
-/** How an item's rarity reads: regular gear by its rarity, set pieces are Epic, dungeon weapons are Unique. */
+/** How an item's rarity reads: regular gear by its rarity, set pieces are Epic, dungeon weapons are Unique,
+ *  and a gilding kit is gold. */
 export interface RarLook { key: string; name: string; color: string; ink: string; light: string }
 const LIGHT = ['#D9D4CB', '#86D872', '#6FB0F2', '#BE98FF'];
+const KIT_LOOK: RarLook = { key: 'kit', name: 'Kit', color: '#F2C230', ink: '#8A5A10', light: '#FFE08A' };
 export function rarLook(id: string): RarLook {
+  if (KITS[id]) return KIT_LOOK;
   const it = ITEMS[id];
   if (it && it.kind === 'unique') return { key: 'unique', name: 'Unique', color: '#E7B53C', ink: '#8A5A10', light: '#F7C948' };
   const r = it ? (it.kind === 'set' ? 3 : it.rar) : 0;
@@ -41,13 +45,12 @@ export function rarLook(id: string): RarLook {
 }
 /** The frame colour for an id: rarity for gear and set pieces, gold for uniques, pale for collectibles. */
 export function colourOf(id: string): string {
-  const it = ITEMS[id];
-  if (it) return rarLook(id).color;
+  if (ITEMS[id] || KITS[id]) return rarLook(id).color;
   const c = COLLECTIBLES[id];
   if (c) return c.kind === 'pet' ? '#9BE15D' : c.kind === 'mount' ? '#8FD6FF' : '#C9A27A';
   return '#8E8A84';
 }
-export const nameOf = (id: string): string => ITEMS[id]?.name || COLLECTIBLES[id]?.name || id;
+export const nameOf = (id: string): string => ITEMS[id]?.name || KITS[id]?.name || COLLECTIBLES[id]?.name || id;
 
 /** A set on its armour stand (art/wardrobe.json): the pieces `on` says you have are put on, the rest are
  *  ghosts, and `drop` is the piece that has just arrived. The weapon leans behind the stand; the chest,
@@ -67,7 +70,7 @@ export function standSvg(pieces: string[], on: (id: string) => boolean, o: { dro
   const [x, y, w, h] = WD.vb;
   const layer = (slot: string): string => {
     if (slot === 'stand') return WD.stand;
-    const id = pieces.find((pid) => ITEMS[pid]?.slot === slot), g = id && WD.pieces[id];
+    const id = pieces.find((pid) => itemOf(pid)?.slot === slot), g = id && WD.pieces[id];
     if (!id || !g) return '';
     if (!on(id)) return ghostOf(g);
     return id === o.drop ? g.replace('class="pc ', 'class="pc drop ') : g;
@@ -75,7 +78,7 @@ export function standSvg(pieces: string[], on: (id: string) => boolean, o: { dro
   return `<svg class="stand ${o.cls || ''}" viewBox="${x} ${y} ${w} ${h}" aria-hidden="true">${LAYERS.map(layer).join('')}</svg>`;
 }
 /** One piece of a set (or a boss weapon) on its own, in full colour, framed by its box: what it looks like.
- *  A gilded piece has its plain one's box. */
+ *  A gilding kit is its piece gilded, in the plain one's box. */
 export function pieceSvg(id: string, cls = ''): string {
   const g = WD.pieces[id], b = WD.boxes[id.replace(/\.gilded$/, '')];
   return g && b ? `<svg class="${cls}" viewBox="${b.join(' ')}" aria-hidden="true">${g}</svg>` : '';
