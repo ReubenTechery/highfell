@@ -6,7 +6,8 @@
 import art_gear as G
 import art_heads as H
 from art_heroes import Z, s, ln, c, both, head, halo, m, beam, bone_limb, bone_hand, ribcage, pint_face, pint_back_head, pint_skin, \
-    BOOT, BRONZE, BONE, GOLD, RHAIR, WOOD_D, GRN, GRN_L, C_SKIRT, C_BODICE, C_SLEEVE_STAFF, C_SLEEVE_HEAL, RC_SKIRT
+    BOOT, BRONZE, BONE, GOLD, RHAIR, RHAIR_D, WOOD_D, GRN, GRN_L, FROST, FROST_L, MRAG_D, C_SKIRT, C_BODICE, C_SLEEVE_STAFF, C_SLEEVE_HEAL, \
+    RC_SKIRT, E_SKIRT, E_BODICE, E_SLEEVE_ORB, E_SLEEVE_STAFF, RM_SKIRT, RM_SLEEVE_ORB, RM_SLEEVE_STAFF
 from art_heads import BEARD, BEARD_D
 
 LINEN, LINEN_D = '#D8C8A4', '#B09C78'
@@ -202,6 +203,83 @@ def risen_cleric(fem):
     return {'race': 'risen', 'cls': 'cleric', 'fem': fem, 'f': {'z': f, 'fit': fit('f')}, 'b': {'z': b, 'fit': fit('b')}}
 
 
+# ---------------------------------------------------------------- the mage's stance (the elf is its reference); the staff is in
+# the right hand, a frost orb over the left
+G.ref('mage', head=(0, -98.4), sh=-81.6, main=(25.6, -57.6), off=(-20.8, -51.2), arm=(12, -76), arm2=(-12, -76))
+ELF_CROWN = 'M-13 -133 C-12 -147 12 -147 13 -133 C6 -136 -6 -136 -13 -133 Z'
+
+
+def frost_orb(x, y, hand, r=12, orb=6):
+    return hand + halo(x, y, r, FROST, 0.42) + c(x, y, orb, FROST_L, 3)
+
+
+def elf_mage(fem):
+    """an elf in a linen shift, a frost orb over one hand: the mage's reference body"""
+    hair, face = H.elf_head(Z, back_len=46, fem=fem)
+    f, b = {}, {}
+    if fem:
+        f['mane'] = head(0, -123, hair)
+    shoes = both('M-11 -6 H-3 V0 H-14 C-15 -3 -14 -5 -11 -6 Z', MRAG_D, 3)
+    f['legs'] = b['legs'] = shoes + s(E_SKIRT, LINEN)
+    f['torso'] = b['torso'] = s(E_BODICE, LINEN) + s('M-14 -74 H14 V-67 H-14 Z', LINEN_D, 3)
+    f['arms'] = s(E_SLEEVE_ORB, LINEN) + s(E_SLEEVE_STAFF, LINEN)
+    f['off'] = frost_orb(-27, -76, c(-26, -64, 4.6, H.ESKIN, 3))
+    f['hands'] = c(32, -72, 4.6, H.ESKIN, 3)
+    if fem:
+        f['hair'] = both('M-10.5 -118 C-15.5 -104 -16 -86 -12.5 -76 C-8.5 -80 -8.5 -96 -9 -112 Z', H.EHAIR, 2.8)
+    f['head'] = head(0, -123, face) + s(ELF_CROWN, H.EHAIR, 3)
+    b['arms'] = s(m(E_SLEEVE_STAFF), LINEN) + s(m(E_SLEEVE_ORB), LINEN)
+    # from behind the orb is held up in front of its sleeve: over the arms
+    b['hands'] = c(-32, -72, 4.6, H.ESKIN, 3) + frost_orb(27, -76, c(26, -64, 4.6, H.ESKIN, 3))
+    b['head'] = head(0, -123, H.elf_back(Z, back_len=46, fem=fem)) + s('M-13 -133 C-12 -147 12 -147 13 -133 Z', H.EHAIR, 3)
+    return {'race': 'elf', 'cls': 'mage', 'fem': fem, 'f': {'z': f, 'fit': G.identity_fit('mage', 'f')}, 'b': {'z': b, 'fit': G.identity_fit('mage', 'b')}}
+
+
+def pint_mage(race, fem):
+    """a gnome or goblin mage: the elf's stance on a pint-sized body with a big head"""
+    skin = pint_skin(race)
+    f, b = {}, {}
+    shoes = both('M-10 -5 H-3 V0 H-13 C-14 -3 -13 -5 -10 -5 Z', MRAG_D, 3)
+    f['legs'] = b['legs'] = shoes + s('M-11 -45 C-15 -30 -20 -15 -22 -2 H22 C20 -15 15 -30 11 -45 Z', LINEN)
+    f['torso'] = b['torso'] = s('M-12 -66 C-15 -58 -14 -50 -11 -45 H11 C14 -50 15 -58 12 -66 Z', LINEN) + s('M-13 -48 H13 V-42 H-13 Z', LINEN_D, 2.8)
+    orb, staff = 'M-15 -63 C-22 -57 -26 -50 -27 -42 C-23 -39 -19 -40 -17 -43 C-17 -50 -15 -56 -11 -59 Z', 'M15 -63 C22 -58 26 -52 28 -45 C25 -42 21 -42 18 -45 C17 -52 15 -56 11 -59 Z'
+    f['arms'] = s(orb, LINEN) + s(staff, LINEN)
+    f['off'] = frost_orb(-23, -50, c(-22, -39, 4.4, skin, 3), r=11, orb=5.5)
+    f['hands'] = c(27, -43, 4.4, skin, 3)
+    f['head'] = head(0, -79, pint_face(race, fem=fem))
+    b['arms'] = s(m(staff), LINEN) + s(m(orb), LINEN)
+    b['hands'] = c(-27, -43, 4.4, skin, 3) + frost_orb(23, -50, c(22, -39, 4.4, skin, 3), r=11, orb=5.5)
+    b['head'] = head(0, -79, pint_back_head(race, fem=fem))
+    spine = ([0, 0, 0.88], [-56, -36, 0.92], [-81.6, -52.8, 0.92])
+    fit = lambda view: G.fit('mage', view, spine, head=[0, -61.6, 1.0], sh=[-52.8, 0.87], main=[21.6, -34.4, 0.78, -10.4],
+                             off=[-17.6, -31.2, 0.8], arm=[10.4, -48.8], arm2=[-10.4, -48.8])
+    return {'race': race, 'cls': 'mage', 'fem': fem, 'f': {'z': f, 'fit': fit('f')}, 'b': {'z': b, 'fit': fit('b')}}
+
+
+def risen_mage(fem):
+    """a Risen mage: bones in a ragged linen shift, long pale hair, a frost orb over a bony hand"""
+    hair, _ = H.elf_head(Z, back_len=50, hair=RHAIR, hairD=RHAIR_D, fem=fem)
+    f, b = {}, {}
+    if fem:
+        f['mane'] = head(0, -126, hair)
+    feet = both('M-11 -6 H-3 V0 H-14 C-15 -3 -14 -5 -11 -6 Z', BONE, 3)
+    f['legs'] = b['legs'] = feet + s(RM_SKIRT, LINEN)
+    f['torso'] = b['torso'] = s(E_BODICE, LINEN) + s('M-14 -74 H14 V-67 H-14 Z', LINEN_D, 3)
+    f['arms'] = bone_limb('M-24 -80 L-27 -66', 4.2) + s(RM_SLEEVE_ORB, LINEN) + bone_limb('M24 -84 L31 -74', 4.2) + s(RM_SLEEVE_STAFF, LINEN)
+    f['off'] = frost_orb(-27, -76, bone_hand(-27, -63, 4.8))
+    f['hands'] = bone_hand(32, -72, 4.8)
+    if fem:
+        f['hair'] = both('M-11 -124 C-16.5 -110 -16.5 -94 -12.5 -82 C-8.5 -86 -8.5 -102 -9.5 -118 Z', RHAIR, 2.8)
+    f['head'] = head(0, -126, H.risen_head(Z, fem=fem))
+    b['arms'] = bone_limb(m('M24 -84 L31 -74'), 4.2) + s(m(RM_SLEEVE_STAFF), LINEN) + bone_limb(m('M-24 -80 L-27 -66'), 4.2) + s(m(RM_SLEEVE_ORB), LINEN)
+    b['hands'] = bone_hand(-32, -72, 4.8) + frost_orb(27, -76, bone_hand(27, -63, 4.8))
+    b['head'] = head(0, -126, H.elf_back(Z, back_len=50, hair=RHAIR, hairD=RHAIR_D, ears=False, fem=fem))
+    spine = ([0, 0, 1.0], [-56, -56, 1.0], [-81.6, -81.6, 1.0])
+    fit = lambda view: G.fit('mage', view, spine, head=[0, -100.8, 1.05], sh=[-81.6, 1.0], main=[25.6, -57.6, 1.0],
+                             off=[-21.6, -50.4, 1.0], arm=[12, -76], arm2=[-12, -76])
+    return {'race': 'risen', 'cls': 'mage', 'fem': fem, 'f': {'z': f, 'fit': fit('f')}, 'b': {'z': b, 'fit': fit('b')}}
+
+
 BODIES = {
     'dwarf.warrior.m': lambda: dwarf_warrior(False),
     'dwarf.warrior.f': lambda: dwarf_warrior(True),
@@ -219,4 +297,12 @@ BODIES = {
     'goblin.cleric.m': lambda: pint_cleric('goblin', False),
     'risen.cleric.f': lambda: risen_cleric(True),
     'risen.cleric.m': lambda: risen_cleric(False),
+    'elf.mage.f': lambda: elf_mage(True),
+    'elf.mage.m': lambda: elf_mage(False),
+    'gnome.mage.f': lambda: pint_mage('gnome', True),
+    'gnome.mage.m': lambda: pint_mage('gnome', False),
+    'goblin.mage.f': lambda: pint_mage('goblin', True),
+    'goblin.mage.m': lambda: pint_mage('goblin', False),
+    'risen.mage.f': lambda: risen_mage(True),
+    'risen.mage.m': lambda: risen_mage(False),
 }

@@ -51,7 +51,8 @@ test('heroes in layers: every body that is drawn has its front and back, its box
       for (const band of Object.keys(bv.z)) assert.ok(H.bands[v].includes(band), `${art} ${v}: band ${band}`);
       const fit = bv.fit;
       assert.ok(fit.spine.length >= 2 && fit.spine.every((k) => k.length === 3), `${art} ${v}: spine knots`);
-      for (const r of ['head', 'main', 'off']) assert.equal((fit as unknown as Record<string, number[]>)[r].length, 3, `${art} ${v}: ${r}`);
+      assert.equal(fit.head.length, 3, `${art} ${v}: head`);
+      for (const r of ['main', 'off']) assert.ok([3, 4].includes((fit as unknown as Record<string, number[]>)[r].length), `${art} ${v}: ${r}`);
       assert.equal(fit.sh.length, 2);
       for (const r of ['arm', 'arm2']) assert.equal((fit as unknown as Record<string, number[]>)[r].length, 2, `${art} ${v}: ${r}`);
     }
@@ -130,7 +131,7 @@ test('the run bakes only its own heroes and lets them go when it ends', async ()
   assert.equal(Object.keys(SPR).length, before);
   // the old whole-body heroes of every class drawn in layers are gone from the sprites the run bakes at start
   const gone = [...new Set(BODIES.map((b) => b.combo.split('.')[1]))];
-  const old: Record<string, RegExp> = { warrior: /^(tank|gnome_tank|goblin_tank|risen_tank)/, cleric: /^(healer|gnome_healer|goblin_healer|risen_healer)/ };
+  const old: Record<string, RegExp> = { warrior: /^(tank|gnome_tank|goblin_tank|risen_tank)/, cleric: /^(healer|gnome_healer|goblin_healer|risen_healer)/, mage: /^(dps|gnome_dps|goblin_dps|risen_dps)/ };
   for (const name of Object.keys(RUN_ART)) for (const cls of gone) assert.ok(!old[cls]?.test(name), `${name} is still baked`);
   // and every slot each class wears has a layer, at every rarity, for the bots and test gear (Epic wears the Rare look)
   for (const cls of gone) for (const rar of [0, 1, 2, 3] as const) {

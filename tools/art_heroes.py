@@ -4,7 +4,8 @@
 # The shapes are written at 1.25 times game size (the scale they were designed at). The helpers below shrink
 # each one by Z as it is drawn and keep the ink at full weight, so heroes stand as tall as the mobs expect.
 # The Risen are bones in their class's clothes; Gilded Bones is the same art with the bones in gold.
-# Built into art/sprites.json by art_sprites.py.
+# Built into art/sprites.json by art_sprites.py. The warrior, cleric and mage are drawn in layers now (their
+# bodies in art_bodies.py, their gear in art_gear_<class>.py) from the shapes and pieces kept here.
 import math
 import art_sprites as A
 from art_sprites import K, LW, f, BONE, BONE_D, GRN, GRN_L, STEEL, STEEL_D, STEEL_L, GOLD, GOLD_D, BLUE, BLUE_D, WOOD, WOOD_D, \
@@ -129,7 +130,7 @@ def cleric_mantles(o, front=True, tier=2):
             o.append(c(x, -103, 5.5, GOLD, 3) + c(x, -103, 2.2, HBLUE, 0))
 
 
-# ---------------------------------------------------------------- the elf mage
+# ---------------------------------------------------------------- the elf mage's shapes and pieces
 CRYSTAL = 'M35 -170 L45 -152 L35 -134 L25 -152 Z'
 E_SKIRT = 'M-12 -70 C-17 -46 -22 -22 -25 -3 H25 C22 -22 17 -46 12 -70 Z'
 E_HEM = 'M-25 -8 C-8 -5 8 -5 25 -8 L26 -2 C8 1 -8 1 -26 -2 Z'
@@ -140,7 +141,6 @@ SHARDS = 'M-12 -103 L-17 -121 L-24 -106 L-35 -114 L-38 -97 C-30 -95 -20 -95 -12 
 SHARD_LINES = 'M-17 -116 L-19 -104 M-33 -109 L-31 -100'
 HAT_CONE = 'M-12.5 -143 C-10.5 -157 -3.5 -171 9 -180 C6 -168 8 -155 13 -143 Z'
 HAT_BAND = 'M-13 -144 C-4 -141 4 -141 13 -144 L12 -150 C4 -147 -4 -147 -12 -150 Z'
-E_VB = (-42, -186, 94, 192)
 
 
 def frost_staff(o, x=35, tier=2):
@@ -159,81 +159,13 @@ def frost_staff(o, x=35, tier=2):
 
 def hat(o, dy=0, col=IROBE, star=True, back=False, tier=2):
     if tier == 0:
-        # no wizard hat in starter rags!
+        # Common wears the rag cap instead (art_gear_mage.py)
         return
     cone, band = tp(HAT_CONE, 0, dy), tp(HAT_BAND, 0, dy)
     o.append(e(0, -141 + dy, 19, 5, col, 3.5))
     o.append(s(m(cone) if back else cone, col) + s(band, ROPE if tier == 1 else GOLD, 3))
     if star and not back and tier >= 2:
         o.append(ln(tp('M3 -163 V-155 M-0.5 -161 L6.5 -157 M-0.5 -157 L6.5 -161', 0, dy), '#FFFFFF', 1.8))
-
-
-def elf_front(fem=True, key='dps', tier=2):
-    o = []
-    robe_col = MRAG if tier == 0 else IROBE_D if tier == 1 else IROBE
-    dark_col = MRAG_D if tier == 0 else '#22496E' if tier == 1 else IROBE_D
-    hair, face = H.elf_head(Z, back_len=46, fem=fem)
-    o.append(head(0, -123, hair))
-    o.append(both('M-11 -6 H-3 V0 H-14 C-15 -3 -14 -5 -11 -6 Z', dark_col, 3))
-    o.append(s(E_SKIRT, robe_col))
-    if tier == 0:
-        o.append(s('M-16 -36 L-6 -34 L-8 -22 L-18 -24 Z', MRAG_D, 2.2))
-    else:
-        o.append(s('M-5 -68 L-8 -4 H8 L5 -68 Z', ROPE if tier == 1 else GOLD, 3))
-    o.append(s(E_HEM, dark_col, 3))
-    o.append(s(E_BODICE, robe_col))
-    if fem:
-        o.append(s('M-8 -100 L0 -84 L8 -100 Z', dark_col, 2.6))
-        if tier >= 2:
-            o.append(c(0, -86, 3.2, FROST_L, 2))
-    else:
-        o.append(s('M-13 -101 L0 -77 L13 -101 Z', ROPE if tier <= 1 else GOLD, 2.8) + s('M-8.5 -101 L0 -84 L8.5 -101 Z', dark_col, 2.4))
-    o.append(s('M-14 -74 H14 V-67 H-14 Z', ROPE if tier == 0 else dark_col, 3))
-    if tier >= 2:
-        o.append(s('M-3.5 -75.5 H3.5 V-65.5 H-3.5 Z', FROST_L, 2.2))
-    o.append(s(E_SLEEVE_ORB, robe_col) + c(-26, -64, 4.6, ESKIN, 3))
-    o.append(halo(-27, -76, 12, FROST, 0.42) + c(-27, -76, 6, FROST_L, 3))
-    o.append(s(E_SLEEVE_STAFF, robe_col))
-    if tier == 0:
-        # simple frayed cloth shoulder wrap
-        o.append(both('M-11 -100 C-18 -103 -27 -101 -31 -94 C-24 -93 -17 -94 -11 -96 Z', MRAG_D, 3))
-    elif tier == 1:
-        o.append(both('M-11 -101 C-19 -106 -30 -103 -34 -94 C-26 -93 -18 -94 -11 -96 Z', dark_col, 3.2))
-    else:
-        o.append(s('M-15 -100 C-15 -110 -10 -115 -6.5 -108 L0 -104 L6.5 -108 C10 -115 15 -110 15 -100 C8 -97 -8 -97 -15 -100 Z', '#FFFFFF' if fem else IROBE_D, 3.5))
-        o.append(both(SHARDS, FROST, 3.5) + ln(SHARD_LINES + ' ' + m(SHARD_LINES), FROST_L, 2.2))
-    if fem:
-        o.append(both('M-10.5 -118 C-15.5 -104 -16 -86 -12.5 -76 C-8.5 -80 -8.5 -96 -9 -112 Z', H.EHAIR, 2.8))
-    frost_staff(o, tier=tier)
-    o.append(c(32, -72, 4.6, ESKIN, 3))
-    o.append(head(0, -123, face))
-    if tier == 0:
-        # bare silver hair crown at the top of the head when hatless
-        o.append(s('M-13 -133 C-12 -147 12 -147 13 -133 C6 -136 -6 -136 -13 -133 Z', H.EHAIR, 3))
-    hat(o, col=robe_col, tier=tier)
-    sprite(key + '_f', E_VB, o, 'Elf mage front')
-
-
-def elf_back(fem=True, key='dps', tier=2):
-    o = []
-    robe_col = MRAG if tier == 0 else IROBE_D if tier == 1 else IROBE
-    dark_col = MRAG_D if tier == 0 else '#22496E' if tier == 1 else IROBE_D
-    o.append(both('M-11 -6 H-3 V0 H-14 C-15 -3 -14 -5 -11 -6 Z', dark_col, 3))
-    o.append(s(E_SKIRT, robe_col) + s(E_HEM, dark_col, 3))
-    o.append(s(E_BODICE, robe_col) + s('M-14 -74 H14 V-67 H-14 Z', ROPE if tier == 0 else dark_col, 3))
-    o.append(s(m(E_SLEEVE_STAFF), robe_col))
-    o.append(s(m(E_SLEEVE_ORB), robe_col) + c(26, -64, 4.6, ESKIN, 3))
-    o.append(halo(27, -76, 12, FROST, 0.42) + c(27, -76, 6, FROST_L, 3))
-    if tier >= 2:
-        o.append(s('M-15 -100 C-15 -111 15 -111 15 -100 C8 -97 -8 -97 -15 -100 Z', '#FFFFFF' if fem else IROBE_D, 3.5))
-        o.append(both(SHARDS, FROST, 3.5) + ln(SHARD_LINES + ' ' + m(SHARD_LINES), FROST_L, 2.2))
-    frost_staff(o, -35, tier=tier)
-    o.append(c(-32, -72, 4.6, ESKIN, 3))
-    o.append(head(0, -123, H.elf_back(Z, back_len=46, fem=fem)))
-    if tier == 0:
-        o.append(s('M-13 -133 C-12 -147 12 -147 13 -133 Z', H.EHAIR, 3))
-    hat(o, col=robe_col, back=True, tier=tier)
-    sprite(key + '_b', back_vb(E_VB), o, 'Elf mage back')
 
 
 # ---------------------------------------------------------------- the Risen (legs, shared by the rogue)
@@ -254,63 +186,6 @@ RC_SKIRT = 'M-14 -72 C-18 -48 -22 -26 -25 -6 ' + A.ragged(-25, 25, -6, 7, 5) + '
 RM_SKIRT = 'M-12 -70 C-17 -46 -22 -24 -25 -6 ' + A.ragged(-25, 25, -6, 6, 5) + ' C22 -24 17 -46 12 -70 Z'
 RM_SLEEVE_ORB = 'M-18 -98 C-25 -91 -28 -84 -29 -78 L-23 -76 L-21 -80 L-17 -77 C-17 -84 -16 -88 -12 -92 Z'
 RM_SLEEVE_STAFF = 'M18 -98 C25 -93 28 -88 29 -83 L23 -81 L21 -85 L17 -82 C17 -88 16 -91 12 -92 Z'
-RM_VB = (-42, -190, 94, 196)
-
-
-def risen_mage_front(fem=True, key='risen_dps', tier=2):
-    o = []
-    robe_col = MRAG if tier == 0 else RROBE
-    dark_col = MRAG_D if tier == 0 else RROBE_D
-    hair, _ = H.elf_head(Z, back_len=50, hair=RHAIR, hairD=RHAIR_D, fem=fem)
-    o.append(head(0, -126, hair))
-    o.append(both('M-11 -6 H-3 V0 H-14 C-15 -3 -14 -5 -11 -6 Z', BONE, 3))
-    o.append(s(RM_SKIRT, robe_col))
-    if tier >= 1:
-        o.append(s('M-5 -68 L-8 -8 L-3 -11 L0 -7 L3 -11 L8 -8 L5 -68 Z', ROPE if tier == 1 else GOLD, 3))
-    o.append(s(E_BODICE, robe_col))
-    if not fem and tier >= 2:
-        o.append(s('M-13 -100 L0 -76 L13 -100 Z', GOLD, 2.8) + s('M-8 -100 L0 -84 L8 -100 Z', RROBE_D, 2.4))
-        o.append(c(0, -88, 3.4, GRN, 2))
-    o.append(s('M-14 -74 H14 V-67 H-14 Z', ROPE if tier == 0 else dark_col, 3))
-    if tier >= 2:
-        o.append(s('M-3.5 -75.5 H3.5 V-65.5 H-3.5 Z', FROST_L, 2.2))
-    o.append(bone_limb('M-24 -80 L-27 -66', 4.2) + s(RM_SLEEVE_ORB, robe_col) + bone_hand(-27, -63, 4.8))
-    o.append(halo(-27, -76, 12, FROST, 0.42) + c(-27, -76, 6, FROST_L, 3))
-    o.append(bone_limb('M24 -84 L31 -74', 4.2) + s(RM_SLEEVE_STAFF, robe_col))
-    if tier >= 2:
-        o.append(s('M-15 -100 C-15 -110 -10 -115 -6.5 -108 L0 -104 L6.5 -108 C10 -115 15 -110 15 -100 C8 -97 -8 -97 -15 -100 Z', RHAIR if fem else RROBE_D, 3.5))
-        o.append(both(SHARDS, BONE, 3.5) + ln(SHARD_LINES + ' ' + m(SHARD_LINES), BONE_D, 2.2))
-    else:
-        o.append(both('M-11 -100 C-18 -103 -27 -101 -31 -94 C-24 -93 -17 -94 -11 -96 Z', dark_col, 3))
-    frost_staff(o, tier=tier)
-    o.append(bone_hand(32, -72, 4.8))
-    if fem:
-        o.append(both('M-11 -124 C-16.5 -110 -16.5 -94 -12.5 -82 C-8.5 -86 -8.5 -102 -9.5 -118 Z', RHAIR, 2.8))
-    o.append(head(0, -126, H.risen_head(Z, fem=fem)))
-    hat(o, -4, robe_col, tier=tier)
-    if not fem and tier >= 2:
-        for x in (-7, 0, 7):
-            o.append(s(f'M{x - 2.5} -149 L{x} -160 L{x + 2.5} -149 Z', BONE, 2.2))
-    sprite(key + '_f', RM_VB, o, 'Risen mage front')
-
-
-def risen_mage_back(fem=True, key='risen_dps', tier=2):
-    o = []
-    robe_col = MRAG if tier == 0 else RROBE
-    dark_col = MRAG_D if tier == 0 else RROBE_D
-    o.append(both('M-11 -6 H-3 V0 H-14 C-15 -3 -14 -5 -11 -6 Z', BONE, 3))
-    o.append(s(RM_SKIRT, robe_col) + s(E_BODICE, robe_col) + s('M-14 -74 H14 V-67 H-14 Z', ROPE if tier == 0 else dark_col, 3))
-    o.append(bone_limb(m('M24 -84 L31 -74'), 4.2) + s(m(RM_SLEEVE_STAFF), robe_col))
-    o.append(bone_limb(m('M-24 -80 L-27 -66'), 4.2) + s(m(RM_SLEEVE_ORB), robe_col) + bone_hand(27, -63, 4.8))
-    o.append(halo(27, -76, 12, FROST, 0.42) + c(27, -76, 6, FROST_L, 3))
-    if tier >= 2:
-        o.append(s('M-15 -100 C-15 -111 15 -111 15 -100 C8 -97 -8 -97 -15 -100 Z', RHAIR, 3.5))
-        o.append(both(SHARDS, BONE, 3.5) + ln(SHARD_LINES + ' ' + m(SHARD_LINES), BONE_D, 2.2))
-    frost_staff(o, -35, tier=tier)
-    o.append(bone_hand(-32, -72, 4.8))
-    o.append(head(0, -126, H.elf_back(Z, back_len=50, hair=RHAIR, hairD=RHAIR_D, ears=False, fem=fem)))
-    hat(o, -4, robe_col, back=True, tier=tier)
-    sprite(key + '_b', back_vb(RM_VB), o, 'Risen mage back')
 
 
 # ---------------------------------------------------------------- the rogue (human & elf shadowblade, dual daggers)
@@ -449,7 +324,6 @@ def risen_rogue_back(fem=True, key='risen_rogue', tier=2):
 
 
 # ---------------------------------------------------------------- the pint-sized heroes (gnome & goblin)
-SM_MAG_VB = (-48, -144, 102, 150)
 SM_ROG_VB = (-56, -128, 112, 134)
 
 
@@ -463,87 +337,6 @@ def pint_back_head(race, fem=False):
 
 def pint_skin(race):
     return GSKIN if race == 'gnome' else GBSKIN
-
-
-def pint_frost_staff(o, x=30, tier=2):
-    if tier == 0:
-        o.append(beam(f'M{x + 1} 2 L{x} -96', WOOD_D, 4.2) + halo(x, -103, 10, FROST, 0.25) + c(x, -103, 4.5, FROST_L, 2.4))
-        return
-    if tier == 1:
-        o.append(beam(f'M{x + 1} 2 L{x} -104', WOOD, 4.6) + halo(x, -112, 14, FROST, 0.28) + c(x, -112, 7, FROST, 2.8))
-        return
-    o.append(beam(f'M{x + 1} 2 L{x} -106', WOOD, 4.8) + halo(x, -118, 19, FROST, 0.32))
-    o.append(s(f'M{x} -134 L{x + 9} -118 L{x} -102 L{x - 9} -118 Z', FROST, 3.2) + ln(f'M{x - 2} -127 L{x - 5} -119', '#FFFFFF', 2.2) + s(f'M{x - 6} -106 H{x + 6} V-101 H{x - 6} Z', GOLD, 2.4))
-
-
-def pint_hat(o, col=IROBE, back=False, tier=2, goggles=False):
-    if tier == 0:
-        return
-    cone = 'M-12.5 -95 C-10.5 -109 -3 -123 9.5 -131 C6.5 -120 8.5 -107 12.5 -95 Z'
-    band = 'M-13 -96 C-4 -93 4 -93 13 -96 L12 -101 C4 -98 -4 -98 -12 -101 Z'
-    o.append(e(0, -93, 18.5, 4.8, col, 3.4))
-    o.append(s(m(cone) if back else cone, col) + s(band, ROPE if tier == 1 else GOLD, 2.8))
-    if not back and goggles:
-        for sx in (-1, 1):
-            gx = 5.6 * sx
-            o.append(c(gx, -98.5, 4.8, GOLD, 2.4) + c(gx, -98.5, 2.9, FROST_L, 1.6))
-    elif not back and tier >= 2:
-        o.append(ln('M2.5 -115 V-107 M-1 -113 L6 -109 M-1 -109 L6 -113', '#FFFFFF', 1.8))
-
-
-def pint_mage_front(race='gnome', fem=True, key='gnome_dps', tier=2):
-    o = []
-    skin = pint_skin(race)
-    robe_col = MRAG if tier == 0 else IROBE_D if tier == 1 else IROBE
-    dark_col = MRAG_D if tier == 0 else '#22496E' if tier == 1 else IROBE_D
-    o.append(both('M-10 -5 H-3 V0 H-13 C-14 -3 -13 -5 -10 -5 Z', dark_col, 3))
-    o.append(s('M-11 -45 C-15 -30 -20 -15 -22 -2 H22 C20 -15 15 -30 11 -45 Z', robe_col))
-    if tier == 0:
-        o.append(s('M-14 -26 L-5 -24 L-7 -14 L-16 -16 Z', MRAG_D, 2.2))
-    else:
-        o.append(s('M-4.5 -44 L-7 -3 H7 L4.5 -44 Z', ROPE if tier == 1 else GOLD, 2.8))
-    o.append(s('M-22 -7 C-7 -4 7 -4 22 -7 L23 -2 C7 1 -7 1 -23 -2 Z', dark_col, 3))
-    o.append(s('M-12 -66 C-15 -58 -14 -50 -11 -45 H11 C14 -50 15 -58 12 -66 Z', robe_col))
-    o.append(s('M-7.5 -65 L0 -53 L7.5 -65 Z', dark_col, 2.4))
-    o.append(s('M-13 -48 H13 V-42 H-13 Z', ROPE if tier == 0 else dark_col, 2.8))
-    if tier >= 2:
-        o.append(s('M-3.2 -49 H3.2 V-41 H-3.2 Z', FROST_L, 2.0))
-    o.append(s('M-15 -63 C-22 -57 -26 -50 -27 -42 C-23 -39 -19 -40 -17 -43 C-17 -50 -15 -56 -11 -59 Z', robe_col) + c(-22, -39, 4.4, skin, 3))
-    o.append(halo(-23, -50, 11, FROST, 0.42) + c(-23, -50, 5.5, FROST_L, 2.8))
-    o.append(s('M15 -63 C22 -58 26 -52 28 -45 C25 -42 21 -42 18 -45 C17 -52 15 -56 11 -59 Z', robe_col))
-    if tier == 0:
-        o.append(both('M-10 -65 C-16 -68 -24 -66 -27 -60 C-21 -59 -15 -60 -10 -61 Z', MRAG_D, 2.8))
-    elif tier == 1:
-        o.append(both('M-10 -66 C-17 -70 -26 -68 -30 -60 C-23 -59 -16 -60 -10 -62 Z', dark_col, 3.0))
-    else:
-        o.append(s('M-13 -65 C-13 -73 -9 -77 -5.5 -71 L0 -68 L5.5 -71 C9 -77 13 -73 13 -65 C7 -62 -7 -62 -13 -65 Z', '#FFFFFF' if fem else IROBE_D, 3.2))
-        o.append(both('M-10 -67 L-15 -82 L-21 -70 L-30 -77 L-33 -62 C-26 -60 -17 -60 -10 -62 Z', FROST, 3.2))
-    pint_frost_staff(o, 30, tier=tier)
-    o.append(c(27, -43, 4.4, skin, 3))
-    o.append(head(0, -79, pint_face(race, fem=fem, goggles=(race == 'gnome' and tier == 0))))
-    pint_hat(o, col=robe_col, tier=tier, goggles=(race == 'gnome' and tier >= 1))
-    sprite(key + '_f', SM_MAG_VB, o, f'{race.capitalize()} mage front')
-
-
-def pint_mage_back(race='gnome', fem=True, key='gnome_dps', tier=2):
-    o = []
-    skin = pint_skin(race)
-    robe_col = MRAG if tier == 0 else IROBE_D if tier == 1 else IROBE
-    dark_col = MRAG_D if tier == 0 else '#22496E' if tier == 1 else IROBE_D
-    o.append(both('M-10 -5 H-3 V0 H-13 C-14 -3 -13 -5 -10 -5 Z', dark_col, 3))
-    o.append(s('M-11 -45 C-15 -30 -20 -15 -22 -2 H22 C20 -15 15 -30 11 -45 Z', robe_col) + s('M-22 -7 C-7 -4 7 -4 22 -7 L23 -2 C7 1 -7 1 -23 -2 Z', dark_col, 3))
-    o.append(s('M-12 -66 C-15 -58 -14 -50 -11 -45 H11 C14 -50 15 -58 12 -66 Z', robe_col) + s('M-13 -48 H13 V-42 H-13 Z', ROPE if tier == 0 else dark_col, 2.8))
-    o.append(s(m('M15 -63 C22 -58 26 -52 28 -45 C25 -42 21 -42 18 -45 C17 -52 15 -56 11 -59 Z'), robe_col))
-    o.append(s(m('M-15 -63 C-22 -57 -26 -50 -27 -42 C-23 -39 -19 -40 -17 -43 C-17 -50 -15 -56 -11 -59 Z'), robe_col) + c(22, -39, 4.4, skin, 3))
-    o.append(halo(23, -50, 11, FROST, 0.42) + c(23, -50, 5.5, FROST_L, 2.8))
-    if tier >= 2:
-        o.append(s('M-13 -65 C-13 -73 13 -73 13 -65 C7 -62 -7 -62 -13 -65 Z', '#FFFFFF' if fem else IROBE_D, 3.2))
-        o.append(both('M-10 -67 L-15 -82 L-21 -70 L-30 -77 L-33 -62 C-26 -60 -17 -60 -10 -62 Z', FROST, 3.2))
-    pint_frost_staff(o, -30, tier=tier)
-    o.append(c(-27, -43, 4.4, skin, 3))
-    o.append(head(0, -79, pint_back_head(race, fem=fem)))
-    pint_hat(o, col=robe_col, back=True, tier=tier)
-    sprite(key + '_b', back_vb(SM_MAG_VB), o, f'{race.capitalize()} mage back')
 
 
 def pint_rogue_hood_mask(o, race='gnome', back=False, fem=True, tier=2):
@@ -631,17 +424,11 @@ def pint_rogue_back(race='gnome', fem=True, key='gnome_rogue', tier=2):
 
 def build():
     for tier, suf in ((0, '_rags'), (1, '_iron'), (2, '')):
-        elf_front(True, 'dps' + suf, tier); elf_back(True, 'dps' + suf, tier)
-        elf_front(False, 'dps_m' + suf, tier); elf_back(False, 'dps_m' + suf, tier)
         rogue_front(True, 'rogue' + suf, tier); rogue_back(True, 'rogue' + suf, tier)
         rogue_front(False, 'rogue_m' + suf, tier); rogue_back(False, 'rogue_m' + suf, tier)
-        risen_mage_front(True, 'risen_dps' + suf, tier); risen_mage_back(True, 'risen_dps' + suf, tier)
-        risen_mage_front(False, 'risen_dps_m' + suf, tier); risen_mage_back(False, 'risen_dps_m' + suf, tier)
         risen_rogue_front(True, 'risen_rogue' + suf, tier); risen_rogue_back(True, 'risen_rogue' + suf, tier)
         risen_rogue_front(False, 'risen_rogue_m' + suf, tier); risen_rogue_back(False, 'risen_rogue_m' + suf, tier)
         for race in ('gnome', 'goblin'):
-            pint_mage_front(race, True, f'{race}_dps' + suf, tier); pint_mage_back(race, True, f'{race}_dps' + suf, tier)
-            pint_mage_front(race, False, f'{race}_dps_m' + suf, tier); pint_mage_back(race, False, f'{race}_dps_m' + suf, tier)
             pint_rogue_front(race, True, f'{race}_rogue' + suf, tier); pint_rogue_back(race, True, f'{race}_rogue' + suf, tier)
             pint_rogue_front(race, False, f'{race}_rogue_m' + suf, tier); pint_rogue_back(race, False, f'{race}_rogue_m' + suf, tier)
     # Gilded Bones: every Risen sprite again with its bones in gold

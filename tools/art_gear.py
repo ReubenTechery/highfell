@@ -17,7 +17,8 @@ HF_ROOT = _hf_os.environ.get('HIGHFELL_ROOT') or _hf_os.path.dirname(_hf_os.path
 #   sh     pauldrons and mantles, from the shoulder line, scaled the same both ways so domes stay round
 #   arm    the weapon arm's sleeve and cuff, from its shoulder to its grip (turned and scaled to fit)
 #   arm2   the other arm's, from its shoulder to the other grip
-#   main   what the weapon hand holds (and the hand itself), round its grip
+#   main   what the weapon hand holds (and the hand itself), round its grip; a fourth number slides a staff up
+#          or down through the hand, so a short body's staff still stands on the ground
 #   off    what the other hand holds, round its grip
 # Only the coordinates move: the ink keeps its weight, as everywhere in the game. src/ui/heroart.ts does the
 # same at run time from art/heroes.json, so a layer is stored once per class, not once per body.
@@ -143,8 +144,9 @@ def region_fn(cls, view, fit, region):
         a = math.atan2(dy - cy, dx - cx) - math.atan2(by - ay, bx - ax)
         co, si = math.cos(a) * k, math.sin(a) * k
         return lambda x, y: (cx + (x - ax) * co - (y - ay) * si, cy + (x - ax) * si + (y - ay) * co)
-    (tx, ty, k), (rx, ry) = fit[region], r[region]
-    return lambda x, y: (tx + (x - rx) * k, ty + (y - ry) * k)
+    (tx, ty, k, *slide), (rx, ry) = fit[region], r[region]
+    dy = slide[0] if slide else 0
+    return lambda x, y: (tx + (x - rx) * k, ty + (y - ry) * k + dy)
 
 
 def is_identity(fit, cls, view):
@@ -249,14 +251,19 @@ def centreline(svg):
     return [((pts[i][0] + pts[-1 - i][0]) / 2, (pts[i][1] + pts[-1 - i][1]) / 2) for i in range(n)]
 
 
-def held(piece, shafts, grip, hand, k):
-    """a stand's weapon in a hero's hand, mirrored so it faces out, the stand's grip point on the hand (both in
-    their own units: the stand's, and the hero's in game units); its shafts ({index in the silhouette: colour})
-    redrawn at the hero's weight. From behind it is in the other hand: the same, mirrored."""
+def held(piece, shafts, grip, hand, k, flip=True):
+    """a stand's weapon in a hero's hand, the stand's grip point on the hand (each in its own units: the stand's,
+    and the hero's in game units), mirrored so it faces out when it is held on the other side from the stand's
+    (flip); its shafts ({index in the silhouette: colour, or (colour, width, ink)}) redrawn at the hero's weight.
+    From behind it is in the other hand: the same, mirrored."""
     sil, det = piece
     (gx, gy), (hx, hy) = grip, hand
-    fn = lambda x, y: (hx + (gx - x) * k, hy + (y - gy) * k)
-    front = ''.join(shaft(p, fn, shafts[i]) if i in shafts else warp(p, fn) for i, p in enumerate(sil)) + warp(''.join(det), fn)
+    fn = lambda x, y: (hx + ((gx - x) if flip else (x - gx)) * k, hy + (y - gy) * k)
+    out = []
+    for i, p in enumerate(sil):
+        sh = shafts.get(i)
+        out.append(warp(p, fn) if sh is None else shaft(p, fn, *(sh if isinstance(sh, tuple) else (sh,))))
+    front = ''.join(out) + warp(''.join(det), fn)
     return front, warp(front, lambda x, y: (-x, y))
 
 
@@ -279,8 +286,8 @@ def pair_scale(svg, k, px, py):
 # ---------------------------------------------------------------- art/heroes.json
 def class_modules():
     """each class drawn in layers, and the tool that draws its gear"""
-    import art_gear_tank, art_gear_healer
-    return {'warrior': art_gear_tank, 'cleric': art_gear_healer}
+    import art_gear_tank, art_gear_healer, art_gear_mage
+    return {'warrior': art_gear_tank, 'cleric': art_gear_healer, 'mage': art_gear_mage}
 
 
 def classes():

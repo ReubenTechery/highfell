@@ -313,20 +313,12 @@ export function drawThrall(ctx, tr) {
  *  top of its head or hat (what floats over a hero goes above it). heroFit() reads it for a gilded set too, and
  *  from behind puts the weapon in the other hand. A hero drawn in layers brings its own fit instead. */
 export const HERO_FIT = {
-  dps: { weapon: [28, -122], top: -145 },
-  dps_m: { weapon: [28, -122], top: -145 },
   rogue: { weapon: [-29, -50], top: -118 },
   rogue_m: { weapon: [-29, -50], top: -118 },
-  gnome_dps: { weapon: [24, -94], top: -102 },
-  gnome_dps_m: { weapon: [24, -94], top: -102 },
   gnome_rogue: { weapon: [-24, -36], top: -94 },
   gnome_rogue_m: { weapon: [-24, -36], top: -94 },
-  goblin_dps: { weapon: [24, -94], top: -102 },
-  goblin_dps_m: { weapon: [24, -94], top: -102 },
   goblin_rogue: { weapon: [-24, -36], top: -94 },
   goblin_rogue_m: { weapon: [-24, -36], top: -94 },
-  risen_dps: { weapon: [28, -122], top: -148 },
-  risen_dps_m: { weapon: [28, -122], top: -148 },
   risen_rogue: { weapon: [-29, -50], top: -118 },
   risen_rogue_m: { weapon: [-29, -50], top: -118 },
 };

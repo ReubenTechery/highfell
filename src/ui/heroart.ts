@@ -125,8 +125,9 @@ export function regionFn(cls: string, view: View, fit: Fit, region: string): Fn 
     const a = Math.atan2(dy - cy, dx - cx) - Math.atan2(by - ay, bx - ax), co = Math.cos(a) * k, si = Math.sin(a) * k;
     return (x, y) => [cx + (x - ax) * co - (y - ay) * si, cy + (x - ax) * si + (y - ay) * co];
   }
-  const [rx, ry] = r[region as 'head' | 'main' | 'off'], [tx, ty, k] = fit[region as 'head' | 'main' | 'off'];
-  return (x, y) => [tx + (x - rx) * k, ty + (y - ry) * k];
+  // a fourth number slides what the hand holds up or down through it (a short body's staff stays on the ground)
+  const [rx, ry] = r[region as 'head' | 'main' | 'off'], [tx, ty, k, dy = 0] = fit[region as 'head' | 'main' | 'off'];
+  return (x, y) => [tx + (x - rx) * k, ty + (y - ry) * k + dy];
 }
 /** colours swapped by a map (gild(): bone and steel to gold) */
 export const recolour = (svg: string, map: Record<string, string>): string => svg.replace(/#[0-9A-Fa-f]{6}/g, (c) => map[c.toUpperCase()] || c);
