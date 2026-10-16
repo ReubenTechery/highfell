@@ -14,8 +14,20 @@ export const sfx = (n, v, force) => { if (S && !S.quiet && (!S.hush || force)) H
 export const mine = (a, b) => !!((a && a.isPlayer) || (b && b.isPlayer));
 const later = (t, fn) => S.timers.push({ t, fn });
 
+/* What each brew does, by recipe id. One bottle is poured at the door for the whole party, so every hero
+   carries it: dmg (all damage), speed (moving), threat (the tank's grip), area (how wide area hits reach,
+   see foesNear), cd (how fast cooldowns come back), dodgeHeal (a share of health per dodge), save (once a
+   run, a knockout hit leaves you on half health). Brews make a run quicker; nothing needs one. */
+export const BREW_FX = {
+  glow: { dmg: 1.25, speed: 1.15, threat: 1.5, area: 1.25 },
+  elixir: { dmg: 1.25, speed: 1.15, threat: 1.5, area: 1.25, save: true },
+  tonic: { speed: 1.15, dodgeHeal: 0.1 },
+  fizz: { speed: 1.25, cd: 1.25 },
+};
+export const brewFx = (id) => (id && BREW_FX[id]) || {};
+
 /* loadout: what the meta layer worked out from the hero's gear.
-   { power, traits: Set, bonuses: Set, weaponRar, unique, name?, sprite? }
+   { power, traits: Set, bonuses: Set, weaponRar, unique, name?, sprite?, brew?, brewCol? }
    name and sprite are your hero's; the bots in the other seats use the role's own. */
 export function makeHero(role, isPlayer, loadout) {
   const R = ROLES[role];
@@ -24,12 +36,13 @@ export function makeHero(role, isPlayer, loadout) {
   const isRogue = cls === 'rogue';
   const power = L.power || 1;
   const maxHp = Math.round(R.hp * hpMultiplier(power));
+  const B = brewFx(L.brew);
   return {
     id: 'h_' + role, kind: 'hero', role, cls, name: L.name || R.name, sprite: L.sprite || (isRogue ? 'rogue' : R.sprite), isPlayer, x: 0, y: 0, r: R.r,
     face: -Math.PI / 2, back: true, flip: false, hp: maxHp, maxHp, armor: R.armor, power,
     traits: new Set(L.traits || []), bonuses: new Set(L.bonuses || []), unique: L.unique || null,
-    weaponRar: L.weaponRar || 0, threatMod: R.threat, speed: R.speed * (isRogue ? 1.1 : 1) * (L.brew === 'fizz' ? 1.12 : 1), alive: true,
-    // a brew from the Vale, drunk at the door: tonic, fizz, glow or elixir (see doDodge, hurtMob, hurtHero)
+    weaponRar: L.weaponRar || 0, threatMod: R.threat * (B.threat || 1), speed: R.speed * (isRogue ? 1.1 : 1) * (B.speed || 1), alive: true,
+    // the party's brew, poured at the door (see BREW_FX)
     brew: L.brew || null, brewCol: L.brewCol || null, brewUsed: false,
     mana: 100, maxMana: 100, cd: { a1: 0, a2: 0, a3: 0, a4: 0, dodge: 0 }, gcd: 0, atkT: 0.4,
     frenzyT: 0, nightstalkerT: 0, ghostSaved: false,
@@ -168,7 +181,7 @@ export function hurtHero(h, amt, src, o) {
     a *= 0.75;
   }
   // Starlight Elixir: once a run, a hit that would knock you down leaves you on half health
-  if (h.brew === 'elixir' && !h.brewUsed && h.hp - Math.round(Math.max(0, a - h.absorb)) <= 0) {
+  if (brewFx(h.brew).save && !h.brewUsed && h.hp - Math.round(Math.max(0, a - h.absorb)) <= 0) {
     h.brewUsed = true; h.absorb = 0; h.hp = Math.round(h.maxHp * 0.5); h.flash = 0.12; h.iframe = Math.max(h.iframe, 0.6);
     fxText(h.x, h.y - 110, 'Starlight!', '#F2C230', 30, { dur: 1.6 });
     fx({ type: 'ring', x: h.x, y: h.y - 40, r0: 20, r1: 130, col: '#F2C230', dur: 0.5, w: 7 });
@@ -240,12 +253,12 @@ export function hurtMob(m, amt, src, o) {
   }
   if (m.exposed > 0) a *= 1.35;
   let crit = false;
+  // the party's brew: Glowcap Draught and Starlight Elixir hit harder
+  if (src && src.brew) a *= brewFx(src.brew).dmg || 1;
   const gearCrit = src && src.power > 1 ? Math.min(0.14, (src.power - 1) * 0.14) : 0;
   const zealCrit = src && src.st && src.st.zeal > 0 ? 0.1 : 0;
   const critChance = (o.crit === undefined ? 0.12 : o.crit) + (o.crit === 1 ? 0 : gearCrit + zealCrit);
-  // Glowcap Draught: your first hit on every enemy is a crit
-  if (!o.noCrit && src && src.brew === 'glow' && !(m.brewHit && m.brewHit.has(src.id))) { (m.brewHit || (m.brewHit = new Set())).add(src.id); a *= 2; crit = true; }
-  else if (!o.noCrit && rng() < critChance) { a *= 2; crit = true; }
+  if (!o.noCrit && rng() < critChance) { a *= 2; crit = true; }
   else if (!o.noCrit && src && src.traits && src.traits.has('headsman') && m.st.stun > 0) { a *= 2; crit = true; }
   if (o.shatter && m.st.freeze > 0) a *= o.shatter;
   if (m.armorUp > 0) a *= 1 - m.armorUp;

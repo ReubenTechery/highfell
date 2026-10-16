@@ -1,8 +1,8 @@
 import os as _hf_os
 HF_ROOT = _hf_os.environ.get('HIGHFELL_ROOT') or _hf_os.path.dirname(_hf_os.path.dirname(_hf_os.path.abspath(__file__)))
-# The Vale: Bramblewick Hollow and riding out. Mounts, pets, trophies, the bunting, Dottle the gnome,
-# the cauldron, the hollow's buildings and plants, the errand bits, and icon tiles for ingredients,
-# brews, skills and collectibles. Same locked TV-cartoon style: one black line, flat colour, every
+# The garden and the cauldron: mounts, pets, trophies, the bunting, the gnome icon, the cauldron, the
+# planter beds and what grows in them, and icon tiles for seeds, ingredients, brews, skills and
+# collectibles. Same locked TV-cartoon style: one black line, flat colour, every
 # sprite drawn around its ground point (0, 0).
 # Usage: python3 tools/art_vale.py -> art/vale.json, art/vale_icons.json, art/_vale_preview.html
 import json, math, os, sys
@@ -275,7 +275,6 @@ def trophies():
     sprite('tr_glowjar', (-26, -66, 52, 70), glowjar()); icon('c_glowjar', '#2F5A3A', glowjar(), k=0.9, ground=60)
     sprite('tr_crown', (-28, -56, 56, 60), crown()); icon('c_crown', '#5A3A5A', crown(), k=1.0, ground=54)
     sprite('tr_kettle', (-42, -62, 88, 66), kettle()); icon('c_kettle', '#4F86C6', kettle(), k=0.86, dx=-1, ground=56)
-    sprite('kettle_walk', (-42, -62, 88, 66), kettle(True))
     sprite('tr_bunting', (-56, -4, 112, 140), bunting()); icon('c_bunting', '#3A3150', bunting(), k=0.42, ground=4)
 
 
@@ -336,61 +335,35 @@ def cauldron():
     icon('s_brew', '#6A4BA3', cauldron_parts(fire=False), k=0.48, ground=56)
 
 
-# ================================================================ Bramblewick: buildings, plants, errand bits
-def burrow(door='#4F86C6'):
-    o = []
-    hill = 'M-150 0 C-150 -70 -110 -150 0 -158 C110 -150 150 -70 150 0 Z'
-    o.append(s(hill, GRASS, 4.5))
-    o.append(ln('M-112 -110 C-96 -128 -70 -142 -40 -148', GRASS_L, 4))
-    for (x, y) in ((-120, -40), (-96, -96), (110, -60), (84, -116), (126, -24)):
-        o.append(ln(f'M{x} {y} l-4 -8 M{x} {y} l0 -10 M{x} {y} l4 -8', GRASS_D, 2.4))
-    # round door in a stone arch
-    o.append(c(0, -54, 48, STONE_T, 4))
-    for k in range(9):
-        a = math.radians(180 + k * 22.5)
-        o.append(ln(f'M{f(40 * math.cos(a))} {f(-54 + 40 * math.sin(a))} L{f(48 * math.cos(a))} {f(-54 + 48 * math.sin(a))}', STONE_D, 2.4))
-    o.append(s('M-40 0 V-54 C-40 -110 40 -110 40 -54 V0 Z', door, 4))
-    for x in (-24, -8, 8, 24):
-        o.append(ln(f'M{x} -88 V-4', '#1E1A1A', 1.6))
-    o.append(c(0, -48, 6, GOLD, 3) + c(0, -48, 2, GOLD_D, 0))
-    o.append(s('M-58 0 H58 L52 -8 H-52 Z', STONE_D, 3))
-    # little round window and a chimney pipe
-    o.append(c(88, -88, 16, '#F4B942', 4) + ln('M72 -88 H104 M88 -104 V-72', WOOD_D, 3))
-    o.append(s('M-86 -150 H-70 V-118 H-86 Z', COPPER, 3.5) + s('M-92 -158 H-64 V-148 H-92 Z', COPPER_D, 3))
+# ================================================================ the garden: planter beds and what grows in them
+def bed_box():
+    # a raised wooden planter full of dark soil, drawn around its ground point
+    o = [s('M-84 0 L-80 -34 H80 L84 0 Z', WOOD, 4)]
+    o.append(ln('M-82 -17 H82', WOOD_D, 2.6))
+    for x in (-84, 78):
+        o.append(s(f'M{x} 0 V-38 H{x + 6} V0 Z', WOOD_D, 3))
+    o.append(s('M-76 -34 C-60 -44 60 -44 76 -34 Z', '#5A3E2A', 3.5))
+    for (x, y) in ((-50, -38), (-14, -40), (24, -39), (56, -37)):
+        o.append(c(x, y, 2.2, '#3E2A1C', 0))
     return o
 
 
-def windmill():
+def sprouts(big=False):
+    # little green shoots coming up through the soil (big: a bed halfway there)
     o = []
-    o.append(s('M-46 0 L-34 -190 H34 L46 0 Z', '#E9DDCB', 4.5))
-    for y in (-40, -80, -120, -160):
-        o.append(ln(f'M{-46 + (y / -190) * 12 + 2} {y} H{46 - (y / -190) * 12 - 2}', '#C9B79A', 2.4))
-    o.append(s('M-50 -186 C-50 -230 50 -230 50 -186 Z', RED, 4.5))
-    o.append(s('M-14 0 V-40 C-14 -54 14 -54 14 -40 V0 Z', WOOD_D, 3.5))
-    o.append(c(0, -120, 12, '#F4B942', 3.5) + ln('M-12 -120 H12 M0 -132 V-108', WOOD_D, 2.4))
-    o.append(c(0, -200, 7, STONE_D, 3))
-    sprite('windmill', (-54, -236, 108, 240), o)
-    sails = []
-    for k in range(4):
-        a = k * 90
-        sails.append(f'<g transform="rotate({a})">' + beam('M0 0 V-100', WOOD, 4, 3) + s('M4 -24 H26 V-98 H4 Z', '#F3E6CC', 3) + ln('M4 -48 H26 M4 -72 H26 M15 -24 V-98', '#C9B79A', 1.8) + '</g>')
-    sails.append(c(0, 0, 8, WOOD_D, 3))
-    sprite('windmill_sails', (-104, -104, 208, 208), sails)
+    for (x, lean) in ((-52, -4), (-18, 3), (16, -3), (50, 4)):
+        h = 30 if big else 14
+        o.append(beam(f'M{x} -38 C{x} {-38 - h / 2} {x + lean} {-38 - h + 4} {x + lean} {-38 - h}', STEM, 3.2, 3))
+        k = 1.4 if big else 0.9
+        o.append(s(f'M{x + lean} {-38 - h} C{x + lean - 12 * k} {-42 - h} {x + lean - 14 * k} {-48 - h} {x + lean - 10 * k} {-50 - h} C{x + lean - 4 * k} {-46 - h} {x + lean} {-44 - h} {x + lean} {-38 - h} Z', LEAF, 2.4))
+        o.append(s(f'M{x + lean} {-38 - h} C{x + lean + 12 * k} {-42 - h} {x + lean + 14 * k} {-48 - h} {x + lean + 10 * k} {-50 - h} C{x + lean + 4 * k} {-46 - h} {x + lean} {-44 - h} {x + lean} {-38 - h} Z', LEAF, 2.4))
+    return o
 
 
-def fence():
-    o = []
-    for x in (-52, -18, 18, 52):
-        o.append(s(f'M{x - 6} 0 V-40 L{x} -48 L{x + 6} -40 V0 Z', WOOD, 3.5))
-    o.append(s('M-60 -32 H60 V-24 H-60 Z', WOOD, 3) + s('M-60 -16 H60 V-8 H-60 Z', WOOD, 3))
-    sprite('fence', (-62, -52, 124, 56), o)
-
-
-def cabbages():
-    o = [s('M-96 0 C-96 -18 96 -18 96 0 C96 8 -96 8 -96 0 Z', '#6B4A30', 3.5)]
-    for (x, y, k) in ((-66, -10, 1), (-24, -12, 1.1), (20, -11, 1), (62, -9, 0.95)):
-        o.append(c(x, y - 10 * k, 14 * k, '#8FCB66', 3.2) + s(f'M{x - 12 * k} {y - 8 * k} C{x - 8 * k} {y - 22 * k} {x + 8 * k} {y - 22 * k} {x + 12 * k} {y - 8 * k} C{x + 4 * k} {y - 14 * k} {x - 4 * k} {y - 14 * k} {x - 12 * k} {y - 8 * k} Z', '#B6E08A', 2.4))
-    sprite('cabbages', (-100, -40, 200, 48), o)
+def garden_bits():
+    sprite('bed', (-88, -48, 176, 52), bed_box())
+    sprite('bed_sprout', (-88, -76, 176, 80), bed_box() + sprouts())
+    sprite('bed_grow', (-88, -104, 176, 108), bed_box() + sprouts(True))
 
 
 def node_moonpetal(shim=False):
@@ -429,31 +402,12 @@ def node_bramble():
     return o
 
 
-def errand_bits():
-    g = [beam('M-24 -10 C-24 -20 -10 -22 -4 -14', '#7A4A2A', 3.5, 3), beam('M24 -10 C24 -20 10 -22 4 -14', '#7A4A2A', 3.5, 3)]
-    g.append(c(-12, -10, 10, '#D9A520', 3.5) + c(12, -10, 10, '#D9A520', 3.5) + c(-12, -10, 6, '#BDE8FF', 2.4) + c(12, -10, 6, '#BDE8FF', 2.4))
-    g.append(ln('M-2 -10 H2', K, 3) + ln('M-15 -13 L-11 -15 M9 -13 L13 -15', '#FFFFFF', 1.8))
-    sprite('goggles', (-28, -24, 56, 28), g)
-    cr = [beam('M-4 -6 L-6 0 M4 -6 L6 0', GOLD_D, 2.4, 2.4)]
-    cr.append(s('M-22 -22 C-26 -34 -16 -44 -2 -44 C10 -44 20 -36 18 -24 C16 -14 6 -8 -6 -8 C-14 -8 -20 -14 -22 -22 Z', '#2A2632', 3.5))
-    cr.append(s('M-22 -24 C-34 -26 -40 -18 -38 -12 C-30 -14 -24 -18 -20 -18 Z', '#2A2632', 3))
-    cr.append(s('M14 -36 C22 -38 30 -34 32 -30 C26 -28 20 -28 16 -30 Z', GOLD, 2.6))
-    cr.append(c(6, -34, 3.6, '#FFFFFF', 2) + c(7, -34, 1.6, K, 0))
-    cr.append(s('M-14 -30 C-8 -36 4 -36 8 -28 C2 -26 -8 -24 -14 -30 Z', '#3A3648', 2))
-    sprite('crow', (-42, -48, 78, 52), cr)
-    sp = [halo(0, -14, 16, FIRE, 0.4), s('M0 -2 C-10 -2 -14 -10 -10 -18 C-8 -24 -4 -26 -2 -34 C4 -28 10 -22 10 -12 C10 -6 6 -2 0 -2 Z', FIRE, 3), s('M0 -6 C-4 -6 -6 -10 -4 -14 C-2 -18 0 -20 0 -24 C4 -20 6 -16 5 -12 C5 -8 3 -6 0 -6 Z', FLAME, 2)]
-    sprite('spark', (-18, -38, 36, 40), sp)
-
-
-def place_bits():
-    sprite('burrow', (-154, -162, 308, 166), burrow())
-    sprite('burrow_red', (-154, -162, 308, 166), burrow('#C8403F'))
-    windmill(); fence(); cabbages()
+def garden_plants():
     sprite('node_moonpetal', (-60, -76, 120, 82), node_moonpetal())
     sprite('node_moonpetal_shim', (-60, -76, 120, 82), node_moonpetal(True))
     sprite('node_glowcap', (-72, -54, 144, 60), node_glowcap())
     sprite('node_bramble', (-76, -100, 152, 104), node_bramble())
-    errand_bits()
+    garden_bits()
 
 
 # ================================================================ icon tiles: ingredients, brews, skills
@@ -485,10 +439,18 @@ def icons():
     snips = (s('M30 36 L50 8 L54 12 L36 40 Z', STEEL_L, 3) + s('M34 36 L14 8 L10 12 L28 40 Z', STEEL_L, 3)
              + c(24, 48, 8, RED, 3.2) + c(42, 48, 8, RED, 3.2) + c(24, 48, 3.4, '#4E9A4A', 0) + c(42, 48, 3.4, '#4E9A4A', 0) + c(32, 37, 2.6, STEEL_D, 2))
     ICONS['s_gather'] = tile('#4E9A4A', s('M8 22 C6 12 14 6 20 8 C20 16 14 20 8 22 Z', LEAF, 2.4) + snips)
+    # seed packets: folded paper with the plant on the front, a few seeds spilling out
+    cap_pic = s('M29 44 V36 H35 V44 Z', '#F0E8D2', 2.2) + s('M21 37 C21 25 43 25 43 37 Z', CAP, 2.6) + c(28, 31, 2, CAP_L, 0)
+    petal_pic = ''.join(e(32 + 6 * math.cos(math.radians(k * 72 - 90)), 34 + 6 * math.sin(math.radians(k * 72 - 90)), 5, 5, PETAL, 2) for k in range(5)) + c(32, 34, 3.4, GOLD, 2)
+    berry_pic = ''.join(c(x, y, 5.2, BERRY, 2.2) + c(x - 1.6, y - 1.8, 1.4, BERRY_L, 0) for (x, y) in ((27, 32), (37, 33), (32, 41)))
+    for (pid, bg, paper, pic) in (('glowcap', '#2F5A3A', '#F3E6CC', cap_pic), ('moonpetal', '#3A4A6A', '#E9E2F5', petal_pic), ('bramble', '#5A3A5A', '#F5E0E4', berry_pic)):
+        pack = s('M14 14 H50 V56 H14 Z', paper, 3.4) + s('M14 14 L20 8 H44 L50 14 Z', paper, 3) + ln('M14 22 H50', K, 2.4) + pic
+        spill = ''.join(e(x, y, 2.6, 1.8, '#C9A26A', 1.6) for (x, y) in ((52, 56), (56, 52), (48, 59)))
+        ICONS[f'g_seed_{pid}'] = tile(bg, pack + spill)
 
 
 def build():
-    goat(); goat(saddle=False); hare(); pets(); trophies(); gnome(); cauldron(); place_bits(); icons()
+    goat(); hare(); pets(); trophies(); gnome(); cauldron(); garden_plants(); icons()
     os.makedirs(OUT, exist_ok=True)
     json.dump(SP, open(OUT + 'vale.json', 'w'))
     json.dump(ICONS, open(OUT + 'vale_icons.json', 'w'))

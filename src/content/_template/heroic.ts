@@ -88,7 +88,7 @@ export const TEMPLATE_HEROIC_BUNDLE = makeHeroicDungeon({
   loot: TEMPLATE_LOOT,
   collectibles: [
     { id: gildedId('pet.pint_sovereign'), kind: 'pet', name: 'Pint-sized Gilded Sovereign', desc: 'Solid gold brasswork and cap.', icon: 'c_pet_keeper_gilded', sprite: 'pet_keeper_gilded', source: 'Heroic: The Sovereign, 1 in 5,000' },
-    { id: gildedId('mount.clockwork_beetle'), kind: 'mount', name: 'Gilded Clockwork Beetle', desc: 'Polished gold plating and sapphire gears.', icon: 'c_mount_hound_gilded', sprite: 'mount_hound_gilded', source: 'Heroic: The Sovereign, 1 in 1,000', saddle: { x: -4, y: -94, k: 0.9 }, ride: 2 },
+    { id: gildedId('mount.clockwork_beetle'), kind: 'mount', name: 'Gilded Clockwork Beetle', desc: 'Polished gold plating and sapphire gears.', icon: 'c_mount_hound_gilded', sprite: 'mount_hound_gilded', source: 'Heroic: The Sovereign, 1 in 1,000', saddle: { x: -4, y: -94, k: 0.9 } },
     { id: gildedId('dye.sporeglow'), kind: 'cosmetic', name: 'Gilded Sporeglow Dye', desc: 'Turns your dungeon set to gleaming gold.', icon: 'c_dye_gilded', source: 'Heroic: The Sovereign, 1 in 1,000' },
     { id: gildedId('trophy.warden_crest'), kind: 'trophy', name: 'Warden’s Gilded Crest', desc: 'Gleaming gold brasswork for the mantel.', icon: 'c_plume_gilded', sprite: 'tr_plume_gilded', source: 'Heroic: Mini-Boss Warden, 1 in 50' },
   ],

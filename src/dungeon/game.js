@@ -3,7 +3,7 @@ import { dist, distXY, lerp } from '../core/math';
 import { setSeed } from '../core/rng';
 import { ORDER } from '../content/roles';
 import { HOOKS, S, emit, setS } from './state.js';
-import { aggro, banner, bits, dots, fx, fxText, healHero, hurtHero, hurtMob, makeHero, makeMob, sfx, shake } from './entities.js';
+import { aggro, banner, bits, brewFx, dots, fx, fxText, healHero, hurtHero, hurtMob, makeHero, makeMob, sfx, shake } from './entities.js';
 import { botTick, inHaz } from './bots.js';
 import { applyBleed, heroBy, heroTick, isFoe, later, projHit } from './heroes.js';
 import { chainTick, mobTick, nearestHeroTo, spawnMob } from './mobs.js';
@@ -27,7 +27,10 @@ export function newGame(dg, opts) {
   S.props = dg.props.map((p) => Object.assign({}, p, { room: roomIndexOf(p.x, p.y), sp0: p.sp }));
   const roles = opts.solo ? ['dps'] : ORDER;
   const L = opts.loadouts || {};
-  for (const r of roles) S.heroes.push(makeHero(r, r === opts.role, L[r]));
+  // one bottle poured at the door: the whole party drinks it (opts.brew, a recipe id; see BREW_FX)
+  const pour = opts.brew ? { brew: opts.brew, brewCol: opts.brewCol || null } : {};
+  S.brewArea = brewFx(opts.brew).area || 1;
+  for (const r of roles) S.heroes.push(makeHero(r, r === opts.role, Object.assign({}, L[r], pour)));
   S.player = S.heroes.find((h) => h.isPlayer) || S.heroes[0];
   S.player.isPlayer = true;
   for (const def of dg.packs) {

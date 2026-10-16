@@ -48,6 +48,25 @@ test('balance: the DPS alone does not get past Sir Rattlebones', () => {
   assert.ok(!r.packs.some((p) => p.id === 'K' && p.cleared != null));
 });
 
+test('balance: a Glowcap Draught for the party makes a run clearly quicker, Normal and Heroic', () => {
+  // brews make a run quicker; nothing needs one (the bands above are all without a brew)
+  const plain = simRun({ role: 'healer', seed: 1111 });
+  const brewed = simRun({ role: 'healer', seed: 1111, brew: 'glow' });
+  assert.equal(brewed.over, 'victory');
+  assert.equal(brewed.wipes, 0);
+  assert.ok(brewed.clear! < plain.clear! * 0.85, `Common ${plain.clear}s, with the Draught ${brewed.clear}s`);
+  // one heroic seed swings a few seconds either way on its own, so take the three the heroic band uses
+  let hPlain = 0, hBrewed = 0;
+  for (const [role, seed] of [['tank', 707], ['healer', 808], ['dps', 909]] as [RoleId, number][]) {
+    const a = simRun({ role, seed, heroic: true, loadouts: gear(3) });
+    const b = simRun({ role, seed, heroic: true, loadouts: gear(3), brew: 'glow' });
+    assert.equal(b.over, 'victory', `${role} seed ${seed} did not clear with the Draught`);
+    assert.equal(b.wipes, 0, `${role} seed ${seed} wiped with the Draught`);
+    hPlain += a.clear!; hBrewed += b.clear!;
+  }
+  assert.ok(hBrewed < hPlain * 0.85, `Heroic ${hPlain}s, with the Draught ${hBrewed}s`);
+});
+
 test('balance: every trait, set bonus and unique effect runs in a real clear', () => {
   const all = {
     tank: { power: 1.2, traits: ['wide', 'ringing', 'headsman'], bonuses: ['barrowguard2', 'barrowguard3'], unique: 'gravedigger', weaponRar: 3 },

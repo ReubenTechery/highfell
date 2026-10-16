@@ -43,7 +43,7 @@ export class Brewing {
       again: () => { this.result = null; void this.brewNow(); },
       done: () => { SFX.play('ui'); this.result = null; this.render(); },
       drink: () => { const r = this.result; if (!r) return; this.app.p.vale.drink = r.done.recipe; SFX.play('clink'); this.app.save(); },
-      ride: () => { SFX.play('ui'); void app.showVale(); },
+      garden: () => { SFX.play('ui'); app.showHearth('yard'); },
     });
   }
 
@@ -77,8 +77,8 @@ export class Brewing {
       </div>
       <div class="bw-foot">
         <button type="button" class="btn gold big" data-act="brew" ${n > 0 ? '' : 'disabled'}>${GLYPH.pot}Brew ${esc(r.name)}</button>
-        <p class="fine">${esc(why)}${!any ? ' Ride out to Bramblewick to gather.' : ''}</p>
-        ${!any ? `<button type="button" class="btn small" data-act="ride">${GLYPH.sign}Ride out</button>` : ''}
+        <p class="fine">${esc(why)}${!any ? ' Grow herbs in the garden: dungeons drop the seeds.' : ''}</p>
+        ${!any ? `<button type="button" class="btn small" data-act="garden">${GLYPH.sign}Go to the garden</button>` : ''}
       </div>
       <div class="vl-cardwrap" id="bw-card" ${this.result ? '' : 'hidden'}>${this.result ? this.resultCard() : ''}</div>`;
     if (this.result) (this.root.querySelector('#bw-card .btn.gold') as HTMLElement | null)?.focus({ preventScroll: true });

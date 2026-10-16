@@ -1,12 +1,12 @@
 /**
  * The Logs sheet: the collection log (every boss by dungeon, Normal or Heroic, each dungeon's whole log
- * with what finishing it gives at the end of its bar; the Vale's places; the other rewards), the
- * achievements, the Vale's story and the stats. The sheets wire up its buttons and mark what you've seen.
+ * with what finishing it gives at the end of its bar; the garden; the other rewards), the
+ * achievements, Bramblewick's story (if you found any of it) and the stats. The sheets wire up its buttons and mark what you've seen.
  */
 import { ACHIEVEMENT_LIST, COLLECTIBLES, DUNGEONS } from '../content';
 import { ROLES } from '../content/roles';
-import type { BossInfo, DropDef, DungeonInfo, NodeDef, PlaceDef, RoleId, Tier } from '../content/types';
-import { PLACES } from '../content/vale';
+import type { BossInfo, DropDef, DungeonInfo, RoleId, Tier } from '../content/types';
+import { GARDEN_TABLE, LORE } from '../content/vale';
 import { maxPoints, points, progress } from '../meta/achievements';
 import { logAchievement, logProgress } from '../meta/logs';
 import type { Profile } from '../meta/profile';
@@ -20,15 +20,15 @@ export const LOG_TABS: LogTab[] = ['collection', 'achievements', 'lore', 'stats'
 const TIER_ORDER: Tier[] = ['log', 'bronze', 'silver', 'gold', 'meta', 'hidden'];
 const TIER_WORD: Record<Tier, string> = { log: 'Collection logs', bronze: 'Bronze', silver: 'Silver', gold: 'Gold', meta: 'Mastery', hidden: 'Hidden' };
 
-/** one page of the collection log: a boss and what it drops, a gathering spot or a villager's errands and what they give, or the rewards that are not drops */
-interface LogEntry { id: string; group: string; name: string; items: string[]; dg?: DungeonInfo; boss?: BossInfo; vale?: { place: PlaceDef; node?: NodeDef; table: DropDef[] } }
-const NODE_ART: Record<string, string> = { moonpetal: 'node_moonpetal', glowcap: 'node_glowcap', bramble: 'node_bramble' };
+/** one page of the collection log: a boss and what it drops, the garden's harvests and what they give, or the rewards that are not drops */
+interface LogEntry { id: string; group: string; name: string; items: string[]; dg?: DungeonInfo; boss?: BossInfo; vale?: { table: DropDef[] } }
 
 /** The sheet for a tab. `heroic` is whether the collection log shows the heroic dungeons; a page asked
  *  for from the other version switches it, and the sheet hands back what it is now. */
 export function logsSheet(p: Profile, tab: LogTab, entry: string | undefined, heroic: boolean): { head: string; tabs: string; body: string; heroic: boolean } {
   const word: Record<LogTab, string> = { collection: 'Collection log', achievements: 'Achievements', lore: 'Story', stats: 'Stats' };
-  const tabs = `<div class="tabs" role="tablist">${LOG_TABS.map((t) => `<button type="button" class="tab" role="tab" data-act="tab" data-tab="${t}" aria-selected="${t === tab}">${word[t]}</button>`).join('')}</div>`;
+  // the story tab only shows if you found pages of Bramblewick's story back when you rode out
+  const tabs = `<div class="tabs" role="tablist">${LOG_TABS.filter((t) => t !== 'lore' || p.vale.lore.length || tab === 'lore').map((t) => `<button type="button" class="tab" role="tab" data-act="tab" data-tab="${t}" aria-selected="${t === tab}">${word[t]}</button>`).join('')}</div>`;
   let body: string, h = heroic;
   if (tab === 'collection') ({ html: body, heroic: h } = clog(p, entry, heroic));
   else body = tab === 'stats' ? stats(p) : tab === 'lore' ? lore(p) : achievements(p);
@@ -92,11 +92,10 @@ function logPage(p: Profile, e: LogEntry): string {
       <p class="cl-kc">${esc(e.boss.name)} kills: <b>${fmtN(r?.kc || 0)}</b></p>
       <div class="stats"><span class="chip">Fastest <b>${fmtT(r?.pb)}</b></span><span class="chip">Wipes <b>${r?.wipes || 0}</b></span></div></div></div>`;
   } else if (e.vale) {
-    const v = e.vale, key = v.node ? `vale.${v.place.id}.${v.node.id}` : `vale.${v.place.id}.errands`;
-    head = `<div class="cl-head vale"><span class="art" aria-hidden="true"><img src="${spriteURL(v.node ? NODE_ART[v.node.id] || 'node_moonpetal' : 'npc_gnome')}" alt=""></span><div>
-      <p class="eyebrow">${esc(v.place.name)}</p><h3>${esc(e.name)}</h3>
+    head = `<div class="cl-head vale"><span class="art" aria-hidden="true"><img src="${spriteURL('node_glowcap')}" alt=""></span><div>
+      <p class="eyebrow">${esc(e.group)}</p><h3>${esc(e.name)}</h3>
       <p class="cl-obt">Obtained: <b class="${state}">${got}/${e.items.length}</b></p>
-      <p class="cl-kc">${v.node ? 'Harvests' : 'Errands done'}: <b>${fmtN(p.counters[key] || 0)}</b></p></div></div>`;
+      <p class="cl-kc">Harvests: <b>${fmtN(p.counters['vale.harvests'] || 0)}</b></p></div></div>`;
   } else {
     head = `<div class="cl-head plain"><div><p class="eyebrow">${esc(e.group)}</p><h3>${esc(e.name)}</h3><p class="cl-obt">Obtained: <b class="${state}">${got}/${e.items.length}</b></p><p class="fine">Pets, mounts, trophies, banners and looks that achievements and firsts give. Never power.</p></div></div>`;
   }
@@ -135,15 +134,17 @@ function stats(p: Profile): string {
   }
   const c = p.counters;
   const row = (k: string, label: string) => `<span class="chip">${label} <b>${fmtN(c[k] || 0)}</b></span>`;
-  out += `<h3 class="section-title">The Vale</h3><div class="stats">${row('vale.harvests', 'Harvests')}${row('vale.perfects', 'Perfects')}${row('vale.errands', 'Errands')}${row('vale.brews', 'Brews')}<span class="chip">Rides out <b>${fmtN(p.vale.rides)}</b></span><span class="chip">Gathering <b>${skillRank(p, 'gather')}</b></span><span class="chip">Brewing <b>${skillRank(p, 'brew')}</b></span></div>`;
+  out += `<h3 class="section-title">The garden</h3><div class="stats">${row('vale.seeds', 'Seeds found')}${row('vale.planted', 'Planted')}${row('vale.harvests', 'Harvests')}${row('vale.perfects', 'Perfects')}${row('vale.brews', 'Brews')}<span class="chip">Gathering <b>${skillRank(p, 'gather')}</b></span><span class="chip">Brewing <b>${skillRank(p, 'brew')}</b></span></div>`;
   out += `<h3 class="section-title">Lifetime</h3><div class="stats">${row('kills', 'Kills')}${row('barrow.skeletons', 'Skeletons')}${row('barrow.wisps', 'Wisps sliced')}${row('barrow.chains', 'Chains cut')}${row('perfect_blocks', 'Perfect blocks')}${row('dodges', 'Dodges')}${row('saves', 'Saves')}${row('crits', 'Crits')}${row('biggest_crit', 'Biggest crit')}${row('deaths', 'Deaths')}${row('wipes', 'Wipes')}</div>`;
   return out;
 }
 
 function achievements(p: Profile): string {
-  let out = `<div class="stats"><span class="chip">Points <b>${points(p)}</b> / ${maxPoints()}</span><span class="chip">Earned <b>${Object.keys(p.achievements).length}</b> / ${ACHIEVEMENT_LIST.length}</span><span class="chip">Titles <b>${p.titles.length}</b></span></div>`;
+  // a retired achievement (it can't be earned any more) shows only for whoever has it
+  const shown = ACHIEVEMENT_LIST.filter((a) => !a.retired || p.achievements[a.id]);
+  let out = `<div class="stats"><span class="chip">Points <b>${points(p)}</b> / ${maxPoints()}</span><span class="chip">Earned <b>${Object.keys(p.achievements).length}</b> / ${shown.length}</span><span class="chip">Titles <b>${p.titles.length}</b></span></div>`;
   for (const tier of TIER_ORDER) {
-    const list = ACHIEVEMENT_LIST.filter((a) => a.tier === tier);
+    const list = shown.filter((a) => a.tier === tier);
     if (!list.length) continue;
     out += `<h3 class="section-title">${TIER_WORD[tier]}</h3>`;
     for (const a of list) {
@@ -160,21 +161,15 @@ function achievements(p: Profile): string {
   return out;
 }
 
-/** the pages of each place's story, found one an errand */
+/** the pages of Bramblewick's story you found when you rode out there (no new ones come) */
 function lore(p: Profile): string {
-  let out = '';
-  for (const pl of Object.values(PLACES)) {
-    const have = pl.lore.filter((l) => p.vale.lore.includes(l.id)).length;
-    out += `<h3 class="section-title">${esc(pl.name)}<small>${have} of ${pl.lore.length} pages</small></h3><div class="pages">`;
-    out += pl.lore.map((l, i) => (p.vale.lore.includes(l.id)
-      ? `<article class="page"><small>Page ${i + 1}</small><b>${esc(l.title)}</b><p>${esc(l.text)}</p></article>`
-      : `<article class="page locked"><small>Page ${i + 1}</small><b>Not found yet</b><p>Do ${esc(pl.villager.name.split(' ')[0])}’s errands. Every one turns up a page.</p></article>`)).join('');
-    out += '</div>';
-  }
-  return out + '<p class="fine">Each place you can ride to has its own story. More places are coming.</p>';
+  const found = LORE.filter((l) => p.vale.lore.includes(l.id));
+  return `<h3 class="section-title">Bramblewick<small>${found.length} of ${LORE.length} pages</small></h3><div class="pages">`
+    + found.map((l) => `<article class="page"><b>${esc(l.title)}</b><p>${esc(l.text)}</p></article>`).join('')
+    + '</div><p class="fine">Pages you found in the days you rode out to Bramblewick. They stay yours.</p>';
 }
 
-/** every page of the collection log, in order: bosses by dungeon, then the Vale's places, then other rewards */
+/** every page of the collection log, in order: bosses by dungeon, then the garden, then other rewards */
 function logEntries(): LogEntry[] {
   const out: LogEntry[] = [];
   for (const dg of Object.values(DUNGEONS)) {
@@ -186,10 +181,7 @@ function logEntries(): LogEntry[] {
       out.push({ id: `${dg.id}.${b.id}`, group: dg.name, name: b.name, items: ids, dg, boss: b });
     }
   }
-  for (const pl of Object.values(PLACES)) {
-    for (const n of pl.nodes) out.push({ id: `vale.${pl.id}.${n.id}`, group: pl.name, name: n.name, items: n.table.map((d) => d.id), vale: { place: pl, node: n, table: n.table } });
-    out.push({ id: `vale.${pl.id}.errands`, group: pl.name, name: `${pl.villager.name.split(' ')[0]}’s errands`, items: pl.errandTable.map((d) => d.id), vale: { place: pl, table: pl.errandTable } });
-  }
+  out.push({ id: 'garden.harvests', group: 'The garden', name: 'Harvests', items: GARDEN_TABLE.map((d) => d.id), vale: { table: GARDEN_TABLE } });
   const drops = new Set([...Object.values(DUNGEONS).flatMap((d) => d.loot.flatMap((t) => t.drops.map((x) => x.id))), ...out.flatMap((e) => (e.vale ? e.items : []))]);
   out.push({ id: 'other.rewards', group: 'Other', name: 'Rewards', items: Object.values(COLLECTIBLES).filter((c) => !drops.has(c.id)).map((c) => c.id) });
   return out;

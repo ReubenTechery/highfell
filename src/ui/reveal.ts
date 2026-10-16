@@ -2,7 +2,7 @@
  * The reveal: the chest after a clear. The lantern beside it repeats the walkout's tell, then the
  * chest opens and the cards come out face down and flip one by one, rarest last. A pet or a mount
  * gets the whole screen, and so does a collection log filled at last: its hero walks out, and what it
- * gave stays on the page with a way to it. Then the numbers: kill counts, time, marks, the log.
+ * gave stays on the page with a way to it. Then the numbers: kill counts, time, the log, the garden.
  */
 import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, TITLES } from '../content';
 import type { RaceId } from '../content/folk';
@@ -11,7 +11,9 @@ import { RARITY, ROLE_SLOTS, gearId, gearKey, traitDef } from '../content/gear';
 import { ROLES } from '../content/roles';
 import type { Rar, RoleId, SlotId } from '../content/types';
 import { takeTrait, type Drop, type RunLoot, type Tell } from '../meta/loot';
-import { activeHero, heroById, roleOf } from '../meta/profile';
+import { activeHero, heroById, roleOf, type Profile } from '../meta/profile';
+import { readyBeds, seedTotal } from '../meta/vale';
+import { PLANTS } from '../content/vale';
 import { itemShare, waiting, worn } from '../meta/gear';
 import type { App } from './app';
 import { actions, esc, fmtN, fmtRate, fmtT, GLYPH, reducedMotion, wait } from './dom';
@@ -244,8 +246,6 @@ export class Reveal {
     const dg = DUNGEONS[loot.dungeon] || BARROW;
     const got = dg.collection.filter((id) => p.collection[id]).length;
     const newSlots = extra.intro ? 0 : loot.drops.filter((d) => d.source === 'table' && d.isNew).length;
-    const rec = p.dungeons[dg.id];
-    const spores = (rec ? rec.clears : 1) % 2 === 1 ? 1 : 2;
     const kc = Object.entries(loot.kc);
     const h = heroById(p, extra.hero);
     const sum = $('rv-sum', this.root);
@@ -254,9 +254,9 @@ export class Reveal {
       sum.innerHTML = `<h3>This run</h3><div class="rv-grid">
           <div class="kv"><span>Time</span><b>${fmtT(loot.time)}</b><small>${loot.newPb ? 'New best!' : loot.firstClear ? 'First clear!' : `Best ${fmtT(loot.pb)}`}</small></div>
           ${kc.map(([b, n]) => `<div class="kv"><span>${esc(dg.bosses.find((x) => x.id === b)?.name || b)}</span><b>KC ${fmtN(n)}</b></div>`).join('')}
-          <div class="kv"><span>Cauldron spores</span><b>+${spores}</b><small>${fmtN(p.vale.satchel.glowcap || 0)} Glowcaps</small></div>
           <div class="kv"><span>Collection log</span><b>${got} / ${dg.collection.length}</b><small>${newSlots ? `+${newSlots} new` : ''}</small></div>
           <div class="kv"><span>Party deaths</span><b>${extra.deaths}</b></div>
+          ${gardenKv(p, loot)}
         </div>`;
     }
     this.renderOffer();
@@ -345,3 +345,11 @@ export class Reveal {
 }
 
 function $(id: string, root: HTMLElement): HTMLElement { return root.querySelector('#' + id) as HTMLElement; }
+/** the garden after this run: seeds the bosses dropped, and beds this clear made ready */
+function gardenKv(p: Profile, loot: RunLoot): string {
+  const seeds = Object.entries(loot.seeds || {});
+  const got = seeds.map(([id, n]) => `+${n} ${PLANTS[id]?.seed || id}`).join(', ');
+  const ready = readyBeds(p);
+  const note = loot.bedsReady ? `${loot.bedsReady} bed${loot.bedsReady > 1 ? 's' : ''} just got ready` : ready ? `${ready} bed${ready > 1 ? 's' : ''} ready` : `${seedTotal(p)} seed${seedTotal(p) === 1 ? '' : 's'} to plant`;
+  return `<div class="kv"><span>Garden</span><b>${got ? esc(got) : 'No seed'}</b><small>${esc(note)}</small></div>`;
+}

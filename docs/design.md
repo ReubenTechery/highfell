@@ -20,12 +20,12 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 16 
 | Heroic | Heroic Barrow: open after 10 clears, made for full Epic (`hit: 3.2, trashHp: 1.95, bossHp: 1.63`); the same drops gilded at the same rates and power, its own kill counts and log, Barrow Marks. Friends & Party Finder ONLY (Warband disabled; Practice / Dev "Everything open" playable for testing) | A heroic version of every new dungeon |
 | Collection log rewards | Each dungeon's whole log (every drop, every role) gives a house look, a title and one big prize: the Barrow's are Barrow Hall, the Gravewarden and the Risen; its heroic log's Gilded Barrow Hall, the Undying and Gilded Bones. The prize waits at the end of the log's bar | One per new dungeon: a race, a race and class combo, or something else |
 | Achievements | All 12, the meta and the 3 hidden ones, with titles, trophies, looks and the Lantern Ghost |  |
-| Home | The Hearth, a tall house cut open: zoom out to see every room, tap things to use them (the Barrow door, the signpost to ride out, the armour stand, the big book of the collection log, the cauldron, the larder); about 30 spots for pets, mounts, trophies and banners; Decorate; looks for a room or the whole house (the tavern; Barrow Hall from the Barrow's collection log, Gilded Barrow Hall from its heroic one); one big Dungeons button | Looks for Vale places, rooms that come with new dungeons and places, inviting people over |
-| Dungeon picker | Dungeons: the dungeon's picture with Normal or Heroic, its collection log line with the prize at the end (inside: what finishing it gives and the loot per role; tap a drop to hold it up against what that role wears), then your role, hero and brew, loot or practice; Normal shows your Warband companions & Group option, while Heroic enforces Friends & Party Finder ONLY (Warband disabled) | Online Party Finder for Heroics and friends in seats, more dungeons |
-| Logs | Collection log by boss and gathering spot, grouped by dungeon and place, OSRS style: drops, kill count, fastest kill, wipes; Normal or Heroic; each dungeon's whole log with what finishing it gives; achievements; the Vale's story; stats |  |
-| Riding out | The Vale map (Bramblewick is the one place open); walking out, or riding once you have a mount; Bramblewick Hollow with three gathering close-ups that pay XP every cut, Dottle's errands (goats, crows, sparks, the kettle, deliveries) and 8 story pages; Gathering and Brewing ranks; the Hill Goat from the goats errand; 3 pets, 4 trophies, bunting and a hare | Moonmere and Emberdeep, friends seen out riding, more close-ups |
-| Brews | The cauldron by your fire, 4 brews, one bottle a run, picked on the dungeon sheet | More recipes as places open |
-| Onboarding | First-time prologue run as Brannoc in full Epic gear + Barrowguard set + *The Gravedigger* with Maren and Ivy against the Ossuary and Sir Rattlebones (teaches abilities, dodge-rolling, blocking, and peeling); gold walkout + showcase chest reveal explaining the gear ladder, fixed drop rates, Collection Log rewards and hearth; hero creation followed by a 3-step guided tour of the Hearth (`hall` → `yard` Ride out → `cellar` Dungeons) |  |
+| Home | The Hearth, a tall house cut open: zoom out to see every room, tap things to use them (the Barrow door, the 3 garden planter beds in the yard, the armour stand, the big book of the collection log, the cauldron, the larder); about 30 spots for pets, mounts, trophies and banners; Decorate; looks for a room or the whole house (the tavern; Barrow Hall from the Barrow's collection log, Gilded Barrow Hall from its heroic one); one big Dungeons button | Rooms that come with new dungeons, inviting people over |
+| Dungeon picker | Dungeons: Act 1 stepped 3-dungeon selector (`ilvl 26 → 34 → 42`), Normal or Heroic, its collection log line with the prize at the end (inside: what finishing it gives and the loot per role; tap a drop to hold it up against what that role wears), then your role, hero and brew, loot or practice; Normal shows your Warband companions & Group option, while Heroic enforces Friends & Party Finder ONLY (Warband disabled) | Online Party Finder for Heroics and friends in seats, more dungeons |
+| Logs | Collection log by boss and garden, OSRS style: drops, kill count, fastest kill, wipes; Normal or Heroic; each dungeon's whole log with what finishing it gives; achievements; stats |  |
+| The Garden | 3 planter beds (`bed.0`, `bed.1`, `bed.2`) in the Hearth's outdoor yard; seeds drop from dungeon bosses (Gravekeeper drops Glowcap seeds at 1/5 Normal, 1/3 Heroic) and grow over 3 dungeon clears (`GROW_CLEARS = 3`); harvesting uses the `snip`/`pluck` close-up toys and yields 8–10+ herbs plus Gathering XP; first harvest gives the Hill Goat; every harvest rolls `GARDEN_TABLE` for trophies, kettle, bunting, hare and pets | New seeds from future dungeons |
+| Brews | The cauldron by your fire, 4 party-wide brews, 1 bottle poured at the dungeon door (`pourFor`) buffs all 3 seats for faster clears | More recipes as new dungeon seeds open |
+| Onboarding | First-time prologue run as Brannoc in full Epic gear + Barrowguard set + *The Gravedigger* with Maren and Ivy against the Ossuary and Sir Rattlebones (teaches abilities, dodge-rolling, blocking, and peeling); gold walkout + showcase chest reveal explaining the gear ladder, fixed drop rates, Collection Log rewards and hearth; hero creation followed by a 3-step guided tour of the Hearth (`hall` → `yard` Garden → `cellar` Dungeons) |  |
 
 ## Core Loop & Dungeon Rules
 
@@ -98,8 +98,8 @@ A hero is one race and one class, picked when you make them and fixed after. You
 Home is a tall house on the hill, cut open like a doll's house. Built 14 Oct after a play test where a new player tapped Ride out first because it looked like the main button.
 
 - **Zoom:** pinch or scroll. Zoomed out you see the whole house, each room with a sign; tap one to go in. Zoomed in, tap things to use them. It opens on the hall.
-- **One big button: Dungeons.** Everything else is a thing in the house: the Barrow door in the cellar, the signpost in the yard (ride out), the armour stand (gear), the big book in the trophy loft (the collection log), the cauldron and the larder (the satchel). Your hero's tag at the top opens gear too.
-- **Rooms:** the trophy loft, the bunk room (your other heroes), the armory, the hall (your hero, the fire, the mantel), the stable, the brewing room, the cellar with the Barrow door and two bricked arches for dungeons to come, and the yard.
+- **One big button: Dungeons.** Everything else is a thing in the house: the Barrow door in the cellar, the 3 garden planter beds in the yard, the armour stand (gear), the big book in the trophy loft (the collection log), the cauldron and the larder (the satchel). Your hero's tag at the top opens gear too.
+- **Rooms:** the trophy loft, the bunk room (your other heroes), the armory, the hall (your hero, the fire, the mantel), the stable, the brewing room, the cellar with the Barrow door and two bricked arches for dungeons to come, and the yard (with the 3 planter beds).
 - **Trophies everywhere:** about 30 spots: the mantel, the loft's shelves, banners on the walls and the roof's flagpoles, pets by the fire, on the rug, on the table and in the loft, the stall and the yard. Decorate shows the empty ones; the rest of the time they're hidden.
 - **Dungeons** (the big button or the Barrow door): the dungeon's picture, with one small collection log line under it that opens to show what each role can get. Then you: pick a role and you play your hero of that role you played last (Change picks another or makes one), your brew, and loot or practice. Your own Warband heroes from your bunk room take the other seats in their own gear (or bots stand in until you make them).
 - **Looks:** Decorate, then Looks: pick a look and put it on a room or the whole house. Looks only; everything you placed stays where it is.
@@ -107,47 +107,44 @@ Home is a tall house on the hill, cut open like a doll's house. Built 14 Oct aft
   - **Barrow Hall:** opens when you fill the Barrow's whole collection log, and shows how close you are until then. The Barrow's own brick and flagstones, burial niches with skulls, green lanterns, the Gravekeeper's green fire in the hall, a coffin in the armory, a gravestone in the stable, wisps in the cellar. Put it on the whole house and the beams and outer walls turn to stone and the roof to slate.
   - **Gilded Barrow Hall:** from the heroic Barrow's log. Gold bones, gold frames and lanterns, the green fire burning higher.
   - Every dungeon brings a look like this, and a gilded one from its heroic log.
-- **Next:** rooms that come with new dungeons and Vale places (the cellar's bricked arches become new dungeons' doors).
+- **Next:** rooms that come with new dungeons (the cellar's bricked arches become new dungeons' doors).
 
-## Riding out (the Vale)
+## The Garden & Brews
 
-Between dungeons you ride out: the signpost in the house's yard, about five minutes a trip, built as a playable test slice on 14 Oct and reworked the same day after a play test. It stays small on purpose: no open world, no crafted gear, no inventory to manage, no streaks.
+Instead of riding out to a separate map or waiting on real-time timers, the Hearth's outdoor yard holds **3 planter beds** (`bed.0`, `bed.1`, `bed.2`) that feed directly into the dungeon loop:
 
-1. **Ride out** from the signpost in the yard to the Vale map. Bramblewick Hollow is the one place open: it glows, its road is lit and the card has the button. The other places are locked ("Later"); the Barrow is down in the cellar at home.
-2. **Walk or ride there.** You start on foot (5 seconds). There's no skip: a mount is what makes it quicker (the Hill Goat 3 seconds, the hare and the hound 2).
-3. **Dottle's first errand is the goats:** tap them back into the pen, and the last one out decides she likes you. She's your Hill Goat, your first mount.
-4. **Gather** in close-up: snip a stem on the dotted line, pluck a glowcap at its brightest. Three goes a harvest; each Perfect adds one more. **Every cut pays Gathering XP as it lands**, with a bar that fills at the foot of the close-up and a burst on a new rank.
-5. **Do Dottle's errands**: crows come in gangs, hop between cabbages and chain into combos; sparks drift from the chimney onto the roof while the heat bar rises (never a fail: Dottle throws a bucket); the kettle runs off the first time you find it; or hand over ingredients. She shouts as you go. Each one turns up a page of the hollow's story.
-6. **Brew** at the cauldron by your fire (every lap of the stir pays Brewing XP), then pick the brew on the dungeon sheet.
-
-- A place regrows 2 harvests a day and saves up to 6; errands come 1 a day and save up to 3. A missed day costs nothing.
-- A harvest rolls when its close-up starts, like a boss kill. One in seven shimmers and gives Starlight Dew.
-- Rares roll per line, OSRS style, and a duplicate becomes 2 Starlight Dew. A pet gives itself away in the close-up before it drops.
-- Gathering ranks 4, 7 and 10 add one to every harvest; Brewing ranks 2 and 3 teach new recipes.
+1. **Seeds from dungeon bosses:** Each dungeon drops its own seed from its final boss. In Barrow Crypt, The Gravekeeper drops **Glowcap** seeds (`1/5` on Normal, `1/3` on Heroic). Every player also starts with 1 free Glowcap seed.
+2. **Grow in 3 dungeon clears (`GROW_CLEARS = 3`):** Tap an empty bed in the yard to plant a seed. Each Normal or Heroic dungeon clear advances all planted beds by 1 stage (`0/3` sprout → `1/3`, `2/3` growing → `3/3` ready). Practice and prologue runs do not advance beds, and crops never wilt.
+3. **Harvest in close-up:** Tap a ready bed to harvest in close-up (`snip` a stem on the dotted line or `pluck` a glowcap at its brightest). Three cuts per harvest: base yield is `8–10` herbs, each Perfect cut adds `+1` (up to `+3`), and Gathering ranks 4, 7 and 10 each add `+1` more. **Every cut pays Gathering XP as it lands**, with a bar at the foot of the close-up and a burst on a new rank.
+4. **Rares & Starlight Dew:** Your very first harvest grants the **Hill Goat** (`mount.goat`). Every harvest also rolls `GARDEN_TABLE` independently (OSRS style), has a `1/4` chance to shimmer and drop `1–2` **Starlight Dew**, and converts any duplicate rare into `2` Starlight Dew.
+5. **Brew at the cauldron:** Stirring at the cauldron by your fire turns herbs into bottles (every lap pays Brewing XP; a Perfect stir fills 1 extra bottle). The ingredients go in when the stir starts, so leaving mid-stir still bottles it.
 
 | Reward | From | Rate |
 | --- | --- | --- |
-| Pressed Moonpetal (trophy) | Moonpetal patch | 1/80 |
-| Rootling (pet) | Moonpetal patch | 1/600 |
-| Glowcap Jar (trophy) | Glowcap ring | 1/80 |
-| Puffcap (pet) | Glowcap ring | 1/600 |
-| Bramble Crown (trophy) | Bramble hedge | 1/80 |
-| Thimble (pet) | Bramble hedge | 1/600 |
-| Hill Goat (mount) | Dottle's first errand, the goats | Given |
-| Bramblewick Bunting (banner) | Dottle's errands | 1/20 |
-| Wobbly Kettle (trophy) | Dottle's errands | 1/25 |
-| Thistledown Hare (mount) | Dottle's errands | 1/40 |
+| Hill Goat (mount) | First garden harvest | Guaranteed on 1st harvest |
+| Pressed Moonpetal (trophy) | Any garden harvest | 1/25 |
+| Glowcap Jar (trophy) | Any garden harvest | 1/25 |
+| Bramble Crown (trophy) | Any garden harvest | 1/25 |
+| Wobbly Kettle (trophy) | Any garden harvest | 1/25 |
+| Bramblewick Bunting (banner) | Any garden harvest | 1/25 |
+| Thistledown Hare (mount) | Any garden harvest | 1/60 |
+| Rootling (pet) | Any garden harvest | 1/200 |
+| Puffcap (pet) | Any garden harvest | 1/200 |
+| Thimble (pet) | Any garden harvest | 1/200 |
 
-Brews are small twists for one run, never power a raid needs. One bottle a run, drunk at the door; practice uses the brew but keeps the bottle. A Perfect stir fills one extra bottle. The ingredients go in when the stir starts, so leaving mid-stir still bottles it.
+### Party-wide brews (one bottle per run)
 
-| Brew | Needs | For one run | Learned at |
+Brews are strong **party-wide speed and power buffs** that make Normal, Heroic, and Raid runs noticeably faster (~20% faster clears) without ever being mandatory to clear.
+- **One bottle poured at the door (`pourFor`):** Only **one** bottle is uncorked at the dungeon door for the whole 3-seat party (your hero's chosen brew first, then Tank → Healer → DPS). Even if multiple party members bring a brew selected, only the single poured bottle is spent (`spendBottle`), so teammates never waste duplicate potions. Practice runs use the brew buff but keep the bottle.
+
+| Brew | Needs | Party-wide buff (all 3 heroes for the full run) | Learned at |
 | --- | --- | --- | --- |
-| Moonpetal Tonic | 4 Moonpetal | Dodging heals 5% of your health | Brewing 1 |
-| Bramble Fizz | 4 Brambleberry, 1 Moonpetal | 12% faster; the dodge comes back a third sooner | Brewing 1 |
-| Glowcap Draught | 4 Glowcap, 1 Brambleberry | Your first hit on every enemy crits | Brewing 2 |
-| Starlight Elixir | 2 Starlight Dew, 2 Moonpetal, 2 Glowcap | Once a run, a knockout hit leaves you on half health | Brewing 3 |
+| Glowcap Draught (`glow`) | 10 Glowcap | `+25%` damage, `+15%` move speed, `+25%` AoE radius, `+50%` tank threat | Brewing 1 |
+| Moonpetal Tonic (`tonic`) | 10 Moonpetal | `+15%` move speed, dodging heals `10%` of max health | Brewing 1 |
+| Bramble Fizz (`fizz`) | 8 Brambleberry, 2 Moonpetal | `+25%` move speed, all ability and dodge cooldowns tick `25%` faster | Brewing 1 |
+| Starlight Elixir (`elixir`) | 8 Glowcap, 2 Starlight Dew | All Glowcap Draught buffs (`+25%` dmg/AoE, `+15%` speed, `+50%` threat) + once per run a lethal hit leaves each hero at `50%` HP | Brewing 3 |
 
-Six achievements live here: Green Fingers, Steady Hands, Something Brewing, Odd Jobs, Green-Thumbed (gold) and a hidden one for the Rootling. Next: Moonmere (the elves' lake) and Emberdeep (the dwarves' forges) as places, and friends seen out riding.
+Achievements here: Green Fingers, Steady Hands, Something Brewing, Green-Thumbed (gold) and a hidden one for the Rootling (Odd Jobs is retired and only shown if earned on an older save).
 
 ## Gear and sets
 
@@ -300,7 +297,7 @@ See `docs/dungeons.md` for the full Dungeon Template guide (`src/dungeon/templat
 | --- | --- | --- | --- | --- |
 | **1. Free Trial (Act 1)** | **3 Normal Dungeons** (*Barrow Crypt* → *Thimblebriar Hollow* → *Moonmere Sanctum*) | **~50 Log Slots** (16–18 per dungeon). Starter `Common` → `Rare` (`ilvl 10–18`) warband floor, then a **3-tier OSRS-style Unique Treadmill**: Barrow Sets/Weapons (`ilvl 26`) → Thimblebriar Sets/Weapons (`ilvl 34`) → Moonmere Sets/Weapons (`ilvl 42`), plus **The Risen** & **Gnome** playable races unlocked from logs! Normal Mode only. | **3 – 6 hours** | Hook players with three radically different worlds and a real gear treadmill where you need Barrow uniques to survive Thimblebriar, and Thimblebriar uniques to survive Moonmere—then prompt upgrading when **Heroic Mode** and Act 2 open up. |
 | **2. Full Base Game ($5.99–$6.99)** | **+5 Dungeons + 2 Capstone Raids + Heroic Mode** (8 Dungeons × Normal/Heroic = 16 Logs + 2 Capstone Raids) | **~130–160 Log Slots.** Unlocks **Heroic Mode** (`heroic.ts`) for all 8 dungeons (including Act 1), remaining earned races (**Goblin**, **Orc**), late-game **OSRS Upgrade Kits / Duplicate Synthesis** (to awaken earlier dungeon sets to endgame ilvl), and full Vale/Brewing tiers (`brew.ts`). | **20 – 45+ hours** | Instant-buy value for $6.99. Heroic Mode doubles the endgame chase of every dungeon built; late-game Upgrade Kits and Capstone Raids tie all 8 dungeons into one endgame loop. |
-| **3. Expansion Pack ($3.99–$4.99)** | **3 to 4 Dungeons + 1 Multi-Boss Raid** (New Region, e.g., *Sunken Karst* or *Skyforge Peaks*) | **~45–60 Log Slots.** 1 new Class (`roles.ts`) or Race/Class mastery, 3–4 new Dungeon Set families, new Dungeon Cauldron Spores/Seeds, +1 Raid-exclusive attachment chase item. | **8 – 15 hours** | Scoped to ship in a couple of months off the Dungeon Template; meaty enough for players to instant-buy. |
+| **3. Expansion Pack ($3.99–$4.99)** | **3 to 4 Dungeons + 1 Multi-Boss Raid** (New Region, e.g., *Sunken Karst* or *Skyforge Peaks*) | **~45–60 Log Slots.** 1 new Class (`roles.ts`) or Race/Class mastery, 3–4 new Dungeon Set families, new dungeon seeds and brews, +1 Raid-exclusive attachment chase item. | **8 – 15 hours** | Scoped to ship in a couple of months off the Dungeon Template; meaty enough for players to instant-buy. |
 
 ### The Act 1 Free-Trial Trio ("Dungeon Uniques ARE the Treadmill")
 All 3 Act 1 dungeons are open from Clear 0, tuned as a stepped treadmill (`1 → 2 → 3`) where your hero and Warband companions need the previous dungeon's `1/35` Sets and `1/50` Boss Weapons to survive the next:
@@ -308,9 +305,9 @@ All 3 Act 1 dungeons are open from Clear 0, tuned as a stepped treadmill (`1 →
 2. **Thimblebriar Hollow (`thimblebriar`, Tier 2 — Entry `ilvl 22–26`, Drops `ilvl 34`):** Whimsical gnome fairytale mushroom & brass-clockwork burrow (warm amber roots, glowing giant toadstools, ticking brass gears, spore-bounce pads, bursting spore-pods). Sets: *Clockguard / Sporebloom / Arcspark / Gearshade*. Log prize: **Gnome** (playable race unlocked right in the Free Trial!), *Toadstool Workshop* look, *the Clockwork Knight* title.
 3. **Moonmere Sanctum (`moonmere`, Tier 3 — Entry `ilvl 30–34`, Drops `ilvl 42`):** Woodland elf twilight glade & sunken moon-ruins (emerald moss flagstones, silver moon-pools, starlight conduits, living briar ambushes, eclipse rings). Sets: *Starlight & Living Wilds*. Log prize: *Starlight Form / Great Silverstag*, *Moonmere Glade* look, *the Starcaller* title.
 
-### Zero Currency Bloat: Killing Marks, Free Weapon Traits & Direct Cauldron Spores
+### Zero Currency Bloat: Killing Marks, Free Weapon Traits & Dungeon Seeds
 - **No Marks / No Currency Shops:** All cosmetics, mounts, pets, house looks, trophies, and gear come exclusively from dungeon/raid drops, collection logs, and achievements.
 - **Weapon Traits Toggle for Free at Rare+ (`ilvl 18`):** Once your regular weapon reaches Rare (~Clear 8), all 3 Weapon Traits unlock for that hero and can be swapped freely in the Gear screen.
-- **Every Full Clear Guarantees 1–2 Dungeon Cauldron Spores/Seeds:** Each dungeon drops its signature Spore/Seed (`Grave-Moss Spore`, `Clock-Cap Spore`, `Moon-Lotus Seed`) directly into your Satchel on every clear. Stir them straight into the Hearth Cauldron alongside Vale herbs (or mix spores across two dungeons) to bottle stronger Brews with zero crop timers.
+- **Dungeon Seeds Feed the Garden:** Each dungeon's final boss drops its own seed at a fixed rate (the Barrow's Gravekeeper: Glowcap, `1/5` Normal, `1/3` Heroic). Seeds grow in the Hearth yard's 3 planter beds over 3 clears and harvest into herbs for the cauldron (see The Garden & Brews).
 - **Duplicate Uniques (`p.collection[id].n`) Saved for Late-Game Synthesis:** Duplicates stay tracked on every item in the Collection Log (`Seen 3 times`) for late-game synthesis recipes (combining duplicate weapons + boss-dropped Awakening Orbs from later dungeons/raids).
 

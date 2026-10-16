@@ -10,7 +10,7 @@ import { AB, ROLES, SLOTS_AB, abKey } from '../content/roles';
 import { ROLE_SLOTS, SLOT_IDS, TRAITS, gearId, gearKey, traitDef } from '../content/gear';
 import { CLASSES, RACES, type ClassId, type RaceId } from '../content/folk';
 import type { AbilitySlot, GearKey, ItemDef, Rar, RoleId, SlotId } from '../content/types';
-import { INGREDIENTS, INGREDIENT_ORDER, PLACES, RECIPES, RECIPE_ORDER, SKILLS } from '../content/vale';
+import { INGREDIENTS, INGREDIENT_ORDER, LORE, PLANTS, RECIPES, RECIPE_ORDER, SEED_ICON, SEED_ORDER, SKILLS } from '../content/vale';
 import { rankProgress, recipeUnlocked } from '../meta/vale';
 import { activeHero, freshProfile, heroById, nameProblem, removeHero, renameHero, roleOf, setActive, type Hero } from '../meta/profile';
 import { pickRole } from '../meta/party';
@@ -179,7 +179,7 @@ export class Sheets {
       walkout: (el) => { this.app.setDev({ walkout: el.dataset.v as 'off' }); SFX.play('ui'); this.refresh(); },
       drink: (el) => { const p = this.app.p, id = el.dataset.id || null; p.vale.drink = id && RECIPES[id] ? id : null; SFX.play(id ? 'clink' : 'ui'); this.app.save(); },
       brewgo: () => { SFX.play('ui'); this.close(); this.app.showBrew(); },
-      ridego: () => { SFX.play('ui'); this.close(); void this.app.showVale(); },
+      gardengo: () => { SFX.play('ui'); this.close(); this.app.showHearth('yard'); },
       lore: () => { SFX.play('page'); this.open({ kind: 'logs', tab: 'lore' }); },
       vfree: () => { this.app.setDev({ valeFree: !this.app.dev.valeFree }); SFX.play('ui'); this.app.refresh(); },
       vluck: () => { this.app.setDev({ valeLuck: !this.app.dev.valeLuck }); SFX.play('ui'); this.app.refresh(); },
@@ -580,14 +580,19 @@ export class Sheets {
       const pr = rankProgress(p.vale.xp[sk] || 0);
       return `<div class="skill"><span class="tile" aria-hidden="true">${tile(sk === 'brew' ? 's_brew' : 's_gather')}</span><div><b>${esc(SKILLS[sk].name)} ${pr.rank}</b><div class="bar"><i style="width: ${(pr.k * 100).toFixed(1)}%"></i></div><span>${pr.need ? `${fmtN(pr.into)} / ${fmtN(pr.need)} to rank ${pr.rank + 1}` : 'Top rank'} · ${esc(SKILLS[sk].blurb)}</span></div></div>`;
     }).join('');
-    const pages = p.vale.lore.length, total = Object.values(PLACES).reduce((a, pl) => a + pl.lore.length, 0);
-    const go = `${scene !== 'brew' ? `<button type="button" class="btn small gold" data-act="brewgo">${GLYPH.pot}Go to the cauldron</button>` : ''}${scene !== 'vale' ? `<button type="button" class="btn small" data-act="ridego">${GLYPH.sign}Ride out</button>` : ''}`;
+    const seeds = SEED_ORDER.map((id) => {
+      const n = p.vale.seeds[id] || 0;
+      return `<div class="sat-it ${n ? '' : 'none'}"><span class="tile" aria-hidden="true">${tile(SEED_ICON[id])}</span><b>${fmtN(n)}</b><span>${esc(PLANTS[id].seed)}</span></div>`;
+    }).join('');
+    const pages = p.vale.lore.length;
+    const go = `${scene !== 'brew' ? `<button type="button" class="btn small gold" data-act="brewgo">${GLYPH.pot}Go to the cauldron</button>` : ''}<button type="button" class="btn small" data-act="gardengo">${GLYPH.sign}Go to the garden</button>`;
     const body = `
+      <h3 class="section-title">Seeds<small>dungeons drop them, the garden grows them</small></h3><div class="sat-grid">${seeds}</div>
       <h3 class="section-title">Ingredients</h3><div class="sat-grid">${ing}</div>
-      <h3 class="section-title">Brews<small>one bottle is one dungeon run</small></h3><div class="picks">${shelf}</div>
-      ${go ? `<div class="actions">${go}</div>` : ''}
+      <h3 class="section-title">Brews<small>one bottle serves the whole party for a run</small></h3><div class="picks">${shelf}</div>
+      <div class="actions">${go}</div>
       <h3 class="section-title">Skills</h3><div class="skills">${skills}</div>
-      <div class="actions"><button type="button" class="btn small" data-act="lore">${GLYPH.book}The Vale’s story · ${pages} of ${total} pages</button></div>`;
-    return { head: `<h2>Satchel</h2><p>What you have gathered and brewed</p>`, body };
+      ${pages ? `<div class="actions"><button type="button" class="btn small" data-act="lore">${GLYPH.book}Bramblewick’s story · ${pages} of ${LORE.length} pages</button></div>` : ''}`;
+    return { head: `<h2>Satchel</h2><p>Your seeds, what you have grown and what you have brewed</p>`, body };
   }
 }

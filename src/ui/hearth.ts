@@ -1,7 +1,7 @@
 /**
  * The Hearth: home, a tall house cut open so you can see into every room. Zoomed out you see the whole
  * house with a sign on each room; tap one to go in. Zoomed in, you tap things to use them: the Barrow
- * door in the cellar (the dungeons), the signpost in the yard (ride out), the armour stand (your gear),
+ * door in the cellar (the dungeons), the planter beds in the yard (the garden), the armour stand (your gear),
  * the big book in the loft (the collection log), the cauldron and the larder. Your hero stands by the
  * fire and your other heroes wait by their beds upstairs. Pets, mounts, trophies and banners go in
  * spots all over the house; Decorate shows the empty ones. One big button, always there: Dungeons.
@@ -21,6 +21,7 @@ import { ART, bitsHtml, heroSprite, placeSprite, spriteBit, tile, type Bit } fro
 import { SFX } from './sound';
 import { Camera } from './camera';
 import { HOUSE_BOUNDS, HOUSE_FIT, houseBack, houseBits, houseDefs, houseFront } from './houseart';
+import { bedLook } from './garden';
 
 /** how big each kind of thing is drawn in a spot, its tap area, and how it moves */
 const SPOT_LOOK: Record<string, { k: number; w: number; h: number; anim: string }> = {
@@ -51,12 +52,12 @@ const TOUR_STEPS: { room: string; thing?: string; at: [number, number]; callout:
   },
   {
     room: 'yard',
-    thing: 'signpost',
-    at: [-270, -290],
-    callout: 'Tap Signpost · Ride Out',
+    thing: 'bed.1',
+    at: [-400, -150],
+    callout: 'Tap a Bed · Plant Seeds',
     step: '2 / 3',
-    title: 'The Vale',
-    sub: 'Gather herbs, brew potions & earn mounts.',
+    title: 'The Garden',
+    sub: 'Dungeons drop seeds. Grow them, brew a party buff.',
     next: 'Next →',
   },
   {
@@ -148,7 +149,7 @@ export class Hearth {
   /** The next time the house is drawn, go to this room (the bunk room after making a hero, say). */
   aim(room: string): void { this.want = room; }
 
-  /** Start (or replay) the 3-step Hearth & Ride tour. */
+  /** Start (or replay) the 3-step Hearth tour. */
   startTour(): void {
     this.decorating = false;
     this.tourStep = 0;
@@ -314,17 +315,17 @@ export class Hearth {
       const h = activeHero(this.app.p);
       if (h) this.hud(h);
     }
-    if (d.thing) { const t = THINGS.find((x) => x.id === d.thing); if (t) this.act(t.action); }
+    if (d.thing) { const t = THINGS.find((x) => x.id === d.thing); if (t) this.act(t.action, t.bed); }
     else if (d.spot) this.app.sheets.open({ kind: 'picker', spot: d.spot });
     else if (d.hero) { if (d.hero === this.app.p.active) this.act('gear'); else this.app.sheets.open({ kind: 'hero', hero: d.hero }); }
     else if (d.new !== undefined) this.app.showCreate();
   }
   /** what a thing in the house opens (the caller plays the click) */
-  private act(a: HouseAction): void {
+  private act(a: HouseAction, bed = 0): void {
     const app = this.app;
     switch (a) {
       case 'dungeons': app.sheets.open({ kind: 'dungeon' }); break;
-      case 'ride': void app.showVale(); break;
+      case 'garden': app.garden.open(bed); break;
       case 'gear': { const h = activeHero(app.p); if (h) app.sheets.open({ kind: 'gear', hero: h.id }); break; }
       case 'logs': app.sheets.open({ kind: 'logs', tab: 'collection' }); break;
       case 'brew': app.showBrew(); break;
@@ -349,13 +350,18 @@ export class Hearth {
   }
 
   private thing(t: ThingDef, h: Hero, extra: Extras): string {
-    const k = t.k ?? 1, a = ART[t.sprite];
+    const k = t.k ?? 1;
+    // a garden bed is drawn as what grows in it
+    const bed = t.action === 'garden' ? bedLook(this.app.p, t.bed ?? 0) : null;
+    const sprite = bed ? bed.sprite : t.sprite, a = ART[sprite];
     if (!a) return '';
     const [vx, vy, w, hh] = a.vb;
     const top = t.y + vy * k;
     let label = '';
-    if (t.id === 'signpost') label = `<text class="sign" x="${t.x + 4 * k}" y="${t.y - 162 * k}" style="font-size: ${Math.round(30 * k)}px">Ride out</text>`;
-    else if (t.action === 'dungeons') label = `<text class="lbl" x="${t.x}" y="${t.y + 44}">Dungeons</text>`;
+    if (bed) {
+      label = `<text class="lbl small" x="${t.x}" y="${t.y + 26}">${esc(bed.label)}</text>`;
+      if (bed.ready) extra.pips.push(pip(t.x + 70, top + 10, '!'));
+    } else if (t.action === 'dungeons') label = `<text class="lbl" x="${t.x}" y="${t.y + 44}">Dungeons</text>`;
     else if (t.action === 'gear') label = `<text class="lbl small" x="${t.x}" y="${t.y + 28}">Gear</text>`;
     else if (t.action === 'logs') label = `<text class="lbl small" x="${t.x}" y="${t.y + 26}">Collection Log</text>`;
     else if (t.action === 'brew') label = `<text class="lbl small" x="${t.x}" y="${t.y + 26}">Brew</text>`;
@@ -363,7 +369,7 @@ export class Hearth {
     if (t.action === 'gear') { const up = waiting(this.app.p, h).length; if (up) extra.pips.push(pip(t.x + 60, top + 20, String(up))); }
     const hl = this.tourStep !== null && TOUR_STEPS[this.tourStep]?.thing === t.id ? ' tour-hl' : '';
     return `<g class="thing a-${t.action}${hl}" data-thing="${t.id}" data-x="${t.x}" data-y="${t.y}" tabindex="0" role="button" aria-label="${esc(t.label)}">
-      ${placeSprite(t.sprite, t.x, t.y, { k })}${label}<rect class="hl" x="${(t.x + vx * k).toFixed(1)}" y="${top.toFixed(1)}" width="${(w * k).toFixed(1)}" height="${(hh * k).toFixed(1)}" rx="16"/></g>`;
+      ${placeSprite(sprite, t.x, t.y, { k })}${bed?.plant ? placeSprite(bed.plant, t.x, t.y - 36 * k, { k: 0.9 * k }) : ''}${label}<rect class="hl" x="${(t.x + vx * k).toFixed(1)}" y="${top.toFixed(1)}" width="${(w * k).toFixed(1)}" height="${(hh * k).toFixed(1)}" rx="16"/></g>`;
   }
 
   private spot(s: HouseSpot, extra: Extras): string {

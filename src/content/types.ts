@@ -63,18 +63,18 @@ export interface CollectibleDef {
   source: string;       // where it comes from, in plain words
   /** mounts: where the rider sits on the sprite, and how big the rider is drawn */
   saddle?: { x: number; y: number; k: number };
-  /** mounts: seconds a ride out takes on it (walking takes FOOT_SECS) */
-  ride?: number;
 }
 
-/* ---------------------------------------------------------------- the Vale: riding out, gathering, brewing */
+/* ---------------------------------------------------------------- the garden: seeds, harvests, brewing */
 export type ToyId = 'snip' | 'pluck';
 /** Something you gather and keep in your satchel. */
 export interface IngredientDef { id: string; name: string; icon: string; desc: string; rare?: boolean }
-/** A gathering spot inside a place: you play its close-up to harvest it. */
+/** What a seed grows into in a garden bed: you play its close-up to harvest it. */
 export interface NodeDef {
   id: string;
   name: string;
+  /** the seed's name */
+  seed: string;
   /** the button word: Snip, Pluck */
   verb: string;
   toy: ToyId;
@@ -83,39 +83,10 @@ export interface NodeDef {
   gives: string;
   /** base yield per harvest, before Perfects */
   yield: [number, number];
-  /** rare drops, each line rolled on its own every harvest */
-  table: DropDef[];
-}
-/** A small job from a villager. find: spot something hidden; shoo: tap them all; deliver: hand over ingredients. */
-export interface ErrandDef {
-  id: string;
-  /** find something hidden, shoo things away, herd things into a pen, or hand over ingredients */
-  kind: 'find' | 'shoo' | 'herd' | 'deliver';
-  title: string;
-  ask: string;
-  thanks: string;
-  /** find: what is hidden; shoo and herd: what to tap */
-  thing?: 'kettle' | 'goggles' | 'crow' | 'spark' | 'goat';
-  target?: number;
-  needs?: Record<string, number>;
-  /** given the first time this errand is done (a mount, a pet): a thank-you, not a roll */
-  gives?: string;
 }
 export interface LorePage { id: string; title: string; text: string }
-/** A place you can ride out to. */
-export interface PlaceDef {
-  id: string;
-  name: string;
-  /** the folk who live there */
-  race: string;
-  blurb: string;
-  villager: { name: string; title: string };
-  nodes: NodeDef[];
-  errands: ErrandDef[];
-  /** rolled once per errand done */
-  errandTable: DropDef[];
-  lore: LorePage[];
-}
+/** A seed line on a boss: rolled on its own for each player at every kill, like any drop. */
+export interface SeedDrop { boss: string; seed: string; rate: number }
 /** A brew: made at the cauldron, drunk before a dungeon run. One bottle is one run. */
 export interface RecipeDef {
   id: string;
@@ -161,6 +132,8 @@ export interface AchievementDef {
   collect?: string;
   /** completes when every slot of this dungeon's collection log is filled */
   log?: string;
+  /** can't be earned any more: kept for whoever has it, hidden from everyone else */
+  retired?: boolean;
 }
 
 export interface BossInfo { id: string; name: string; phases: number; enrage: number; room: number }
@@ -179,6 +152,8 @@ export interface DungeonInfo {
   /** the last boss: its death ends the run */
   finalBoss: string;
   loot: BossLootDef[];
+  /** the seeds its bosses drop for the garden (kept apart from the loot: seeds aren't collection log slots) */
+  seeds?: SeedDrop[];
   marksName: string;
   /** every slot in this dungeon's collection log, in display order */
   collection: string[];

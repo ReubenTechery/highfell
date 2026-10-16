@@ -1,6 +1,6 @@
 /**
  * Settings: sound, where your save lives, the testing switches (the reveal and the lantern's tells, the
- * Vale's free harvests and luck, every house look) and starting over. The sheets wire up its buttons.
+ * garden's instant growth and luck, every house look) and starting over. The sheets wire up its buttons.
  */
 import type { SyncState } from '../core/store';
 import type { Profile } from '../meta/profile';
@@ -21,8 +21,8 @@ export function settingsSheet(p: Profile, st: SyncState, dev: Dev, resetArmed: b
       <div class="actions"><button type="button" class="btn small" data-act="preview" data-v="normal">Normal</button><button type="button" class="btn small" data-act="preview" data-v="unique">Unique</button><button type="button" class="btn small" data-act="preview" data-v="pet">Pet</button><button type="button" class="btn small" data-act="preview" data-v="log">Log complete</button></div>
       <p class="fine">Play the lantern's walkout at the end of practice runs, so you can learn the tells.</p>
       ${seg('walkout', dev.walkout, [['off', 'Off'], ['normal', 'Normal'], ['unique', 'Unique'], ['pet', 'Pet']])}
-      <p class="fine">The Vale: free harvests don’t use up a spot, and lucky makes its rares 50 times likelier. What you get still goes in your save.</p>
-      <div class="seg"><button type="button" class="sg" role="switch" data-act="vfree" aria-checked="${dev.valeFree}">Free harvests</button><button type="button" class="sg" role="switch" data-act="vluck" aria-checked="${dev.valeLuck}">Lucky ×50</button></div>
+      <p class="fine">The garden: instant growth lets you harvest a bed that is still growing, and lucky makes its rares 50 times likelier. What you get still goes in your save.</p>
+      <div class="seg"><button type="button" class="sg" role="switch" data-act="vfree" aria-checked="${dev.valeFree}">Instant growth</button><button type="button" class="sg" role="switch" data-act="vluck" aria-checked="${dev.valeLuck}">Lucky ×50</button></div>
       <p class="fine">Collection log rewards and Heroic: try the house looks, the Risen and Heroic before you earn them. A look you haven't earned shows only while this is on; a hero you make stays.</p>
       <div class="seg"><button type="button" class="sg" role="switch" data-act="allopen" aria-checked="${dev.allOpen}">Everything open</button></div>
       <p class="fine">Onboarding: replay the opening tank prologue or the guided tour of your house.</p>
