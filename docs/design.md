@@ -311,7 +311,7 @@ Each dungeon has 12 achievements that pop mid-run and pay out in looks, titles, 
 | Silver | Big Number | DPS: land a 1,500+ crit | Ice-burst crit effect |
 | Silver | Armour On | Kill Sir Rattlebones while his rally armour is still up | Title: Knight-breaker |
 | Silver | Jailbreak | Tank: mash out of a Gravekeeper cage in under 1.5s | Trophy: Bent Bars |
-| Gold | Gravedigger's Sprint | Clear in under 3 minutes 20 | Title: the Quick |
+| Gold | Gravedigger's Sprint | Clear in under 2 minutes 50 | Title: the Quick |
 | Gold | Flawless Barrow | Clear with no deaths and nobody hit by a hand or a ring | Trophy: Golden Skull |
 | Meta | Master of the Barrow | All 12 above | Title: the Barrow-born + a lantern-ghost pet |
 
