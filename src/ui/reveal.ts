@@ -2,7 +2,8 @@
  * The reveal: the chest after a clear. The lantern beside it repeats the walkout's tell, then the
  * chest opens and the cards come out face down and flip one by one, rarest last. A pet or a mount
  * gets the whole screen, and so does a collection log filled at last: its hero walks out, and what it
- * gave stays on the page with a way to it. Then the numbers: kill counts, time, the log, the garden.
+ * gave stays on the page with a way to it. A new piece for the log gets a moment of its own: its stand
+ * comes up and the piece drops on. Then the numbers: kill counts, time, the log's strip, the garden.
  */
 import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, TITLES } from '../content';
 import type { RaceId } from '../content/folk';
@@ -13,21 +14,19 @@ import type { Rar, RoleId, SlotId } from '../content/types';
 import { takeTrait, trialStarter, type Drop, type RunLoot, type Tell } from '../meta/loot';
 import { activeHero, heroById, roleOf, type Hero, type Profile } from '../meta/profile';
 import { readyBeds, seedTotal } from '../meta/vale';
-import { logProgress } from '../meta/logs';
+import { logAchievement, logProgress, standPieces, standsOf } from '../meta/logs';
 import { PLANTS } from '../content/vale';
 import { itemShare, waiting, worn } from '../meta/gear';
 import type { App } from './app';
 import { actions, esc, fmtN, fmtRate, fmtT, GLYPH, reducedMotion, wait } from './dom';
-import { colourOf, iconOf, nameOf, spriteURL, tile } from './art';
+import { colourOf, iconOf, nameOf, spriteURL, standSvg, tile } from './art';
 import { ROLE_STAT } from './itemsheet';
-import { rewards } from './dungeonsheet';
+import { mainReward, rewards } from './dungeonsheet';
+import { PRIZE_ART, slotTag } from './logbook';
 import { SFX } from './sound';
 import type { RunOpts } from './run';
 
 export interface RevealExtra { unlocked: string[]; hero: string | null; role: RoleId; deaths: number; again: RunOpts | null; preview?: boolean; intro?: boolean }
-
-/** who walks out when a dungeon's whole log is filled: the Barrow's gives the Risen, its heroic log gilds them */
-const LOG_ART: Record<string, string> = { 'barrow.log': 'risen_tank_f', 'barrow-heroic.log': 'risen_tank_gilded_f' };
 
 /** rarest last: regular gear, then table drops from most to least common */
 const order = (d: Drop): number => (d.source === 'regular' ? 0 : d.source === 'spare' ? 1 : 2 + (1 - (d.rate || 0)) * 1000);
@@ -55,6 +54,7 @@ export class Reveal {
       moment: () => this.closeMoment(),
       makerace: (el) => { SFX.play('ui'); this.goHome(); this.app.showCreate(undefined, el.dataset.race as RaceId); },
       putlook: () => { SFX.play('ui'); this.goHome(); this.app.sheets.open({ kind: 'looks' }); },
+      tolog: (el) => { SFX.play('ui'); this.goHome(); this.app.sheets.open({ kind: 'logs', tab: 'collection', entry: el.dataset.id }); },
     });
   }
 
@@ -130,6 +130,7 @@ export class Reveal {
       if (c && (c.kind === 'pet' || c.kind === 'mount') && !this.skipping) await this.moment(d);
       this.flip(i);
       if (!this.skipping) await this.pause(big ? 750 : 380);
+      if (big && d.isNew && !this.skipping && !(c && (c.kind === 'pet' || c.kind === 'mount')) && this.inLog(d.id)) await this.slotMoment(d);
     }
     // a whole collection log filled: the biggest moment of all
     for (const id of this.extra?.unlocked || []) if (ACHIEVEMENTS[id]?.log && !this.skipping) await this.logMoment(id);
@@ -147,7 +148,7 @@ export class Reveal {
       el.setAttribute('role', 'dialog');
       el.setAttribute('aria-label', a.name);
       el.innerHTML = `<span class="rays"></span><div class="bm"><p class="eyebrow">${esc(dg?.name || '')} · collection log complete</p>
-        ${LOG_ART[id] ? `<img src="${spriteURL(LOG_ART[id])}" alt="">` : ''}<h2>${esc(a.name)}</h2>
+        ${PRIZE_ART[id] ? `<img src="${spriteURL(PRIZE_ART[id])}" alt="">` : ''}<h2>${esc(a.name)}</h2>
         <p>${esc(a.reward.text)}.</p><p style="opacity: 0.7">Tap to carry on</p></div>`;
       this.root.appendChild(el);
       SFX.play('petfound');
@@ -241,6 +242,55 @@ export class Reveal {
       el.focus?.();
     });
   }
+  /** a piece the log didn't have: its stand comes up and the piece drops on (a trophy or a dye stands on its
+   *  own), with what it is, the kill count it came at, whether it finished a set, and the log ticking up */
+  private slotMoment(d: Drop): Promise<void> {
+    const loot = this.loot!, p = this.app.p, dg = DUNGEONS[loot.dungeon] || BARROW, t = slotTag(d.id), c = COLLECTIBLES[d.id];
+    const stand = standsOf(dg.id).find((s) => standPieces(s).includes(d.id));
+    const on = (id: string): boolean => id === d.id || !!p.collection[id];
+    const art = stand ? standSvg(standPieces(stand), on, { drop: d.id }) : c?.sprite ? `<img src="${spriteURL(c.sprite)}" alt="">` : `<span class="tile">${iconOf(d.id)}</span>`;
+    const done = !!stand && standPieces(stand).every(on);
+    const { before, after, need } = this.logTick(d.id);
+    return new Promise((res) => {
+      const el = document.createElement('div');
+      el.className = 'big-moment gold slot-moment';
+      el.setAttribute('data-act', 'moment');
+      el.setAttribute('role', 'dialog');
+      el.setAttribute('aria-label', `New in your collection log: ${nameOf(d.id)}`);
+      el.innerHTML = `<span class="rays"></span><div class="bm"><p class="eyebrow">New in your collection log</p>
+        <div class="sm-art${stand ? '' : ' loose'}">${art}</div><h2>${esc(nameOf(d.id))}</h2>
+        <p class="sm-meta"><i class="sm-rar${t.pale ? ' pale' : ''}" style="--rc: ${t.bg}">${esc(t.word)}</i>${esc(fmtRate(d.rate))} · kill count ${fmtN(d.kc || 0)}</p>
+        ${done && stand ? `<p class="sm-done">${GLYPH.check}${esc(stand.set.name)} set done · ${standPieces(stand).length} of ${standPieces(stand).length}</p>` : stand ? `<p class="sm-set">${esc(stand.set.name)} · ${standPieces(stand).filter(on).length} of ${standPieces(stand).length}</p>` : ''}
+        ${need ? this.stripHtml(dg.id, before, after, need, '') : ''}<p style="opacity: 0.7">Tap to carry on</p></div>`;
+      this.root.appendChild(el);
+      SFX.play('rare');
+      this.momentDone = () => { el.remove(); this.momentDone = null; res(); };
+      el.focus?.();
+    });
+  }
+  /** is this one of the run's dungeon's log slots */
+  private inLog(id: string): boolean { return (DUNGEONS[this.loot?.dungeon || ''] || BARROW).collection.includes(id); }
+  /** the log's count before and after a new piece (a bonus slot doesn't count), allowing for the others
+   *  that came in the same chest, and for a preview, which adds nothing to the save */
+  private logTick(id: string): { before: number; after: number; need: number; start: number; end: number } {
+    const loot = this.loot!, p = this.app.p, dg = DUNGEONS[loot.dungeon] || BARROW, bonus = dg.bonus || [];
+    const counted = this.cards.filter((x) => x.source === 'table' && x.isNew && dg.collection.includes(x.id) && !bonus.includes(x.id)).map((x) => x.id);
+    const { have, need } = logProgress(p, dg.id);
+    const all = have + (this.extra?.preview ? counted.filter((x) => !p.collection[x]).length : 0);
+    const k = counted.indexOf(id);
+    const start = all - counted.length, before = start + Math.max(0, k);
+    return { before, after: k < 0 ? before : before + 1, need, start, end: all };
+  }
+  /** the log's strip: its name, the count (ticking up when something arrived), a notched bar and its prize */
+  private stripHtml(dungeon: string, before: number, after: number, need: number, news: string): string {
+    const ach = logAchievement(dungeon), main = ach ? mainReward(ach) : null, dg = DUNGEONS[dungeon];
+    const left = need - after;
+    const sub = left > 0 ? `${left} to go${main ? ` for ${main.name.replace(/^The /, 'the ')}` : ''}` : 'Log complete';
+    return `<span class="rv-strip"><span class="rs-lbl">${esc(dg?.name || '')} log<small>${esc(sub)}</small></span>
+      <span class="rs-num">${after > before ? `<s>${before} →</s> ` : ''}${after} / ${need}</span>
+      <span class="lb-bar${after >= need ? ' done' : ''}" style="--n: ${Math.max(1, need)}"><i style="width: ${((after / Math.max(1, need)) * 100).toFixed(1)}%"></i></span>
+      ${main ? `<span class="rs-pz" aria-hidden="true">${tile(main.icon)}</span>` : ''}${news ? `<span class="rs-new">${news}</span>` : ''}</span>`;
+  }
   private momentDone: (() => void) | null = null;
   private closeMoment(): void { if (this.momentDone) this.momentDone(); }
 
@@ -249,7 +299,7 @@ export class Reveal {
     const loot = this.loot!, extra = this.extra!, p = this.app.p;
     const dg = DUNGEONS[loot.dungeon] || BARROW;
     const { have: got, need: all } = logProgress(p, dg.id);
-    const newSlots = extra.intro ? 0 : loot.drops.filter((d) => d.source === 'table' && d.isNew).length;
+    const fresh = extra.intro ? [] : this.cards.filter((d) => d.source === 'table' && d.isNew && dg.collection.includes(d.id));
     const kc = Object.entries(loot.kc);
     const h = heroById(p, extra.hero);
     const sum = $('rv-sum', this.root);
@@ -258,20 +308,18 @@ export class Reveal {
       sum.innerHTML = `<h3>This run</h3><div class="rv-grid">
           <div class="kv"><span>Time</span><b>${fmtT(loot.time)}</b><small>${loot.newPb ? 'New best!' : loot.firstClear ? 'First clear!' : `Best ${fmtT(loot.pb)}`}</small></div>
           ${kc.map(([b, n]) => `<div class="kv"><span>${esc(dg.bosses.find((x) => x.id === b)?.name || b)}</span><b>KC ${fmtN(n)}</b></div>`).join('')}
-          <div class="kv"><span>Collection log</span><b>${got} / ${all}</b><small>${newSlots ? `+${newSlots} new` : ''}</small></div>
           <div class="kv"><span>Party deaths</span><b>${extra.deaths}</b></div>
           ${gardenKv(p, loot)}
-        </div>`;
+        </div>${this.logStrip(dg.id, fresh)}`;
     }
     this.renderOffer();
     if (extra.intro) {
       const el = $('rv-log', this.root);
       const ach = ACHIEVEMENTS['barrow.log'];
-      const pct = (got / all * 100).toFixed(1);
       el.hidden = false;
       el.innerHTML = `<h3>Collection Log · ${got} / ${all}</h3>
         <p class="fine"><b>${extra.preview ? 'Cards above are examples.' : 'The gear is yours. The uniques are examples.'}</b> Fill all ${all} slots to unlock (the rarest are a bonus):</p>
-        <div class="dgx-logbar" style="pointer-events: none"><span>Barrow Crypt log</span><b>${got}/${all}</b><i aria-hidden="true"><i style="width: ${pct}%"></i></i><span class="dgx-prize" aria-hidden="true">${tile('c_risen')}</span></div>
+        ${this.stripHtml(dg.id, got, got, all, '')}
         ${ach ? rewards(ach, false) : ''}`;
     }
     // what a filled log gave, with the way to it: make one of the new heroes, put the look up
@@ -293,6 +341,15 @@ export class Reveal {
     if (gb && up) { gb.classList.add('gold', 'has-up'); gb.innerHTML = `Gear<i class="badge" aria-hidden="true">${up}</i>`; }
     $('rv-actions', this.root).hidden = false;
     (this.root.querySelector('#rv-actions .btn') as HTMLElement | null)?.focus({ preventScroll: true });
+  }
+  /** the summary's log strip: the count ticking up by what this chest added, what it was, and a tap through
+   *  to the log, on the set of the newest piece */
+  private logStrip(dungeon: string, fresh: Drop[]): string {
+    const last = fresh[fresh.length - 1], { start, end, need } = this.logTick('');
+    const stand = last && standsOf(dungeon).find((s) => standPieces(s).includes(last.id));
+    const done = !!stand && standPieces(stand).every((id) => id === last!.id || !!this.app.p.collection[id]);
+    const news = fresh.length ? `+${fresh.length} new: <b>${fresh.map((d) => esc(nameOf(d.id))).join(', ')}</b>${done ? ' · set done' : ''}` : '';
+    return `<button type="button" class="rv-logstrip" data-act="tolog" data-id="${esc(stand ? `${dungeon}.set.${stand.set.id}` : `${dungeon}.log`)}" aria-label="Open the collection log">${this.stripHtml(dungeon, start, end, need, news)}</button>`;
   }
   private renderOffer(): void {
     const offer = this.loot?.drops.find((d) => d.offerTrait);
