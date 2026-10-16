@@ -6,6 +6,7 @@
  * floor is at y = 0, so the loft is far up (negative y) and the cellar is below ground. A thing or a
  * spot is placed by its ground point, like every sprite. A new room is a new entry here plus its art.
  * A look (the tavern, Barrow Hall) is drawn in ui/houseart.ts; what it is and what opens it is here.
+ * Outside, the yard (the garden) is on the left of the house and the paddock (your mounts) on the right.
  */
 import type { CollectibleKind } from './types';
 
@@ -37,11 +38,13 @@ export const ROOMS: RoomDef[] = [
   { id: 'bunks', name: 'Heroes', x: 0, y: -1664, w: 520, h: 484, focus: [270, -1430] },
   { id: 'armory', name: 'Armory', x: 680, y: -1664, w: 520, h: 484, focus: [930, -1430] },
   { id: 'hall', name: 'Hall', x: 0, y: -1144, w: 1200, h: 624, focus: [545, -830] },
-  { id: 'stable', name: 'Stable', x: 0, y: -484, w: 640, h: 484, focus: [250, -230] },
-  { id: 'brewery', name: 'Brewing', x: 664, y: -484, w: 536, h: 484, focus: [930, -230] },
+  { id: 'brewery', name: 'Brewing', x: 0, y: -484, w: 1200, h: 484, focus: [860, -230], sign: [600, -230] },
   { id: 'cellar', name: 'The Barrow', x: 0, y: 36, w: 1200, h: 464, focus: [420, 300] },
   { id: 'yard', name: 'Garden', x: -900, y: -520, w: 872, h: 520, focus: [-400, -210], sign: [-400, -250] },
+  { id: 'paddock', name: 'Paddock', x: 1228, y: -520, w: 1080, h: 520, focus: [1770, -210], sign: [1600, -250] },
 ];
+/** the rooms out in the open, which a look never goes on */
+export const OUTSIDE = ['yard', 'paddock'];
 
 /** the things you tap: each one opens what used to be a button */
 export const THINGS: ThingDef[] = [
@@ -56,11 +59,11 @@ export const THINGS: ThingDef[] = [
 ];
 
 /** Every spot in the house. The order matters: something new goes to the first free spot of its kind.
- *  The first eight are the hearth's original spots, and their ids never change (saves point at them). */
+ *  The first eight are the hearth's original spots, and their ids never change (saves point at them),
+ *  bar the stall (`mount.stall`), gone with the stable: every mount stands in the paddock now. */
 export const HOUSE_SPOTS: HouseSpot[] = [
   { id: 'pet.fire', kind: 'pet', label: 'By the fire', room: 'hall', x: 822, y: -556 },
   { id: 'pet.rug', kind: 'pet', label: 'On the rug', room: 'hall', x: 690, y: -538, flip: true },
-  { id: 'mount.stall', kind: 'mount', label: 'The stall', room: 'stable', x: 420, y: -24 },
   { id: 'mantel.1', kind: 'trophy', label: 'Mantel, far left', room: 'hall', x: 463, y: -835 },
   { id: 'mantel.2', kind: 'trophy', label: 'Mantel, left', room: 'hall', x: 536, y: -835 },
   { id: 'mantel.3', kind: 'trophy', label: 'Mantel, right', room: 'hall', x: 664, y: -835 },
@@ -76,8 +79,16 @@ export const HOUSE_SPOTS: HouseSpot[] = [
   { id: 'banner.armory', kind: 'banner', label: 'The armory wall', room: 'armory', x: 930, y: -1640 },
   { id: 'flag.l', kind: 'banner', label: 'Roof, left flag', room: 'loft', x: -70, y: -2372 },
   { id: 'flag.r', kind: 'banner', label: 'Roof, right flag', room: 'loft', x: 1270, y: -2372 },
-  { id: 'mount.yard', kind: 'mount', label: 'The garden', room: 'yard', x: -810, y: -4 },
 ];
+
+/** The paddock's field, between its fences, and where each mount in the game stands in it: one place
+ *  each, in the order the game lists them, zig-zagging between the front of the field and the back so
+ *  they can stand close. A mount you own wanders a little either side of its place. */
+export const PADDOCK = { x0: 1300, x1: 2240, back: -92, front: 0, wander: 34 };
+export function paddockSlots(n: number): { x: number; y: number; k: number }[] {
+  const step = (PADDOCK.x1 - PADDOCK.x0) / Math.max(1, n);
+  return Array.from({ length: n }, (_, i) => ({ x: PADDOCK.x0 + step * (i + 0.5), y: i % 2 ? PADDOCK.front - 56 : PADDOCK.front, k: i % 2 ? 0.94 : 1.04 }));
+}
 
 /** two shelves of four trophies on one side of the loft, the lower shelf first */
 function shelf(xs: number[], n0: number): HouseSpot[] {
@@ -100,7 +111,7 @@ export const LOOKS: LookDef[] = [
 ];
 export const DEFAULT_LOOK = 'tavern';
 /** the rooms a look can go on: every room inside the house */
-export const LOOK_ROOMS: string[] = ROOMS.filter((r) => r.id !== 'yard').map((r) => r.id);
+export const LOOK_ROOMS: string[] = ROOMS.filter((r) => !OUTSIDE.includes(r.id)).map((r) => r.id);
 
 /** where your other heroes stand in the bunk room, by their beds */
 export const BUNK_SLOTS: [number, number][] = [[64, -1196], [164, -1192], [264, -1196], [364, -1192], [462, -1196]];

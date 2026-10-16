@@ -181,8 +181,8 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
     const body = `${strip}<div class="dgx preview-dg">
       <div class="dgx-side">
         <div class="dgx-art">${banner(false, meta.id)}
-          <div class="dgx-tier-badge"><span>Tier ${meta.roman} · Recommended ilvl <b>${meta.recIlvl}</b> · Drops Epic ilvl <b>${meta.dropsIlvl}</b></span></div>
-          <div class="dgx-name"><h3>${esc(meta.name)}</h3><span class="dg-stats"><span>Bosses <b>${esc(meta.bossNames[0])} &amp; ${esc(meta.bossNames[1])}</b></span></span></div>
+          <div class="dgx-name"><div class="dgx-tier-badge"><span>Tier ${meta.roman} · Recommended ilvl <b>${meta.recIlvl}</b> · Drops Epic ilvl <b>${meta.dropsIlvl}</b></span></div>
+            <h3>${esc(meta.name)}</h3><span class="dg-stats"><span>Bosses <b>${esc(meta.bossNames[0])} &amp; ${esc(meta.bossNames[1])}</b></span></span></div>
         </div>
         <p class="fine dgx-blurb">${esc(meta.blurb)}</p>
         <section class="dgx-log">
@@ -231,8 +231,8 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
   const body = `${strip}<div class="dgx${pick.heroic ? ' heroic' : ''}">
     <div class="dgx-side">
       <div class="dgx-art">${banner(pick.heroic, base.id)}${diff}
-        <div class="dgx-tier-badge"><span>Tier ${meta.roman} · Rec. ilvl <b>${recIlvl}</b> · Drops up to <b>ilvl ${dropsIlvl}${pick.heroic ? ' (Gilded)' : ''}</b></span></div>
-        <div class="dgx-name"><h3>${esc(base.name)}${pick.heroic ? ' <em class="dgx-h">Heroic</em>' : ''}</h3><span class="dg-stats"><span>Clears <b>${rec ? rec.clears : 0}</b></span><span>Best <b>${fmtT(rec?.pb)}</b></span><span>KC <b>${keeper ? keeper.kc : 0}</b></span></span></div>
+        <div class="dgx-name"><div class="dgx-tier-badge"><span>Tier ${meta.roman} · Rec. ilvl <b>${recIlvl}</b> · Drops up to <b>ilvl ${dropsIlvl}${pick.heroic ? ' (Gilded)' : ''}</b></span></div>
+          <h3>${esc(base.name)}${pick.heroic ? ' <em class="dgx-h">Heroic</em>' : ''}</h3><span class="dg-stats"><span>Clears <b>${rec ? rec.clears : 0}</b></span><span>Best <b>${fmtT(rec?.pb)}</b></span><span>KC <b>${keeper ? keeper.kc : 0}</b></span></span></div>
       </div>
       <section class="dgx-log">
         <button type="button" class="dgx-logbar${done ? ' done' : ''}" data-act="logx" aria-expanded="${pick.log}"><span>Collection log</span><b>${got}/${all}</b><i aria-hidden="true"><i style="width: ${((got / all) * 100).toFixed(1)}%"></i></i>${main ? `<span class="dgx-prize${done ? ' got' : ''}" title="${esc(main.name)}" aria-hidden="true">${tile(main.icon)}</span>` : ''}<span class="dgx-more">${pick.log ? 'Hide' : 'Loot'}${pick.log ? GLYPH.up : GLYPH.down}</span></button>

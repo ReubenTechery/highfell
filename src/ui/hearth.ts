@@ -3,16 +3,17 @@
  * house with a sign on each room; tap one to go in. Zoomed in, you tap things to use them: the Barrow
  * door in the cellar (the dungeons), the planter beds in the yard (the garden), the armour stand (your gear),
  * the big book in the loft (the collection log), the cauldron and the larder. Your hero stands by the
- * fire and your other heroes wait by their beds upstairs. Pets, mounts, trophies and banners go in
- * spots all over the house; Decorate shows the empty ones. One big button, always there: Dungeons.
+ * fire and your other heroes wait by their beds upstairs. Pets, trophies and banners go in spots all
+ * over the house; Decorate shows the empty ones. Out in the paddock every mount in the game has its own
+ * place: yours wander about, the rest are shadows; tap one for its card. One big button: Dungeons.
  * The house is drawn in layers the camera moves as one picture: the back (the outside, rooms and
  * furniture) and the front (the lights) are built only when a look changes; between them are what you
  * tap (things, spots, heroes) and the bits that move, each its own small picture (art.ts), and the pips.
  */
 import { COLLECTIBLES } from '../content';
 import { CLASSES, MAX_HEROES, RACES, type ClassId, type RaceId } from '../content/folk';
-import { BUNK_SLOTS, FLOORS, HOUSE_SPOTS, LOOK_ROOMS, ROOMS, THINGS, roomAt, type HouseAction, type HouseSpot, type ThingDef } from '../content/house';
-import { lookOf, ownedOfKind } from '../meta/hearth';
+import { BUNK_SLOTS, FLOORS, HOUSE_SPOTS, LOOK_ROOMS, PADDOCK, ROOMS, THINGS, paddockSlots, roomAt, type HouseAction, type HouseSpot, type ThingDef } from '../content/house';
+import { lookOf, ownedOfKind, paddock } from '../meta/hearth';
 import { loadoutFor, waiting } from '../meta/gear';
 import { activeHero, finishHearthTour, finishSeedTour, needsHearthTour, needsSeedTour, roleOf, type Hero } from '../meta/profile';
 import type { App } from './app';
@@ -26,7 +27,6 @@ import { bedLook } from './garden';
 /** how big each kind of thing is drawn in a spot, its tap area, and how it moves */
 const SPOT_LOOK: Record<string, { k: number; w: number; h: number; anim: string }> = {
   pet: { k: 1.3, w: 100, h: 130, anim: 'bob' },
-  mount: { k: 1.15, w: 240, h: 200, anim: 'breathe' },
   trophy: { k: 1, w: 66, h: 84, anim: '' },
   banner: { k: 1, w: 112, h: 146, anim: 'sway' },
 };
@@ -150,7 +150,7 @@ export class Hearth {
     root.addEventListener('click', (e) => { const t = e.target as Element; if (this.root.contains(t) && !t.closest('.no-cam, [data-act]')) this.tap(e); });
     this.svg.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter' && e.key !== ' ') return;
-      const el = (e.target as Element).closest('[data-thing], [data-spot], [data-hero], [data-new]');
+      const el = (e.target as Element).closest(TAPPABLE);
       if (el) { e.preventDefault(); this.use(el); }
     });
     this.svg.addEventListener('focusin', (e) => {
@@ -299,11 +299,15 @@ export class Hearth {
     const far = this.far(), wasFar = this.root.classList.contains('far');
     if (far !== wasFar) this.root.classList.toggle('far', far);
     if (far || wasFar) {
-      for (const el of this.signs.querySelectorAll<HTMLElement>('.h-sign')) {
+      // a sign by the edge of the screen (the garden's, the paddock's) shifts in so it can be read; the
+      // widths are all read before any sign moves, so the page is laid out once
+      const signs = [...this.signs.querySelectorAll<HTMLElement>('.h-sign')].map((el) => ({ el, hw: el.offsetWidth / 2 + 6 }));
+      for (const { el, hw } of signs) {
         const r = ROOMS.find((x) => x.id === el.dataset.room);
         if (!r) continue;
         const [ax, ay] = r.sign || r.focus;
-        const [sx, sy] = this.cam.toScreen(ax, ay);
+        const [sx0, sy] = this.cam.toScreen(ax, ay);
+        const sx = sx0 < 0 || sx0 > this.cam.w ? sx0 : Math.max(hw, Math.min(this.cam.w - hw, sx0));
         el.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px) translate(-50%, -50%)`;
       }
     }
@@ -324,7 +328,7 @@ export class Hearth {
   /* ---------------------------------------------------------------- what a tap does */
   private tap(e: MouseEvent): void {
     if (this.cam.moved()) return;
-    const el = (e.target as Element).closest('[data-thing], [data-spot], [data-hero], [data-new]');
+    const el = (e.target as Element).closest(TAPPABLE);
     const box = this.root.getBoundingClientRect();
     const px = e.clientX - box.left, py = e.clientY - box.top;
     // from far away, a tap takes you into the room you tapped
@@ -354,6 +358,7 @@ export class Hearth {
     }
     if (d.thing) { const t = THINGS.find((x) => x.id === d.thing); if (t) this.act(t.action, t.bed); }
     else if (d.spot) this.app.sheets.open({ kind: 'picker', spot: d.spot });
+    else if (d.mount) this.app.sheets.open({ kind: 'item', id: d.mount });
     else if (d.hero) { if (d.hero === this.app.p.active) this.act('gear'); else this.app.sheets.open({ kind: 'hero', hero: d.hero }); }
     else if (d.new !== undefined) this.app.showCreate();
   }
@@ -379,7 +384,7 @@ export class Hearth {
     const layer: { y: number; svg: string }[] = [];
     for (const t of THINGS) layer.push({ y: t.y, svg: this.thing(t, h, extra) });
     for (const s of HOUSE_SPOTS) layer.push({ y: spotY(s), svg: this.spot(s, extra) });
-    layer.push(...this.heroes(h, extra));
+    layer.push(...this.heroes(h, extra), ...this.mounts(extra));
     layer.sort((a, b) => a.y - b.y);
     if (Object.keys(p.collection).some((id) => !p.seen[id])) extra.pips.push(pip(600, -1940, '!'));
     return `<defs><radialGradient id="h-hero"><stop offset="0" stop-color="${light}" stop-opacity="0.38"/><stop offset="0.6" stop-color="${light}" stop-opacity="0.12"/><stop offset="1" stop-color="${light}" stop-opacity="0"/></radialGradient></defs>
@@ -418,7 +423,7 @@ export class Hearth {
     let body = '';
     if (def && def.sprite) {
       const anim = this.fresh.has(id!) ? 'new-pop' : look.anim;
-      if (s.kind === 'pet' || s.kind === 'mount') body += `<ellipse cx="${s.x}" cy="${s.y}" rx="${s.kind === 'mount' ? 104 : 38}" ry="${s.kind === 'mount' ? 20 : 10}" style="fill: rgba(18, 12, 28, 0.35)"/>`;
+      if (s.kind === 'pet') body += `<ellipse cx="${s.x}" cy="${s.y}" rx="38" ry="10" style="fill: rgba(18, 12, 28, 0.35)"/>`;
       const bit = anim ? spriteBit(def.sprite, s.x, s.y, { k, cls: anim, flip: !!s.flip }) : null;
       if (bit) extra.bits.push({ y: spotY(s), bit });
       else body += placeSprite(def.sprite, s.x, s.y, { k, flip: !!s.flip });
@@ -427,13 +432,36 @@ export class Hearth {
     } else if (s.kind === 'trophy') {
       body += `<rect class="mark" x="${s.x - 26}" y="${s.y - 58}" width="52" height="56" rx="10"/>` + plus(s.x, s.y - 30);
     } else {
-      const w = s.kind === 'mount' ? 200 : 84;
-      body += `<ellipse class="mark" cx="${s.x}" cy="${s.y - 4}" rx="${w / 2}" ry="${w * 0.16}"/>` + plus(s.x, s.y - (s.kind === 'mount' ? 60 : 40));
+      body += `<ellipse class="mark" cx="${s.x}" cy="${s.y - 4}" rx="42" ry="13"/>` + plus(s.x, s.y - 40);
     }
     const top = s.kind === 'banner' ? s.y : s.y - look.h;
     const cls = def ? 'has' : owns ? 'empty' : 'none';
     const label = def ? `${s.label}: ${def.name}` : `${s.label}: empty`;
     return `<g class="spot k-${s.kind} ${cls}" data-spot="${s.id}" data-x="${s.x}" data-y="${s.y}" tabindex="${def || this.decorating ? 0 : -1}" role="button" aria-label="${esc(label)}">${body}<rect class="hl" x="${s.x - look.w / 2}" y="${top}" width="${look.w}" height="${look.h}" rx="14"/></g>`;
+  }
+
+  /** The paddock: every mount in the game in its own place. Yours wander a little either side of it; one you
+   *  haven't got is its shadow with a "?". Both are drawn as bits (so they sort by where they stand) over a
+   *  tap area that covers where they wander. */
+  private mounts(extra: Extras): { y: number; svg: string }[] {
+    const ms = paddock(this.app.p), at = paddockSlots(ms.length), out: { y: number; svg: string }[] = [];
+    ms.forEach((m, i) => {
+      const c = COLLECTIBLES[m.id], a = c?.sprite ? ART[c.sprite] : null;
+      if (!c?.sprite || !a) return;
+      const { x, y, k } = at[i], [vx, vy, w, h] = a.vb;
+      // the bit is as wide each side of the mount's feet, so it turns round on the spot
+      const half = Math.max(-vx, vx + w) * k + 4, top = y + vy * k - 4, bottom = y + 24 * k;
+      const shadow = `<ellipse cx="${x}" cy="${y}" rx="${f1(92 * k)}" ry="${f1(17 * k)}" style="fill: rgba(18, 12, 28, ${m.owned ? 0.35 : 0.22})"/>`;
+      const body = m.owned ? shadow + placeSprite(c.sprite, x, y, { k })
+        : shadow + placeSprite(c.sprite, x, y, { k, shade: true }) + `<text class="pq" x="${x}" y="${f1(y + (vy + h * 0.62) * k)}">?</text>`;
+      const cls = !m.owned ? 'still' : this.fresh.has(m.id) ? 'new-pop' : `wander w${i % 4}`;
+      extra.bits.push({ y, bit: { box: [x - half, top, half * 2, bottom - top], body, cls } });
+      const reach = half + (m.owned ? PADDOCK.wander : 0);
+      const label = m.owned ? `${c.name}, in your paddock` : 'A mount you haven’t found yet';
+      out.push({ y, svg: `<g class="mount ${m.owned ? 'has' : 'none'}" data-mount="${esc(m.id)}" data-x="${x}" data-y="${y}" tabindex="0" role="button" aria-label="${esc(label)}">
+        <rect class="hl" x="${f1(x - reach)}" y="${f1(top)}" width="${f1(reach * 2)}" height="${f1(bottom - top)}" rx="16"/></g>` });
+    });
+    return out;
   }
 
   /** you by the fire; everyone else by their beds upstairs, and a bed for a new hero */
@@ -513,7 +541,10 @@ export const ilvl = (score: number): string => (Math.round(score * 10) / 10).toS
 const plus = (x: number, y: number): string => `<path class="plus" d="M${x - 10} ${y} H${x + 10} M${x} ${y - 10} V${y + 10}"/>`;
 /** a little red count, like the one on a button, bobbing over what it counts */
 const pip = (x: number, y: number, t: string): Bit => ({ box: [x - 27, y - 27, 54, 54], body: `<circle cx="${x}" cy="${y}" r="24"/><text x="${x}" y="${y + 9}">${esc(t)}</text>`, cls: 'pip' });
-/** where a spot sorts in the layer: pets and mounts by where they stand, the rest at the back */
-const spotY = (s: HouseSpot): number => (s.kind === 'pet' || s.kind === 'mount' ? s.y : -9999);
+/** where a spot sorts in the layer: pets by where they stand, the rest at the back */
+const spotY = (s: HouseSpot): number => (s.kind === 'pet' ? s.y : -9999);
+/** what you can tap in the house */
+const TAPPABLE = '[data-thing], [data-spot], [data-hero], [data-new], [data-mount]';
+const f1 = (n: number): string => (Math.round(n * 10) / 10).toString();
 /** the house, for the zoom-out button */
 const HOUSE_GLYPH = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21 V9 L12 3 L20 9 V21 Z M4 13 H20 M4 17 H20 M12 13 V21" style="fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round"/></svg>';

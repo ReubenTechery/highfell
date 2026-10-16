@@ -1,6 +1,6 @@
 import os as _hf_os
 HF_ROOT = _hf_os.environ.get('HIGHFELL_ROOT') or _hf_os.path.dirname(_hf_os.path.dirname(_hf_os.path.abspath(__file__)))
-# The hearth (home), and everything you collect: pets, the mount, trophies, the banner, the lanterns
+# The hearth (home), and everything you collect: pets, the mount, trophies, the banner, the lanterns, the paddock's props
 # of the walkout. Same locked TV-cartoon style as art_sprites.py: one black line, flat colour,
 # every sprite drawn around its ground point (0, 0).
 # Usage: python3 tools/art_hearth.py -> art/hearth.json, art/collect_icons.json, art/_hearth_preview.html
@@ -306,24 +306,45 @@ def rug():
     sprite('rug', (-184, -52, 368, 104), o)
 
 
-def stall():
-    o = []
-    o.append(s('M-160 -330 H160 V0 H-160 Z', WOOD_D, 4))
-    for x in range(-130, 160, 40):
-        o.append(ln(f'M{x} -326 V-4', '#5A3A22', 3))
-    o.append(s('M-176 -350 H176 V-322 H-176 Z', WOOD, 4))
-    for x in (-160, 160):
-        o.append(s(f'M{x - 14} -330 H{x + 14} V0 H{x - 14} Z', WOOD, 4))
-    # hay
-    o.append(s('M-150 0 C-150 -40 -110 -62 -70 -60 C-40 -70 -10 -64 6 -50 C30 -60 60 -52 70 -30 C90 -34 110 -20 112 0 Z', '#D9B24C', 4))
-    for (x1, y1, x2, y2) in ((-120, -30, -100, -50), (-80, -40, -60, -58), (-30, -36, -14, -56), (30, -28, 46, -46), (80, -18, 92, -32)):
-        o.append(ln(f'M{x1} {y1} L{x2} {y2}', '#B8902E', 2.6))
-    # hook and a hanging lamp
-    o.append(halo(120, -250, 34, '#FFB060', 0.28) + ln('M120 -300 V-282', K, 3.5))
-    o += lantern_parts(120, -282, FLAME, '#FFF3C4', '#5A3A2A', k=0.5)
-    # nameplate
-    o.append(s('M-60 -310 H60 V-282 H-60 Z', '#C9A27A', 3.5))
-    sprite('stall', (-184, -356, 368, 362), o)
+HAY, HAY_D = '#D9B24C', '#B8902E'
+
+
+def paddock_props():
+    """Out in the paddock: a hay bale, and a water trough on legs."""
+    o = [s('M-58 0 C-64 -18 -64 -50 -56 -66 H56 C64 -50 64 -18 58 0 Z', HAY, 4)]
+    o.append(s('M-56 -66 C-40 -74 40 -74 56 -66 C40 -60 -40 -60 -56 -66 Z', '#E6C462', 3.5))
+    for (x1, y1, x2, y2) in ((-44, -50, -30, -40), (-12, -54, 4, -46), (36, -48, 46, -36), (-40, -20, -26, -12), (8, -24, 22, -14), (40, -16, 48, -6)):
+        o.append(ln(f'M{x1} {y1} L{x2} {y2}', HAY_D, 2.6))
+    for x in (-24, 24):
+        o.append(ln(f'M{x} -70 C{x - 3} -46 {x - 3} -22 {x} 0', WOOD_D, 4))
+    for (x1, y1, x2, y2) in ((-34, -68, -40, -82), (-6, -70, -2, -86), (14, -68, 22, -80), (40, -66, 50, -76)):
+        o.append(ln(f'M{x1} {y1} L{x2} {y2}', HAY, 3) )
+    sprite('hay_bale', (-68, -90, 136, 94), o)
+    t = []
+    for x in (-58, 58):
+        t.append(s(f'M{x - 7} -34 L{x - 10} 0 H{x + 4} L{x + 7} -34 Z', WOOD_D, 3.5))
+    t.append(s('M-80 -76 H80 L68 -30 H-68 Z', WOOD, 4))
+    t.append(s('M-76 -78 C-40 -84 40 -84 76 -78 C40 -72 -40 -72 -76 -78 Z', FROST, 3.5))
+    t.append(ln('M-46 -79 C-30 -81 -12 -81 4 -80', FROST_L, 3))
+    t.append(ln('M-74 -56 H74', WOOD_D, 3) + ln('M-50 -76 L-46 -30 M50 -76 L46 -30', '#4A4458', 5))
+    sprite('trough', (-86, -90, 172, 94), t)
+
+
+def workbench():
+    """The brewing room's bench: a mortar and pestle, a bunch of herbs, bottles waiting to be filled."""
+    o = [s('M-96 -70 H96 V-56 H-96 Z', WOOD, 4), s('M-86 -56 H-72 V0 H-86 Z', WOOD_D, 3.5), s('M72 -56 H86 V0 H72 Z', WOOD_D, 3.5)]
+    o.append(s('M-86 -24 H86 V-14 H-86 Z', WOOD_D, 3.5))
+    o.append(s('M-70 -14 C-76 -2 -60 2 -50 0 C-40 2 -26 -2 -32 -14 Z', '#C9A27A', 3) + s('M-28 -14 C-32 -4 -20 0 -12 0 C-4 0 4 -4 0 -14 Z', '#B89068', 3))
+    o.append(s('M-74 -70 C-76 -96 -36 -96 -38 -70 Z', STONE, 3.5) + e(-56, -88, 18, 4, STONE_D, 3))
+    o.append(beam('M-50 -90 L-30 -120', BONE, 5, 3.2))
+    o.append(ln('M-14 -72 L10 -86 M-12 -72 L4 -96 M-8 -72 L18 -92', '#4E8A3E', 3.5))
+    for (x, y, col) in ((10, -88, '#7DBE5C'), (2, -98, '#9BE15D'), (18, -94, '#7DBE5C')):
+        o.append(e(x, y, 7, 4.5, col, 2.6))
+    o.append(s('M-16 -76 H-4 V-70 H-16 Z', RED, 2.4))
+    for (x, col, h) in ((40, '#C9D2DC', 30), (58, GRN, 38), (76, PURP, 26)):
+        o.append(s(f'M{x - 7} -70 V{-70 - h + 10} C{x - 7} {-70 - h + 4} {x - 4} {-70 - h + 2} {x - 4} {-70 - h} H{x + 4} C{x + 4} {-70 - h + 2} {x + 7} {-70 - h + 4} {x + 7} {-70 - h + 10} V-70 Z', col, 3))
+        o.append(s(f'M{x - 5} {-70 - h} H{x + 5} V{-70 - h - 6} H{x - 5} Z', WOOD, 2.4))
+    sprite('workbench', (-100, -126, 200, 130), o)
 
 
 def window():
@@ -563,7 +584,7 @@ def house_props():
 
 
 def build():
-    lanterns(); pets(); hound(); trophies(); fireplace(); fire(); rug(); stall(); window(); door(); furniture(); house_props(); heroic_drops()
+    lanterns(); pets(); hound(); trophies(); fireplace(); fire(); rug(); paddock_props(); workbench(); window(); door(); furniture(); house_props(); heroic_drops()
     return SP
 
 

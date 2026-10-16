@@ -12,8 +12,8 @@ import { SLOT_IDS, gearId } from '../src/content/gear';
 import { INGREDIENTS, RECIPES } from '../src/content/vale';
 import { Achiever, progress } from '../src/meta/achievements';
 import { logProgress, opened } from '../src/meta/logs';
-import { HEARTH_SPOTS, lookOf, lookOpen, lookProgress, place, setLook } from '../src/meta/hearth';
-import { HOUSE_SPOTS, LOOK_ROOMS, ROOMS, THINGS } from '../src/content/house';
+import { HEARTH_SPOTS, MOUNTS, autoPlace, lookOf, lookOpen, lookProgress, paddock, place, setLook, spotOf } from '../src/meta/hearth';
+import { HOUSE_SPOTS, LOOK_ROOMS, OUTSIDE, PADDOCK, ROOMS, THINGS, paddockSlots } from '../src/content/house';
 import { groupOf, heroesFor, partyProblem, pickRole, seats, seatsFor } from '../src/meta/party';
 import { lootFor } from '../src/meta/loot';
 import type { GameEvent, RunSummary } from '../src/content/types';
@@ -357,20 +357,60 @@ test('hearth: spots only take their own kind, and only what you own', () => {
   const p = freshProfile();
   assert.equal(place(p, 'pet.fire', 'pet.pint_gravekeeper'), false);
   p.collection['pet.pint_gravekeeper'] = { n: 1, kc: 1, at: 1 };
-  assert.equal(place(p, 'mount.stall', 'pet.pint_gravekeeper'), false);
+  assert.equal(place(p, 'mantel.1', 'pet.pint_gravekeeper'), false);
+  assert.equal(place(p, 'mount.stall', 'pet.pint_gravekeeper'), false, 'the old stall is no spot any more');
   assert.equal(place(p, 'pet.fire', 'pet.pint_gravekeeper'), true);
   assert.equal(place(p, 'pet.rug', 'pet.pint_gravekeeper'), true);
   assert.equal(p.hearth.spots['pet.fire'], null, 'moving it frees the old spot');
-  assert.ok(HEARTH_SPOTS.every((s) => ['pet', 'mount', 'trophy', 'banner'].includes(s.kind)));
+  assert.ok(HEARTH_SPOTS.every((s) => ['pet', 'trophy', 'banner'].includes(s.kind)));
   assert.ok(COLLECTIBLES['mount.gravehound']);
 });
 
-test('house: the hearth’s first eight spots keep their ids, and every id is unique', () => {
+test('house: the hearth’s first eight spots keep their ids (bar the retired stall), and every id is unique', () => {
   const ids = HEARTH_SPOTS.map((s) => s.id);
-  for (const id of ['pet.fire', 'pet.rug', 'mount.stall', 'mantel.1', 'mantel.2', 'mantel.3', 'mantel.4', 'banner.wall']) assert.ok(ids.includes(id), id);
+  for (const id of ['pet.fire', 'pet.rug', 'mantel.1', 'mantel.2', 'mantel.3', 'mantel.4', 'banner.wall']) assert.ok(ids.includes(id), id);
+  assert.ok(!ids.includes('mount.stall'), 'mounts stand in the paddock now, not a stall');
   assert.equal(new Set(ids).size, ids.length);
   assert.ok(HEARTH_SPOTS.length >= 30, 'room for trophies everywhere');
-  for (const k of ['pet', 'mount', 'trophy', 'banner']) assert.ok(HEARTH_SPOTS.some((s) => s.kind === k), k);
+  for (const k of ['pet', 'trophy', 'banner']) assert.ok(HEARTH_SPOTS.some((s) => s.kind === k), k);
+});
+
+test('paddock: one place for every mount in the game; yours stand there, the rest are shadows', () => {
+  const mounts = Object.values(COLLECTIBLES).filter((c) => c.kind === 'mount').map((c) => c.id);
+  assert.deepEqual(MOUNTS, mounts);
+  assert.ok(mounts.includes('mount.goat') && mounts.includes('mount.gravehound'));
+  assert.ok(!HEARTH_SPOTS.some((s) => s.kind === 'mount'), 'no mount is on show anywhere else, so none is in two places');
+  const p = freshProfile();
+  assert.ok(paddock(p).every((m) => !m.owned), 'a new save has a paddock of shadows');
+  p.collection['mount.gravehound'] = { n: 1, kc: 612, at: 1 };
+  assert.deepEqual(paddock(p).filter((m) => m.owned).map((m) => m.id), ['mount.gravehound']);
+  assert.equal(autoPlace(p, 'mount.gravehound'), null, 'a new mount needs no spot: it is in the paddock');
+  // every place is in the field and inside the paddock, and they are spread out along it
+  const room = ROOMS.find((r) => r.id === 'paddock')!;
+  assert.ok(OUTSIDE.includes('paddock') && !LOOK_ROOMS.includes('paddock'));
+  for (const n of [1, mounts.length, 9]) {
+    const at = paddockSlots(n);
+    assert.equal(at.length, n);
+    for (const s of at) {
+      assert.ok(s.x - PADDOCK.wander >= PADDOCK.x0 - 60 && s.x + PADDOCK.wander <= PADDOCK.x1 + 60, `x ${s.x}`);
+      assert.ok(s.x > room.x && s.x < room.x + room.w && s.y <= 0 && s.y > PADDOCK.back, `in the field ${s.x} ${s.y}`);
+    }
+    assert.equal(new Set(at.map((s) => s.x)).size, n, 'no two in the same place');
+  }
+});
+
+test('paddock: a mount in the old stall or the garden moves to the paddock, and nothing is lost', () => {
+  const p = freshProfile();
+  p.v = 8;
+  p.collection['mount.goat'] = { n: 1, kc: 1, at: 1 };
+  p.collection['mount.gravehound'] = { n: 2, kc: 612, at: 2 };
+  p.hearth.spots = { 'mount.stall': 'mount.goat', 'mount.yard': 'mount.gravehound', 'pet.fire': null };
+  const q = migrate(JSON.parse(JSON.stringify(p)));
+  assert.deepEqual(paddock(q).filter((m) => m.owned).map((m) => m.id).sort(), ['mount.goat', 'mount.gravehound']);
+  assert.deepEqual(q.collection['mount.gravehound'], { n: 2, kc: 612, at: 2 }, 'its kill count is kept for its card');
+  assert.equal(q.hearth.spots['mount.stall'], 'mount.goat', 'the save keeps what it had');
+  assert.equal(spotOf(q, 'mount.goat'), null, 'but the old stall is not a spot in the house');
+  assert.deepEqual(migrate(JSON.parse(JSON.stringify(q))).hearth.spots, q.hearth.spots, 'loading again changes nothing');
 });
 
 test('house: every thing does something, everything is in a room, and the Barrow door is there', () => {
@@ -380,6 +420,7 @@ test('house: every thing does something, everything is in a room, and the Barrow
     assert.ok(ROOMS.some((r) => r.id === t.room), t.id);
   }
   for (const s of HOUSE_SPOTS) assert.ok(ROOMS.some((r) => r.id === s.room), s.id);
+  assert.ok(!ROOMS.some((r) => r.id === 'stable'), 'the stable is gone: mounts live out in the paddock');
   assert.equal(new Set(THINGS.map((t) => t.id)).size, THINGS.length);
   for (const a of actions) assert.ok(THINGS.some((t) => t.action === a), `something in the house does ${a}`);
 });
@@ -640,7 +681,7 @@ test('art: every icon and sprite the content names exists', async () => {
     if (!tiles[c.icon]) missing.push('icon ' + c.icon + ' for ' + c.id);
     if (c.sprite && !sprites[c.sprite]) missing.push('sprite ' + c.sprite + ' for ' + c.id);
   }
-  for (const n of ['lantern', 'lantern_gold', 'lantern_out', 'pet_keeper', 'pet_keeper_reach', 'fireplace', 'fire_a', 'fire_b', 'rug', 'stall']) if (!sprites[n]) missing.push('sprite ' + n);
+  for (const n of ['lantern', 'lantern_gold', 'lantern_out', 'pet_keeper', 'pet_keeper_reach', 'fireplace', 'fire_a', 'fire_b', 'rug', 'hay_bale', 'trough', 'workbench']) if (!sprites[n]) missing.push('sprite ' + n);
   for (const t of THINGS) if (!sprites[t.sprite]) missing.push('sprite ' + t.sprite + ' for ' + t.id);
   for (const n of ['bunk_a', 'bunk_b', 'bunk_c', 'bricked_arch', 'weapon_rack', 'table', 'stool', 'woodpile', 'torch', 'candles', 'skullpile', 'gfire_a', 'gfire_b', 'coffin', 'tomb1', 'bones', 'wisp']) if (!sprites[n]) missing.push('sprite ' + n);
   // every hero a race and class can be drawn as (male and female), front and back, and gilded for the Risen

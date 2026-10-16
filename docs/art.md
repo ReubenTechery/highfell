@@ -73,7 +73,7 @@ New colours are fine when a thing needs one; keep them flat and in this family (
 | `tools/art_heroes.py`, `tools/art_heads.py` | the heroes, front and back (the Risen too, gilded as well); their faces and the backs of their heads | `art/sprites.json` (through `art_sprites.py`) |
 | `tools/art_sprites.py` | mobs, bosses, dungeon props, effects, and `gild()`; builds the heroes in with them | `art/sprites.json` |
 | `tools/art_icons.py` | ability icons | `art/icons.json` |
-| `tools/art_hearth.py` | the house's props (the lectern, armour stand, weapon rack, larder, bunks, signpost, the Barrow door, bricked arches), the fireplace and furniture, pets, mounts, trophies, banners, lanterns, collectible icons | `art/hearth.json`, `art/collect_icons.json` |
+| `tools/art_hearth.py` | the house's props (the lectern, armour stand, weapon rack, larder, bunks, signpost, the Barrow door, bricked arches, the brewing bench, the paddock's hay and trough), the fireplace and furniture, pets, mounts, trophies, banners, lanterns, collectible icons | `art/hearth.json`, `art/collect_icons.json` |
 | `tools/art_vale.py` | the Vale: places, villagers, plants, Vale pets and mounts, ingredient and brew icons | `art/vale.json`, `art/vale_icons.json` |
 | `src/ui/valeart.ts`, `src/ui/houseart.ts`, `src/ui/toys.ts` | scenery, the house's rooms in each look (the tavern, Barrow Hall) and its roof, and close-ups, drawn live in the page, same rules | (in the page) |
 
