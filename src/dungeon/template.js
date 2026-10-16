@@ -1,5 +1,8 @@
-/* ---------- Dungeon Template Engine: declarative map builder, visual themes, and set-piece script builders ---------- */
-import { TAU, clamp, dist, distXY } from '../core/math';
+/* ---------- the dungeon template: themes, the layout builder, the Heroic seal and the run script ----------
+   A new dungeon is data plus a few hooks (see src/content/_template/README.md): its layout goes through
+   buildDungeonMap (layout.js), its bosses are built from the shared moves (moves.js), and its run script comes
+   from makeDungeonScript below: gates, starts from a boss, pulls, the chest. */
+import { clamp, dist, distXY } from '../core/math';
 import { pick } from '../core/rng';
 import { HOOKS, S } from './state.js';
 import { aggro, banner, dots, fx, fxText, killMob, sfx } from './entities.js';
@@ -51,60 +54,8 @@ export const DUNGEON_THEMES = {
   },
 };
 
-/**
- * Declarative 6-room vertical dungeon map builder.
- * Automatically links rooms bottom-to-top with corridors, builds the walk chain, checkpoints,
- * and provides clean dressing helpers (`prop`, `decal`, `wall`, `pillars`, `ring`).
- */
-export function buildDungeonMap(cfg) {
-  const W = cfg.width || 1000, H = cfg.height || 5800, CX = cfg.cx || 500, OV = cfg.overlap || 70;
-  const corrX0 = cfg.corridorX ? cfg.corridorX[0] : 420;
-  const corrX1 = cfg.corridorX ? cfg.corridorX[1] : 580;
-
-  const MAP = { W, H, CX, OV, theme: cfg.theme || 'barrow', rooms: cfg.rooms.map((r) => ({ ...r })), corridors: [], chain: [], walk: [], arena: { ...cfg.arena } };
-
-  for (let i = 0; i < MAP.rooms.length - 1; i++) {
-    const lo = MAP.rooms[i], hi = MAP.rooms[i + 1];
-    MAP.corridors.push({ id: 'c' + i, x0: corrX0, x1: corrX1, y0: hi.y1, y1: lo.y0 });
-  }
-  MAP.rooms.forEach((r, i) => {
-    MAP.chain.push({ ...r, kind: 'room', idx: i });
-    if (MAP.corridors[i]) MAP.chain.push({ ...MAP.corridors[i], kind: 'corridor', idx: i });
-  });
-  MAP.chain.forEach((a, i) => { a.ci = i; });
-  MAP.walk = MAP.chain.map((a) => (a.kind === 'room' ? { x0: a.x0, y0: a.y0, x1: a.x1, y1: a.y1, ci: a.ci } : { x0: a.x0, y0: a.y0 - MAP.OV, x1: a.x1, y1: a.y1 + MAP.OV, ci: a.ci }));
-
-  const GATES = JSON.parse(JSON.stringify(cfg.gates || {
-    g3b: { x0: corrX0, x1: corrX1, y: MAP.rooms[3]?.y1 || 3180, closed: false },
-    g3t: { x0: corrX0, x1: corrX1, y: MAP.rooms[3]?.y0 || 2460, closed: true, north: true },
-    g5: { x0: corrX0, x1: corrX1, y: MAP.rooms[5]?.y1 || 1180, closed: false },
-  }));
-
-  const PROPS = [];
-  const DECALS = [];
-  const WALLDECOR = [];
-  const api = {
-    MAP,
-    prop(sp, x, y, col, sc) { PROPS.push({ sp, x, y, col: col || null, sc: sc || 1, id: 'p' + PROPS.length }); },
-    decal(sp, x, y, sc, rot) { DECALS.push({ sp, x, y, sc: sc || 1, rot: rot || 0 }); },
-    wall(sp, x, roomIdx) { WALLDECOR.push([sp, x, roomIdx]); },
-    pillars(sp, pts, r = 26) { for (const [x, y] of pts) api.prop(sp, x, y, ['c', r]); },
-    ring(count, rx, ry, fn) {
-      const A = MAP.arena;
-      for (let k = 0; k < count; k++) {
-        const a = (k / count) * TAU + 0.12;
-        const x = Math.round(A.x + Math.cos(a) * rx), y = Math.round(A.y + Math.sin(a) * ry);
-        fn(k, x, y, a);
-      }
-    },
-  };
-  if (cfg.dress) cfg.dress(api);
-
-  const CHECKPOINTS = cfg.checkpoints || MAP.rooms.map((r, i) => ({ room: i, x: CX, y: i === 0 ? r.y1 - 160 : i === 3 ? r.y1 + 150 : i === 5 ? r.y1 + 140 : r.y1 - 70 }));
-  const floorArt = cfg.floorArt || (() => {});
-
-  return { MAP, GATES, PROPS, DECALS, WALLDECOR, CHECKPOINTS, floorArt };
-}
+/* the layout builder lives in layout.js; dungeons import it from here too */
+export { buildDungeonMap } from './layout.js';
 
 /**
  * 10 standard 3-seat floor rune / spore-pad / starlight formation patterns.
@@ -146,8 +97,14 @@ export function makeSealTrial(cfg = {}) {
 }
 
 /**
- * Builds the complete dungeon script (`STARTS`, `setup`, `onBossPulled`, `onBossDead`, `triggers`, `onAmbush`, `onRespawn`)
- * from a declarative config so new dungeons don't duplicate boilerplate.
+ * The run script (`STARTS`, `setup`, `onBossPulled`, `onBossDead`, `triggers`, `onAmbush`, `onRespawn`) from
+ * a config, so a new dungeon doesn't copy it:
+ *   miniBoss, finalBoss  { id, name, room, gateIn, gateOut (the mini boss's way on), victoryText, chestX/Y (the
+ *                        final one's chest) }. A boss's pull brings everyone through its gateIn door (Barrow
+ *                        still gives the old `pullY`).
+ *   seal                 optional, and only ever on Heroic: the three-seat puzzle after pack `afterPack`.
+ *   ambush               optional: pack `packId` bursts out of props (`propClosed` to `propOpen`) once a hero
+ *                        passes `triggerY` in `room` after pack `afterPack` is down (Barrow's coffins).
  */
 export function makeDungeonScript(cfg) {
   const mini = cfg.miniBoss;
@@ -155,6 +112,7 @@ export function makeDungeonScript(cfg) {
   const amb = cfg.ambush;
   const sealCfg = cfg.seal;
   const MAP = cfg.map;
+  const packOf = (boss) => S.packs.find((p) => p.def.boss === boss);
 
   const STARTS = [
     { id: 'entrance', name: cfg.entranceName || 'The entrance' },
@@ -163,9 +121,11 @@ export function makeDungeonScript(cfg) {
   ];
 
   function setup(start) {
-    if (sealCfg && (!sealCfg.heroicOnly || (S.opts && S.opts.heroic))) S.seal = makeSealTrial(sealCfg);
+    // the seal is a Heroic-only hook: Normal never gets a puzzle
+    if (sealCfg && S.opts && S.opts.heroic) S.seal = makeSealTrial(sealCfg);
     if (!start || start === 'entrance') return;
-    const upto = start === 'intro' ? ['A', 'D', 'E', 'G'] : start === mini.id ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'K', 'D', 'E'];
+    // starting at a boss (tests and sims): every pack before his is down (the Crypt Trial, Barrow's, names its own)
+    const upto = start === 'intro' ? ['A', 'D', 'E', 'G'] : packsBefore(start === mini.id ? mini.id : fin.id);
     for (const p of S.packs) {
       if (upto.includes(p.def.id)) {
         p.cleared = true; p.pulled = true; p.triggered = true;
@@ -181,21 +141,29 @@ export function makeDungeonScript(cfg) {
     }
     S.cp = start === 'intro' ? 2 : start === mini.id ? (mini.room ?? 3) : (fin.room ?? 5);
   }
+  function packsBefore(boss) {
+    const ids = S.packs.map((p) => p.def.id);
+    return ids.slice(0, Math.max(0, S.packs.findIndex((p) => p.def.boss === boss)));
+  }
 
   function onBossPulled(pack) {
     if (pack.def.boss === mini.id) {
       if (S.gates[mini.gateIn]) S.gates[mini.gateIn].closed = true;
-      pullIn(mini.room ?? 3, mini.pullY ?? 3120);
+      pull(mini, 3, 3120);
     } else {
       if (S.gates[fin.gateIn]) S.gates[fin.gateIn].closed = true;
-      pullIn(fin.room ?? 5, fin.pullY ?? 1120);
+      pull(fin, 5, 1120);
     }
+  }
+  function pull(b, room, y) {
+    if (b.pullY !== undefined || !S.gates[b.gateIn]) pullIn(b.room ?? room, b.pullY ?? y);
+    else pullThrough(S.gates[b.gateIn], b.room ?? room);
   }
 
   function onBossDead(m) {
     if (m.type === mini.id) {
       if (S.gates[mini.gateIn]) S.gates[mini.gateIn].closed = false;
-      S.mobs.forEach((o) => { if (o.alive && o.rally) { o.hp = 1; killMob(o, null); } });
+      S.mobs.forEach((o) => { if (o.alive && (o.rally || o.add === m)) { o.hp = 1; killMob(o, null); } });
       if (S.opts && S.opts.start === 'intro') {
         S.hazards = [];
         const cx = clamp(m.x, 260, 740), cy = clamp(m.y, 2620, 3060);
@@ -214,6 +182,7 @@ export function makeDungeonScript(cfg) {
       S.darkTarget = 0; S.ring = null; S.rings = []; S.hazards = [];
       S.chains.slice().forEach((c) => cutChain(c, null));
       S.mobs.forEach((o) => { if (o.alive && (o.M.wisp || o.cage)) { if (o.cage) breakCage(o, false); else { o.alive = false; o.state = 'dead'; } } });
+      S.mobs.forEach((o) => { if (o.alive && o.add === m) { o.hp = 1; killMob(o, null); } });
       spawnChest(fin.chestX ?? 500, fin.chestY ?? 660, m);
       banner(fin.victoryText || `${fin.name} is defeated!`, 'good', 3.2);
       sfx('fanfare');
@@ -223,7 +192,8 @@ export function makeDungeonScript(cfg) {
   function triggers() {
     const E = S.packs.find((p) => p.def.id === (amb?.packId || 'E'));
     const D = S.packs.find((p) => p.def.id === (amb?.afterPack || 'D'));
-    if (S.seal && !S.seal.done && D && D.cleared) {
+    const sealAfter = sealCfg && sealCfg.afterPack ? S.packs.find((p) => p.def.id === sealCfg.afterPack) : D;
+    if (S.seal && !S.seal.done && sealAfter && sealAfter.cleared) {
       if (E && E.triggered) {
         S.seal.done = true; S.seal.active = false;
       } else if (!S.inCombat) {
@@ -264,7 +234,8 @@ export function makeDungeonScript(cfg) {
         }
       }
     }
-    const G = S.packs.find((p) => p.def.id === 'G');
+    // the final boss wakes when someone steps into his arena
+    const G = packOf(fin.id);
     if (G && !G.cleared && !G.pulled) {
       const k = G.mobs[0];
       if (k && k.alive) {
@@ -292,11 +263,27 @@ export function makeDungeonScript(cfg) {
       S.props.forEach((pr) => { if (pr.room === amb.room && pr.sp === amb.propOpen) pr.sp = amb.propClosed; });
       if (S.seal && !S.seal.cleared) { S.seal.done = false; S.seal.active = true; S.seal.hold = 0; S.seal.t = 0; }
     }
-    const K = S.packs.find((p) => p.def.id === 'K'), G = S.packs.find((p) => p.def.id === 'G');
+    const K = packOf(mini.id), G = packOf(fin.id);
     if (amb) S.props.forEach((pr) => { if (pr.room === (mini.room ?? 3) && pr.sp === amb.propOpen && pr.sc === 1 && K && !K.cleared) pr.sp = amb.propClosed; });
     if (K && !K.cleared && S.gates[mini.gateIn]) S.gates[mini.gateIn].closed = false;
     if (G && !G.cleared && S.gates[fin.gateIn]) S.gates[fin.gateIn].closed = false;
   }
 
   return { STARTS, setup, onBossPulled, onBossDead, triggers, onAmbush, onRespawn };
+}
+
+/* a boss's pull: everyone not already well inside his room comes through the door his gate closes, so nobody
+   is shut out. Works for a door on any side. */
+function pullThrough(g, room) {
+  const across = g.x === undefined; // the gate lies across a north or south door
+  const mx = across ? (g.x0 + g.x1) / 2 : g.x, my = across ? g.y : (g.y0 + g.y1) / 2;
+  const r = S.dg.map.rooms[room];
+  const cx = r.round ? r.x : (r.x0 + r.x1) / 2, cy = r.round ? r.y : (r.y0 + r.y1) / 2;
+  const nx = across ? 0 : Math.sign(cx - mx), ny = across ? Math.sign(cy - my) : 0;
+  for (const h of S.heroes) {
+    if (roomIndexOf(h.x, h.y) === room && (h.x - mx) * nx + (h.y - my) * ny > 70) continue;
+    const side = h.role === 'healer' ? -50 : h.role === 'dps' ? 50 : 0;
+    h.x = mx + nx * 80 + (across ? side : 0); h.y = my + ny * 80 + (across ? 0 : side);
+    h.dodgeT = 0; h.dash = null; h.st.kx = h.st.ky = 0;
+  }
 }

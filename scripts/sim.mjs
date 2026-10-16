@@ -1,7 +1,8 @@
 /**
- * Balance sims: full Barrow Crypt runs with bots in every seat, spread over the machine's cores.
+ * Balance sims: full dungeon runs with bots in every seat, spread over the machine's cores.
  *
- *   npm run sim                      12 seeds per role at Common gear
+ *   npm run sim                      12 seeds per role at Common gear, in Barrow Crypt
+ *   npm run sim -- --dungeon template   another dungeon (by id; the template too)
  *   npm run sim -- --seeds 30        more seeds
  *   npm run sim -- --gear 3          everyone in full Epic (0 Common .. 3 Epic)
  *   npm run sim -- --solo            the solo DPS check (should die at the first pack)
@@ -32,6 +33,7 @@ const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf('--' + k); return i < 0 ? d : args[i + 1] === undefined || args[i + 1].startsWith('--') ? true : args[i + 1]; };
 const seeds = +opt('seeds', 12), gear = +opt('gear', 0), solo = !!opt('solo', false), heroic = !!opt('heroic', false), json = opt('json', null);
 const brew = opt('brew', null);
+const dungeon = opt('dungeon', 'barrow');
 const roles = solo ? ['dps'] : (opt('roles', 'tank,healer,dps') + '').split(',');
 
 fs.mkdirSync(ROOT + '.cache', { recursive: true });
@@ -40,7 +42,7 @@ fs.writeFileSync(ROOT + '.cache/sim-gear.ts', `import { plainLoadout } from '../
 await esbuild.build({ entryPoints: [ROOT + '.cache/sim-gear.ts'], bundle: true, format: 'esm', platform: 'node', outfile: ROOT + '.cache/sim-gear.mjs', logLevel: 'warning' });
 
 const jobs = [];
-for (const role of roles) for (let s = 1; s <= seeds; s++) jobs.push({ role, seed: s * 7919 + (role === 'tank' ? 1 : role === 'healer' ? 2 : 3), solo, heroic, gear, ...(brew ? { brew } : {}) });
+for (const role of roles) for (let s = 1; s <= seeds; s++) jobs.push({ role, seed: s * 7919 + (role === 'tank' ? 1 : role === 'healer' ? 2 : 3), solo, heroic, gear, ...(brew ? { brew } : {}), ...(dungeon !== 'barrow' ? { dungeon } : {}) });
 const n = Math.max(1, Math.min(os.cpus().length, jobs.length));
 const t0 = Date.now();
 const results = await new Promise((done, fail) => {
@@ -57,7 +59,7 @@ const mmss = (t) => { if (t == null) return '  -  '; const r = Math.round(t); re
 const avg = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
 const pct = (a, q) => { const b = [...a].sort((x, y) => x - y); return b[Math.min(b.length - 1, Math.floor(q * b.length))]; };
 
-console.log(`\n${results.length} runs${heroic ? ', heroic' : ''}${brew ? `, brew ${brew}` : ''}, gear ${['Common', 'Uncommon', 'Rare', 'Epic'][gear]}${solo ? ', solo DPS' : ''}, ${((Date.now() - t0) / 1000).toFixed(1)}s\n`);
+console.log(`\n${results.length} runs${dungeon !== 'barrow' ? ' of ' + dungeon : ''}${heroic ? ', heroic' : ''}${brew ? `, brew ${brew}` : ''}, gear ${['Common', 'Uncommon', 'Rare', 'Epic'][gear]}${solo ? ', solo DPS' : ''}, ${((Date.now() - t0) / 1000).toFixed(1)}s\n`);
 if (solo) {
   for (const r of results) console.log(`  seed ${r.seed}: ${r.over} at ${r.t}s, packs cleared ${r.packs.filter((p) => p.cleared).length}`);
 } else {
@@ -67,7 +69,7 @@ if (solo) {
     console.log(`${role.padEnd(7)} clear avg ${mmss(avg(clears))}  p10 ${mmss(pct(clears, 0.1))}  p90 ${mmss(pct(clears, 0.9))}  ` +
       `cleared ${clears.length}/${rs.length}  wipes ${rs.reduce((a, r) => a + r.wipes, 0)}  deaths ${rs.reduce((a, r) => a + r.stats.deaths, 0)}  combat ${Math.round(avg(rs.map((r) => r.combat)))}s`);
   }
-  const ids = ['A', 'B', 'C', 'K', 'D', 'E', 'G'];
+  const ids = dungeon === 'barrow' ? ['A', 'B', 'C', 'K', 'D', 'E', 'G'] : [...new Set(results.flatMap((r) => r.packs.map((p) => p.id)))];
   console.log('\npack     avg    p90   (seconds from pull to last mob down)');
   for (const id of ids) {
     const d = results.flatMap((r) => r.packs.filter((p) => p.id === id && p.cleared != null).map((p) => p.cleared - p.pulled));

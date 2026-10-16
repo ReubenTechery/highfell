@@ -1,78 +1,64 @@
-/* Dungeon Template: 6-room vertical spine using `buildDungeonMap`.
-   Copy `src/content/_template/` to `src/content/<dungeonId>/` and customize room names, theme, and props. */
+/* The template's layout: rooms and the links between them, built by `buildDungeonMap` (src/dungeon/layout.js).
+   Not a line: the way in runs east, the hall turns north, a side room hangs off the crossroads, and the
+   final fight is in a round arena. Give each dungeon its own shape; number the rooms in the order the party
+   meets them (a checkpoint only moves on to a higher number).
+
+          ( 6 the arena, round )
+                    |
+          [ 5 mini boss hall ]         gates: miniIn (shuts behind you at the Warden), miniOut (opens
+                    |                         when he falls), finalIn (shuts behind you at the Sovereign)
+            [ 4 gallery ]
+                    |
+   [ 3 side room ] - [ 2 crossroads ]
+                    |
+   [ 0 way in ] - [ 1 long hall ]                                                                    */
 import { TAU } from '../../core/math';
 import { buildDungeonMap } from '../../dungeon/template.js';
 
 export const { MAP, GATES, PROPS, DECALS, WALLDECOR, CHECKPOINTS, floorArt } = buildDungeonMap({
-  theme: 'thimblebriar', // 'barrow' | 'thimblebriar' | 'moonmere'
-  width: 1000,
-  height: 5800,
-  cx: 500,
+  theme: 'thimblebriar',
+  width: 1460,
+  height: 5100,
   overlap: 70,
-  corridorX: [420, 580],
   rooms: [
-    { id: 'r0', name: 'Entrance Threshold', x0: 330, y0: 5420, x1: 670, y1: 5760, floor: 'stone', wall: 100 },
-    { id: 'r1', name: 'Warm-Up Hall', x0: 160, y0: 4560, x1: 840, y1: 5220, floor: 'stone', wall: 110 },
-    { id: 'r2', name: 'Two-Pack Hall', x0: 100, y0: 3420, x1: 900, y1: 4320, floor: 'stone', wall: 110 },
-    { id: 'r3', name: 'Mini-Boss Sanctum', x0: 160, y0: 2460, x1: 840, y1: 3180, floor: 'tomb', wall: 120 },
-    { id: 'r4', name: 'Trial & Ambush Hall', x0: 120, y0: 1420, x1: 880, y1: 2220, floor: 'stone', wall: 110 },
-    { id: 'r5', name: 'Final Boss Arena', x0: 60, y0: 120, x1: 940, y1: 1180, floor: 'yard', wall: 130 },
+    { id: 'r0', name: 'The Way In', x0: 80, y0: 4600, x1: 420, y1: 4940, floor: 'stone', wall: 100 },
+    { id: 'r1', name: 'Long Hall', x0: 640, y0: 4400, x1: 1240, y1: 5000, floor: 'stone', wall: 110 },
+    { id: 'r2', name: 'Crossroads', x0: 640, y0: 3400, x1: 1240, y1: 4060, floor: 'stone', wall: 110 },
+    { id: 'r3', name: 'Side Room', x0: 100, y0: 3520, x1: 440, y1: 3920, floor: 'tomb', wall: 100 },
+    { id: 'r4', name: 'Gallery', x0: 700, y0: 2620, x1: 1180, y1: 3100, floor: 'stone', wall: 110 },
+    // a boss's checkpoint is outside his door (`cp: 'out'`): after a wipe you gather before you go back in
+    { id: 'r5', name: 'Mini Boss Hall', x0: 640, y0: 1900, x1: 1240, y1: 2460, floor: 'tomb', wall: 120, cp: 'out' },
+    { id: 'r6', name: 'The Arena', round: true, x: 940, y: 1180, r: 420, floor: 'yard', wall: 130, cp: 'out' },
   ],
-  arena: { x: 500, y: 640, r: 430 },
-  gates: {
-    g3b: { x0: 420, x1: 580, y: 3180, closed: false },
-    g3t: { x0: 420, x1: 580, y: 2460, closed: true, north: true },
-    g5: { x0: 420, x1: 580, y: 1180, closed: false },
-  },
-  checkpoints: [
-    { room: 0, x: 500, y: 5600 }, { room: 1, x: 500, y: 5150 }, { room: 2, x: 500, y: 4250 },
-    { room: 3, x: 500, y: 3330 }, { room: 4, x: 500, y: 2150 }, { room: 5, x: 500, y: 1320 },
+  // a link: the door is on `side` of `from` ('n', 's', 'e', 'w'), `at` its middle (x for n and s, y for e and w)
+  links: [
+    { from: 'r0', to: 'r1', side: 'e', at: 4770 },
+    { from: 'r1', to: 'r2', side: 'n', at: 940 },
+    { from: 'r2', to: 'r3', side: 'w', at: 3730 },
+    { from: 'r2', to: 'r4', side: 'n', at: 940 },
+    { from: 'r4', to: 'r5', side: 'n', at: 940, gate: { id: 'miniIn', end: 'to' } },
+    { from: 'r5', to: 'r6', side: 'n', at: 940, gate: [{ id: 'miniOut', end: 'from', closed: true }, { id: 'finalIn', end: 'to' }] },
   ],
-  dress({ prop, decal, wall, pillars, ring, MAP: M }) {
-    // r0 entrance
-    wall('torch', 390, 0); wall('torch', 610, 0);
-    prop('candles', 362, 5452, null); prop('candles', 640, 5452, null);
-    // r1 warm-up hall
-    pillars('pillar', [[250, 4700], [750, 4700], [250, 5080], [750, 5080]]);
-    wall('torch', 270, 1); wall('torch', 730, 1); wall('banner', 380, 1); wall('banner', 620, 1);
-    // r2 two-pack hall
-    pillars('pillar', [[220, 3560], [780, 3560], [220, 4180], [780, 4180]]);
-    wall('torch', 230, 2); wall('torch', 770, 2); wall('banner', 360, 2); wall('banner', 640, 2);
-    // r3 mini-boss sanctum
-    prop('coffin', 500, 2600, ['r', 36, 52, -60], 1.35);
-    for (const [x, y] of [[214, 2690], [214, 2990], [786, 2690], [786, 2990]]) prop('coffin', x, y, ['r', 26, 40, -48]);
-    pillars('pillar', [[250, 3110], [750, 3110]]);
-    wall('torch', 300, 3); wall('torch', 700, 3);
-    // r4 trial & ambush hall (props with `coffin` flip to `coffin_open` when the ambush triggers)
-    for (const [x, y] of [[170, 1600], [170, 1760], [170, 1920], [830, 1600], [830, 1760], [830, 1920]]) prop('coffin', x, y, ['r', 26, 40, -48]);
-    pillars('pillar', [[300, 2120], [700, 2120]]);
-    wall('torch', 260, 4); wall('torch', 740, 4);
-    // r5 final boss arena ring
-    ring(22, M.arena.r + 46, M.arena.r + 34, (k, x, y) => {
-      if (x < 90 || x > 910 || y < 150 || y > 1150) return;
-      if (Math.abs(x - 500) < 110 && y > 1000) return;
-      prop('tomb' + (k % 3), x, y, ['r', 18, 8, -6]);
-    });
-    decal('grave', 500, 240, 1.2, 0);
-    wall('torch', 250, 5); wall('torch', 750, 5);
+  // the dressing is Barrow's props standing in, until the dungeon's own are drawn
+  dress({ prop, wall, pillars }) {
+    wall('torch', 160, 0); wall('torch', 340, 0);
+    prop('candles', 112, 4632, null); prop('candles', 388, 4632, null);
+    pillars('pillar', [[760, 4520], [1120, 4520], [760, 4880], [1120, 4880]]);
+    wall('torch', 760, 1); wall('torch', 1120, 1); wall('banner', 880, 1); wall('banner', 1000, 1);
+    pillars('pillar', [[760, 3520], [1120, 3520], [760, 3940], [1120, 3940]]);
+    wall('torch', 760, 2); wall('torch', 1120, 2); wall('banner', 860, 2); wall('banner', 1020, 2);
+    prop('urn', 130, 3560, ['c', 13]); prop('urn', 130, 3880, ['c', 13]); prop('candles', 400, 3552, null);
+    wall('torch', 180, 3); wall('torch', 360, 3);
+    pillars('pillar', [[780, 2700], [1100, 2700]]);
+    wall('torch', 800, 4); wall('torch', 1080, 4);
+    pillars('pillar', [[720, 2390], [1160, 2390]]);
+    wall('torch', 760, 5); wall('torch', 1120, 5); wall('banner', 880, 5); wall('banner', 1000, 5);
+    wall('torch', 700, 6); wall('torch', 1180, 6); wall('banner', 860, 6); wall('banner', 1020, 6);
   },
-  floorArt(ctx, i, r, ink) {
-    if (i === 0) {
-      for (let k = 0; k < 3; k++) {
-        const y = r.y1 - 66 + k * 22;
-        ctx.fillStyle = ['#5C5070', '#4F4466', '#433A58'][k];
-        ctx.fillRect(r.x0 + 40 + k * 10, y, r.x1 - r.x0 - 80 - k * 20, 22);
-        ctx.strokeStyle = ink; ctx.lineWidth = 3; ctx.strokeRect(r.x0 + 40 + k * 10, y, r.x1 - r.x0 - 80 - k * 20, 22);
-      }
-    } else if (i === 3) {
-      ctx.fillStyle = '#6A4BA3'; ctx.fillRect(452, 2660, 96, 520);
-      ctx.strokeStyle = '#E7B53C'; ctx.lineWidth = 3; ctx.strokeRect(458, 2666, 84, 514);
-      ctx.strokeStyle = ink; ctx.lineWidth = 3; ctx.strokeRect(452, 2660, 96, 520);
-    } else if (i === 5) {
-      const A = MAP.arena;
-      ctx.fillStyle = 'rgba(159, 195, 232, 0.08)'; ctx.beginPath(); ctx.arc(A.x, A.y, 300, 0, TAU); ctx.fill();
-      ctx.strokeStyle = 'rgba(30, 26, 26, 0.35)'; ctx.lineWidth = 4; ctx.setLineDash([18, 16]);
-      ctx.beginPath(); ctx.arc(A.x, A.y, A.r, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+  floorArt(ctx, i, r) {
+    if (r.round) {
+      ctx.strokeStyle = 'rgba(30, 26, 26, 0.3)'; ctx.lineWidth = 4; ctx.setLineDash([18, 16]);
+      ctx.beginPath(); ctx.arc(r.x, r.y, r.r - 70, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
     }
   },
 });

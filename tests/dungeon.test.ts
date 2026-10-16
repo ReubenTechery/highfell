@@ -401,7 +401,7 @@ test('barrow revamp: Crushing Blows on non-tanks, hazard Ward bleed-through, Exp
   assert.ok(h.heroes.find((x: any) => x.role === 'tank').st.surge > 10, 'Crypt Seal grants Crypt Surge to the party');
 });
 
-test('dungeon template: starter _template dungeon builds map, packs, seal, themes, heroic gilded log, and runs in engine', () => {
+test('dungeon template: starter _template dungeon builds map, packs, themes, heroic gilded log, and runs in engine', () => {
   assert.ok(DUNGEON_THEMES.barrow && DUNGEON_THEMES.thimblebriar && DUNGEON_THEMES.moonmere);
   assert.equal(TEMPLATE_DUNGEON.collection.length, 20);
   // its Heroic log: a gilding kit for each of its 16 uniques, and the gilded trophy, mount and pet as bonus slots
@@ -412,8 +412,8 @@ test('dungeon template: starter _template dungeon builds map, packs, seal, theme
   const s = S as any;
   assert.equal(s.dg.id, 'template');
   assert.equal(s.dg.theme.id, 'thimblebriar');
-  assert.equal(s.packs.length, 7);
-  assert.ok(s.seal && s.seal.pads.length === 3);
+  assert.equal(s.packs.length, 6);
+  assert.equal(s.seal, null, 'no seal on Normal');
   step(2.0);
   assert.ok(s.heroes.every((h: any) => h.alive), 'template dungeon ticks cleanly with bots');
 });

@@ -7,7 +7,8 @@ import { BAKE_S, PAT, bakeAll, drawSpr, makePatterns, mkCanvas } from './art.js'
 import { PERFECT_WINDOW, dots } from './entities.js';
 import { drawWalkout, walkoutFocus } from './walkout.js';
 import { CURSE_COL, CURSE_TIME, chainEnds } from './mobs.js';
-import { roomIndexOf } from './world.js';
+import { drawMap } from './mapdraw.js';
+import { areaOf } from './world.js';
 
 /* ---------- drawing: the crypt, everyone in it, and the effects ---------- */
 /** @type {any} */
@@ -41,8 +42,8 @@ export function camTarget() {
   if (wf) { x = lerp(x, wf.x, 0.75); y = lerp(y, wf.y, 0.75); }
   if (S.paused && S.opts && S.opts.start === 'intro' && VIEW.portrait) y += 155;
   VIEW.fx = VIEW.W * (VIEW.portrait && VIEW.W < 700 ? (p.role === 'healer' && S.player === p ? 0.4 : 0.47) : 0.5);
-  const ri = Math.max(0, roomIndexOf(p.x, p.y));
-  const room = S.dg.map.rooms[ri] || S.dg.map.rooms[0];
+  // keep to the room (or corridor) you're in
+  const room = S.dg.map.chain[areaOf(p.x, p.y)];
   const lo = room.x0 - 40 + VIEW.fx / VIEW.scale, hi = room.x1 + 40 - (VIEW.W - VIEW.fx) / VIEW.scale;
   x = lo > hi ? (room.x0 + room.x1) / 2 - (VIEW.fx - VIEW.W / 2) / VIEW.scale : clamp(x, lo, hi);
   return { x, y };
@@ -78,73 +79,6 @@ export function render() {
   drawAim(ctx);
 }
 
-/* ---------- the map ---------- */
-export function drawMap(ctx, v) {
-  const M = S.dg.map;
-  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  for (let i = 0; i < S.dg.map.rooms.length; i++) {
-    const r = M.rooms[i];
-    if (r.y1 + 40 < v.y0 || r.y0 - r.wall - 40 > v.y1) continue;
-    ctx.fillStyle = PAT[r.floor === 'yard' ? 'yard' : r.floor === 'tomb' ? 'tomb' : 'stone'] || '#4A4060';
-    ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0);
-    if (S.dg.floorArt) S.dg.floorArt(ctx, i, r, K);
-  }
-  for (const c of S.dg.map.corridors) {
-    if (c.y1 < v.y0 || c.y0 > v.y1) continue;
-    ctx.fillStyle = PAT.corr || '#453B5A';
-    ctx.fillRect(c.x0, c.y0, c.x1 - c.x0, c.y1 - c.y0);
-  }
-  for (const d of S.dg.decals) { if (d.y < v.y0 || d.y > v.y1 + 100) continue; drawSpr(ctx, d.sp, d.x, d.y, { sx: d.sc, sy: d.sc, rot: d.rot * 0.25 }); }
-  const CAP = PAT.wallCapCol || '#2E2638', T = 30;
-  for (let i = 0; i < S.dg.map.rooms.length; i++) {
-    const r = S.dg.map.rooms[i];
-    if (r.y1 + 40 < v.y0 || r.y0 - r.wall - 60 > v.y1) continue;
-    const up = S.dg.map.corridors[i], down = S.dg.map.corridors[i - 1];
-    const top = r.y0 - r.wall;
-    // contact shadow under the north wall
-    ctx.fillStyle = 'rgba(16, 10, 24, 0.3)';
-    ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 16);
-    // north wall face with the doorway gap
-    ctx.fillStyle = PAT.brick || '#5C5070';
-    const segs = up ? [[r.x0 - T, up.x0], [up.x1, r.x1 + T]] : [[r.x0 - T, r.x1 + T]];
-    for (const [a, b] of segs) ctx.fillRect(a, top, b - a, r.wall);
-    if (up) { ctx.fillStyle = PAT.corr || '#453B5A'; ctx.fillRect(up.x0, top, up.x1 - up.x0, r.wall); }
-    // caps
-    ctx.fillStyle = CAP;
-    ctx.fillRect(r.x0 - T, top - T, r.x1 - r.x0 + 2 * T, T);
-    ctx.fillRect(r.x0 - T, top - T, T, r.y1 - top + 2 * T);
-    ctx.fillRect(r.x1, top - T, T, r.y1 - top + 2 * T);
-    if (down) { ctx.fillRect(r.x0 - T, r.y1, down.x0 - r.x0 + T, T); ctx.fillRect(down.x1, r.y1, r.x1 + T - down.x1, T); }
-    else ctx.fillRect(r.x0 - T, r.y1, r.x1 - r.x0 + 2 * T, T);
-    if (up) { ctx.fillStyle = CAP; ctx.fillRect(up.x0 - 26, top - T, 26, r.wall + T); ctx.fillRect(up.x1, top - T, 26, r.wall + T); }
-    // ink
-    ctx.strokeStyle = K; ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    for (const [a, b] of segs) { ctx.moveTo(a, r.y0); ctx.lineTo(b, r.y0); ctx.moveTo(a, top); ctx.lineTo(b, top); }
-    ctx.moveTo(r.x0, top); ctx.lineTo(r.x0, r.y1); ctx.moveTo(r.x1, top); ctx.lineTo(r.x1, r.y1);
-    if (down) { ctx.moveTo(r.x0, r.y1); ctx.lineTo(down.x0, r.y1); ctx.moveTo(down.x1, r.y1); ctx.lineTo(r.x1, r.y1); }
-    else { ctx.moveTo(r.x0, r.y1); ctx.lineTo(r.x1, r.y1); }
-    if (up) { ctx.moveTo(up.x0, top); ctx.lineTo(up.x0, r.y0); ctx.moveTo(up.x1, top); ctx.lineTo(up.x1, r.y0); }
-    ctx.stroke();
-    for (const w of S.dg.walldecor) {
-      if (w[2] !== i) continue;
-      if (w[0] === 'torch') {
-        const fl = 0.75 + Math.sin(S.t * 9 + w[1]) * 0.12 + Math.sin(S.t * 23 + w[1] * 2) * 0.06;
-        ctx.globalAlpha = 0.16 * fl; ctx.fillStyle = '#FF8A4C';
-        ctx.beginPath(); ctx.arc(w[1], top + r.wall * 0.45, 70, 0, TAU); ctx.fill();
-        ctx.globalAlpha = 1;
-        drawSpr(ctx, 'torch', w[1], top + r.wall * 0.72, { sy: 0.96 + fl * 0.05 });
-      } else drawSpr(ctx, 'banner', w[1], top + 10, {});
-    }
-  }
-  for (const c of S.dg.map.corridors) {
-    if (c.y1 < v.y0 || c.y0 > v.y1) continue;
-    ctx.fillStyle = CAP;
-    ctx.fillRect(c.x0 - 26, c.y0, 26, c.y1 - c.y0); ctx.fillRect(c.x1, c.y0, 26, c.y1 - c.y0);
-    ctx.strokeStyle = K; ctx.lineWidth = 3.5;
-    ctx.beginPath(); ctx.moveTo(c.x0, c.y0); ctx.lineTo(c.x0, c.y1); ctx.moveTo(c.x1, c.y0); ctx.lineTo(c.x1, c.y1); ctx.stroke();
-  }
-}
 /* ---------- ground layer: shadows, telegraphs, zones ---------- */
 export function drawGround(ctx, v) {
   if (S.seal && S.seal.active && !S.seal.done) drawSeal(ctx);
@@ -325,10 +259,8 @@ export function drawFireRing(ctx) {
 export function drawObjects(ctx, v) {
   const list = [];
   for (const p of S.props) if (p.y > v.y0 - 40 && p.y < v.y1 + 220) list.push({ y: p.y, k: 0, o: p });
-  const arches = [];
-  for (let i = 0; i < S.dg.map.corridors.length; i++) { const lo = S.dg.map.rooms[i]; arches.push({ y: lo.y0 + 2, k: 1, o: { x: 500, y: lo.y0 + 2 } }); }
-  for (const a of arches) if (a.y > v.y0 - 40 && a.y < v.y1 + 260) list.push(a);
-  for (const [id, g] of Object.entries(S.gates)) if (g.closed && g.y > v.y0 && g.y < v.y1 + 200) list.push({ y: g.y + 10, k: 2, o: g });
+  for (const a of S.dg.map.arches) if (a.y > v.y0 - 40 && a.y < v.y1 + 260) list.push({ y: a.y, k: 1, o: a });
+  for (const g of Object.values(S.gates)) { const gy = g.x !== undefined ? g.y1 : g.y; if (g.closed && gy > v.y0 && gy < v.y1 + 200) list.push({ y: gy + 10, k: 2, o: g }); }
   for (const h of S.heroes) list.push({ y: h.y, k: 3, o: h });
   for (const m of S.mobs) if (m.y > v.y0 - 60 && m.y < v.y1 + 340) list.push({ y: m.y + (m.cage ? 2 : 0), k: 4, o: m });
   for (const f of S.fx) if (f.type === 'hand') list.push({ y: f.y, k: 5, o: f });
@@ -339,7 +271,7 @@ export function drawObjects(ctx, v) {
     const o = it.o;
     if (it.k === 0) drawSpr(ctx, o.sp, o.x, o.y, { sx: o.sc, sy: o.sc });
     else if (it.k === 1) drawSpr(ctx, 'arch', o.x, o.y, {});
-    else if (it.k === 2) drawSpr(ctx, 'gate', 500, o.y + 8, { sy: o.north ? 1 : 0.55 });
+    else if (it.k === 2) { if (o.x !== undefined) drawSideGate(ctx, o); else drawSpr(ctx, 'gate', (o.x0 + o.x1) / 2, o.y + 8, { sy: o.north ? 1 : 0.55 }); }
     else if (it.k === 3) drawHero(ctx, o);
     else if (it.k === 4) drawMob(ctx, o);
     else if (it.k === 5) { const k = clamp(o.t / 0.15, 0, 1), out = 1 - clamp((o.t - o.dur + 0.3) / 0.3, 0, 1); drawSpr(ctx, 'hand', o.x, o.y, { sy: k * out, alpha: out }); }
@@ -351,6 +283,13 @@ export function drawObjects(ctx, v) {
       drawSpr(ctx, s, o.x, o.y - hop, { sx: 1.15 + hop * 0.004, sy: 1.15 - hop * 0.004 + (o.open || !ready ? 0 : Math.sin(S.t * 5) * 0.02) });
     } else if (it.k === 7) drawThrall(ctx, o);
   }
+}
+/* a gate across an east or west door, seen from above: iron bars on a beam */
+function drawSideGate(ctx, g) {
+  ctx.fillStyle = '#4A4A52'; ctx.strokeStyle = K; ctx.lineWidth = 3.5;
+  roundRect(ctx, g.x - 9, g.y0 - 6, 18, g.y1 - g.y0 + 12, 6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#8C8C96';
+  for (let y = g.y0 + 14; y < g.y1 - 6; y += 22) { ctx.beginPath(); ctx.arc(g.x, y, 4.5, 0, TAU); ctx.fill(); ctx.stroke(); }
 }
 export function drawThrall(ctx, tr) {
   const sp = tr.sp === 'rattler' ? 'rattler' : tr.sp + '_f';

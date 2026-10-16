@@ -392,7 +392,29 @@ A save never loses data: its shape changes only with a `PROFILE_VERSION` bump an
 
 ## Content Scope, Release Tiers & Stepped Unique Treadmill
 
-See `docs/dungeons.md` for the full Dungeon Template guide (`src/dungeon/template.js` and `src/content/_template/`).
+### Making a new dungeon
+
+A new dungeon starts as a copy of the template, `src/content/_template/`: a small working dungeon (bots clear
+it in about 3:10 in Common gear) that isn't in the game. Its `README.md` is the guide. The rules for every
+new dungeon:
+
+- **One signature idea:** the one mechanic the dungeon is about, used by its trash and both its bosses (the
+  `signature` slot in its engine def). The template's example is beacons, which pulse the party until a DPS
+  breaks them and shield the boss who planted them.
+- **One or two new enemy types;** the rest are the shared kinds (melee, ranged, brute) in the dungeon's dress.
+- **Two bosses of two or three moves:** the mini boss about 40 seconds, the final boss two phases and about 80
+  seconds, every move built from the shared parts (`src/dungeon/moves.js`: cone, line and circle telegraphs,
+  Exposed windows, adds, a party pulse), and one clear job for each role in each fight.
+- **A different layout shape:** layouts are data (`src/dungeon/layout.js`): any number of rooms, doors on any
+  side, branches, side rooms, round rooms. Barrow Crypt is the line of rooms; the next ones are not.
+- **No puzzle on Normal:** the three-seat seal is a Heroic-only hook.
+- **The art is the main cost:** the 3-piece sets, the boss weapons and their armour stands in the collection
+  log, then the bosses and the new enemies. The rest is reused.
+- **Its door and its Heroic come with the template:** `stage.ts` is its door on the Dungeons sheet, and
+  `heroic.ts` builds its Heroic (`makeHeroicDungeon`: the Normal loot plus gilding kits).
+
+`tests/template.test.ts` keeps the template to these rules, and `npm run sim -- --dungeon <id>` times any
+dungeon's packs and bosses.
 
 ### Release Tiers & Pricing Targets
 

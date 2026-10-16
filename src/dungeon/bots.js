@@ -389,7 +389,9 @@ export function rogueActions(h) {
   if (cage) tgt = cage;
   const foes = fightingFoes();
   if (!tgt) { const caster = foes.find((m) => m.cast && m.cast.kick && dist(m, h) < 340); if (caster) tgt = caster; }
-  // Gravecallers next: they curse and raise, and they hang back where the tank can't grab them
+  // what the dungeon marks as first to kill (its signature's targets), then Gravecallers: they curse and
+  // raise, and they hang back where the tank can't grab them
+  if (!tgt) { const first = foes.find((m) => m.M.priority && dist(m, h) < 540); if (first) tgt = first; }
   if (!tgt) { const caller = foes.find((m) => m.M.kind === 'caller' && dist(m, h) < 540); if (caller) tgt = caller; }
   if (!tgt) {
     const onUs = foes.filter((m) => m.target && m.target.role !== 'tank' && dist(m, h) < 380);
@@ -423,6 +425,7 @@ export function dpsActions(h) {
   if (cage) tgt = cage;
   const foes = fightingFoes();
   if (!tgt) { const caster = foes.find((m) => m.cast && m.cast.kick && dist(m, h) < 520); if (caster) tgt = caster; }
+  if (!tgt) { const first = foes.find((m) => m.M.priority && dist(m, h) < 560); if (first) tgt = first; }
   if (!tgt) { const caller = foes.find((m) => m.M.kind === 'caller' && dist(m, h) < 560); if (caller) tgt = caller; }
   if (!tgt) {
     const onUs = foes.filter((m) => m.target && m.target.role !== 'tank' && dist(m, h) < 560);

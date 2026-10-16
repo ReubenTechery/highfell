@@ -105,14 +105,17 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
 - `src/content`: data only. Roles and abilities, gear and traits, `folk.ts` (the races, which are earned, the
   four classes, which race and class combos have art in `HERO_ART`, name lists), one folder per dungeon
   (`barrow/`: map, mobs, bosses, script, items, loot tables, collectibles, achievements, `stage.ts`, its door
-  for the Dungeons sheet, and `heroic.ts`, its heroic version: its gilding kits and gilded twins; `_template/`
-  is the one to copy), `kits.ts` (gilding kits, Heroic's own drops, built from any dungeon's tables), and
-  `vale/` (ingredients, recipes, ranks, and `garden.ts`).
+  for the Dungeons sheet, and `heroic.ts`, its heroic version: its gilding kits and gilded twins), `_template/`
+  (a small working dungeon to copy for a new one; its `README.md` has the rules for every new dungeon),
+  `kits.ts` (gilding kits, Heroic's own drops, built from any dungeon's tables), and `vale/` (ingredients,
+  recipes, ranks, and `garden.ts`).
   `house.ts` is the house's plan (each room's `main`, what a tap from far away opens, and the paddock's places). Register new content in `src/content/index.ts`; `checkContent()`
   and the tests catch broken ids.
 - `src/dungeon`: the engine, plain JS with no DOM: state `S`, entities, heroes, mobs, bots, the loop,
   rendering to a canvas, `walkout.js` (the lantern tells) and `coach.js` (which button's moment has come, for
-  a class's first runs). It reaches the screen only through `HOOKS`
+  a class's first runs). A dungeon's layout is data built by `layout.js` (rooms and the doors between them,
+  any shape) and drawn by `mapdraw.js`; its bosses are built from the shared moves in `moves.js`; its run
+  script and themes come from `template.js`. It reaches the screen only through `HOOKS`
   and `emit`.
 - `src/meta`: TypeScript rules for everything that lasts: the profile and its migrations (heroes live here),
   loot (and when heroic opens), gear, achievements, what the collection log gives (`logs.ts`), the hearth,
