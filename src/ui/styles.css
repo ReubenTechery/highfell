@@ -196,7 +196,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
    (it opens the Loot page: what finishing the log gives and what each role can get), then you (role, hero,
    brew), then loot or practice. On desktop the loot has its own column instead of a page. */
 .dgx { display: grid; gap: 14px; grid-template-areas: "pic" "log" "you"; }
-.dgx > .dgx-art { grid-area: pic; } .dgx > .dgx-logbar { grid-area: log; } .dgx > .dgx-you { grid-area: you; }
+.dgx > .dgx-art, .dgx > .dgx-door { grid-area: pic; } .dgx > .dgx-logbar { grid-area: log; } .dgx > .dgx-you { grid-area: you; }
 .dgx-lootcol { grid-area: loot; display: none; }
 .dgx-side, .dgx-you { display: grid; gap: 14px; align-content: start; min-width: 0; }
 .dgx-side { gap: 8px; }
@@ -242,21 +242,52 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .k-dungeon .fine { font-size: 14px; }
 .k-dungeon .btn.small { min-height: 44px; font-size: 17px; }
 .k-dungeon .sg { min-height: 44px; font-size: 17px; }
-.dgx-roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.dgx-role, .dgx-me, .dgx-row { --rc: #5B8BD9; }
+.dgx-seat, .dgx-hero, .dgx-group, .dgx-row { --rc: #5B8BD9; }
 .r-healer { --rc: #6FBF4A; } .r-dps { --rc: #E04A3F; }
-.dgx-role { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 50px; padding: 0 6px; border: 3px solid var(--ink); border-radius: 14px; background: var(--panel); box-shadow: 0 3px 0 var(--ink); font-family: var(--f-display); font-size: 17px; color: var(--ink); cursor: pointer; }
-.dgx-role .tile { width: 26px; height: 26px; flex: none; border-radius: 8px; border-width: 2px; box-shadow: none; }
-.dgx-role[aria-checked="true"] { background: var(--rc); color: #FFFFFF; text-shadow: 0 2px 0 var(--ink), 1px 0 0 var(--ink), -1px 0 0 var(--ink); }
-.dgx-role:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
-.dgx-me { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 10px 8px 8px; border: 4px solid var(--rc); border-radius: 16px; background: color-mix(in srgb, var(--rc) 16%, var(--panel)); }
-.dgx-me.none { grid-template-columns: 1fr; gap: 2px; padding: 12px 14px; border: 3px dashed var(--ink); background: var(--panel-2); }
-.dgx-me.none b { font-family: var(--f-display); font-weight: 400; font-size: 23px; }
-.dgx-fig { position: relative; width: 64px; height: 74px; border-radius: 12px; border: 3px solid var(--ink); overflow: hidden; background: color-mix(in srgb, var(--rc) 34%, var(--panel)); }
-.dgx-img { position: absolute; left: 50%; bottom: 2px; height: calc(70px * var(--sh)); width: auto; translate: var(--sx) 0; }
-.dgx-who { display: grid; min-width: 0; }
-.dgx-who b { font-family: var(--f-display); font-weight: 400; font-size: 23px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dgx-who span { font-family: var(--f-mono); font-size: 12px; color: var(--dim); }
+.k-dungeon .sheet-head p b { color: var(--ink); font-weight: 500; }
+/* The door: your party at the dungeon's door. The inner box keeps the picture's shape, so each name plate
+   sits under its hero at any size; a short phone gets a shorter door rather than a scroll. */
+.dgx-door { display: grid; gap: 10px; min-width: 0; }
+.dgx-stage { position: relative; display: flex; justify-content: center; align-items: flex-end; height: clamp(240px, calc(100vh - 330px), calc((100vw - 46px) * var(--stage-k))); border: 3px solid var(--ink); border-radius: 18px; overflow: hidden; background: var(--stage-bg, #241C33); }
+@supports (height: 100svh) { .dgx-stage { height: clamp(240px, calc(100svh - 330px), calc((100vw - 46px) * var(--stage-k))); } }
+@media (min-width: 820px) { .dgx-stage { height: auto; aspect-ratio: var(--stage-shape); } }
+.dgx-stage.heroic { box-shadow: 0 0 0 4px var(--gold); }
+.dgx-stage-in { position: relative; height: 100%; max-width: 100%; aspect-ratio: var(--stage-shape); }
+.dgx-stage-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.dgx-stage .dgx-diff { z-index: 2; }
+/* a hero's name plate sits under their feet; its button reaches up over the hero, so the hero is tappable too */
+.dgx-seat { position: absolute; top: calc(var(--feet) - 30%); width: 31%; height: calc(30% + 46px); translate: -50% 0; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; cursor: pointer; }
+.dgx-plate { position: absolute; left: 50%; bottom: 5px; translate: -50% 0; max-width: 100%; box-sizing: border-box; min-height: 34px; padding: 0 9px; border: 3px solid var(--ink); border-radius: 999px; background: var(--rc); box-shadow: 0 3px 0 var(--ink); font-family: var(--f-display); font-size: 17px; line-height: 28px; color: #FFFFFF; text-shadow: 0 2px 0 var(--ink), 1px 0 0 var(--ink), -1px 0 0 var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dgx-seat.me .dgx-plate { box-shadow: 0 0 0 3px var(--gold), 0 3px 0 var(--ink); }
+.dgx-seat:active .dgx-plate { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.dgx-seat:focus-visible { outline: none; }
+.dgx-seat:focus-visible .dgx-plate { outline: 3px solid var(--gold); outline-offset: 3px; }
+.dgx-tag { position: absolute; left: 50%; bottom: 35px; translate: -50% 0; z-index: 1; padding: 0 8px; border: 2px solid var(--ink); border-radius: 999px; background: var(--gold); font-family: var(--f-display); font-size: 12px; line-height: 18px; color: var(--ink); }
+.dgx-tag.bot { background: var(--panel); }
+.dgx-seat.open { cursor: default; }
+.dgx-seat.open .dgx-plate { background: rgba(23, 18, 31, 0.8); border-style: dashed; color: #E9DDCB; text-shadow: none; box-shadow: none; }
+.dgx-ghost { position: absolute; left: 50%; top: 2%; bottom: 46px; width: 62%; translate: -50% 0; display: grid; place-items: center; border: 3px dashed rgba(255, 248, 236, 0.55); border-radius: 28px 28px 10px 10px; color: rgba(255, 248, 236, 0.7); }
+.dgx-ghost svg { width: 28px; height: 28px; }
+.dgx-note { margin: 0; font-family: var(--f-body); font-size: 14px; color: var(--soft); text-align: center; }
+/* Who goes in: your heroes by role */
+.dgx-group { display: grid; gap: 8px; }
+.dgx-gh { margin: 0; display: flex; align-items: center; gap: 8px; font-family: var(--f-display); font-size: 17px; }
+.dgx-gh i { width: 14px; height: 14px; border: 2px solid var(--ink); border-radius: 50%; background: var(--rc); }
+.dgx-heroes { display: grid; gap: 8px; }
+.dgx-hero { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 66px; padding: 5px 12px 5px 5px; border: 3px solid var(--ink); border-radius: 16px; background: var(--panel); box-shadow: 0 3px 0 var(--ink); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.dgx-hero:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.dgx-hero.me { box-shadow: 0 0 0 4px var(--rc), 0 3px 0 var(--ink); }
+.dgx-hfig { position: relative; display: grid; place-items: center; width: 56px; height: 56px; box-sizing: border-box; border: 2px solid var(--ink); border-radius: 12px; overflow: hidden; background: color-mix(in srgb, var(--rc) 32%, var(--panel)); }
+.dgx-hfig svg { width: 26px; height: 26px; }
+.dgx-himg { position: absolute; left: 50%; bottom: 1px; height: calc(50px * var(--sh)); width: auto; translate: var(--sx) 0; }
+.dgx-hname { display: grid; min-width: 0; }
+.dgx-hname b { font-family: var(--f-display); font-weight: 400; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dgx-hname small { font-family: var(--f-mono); font-size: 12px; color: var(--dim); }
+.dgx-htag { padding: 2px 10px; border: 2px solid var(--ink); border-radius: 999px; background: color-mix(in srgb, var(--rc) 35%, var(--panel)); font-family: var(--f-display); font-size: 14px; white-space: nowrap; }
+.dgx-htag.you { background: var(--gold); }
+.dgx-hero.none { border-color: transparent; background: var(--panel-2); box-shadow: none; cursor: default; }
+.dgx-hero.new { grid-template-columns: 56px minmax(0, 1fr); border-style: dashed; background: var(--panel-2); }
+.dgx-hero.new .dgx-hfig { border-style: dashed; background: transparent; color: var(--dim); }
 .dgx-main .brewchips { flex-wrap: nowrap; overflow-x: auto; padding: 2px 4px 6px; margin: 0 -4px; scrollbar-width: none; }
 .dgx-main .brewchips::-webkit-scrollbar { display: none; }
 .dgx-main .bc { flex: none; font-size: 17px; }
@@ -321,8 +352,6 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-it small { min-height: 16px; font-family: var(--f-mono); font-size: 12px; color: var(--dim); display: grid; place-items: center; }
 .dgx-it.got small { color: #2E7D32; }
 .dgx-it small svg { width: 15px; height: 15px; }
-.seat-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px; border-radius: 14px; background: var(--panel-2); }
-.seat-pick .fine { margin: 0 4px 0 0; }
 .seg-row b { font-family: var(--f-display); font-weight: 400; font-size: 17px; }
 .k-dungeon .box { border: 0; }
 

@@ -63,7 +63,7 @@ const LEFT_SLOTS: SlotId[] = ['helm', 'shoulders', 'chest'];
 export class Sheets {
   spec: SheetSpec | null = null;
   /** the dungeon picker remembers its choices while the page is open */
-  private pick: DungeonPick = { dungeon: 'barrow', page: 'door', mode: 'loot', start: 'keeper', gear: 'mine', role: null, alts: false, heroic: false };
+  private pick: DungeonPick = { dungeon: 'barrow', page: 'door', mode: 'loot', start: 'keeper', gear: 'mine', heroic: false };
   private resetArmed = false;
   /** the look picked in the looks sheet, while the page is open */
   private lookPick: string | null = null;
@@ -194,7 +194,7 @@ export class Sheets {
     const was = !!this.spec;
     // the dungeon picker starts fresh when it opens, but not when you come back to it from one of its drops
     const inDungeon = (s: SheetSpec | null): boolean => !!s && (s.kind === 'dungeon' || (s.kind === 'item' && s.back?.kind === 'dungeon'));
-    if (spec.kind === 'dungeon' && !inDungeon(this.spec)) { this.pick.role = null; this.pick.alts = false; this.pick.page = 'door'; }
+    if (spec.kind === 'dungeon' && !inDungeon(this.spec)) this.pick.page = 'door';
     if (spec.kind === 'hero' && !(this.spec && this.spec.kind === 'hero' && this.spec.hero === spec.hero)) { clearTimeout(this.heroTimer); this.heroSt = { delArmed: false, renaming: false, err: '' }; }
     if (spec.kind !== 'logs' && spec.kind !== 'item') this.logView.peek = null;
     this.spec = spec;

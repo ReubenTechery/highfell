@@ -4,11 +4,12 @@
  * under it one small line for that version's collection log: how full it is, with what finishing it gives
  * at the end of the bar (the Barrow's: a new kind of hero, the Risen). The line opens the Loot page: those
  * rewards and what each role can get, yours first (what you have lit up, every drop rate; tap one to hold
- * it up against what you wear). On desktop the loot sits beside the rest instead. Then the main thing: your
- * role, your hero (picking a role picks the hero of that role you played last; change to another or make
- * one) and your brew, then loot or practice. On Normal your own Warband heroes from your bunk room fill the
- * other seats in their own gear (or bots stand in until you make them); Heroic needs at least two players
- * (party.ts), so for now it opens only for practice.
+ * it up against what you wear). On desktop the loot sits beside the rest instead. The main thing is the
+ * door: your party standing in front of the dungeon's door with its final boss behind them (stage.ts). On
+ * Normal your own Warband heroes from your bunk room fill the other seats in their own gear (or bots stand
+ * in until you make them); tap a hero for Who goes in, to play another or make one. Heroic needs at least
+ * two players (party.ts), so its other seats wait for friends and for now it opens only for practice.
+ * Then your brew, and loot or practice.
  */
 import { COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, TITLES, heroicVersion } from '../content';
 import { MAX_HEROES, RACES, type RaceId } from '../content/folk';
@@ -19,28 +20,27 @@ import { RECIPES, RECIPE_ORDER } from '../content/vale';
 import { loadoutFor } from '../meta/gear';
 import { HEROIC_AFTER, heroicOpen, heroicProgress, lootFor } from '../meta/loot';
 import { logAchievement, logProgress } from '../meta/logs';
-import { groupOf, heroesFor, partyProblem, pickRole, seats } from '../meta/party';
-import { activeHero, heroById, roleOf, setActive, type Profile } from '../meta/profile';
+import { groupOf, heroesFor, partyProblem, seats } from '../meta/party';
+import { activeHero, heroById, roleOf, setActive, type Hero, type Profile } from '../meta/profile';
 import type { App } from './app';
 import { esc, fmtRate, fmtT, GLYPH } from './dom';
 import { colourOf, heroImg, heroSprite, iconOf, nameOf, placeSprite, tile } from './art';
 import { ilvl } from './hearth';
 import { SWATCH } from './lookssheet';
 import { SFX } from './sound';
+import { seatAt, stageShape, stageSvg } from './stage';
 
 /** the sheet's pages: the door (the everyday one) and the ones a tap away, each with a back arrow */
-export type DgPage = 'door' | 'loot';
+export type DgPage = 'door' | 'loot' | 'heroes';
 
-/** what the sheet remembers while the page is open: which page, the run's options, the role you're
- *  looking at, whether the list of your other heroes is open, Normal or Heroic, and which dungeon */
+/** what the sheet remembers while the page is open: which page, the run's options, Normal or Heroic, and
+ *  which dungeon */
 export interface DungeonPick {
   dungeon?: string;
   page: DgPage;
   mode: 'loot' | 'practice';
   start: string;
   gear: 'mine' | 2 | 3;
-  role: RoleId | null;
-  alts: boolean;
   heroic: boolean;
 }
 
@@ -118,8 +118,6 @@ export const ACT1_DUNGEONS: Act1DungeonMeta[] = [
   },
 ];
 
-/** each role's icon on its tab */
-const ROLE_ICON: Record<RoleId, string> = { tank: 'shield', healer: 'mend', dps: 'comet' };
 /** the picture for a kind of hero a log gives: its head */
 const RACE_ICON: Partial<Record<RaceId, string>> = {
   risen: 'c_risen',
@@ -133,12 +131,6 @@ const RACE_ICON: Partial<Record<RaceId, string>> = {
 const word = (r: RoleId): string => (r === 'dps' ? 'DPS' : ROLES[r].title.toLowerCase());
 const seg = (act: string, cur: string, opts: [string, string][]): string =>
   `<div class="seg" role="radiogroup">${opts.map(([v, t]) => `<button type="button" class="sg" role="radio" data-act="${act}" data-v="${v}" aria-checked="${cur === v}">${esc(t)}</button>`).join('')}</div>`;
-
-/** The role the sheet shows: the one you picked, or your hero's. */
-export function pickedRole(p: Profile, pick: DungeonPick): RoleId {
-  const h = activeHero(p);
-  return pick.role || (h ? roleOf(h) : 'tank');
-}
 
 /** The dungeon version the sheet shows, and whether you can go in (Heroic opens after ten clears;
  *  `allOpen` is the testing switch). */
@@ -170,8 +162,8 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
   const meta = ACT1_DUNGEONS.find((m) => m.id === reqId) || ACT1_DUNGEONS[0];
   const liveBase = DUNGEONS[reqId];
   const strip = dungeonStrip(reqId);
-  const role = pickedRole(p, pick);
   const h = activeHero(p);
+  const role: RoleId = h ? roleOf(h) : 'tank';
   const myIlvl = h ? +ilvl(loadoutFor(p, h).score) : 10;
 
   // If the selected Act 1 dungeon is not yet registered in DUNGEONS, show its stepped preview + Warband readiness
@@ -180,7 +172,7 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
     const body = `${strip}<div class="dgx preview-dg">
       <div class="dgx-side">
         <div class="dgx-art">${banner(false, meta.id)}
-          <div class="dgx-name"><h3>${esc(meta.name)}</h3><p class="dgx-line">Bosses <b>${esc(meta.bossNames[0])}</b> &amp; <b>${esc(meta.bossNames[1])}</b></p></div>
+          <div class="dgx-name"><p class="dgx-line">Bosses <b>${esc(meta.bossNames[0])}</b> &amp; <b>${esc(meta.bossNames[1])}</b></p></div>
         </div>
         <p class="fine dgx-blurb">${esc(meta.blurb)}</p>
         <section class="dgx-log">
@@ -198,19 +190,16 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
             <b>${ready ? `${GLYPH.check}Warband Ready (ilvl ${myIlvl} vs Rec. ${meta.recIlvl})` : `Gear up in Tier ${meta.tier === 2 ? 'I (Barrow Crypt)' : 'II (Thimblebriar)'} first`}</b>
             <span>Your hero is <b>ilvl ${myIlvl}</b> · ${esc(meta.name)} recommends <b>ilvl ${meta.recIlvl}</b> and drops <b>ilvl ${meta.dropsIlvl}</b> sets &amp; boss weapons.</span>
           </div>
-          <div class="dgx-roles" role="radiogroup" aria-label="Your role">${ORDER.map((r) => `<button type="button" class="dgx-role r-${r}" role="radio" aria-checked="${r === role}" data-act="role" data-role="${r}"><span class="tile" aria-hidden="true">${tile(ROLE_ICON[r])}</span>${esc(ROLES[r].title)}</button>`).join('')}</div>
-          ${me(p, role, pick)}
         </section>
       </div>
     </div>`;
     const foot = `<p class="fine dgx-shut">${GLYPH.lock}${esc(meta.name)} is coming soon.</p>`;
-    return { head: '<h2>Dungeons</h2>', body, foot };
+    return { head: `<h2>${esc(meta.name)}</h2><p>Tier ${meta.roman} · coming soon</p>`, body, foot };
   }
 
   const base = liveBase;
   const { dg, open } = pickedDungeon(p, pick, allOpen);
   const rec = p.dungeons[dg.id], keeper = p.bosses[`${dg.id}.${dg.finalBoss}`];
-  const playing = !!h && roleOf(h) === role;
   const practice = pick.mode === 'practice';
   // who may go in is party.ts's rule; the "Everything open" testing switch lets you in anyway
   const blocked = allOpen ? null : partyProblem(groupOf(p), { heroic: pick.heroic, practice });
@@ -222,23 +211,22 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
   const starts = (DUNGEON_ENGINES[base.id]?.starts || []).filter((s: { id: string; name: string }) => s.id !== 'intro');
   let foot: string;
   if (!open) foot = `<p class="fine dgx-shut">${GLYPH.lock}Heroic opens after ${HEROIC_AFTER} clears of the ${esc(base.name.split(' ')[0])}. You have ${hp.have}.</p>`;
-  else if (!playing && p.roster.length < MAX_HEROES) foot = `<button type="button" class="btn gold big" data-act="newseat" data-role="${role}">${GLYPH.plus}Make a ${esc(word(role))}</button>`;
-  else if (!playing) foot = `<p class="fine">Your bunk room is full. Let a hero go to make a ${esc(word(role))}.</p>`;
+  else if (!h) foot = `<button type="button" class="btn gold big" data-act="newhero">${GLYPH.plus}Make a hero</button>`;
+  // Heroic's two-player rule is shown on the door itself, so here the button just stays locked
+  else if (blocked && pick.heroic && !practice) foot = `<button type="button" class="btn gold big heroic" disabled>${GLYPH.lock}Enter Heroic</button>`;
   else if (blocked) foot = `<p class="fine dgx-shut">${GLYPH.lock}${esc(blocked)}</p>`;
   else foot = `<button type="button" class="btn gold big${pick.heroic ? ' heroic' : ''}" data-act="go">${practice ? 'Start practice' : pick.heroic ? 'Enter Heroic' : `Enter the ${esc(base.name.split(' ')[0])}`}</button>`;
   const loot = lootPanel(p, dg, role);
   if (pick.page === 'loot') return { head: subHead(`${pick.heroic ? 'Heroic ' : ''}${base.name.split(' ')[0]} loot`), body: `<div class="dgx-lootpage">${loot}</div>`, foot };
+  if (pick.page === 'heroes') return { head: subHead('Who goes in'), body: heroesPage(p, pick.heroic), foot };
+  const head = `<h2>${esc(base.name)}</h2><p>Tier ${meta.roman}${pick.heroic ? ' · Heroic' : ''} · ${statLine(rec?.clears || 0, keeper?.kc || 0, rec?.pb)}</p>`;
   // on a phone the log line opens the Loot page; on desktop the loot sits in its own column instead
   const body = `${strip}<div class="dgx${pick.heroic ? ' heroic' : ''}">
-    <div class="dgx-art">${banner(pick.heroic, base.id)}${diff}
-      <div class="dgx-name"><h3>${esc(base.name)}</h3><p class="dgx-line">${statLine(rec?.clears || 0, keeper?.kc || 0, rec?.pb)}</p></div>
-    </div>
+    ${door(p, base, pick.heroic, diff)}
     ${logLine(p, dg, true)}
     <aside class="dgx-lootcol" aria-label="Loot">${loot}</aside>
     <div class="dgx-you">
-      <section class="dgx-main" aria-label="You">
-        <div class="dgx-roles" role="radiogroup" aria-label="Your role">${ORDER.map((r) => `<button type="button" class="dgx-role r-${r}" role="radio" aria-checked="${r === role}" data-act="role" data-role="${r}"><span class="tile" aria-hidden="true">${tile(ROLE_ICON[r])}</span>${esc(ROLES[r].title)}</button>`).join('')}</div>
-        ${me(p, role, pick)}
+      <section class="dgx-main" aria-label="Your brew">
         ${brews(p, practice)}
       </section>
       <section class="dgx-mode">
@@ -251,7 +239,7 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
       </section>
     </div>
   </div>`;
-  return { head: '<h2>Dungeons</h2>', body, foot };
+  return { head, body, foot };
 }
 
 /** an inner page's head: back to the door, and the page's name */
@@ -295,8 +283,7 @@ function lootPanel(p: Profile, dg: DungeonInfo, role: RoleId): string {
 /** what the Dungeons sheet needs from the sheets around it */
 export interface DungeonHost { app: App; root: HTMLElement; pick: DungeonPick; refresh(): void; close(): void }
 
-/** the Dungeons sheet's buttons: its pages, the dungeon and its version, your role and hero, practice, and
- *  going in */
+/** the Dungeons sheet's buttons: its pages, the dungeon and its version, who goes in, practice, and going in */
 export function dungeonActions(d: DungeonHost): Record<string, (el: HTMLElement) => void> {
   const page = (to: DgPage): void => {
     d.pick.page = to;
@@ -313,18 +300,12 @@ export function dungeonActions(d: DungeonHost): Record<string, (el: HTMLElement)
     mode: (el) => { d.pick.mode = el.dataset.v as 'loot' | 'practice'; SFX.play('ui'); d.refresh(); },
     start: (el) => { d.pick.start = el.dataset.v!; SFX.play('ui'); d.refresh(); },
     tgear: (el) => { const v = el.dataset.v!; d.pick.gear = v === 'mine' ? 'mine' : (+v as 2 | 3); SFX.play('ui'); d.refresh(); },
-    role: (el) => {
-      const r = el.dataset.role as RoleId, p = d.app.p, was = p.active;
-      d.pick.role = r; d.pick.alts = false;
-      SFX.play('ui');
-      if (pickRole(p, r) && p.active !== was) d.app.save(); else d.refresh();
-    },
-    alts: () => { d.pick.alts = !d.pick.alts; SFX.play('ui'); d.refresh(); },
+    seats: () => page('heroes'),
     playseat: (el) => {
       const h = heroById(d.app.p, el.dataset.id || null); if (!h) return;
-      setActive(d.app.p, h.id); d.pick.role = roleOf(h); d.pick.alts = false; SFX.play('place'); d.app.save();
+      setActive(d.app.p, h.id); d.pick.page = 'door'; SFX.play('place'); d.app.save();
     },
-    newseat: (el) => { const r = el.dataset.role as RoleId; d.pick.alts = false; SFX.play('ui'); d.close(); d.app.showCreate(r); },
+    newseat: (el) => { const r = el.dataset.role as RoleId; SFX.play('ui'); d.close(); d.app.showCreate(r); },
     go: () => goIn(d),
   };
 }
@@ -381,28 +362,53 @@ function item(p: Profile, d: DropDef): string {
     <span class="tile" aria-hidden="true">${iconOf(d.id)}</span><small>${have ? GLYPH.check : fmtRate(d.rate)}</small></button>`;
 }
 
-/** who plays the role: your hero, a way to change to another of yours, and who comes along (Normal: your
- *  Warband or a group; Heroic: two or three players and a bot, never your Warband) */
-function me(p: Profile, role: RoleId, pick: DungeonPick): string {
+/** The door: your party standing in front of the dungeon's door, its final boss behind them. On Normal your
+ *  own Warband heroes fill the other seats in their own gear, or a bot where you have no hero of that role;
+ *  on Heroic the other seats wait for friends. Each hero's name plate is a button for Who goes in. */
+function door(p: Profile, base: DungeonInfo, heroic: boolean, diff: string): string {
+  const st = base.stage;
+  if (!st) return `<div class="dgx-art">${banner(heroic, base.id)}${diff}</div>`;
   const h = activeHero(p);
-  if (!h || roleOf(h) !== role) return `<div class="dgx-me none r-${role}"><b>No ${esc(word(role))} yet</b><span class="fine">Make one to play this seat.</span></div>`;
-  const others = heroesFor(p, role).filter((x) => x.id !== h.id);
-  const room = p.roster.length < MAX_HEROES;
-  const mates = seats(p, false)
-    .filter((s) => s.role !== role)
-    .map((s) => (s.hero ? `${s.hero.name} (ilvl ${ilvl(loadoutFor(p, s.hero).score)})` : `${s.bot} (bot)`));
-  const list = pick.alts
-    ? `<div class="seat-pick">${others.map((x) => `<button type="button" class="btn small" data-act="playseat" data-id="${esc(x.id)}">${GLYPH.play}${esc(x.name.split(' ')[0])}</button>`).join('')}${room ? `<button type="button" class="btn small" data-act="newseat" data-role="${role}">${GLYPH.plus}New ${esc(word(role))}</button>` : ''}</div>`
+  const cast = seats(p, heroic).map((s) => {
+    const you = !!h && s.hero?.id === h.id;
+    if (heroic && !you) return { role: s.role, sprite: null, name: 'Friend', tag: '', label: '' };
+    if (s.hero) return { role: s.role, sprite: heroSprite(s.hero, s.role, p), name: s.hero.name.split(' ')[0], tag: you ? 'You' : '', label: `${s.hero.name}, ${word(s.role)}, item level ${ilvl(loadoutFor(p, s.hero).score)}${you ? ', playing' : ''}` };
+    const bot = s.bot || ROLES[s.role].name;
+    return { role: s.role, sprite: ROLES[s.role].sprite, name: bot, tag: 'Bot', label: `${bot}, a bot, as ${word(s.role)}` };
+  });
+  const plates = cast.map((c, i) => {
+    const at = seatAt(st, i), style = `left: ${at.left.toFixed(2)}%; --feet: ${at.feet.toFixed(2)}%`;
+    if (!c.sprite) return `<span class="dgx-seat open r-${c.role}" style="${style}"><span class="dgx-ghost" aria-hidden="true">${GLYPH.plus}</span><span class="dgx-plate">${esc(c.name)}</span></span>`;
+    return `<button type="button" class="dgx-seat r-${c.role}${c.tag === 'You' ? ' me' : ''}" style="${style}" data-act="seats" aria-label="${esc(c.label)}. Change who goes in">${c.tag ? `<span class="dgx-tag${c.tag === 'Bot' ? ' bot' : ''}">${c.tag}</span>` : ''}<span class="dgx-plate">${esc(c.name)}</span></button>`;
+  }).join('');
+  return `<div class="dgx-door"><div class="dgx-stage${heroic ? ' heroic' : ''}" style="--stage-bg: ${st.bg}; --stage-shape: ${stageShape(st)}; --stage-k: ${(st.view[3] / st.view[2]).toFixed(4)}"><div class="dgx-stage-in">${stageSvg(base.id, st, heroic, cast.map((c) => c.sprite))}${plates}</div>${diff}</div>
+    ${heroic ? '<p class="dgx-note">Heroic needs 2 players. A bot fills the last seat.</p>' : ''}</div>`;
+}
+
+/** Who goes in: every hero by role, who you're playing and who comes along with you. Tap one to play them;
+ *  for each other seat the hero of that role you played last comes along (a bot where you have none). */
+function heroesPage(p: Profile, heroic: boolean): string {
+  const h = activeHero(p), room = MAX_HEROES - p.roster.length;
+  const groups = ORDER.map((r) => {
+    const list = heroesFor(p, r), along = !heroic && h && roleOf(h) !== r ? list[0] : null;
+    const rows = list.map((x) => heroRow(p, x, r, x.id === h?.id ? 'You' : x.id === along?.id ? 'Comes along' : ''));
+    if (!list.length) {
+      rows.push(`<div class="dgx-hero none r-${r}"><span class="dgx-hfig" aria-hidden="true">${heroImg(ROLES[r].sprite, { cls: 'dgx-himg' })}</span><span class="dgx-hname"><b>No ${esc(word(r))} yet</b><small>${esc(ROLES[r].name)}, a bot, ${heroic ? 'can stand in' : 'comes along'}</small></span></div>`);
+      if (room) rows.push(`<button type="button" class="dgx-hero new r-${r}" data-act="newseat" data-role="${r}"><span class="dgx-hfig" aria-hidden="true">${GLYPH.plus}</span><span class="dgx-hname"><b>Make a ${esc(word(r))}</b><small>${room} bed${room === 1 ? '' : 's'} free</small></span></button>`);
+    }
+    return `<section class="dgx-group r-${r}"><p class="dgx-gh"><i aria-hidden="true"></i>${esc(ROLES[r].title)}</p><div class="dgx-heroes">${rows.join('')}</div></section>`;
+  }).join('');
+  const more = room && ORDER.every((r) => heroesFor(p, r).length)
+    ? `<button type="button" class="dgx-hero new" data-act="newhero"><span class="dgx-hfig" aria-hidden="true">${GLYPH.plus}</span><span class="dgx-hname"><b>New hero</b><small>${room} bed${room === 1 ? '' : 's'} free</small></span></button>`
     : '';
-  const partyLine = pick.heroic
-    ? `<p class="fine"><b>Group run:</b> two or three players, and a bot in an empty seat. Your Warband stays home.</p>`
-    : `<p class="fine"><b>Warband &amp; Group:</b> ${esc(mates.join(' & '))} join your party (or group with friends).</p>`;
-  return `<div class="dgx-me r-${role}">
-      <span class="dgx-fig" aria-hidden="true">${heroImg(heroSprite(h, role, p), { cls: 'dgx-img' })}</span>
-      <span class="dgx-who"><b>${esc(h.name)}</b><span>Item level ${ilvl(loadoutFor(p, h).score)}</span></span>
-      ${others.length || room ? `<button type="button" class="btn small" data-act="alts" aria-expanded="${pick.alts}">Change</button>` : ''}
-    </div>${list}
-    ${partyLine}`;
+  return `${groups}${more}<p class="dgx-note">${heroic ? 'On Heroic your other heroes stay home: friends take the seats.' : 'Tap a hero to play them. The others come along.'}</p>`;
+}
+
+/** one of your heroes on Who goes in: their picture, name and item level, and whether they're you or coming along */
+function heroRow(p: Profile, x: Hero, role: RoleId, tag: string): string {
+  return `<button type="button" class="dgx-hero r-${role}${tag === 'You' ? ' me' : ''}" data-act="playseat" data-id="${esc(x.id)}">
+    <span class="dgx-hfig" aria-hidden="true">${heroImg(heroSprite(x, role, p), { cls: 'dgx-himg' })}</span>
+    <span class="dgx-hname"><b>${esc(x.name)}</b><small>ilvl ${ilvl(loadoutFor(p, x).score)}</small></span>${tag ? `<span class="dgx-htag${tag === 'You' ? ' you' : ''}">${tag}</span>` : ''}</button>`;
 }
 
 /** which brew you take in: one bottle a run */
