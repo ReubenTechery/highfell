@@ -419,6 +419,11 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-d[aria-checked="true"] { background: var(--panel); color: var(--ink); }
 .dgx-d.h[aria-checked="true"] { background: var(--gold); }
 .dgx.heroic .dgx-art { box-shadow: 0 0 0 4px var(--gold); }
+.dgx-power { flex-basis: 100%; margin: 0; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: var(--f-mono); font-size: 13px; color: var(--soft); }
+.dgx-power b { color: var(--ink); font-weight: 500; }
+.dgx-power b.mine, .dgx-card-sub.low b.mine, .dgx-card-line.low b.mine { color: #A3412F; }
+.dgx-power.ok b.mine { color: #3E8A26; }
+.dgx-power svg { width: 16px; height: 16px; flex: none; color: #3E8A26; }
 .dgx-shut { display: inline-flex; align-items: center; gap: 6px; text-align: center; }
 .dgx-shut svg { width: 18px; height: 18px; flex: none; }
 /* what finishing the log gives: the big one first */
