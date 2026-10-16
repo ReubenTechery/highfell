@@ -12,8 +12,8 @@ export const MOBS = {
   knight: { name: 'Sir Rattlebones', kind: 'melee', hp: 11400, r: 36, speed: 100, dmg: 150, every: 2.0, wind: 0.45, reach: 34, aggro: 260, sp: 'knight', heavy: true, big: true, boss: true, skeleton: true,
     ai: knightTick, phases: 2, enrage: 180, acts: { sweep: 'Cleaving Sweep', charge: 'Shield Charge', rally: 'Rally the Dead' } },
   keeper: { name: 'The Gravekeeper', kind: 'melee', hp: 41600, r: 50, speed: 92, dmg: 180, every: 2.0, wind: 0.5, reach: 40, aggro: 0, sp: 'keeper', heavy: true, big: true, boss: true,
-    ai: keeperTick, phases: 3, enrage: 300, light: { dx: 104, dy: -90, r: 170 }, poseSprites: { smash: 'keeper_smash' },
-    acts: { smash: 'Shovel Smash', burrow: 'Burrowing', leap: 'Leap', bury: 'Bury the Yard', stride: 'Grave Stride' } },
+    ai: keeperTick, phases: 2, heroicPhases: 3, enrage: 300, light: { dx: 104, dy: -90, r: 170 }, poseSprites: { smash: 'keeper_smash' },
+    acts: { smash: 'Shovel Smash', hands: 'Grasping Hands', burrow: 'Burrowing', leap: 'Leap', bury: 'Bury the Yard', stride: 'Grave Stride' } },
 };
 
 /* packs: mobs and where they stand. Bots walk to `goTo` when the pack has no live mobs to aim at. */

@@ -34,9 +34,9 @@ power as Normal, with gilded looks and its own log. Teamwork between roles is th
 
 ## Pillars: if a change fights one of these, the change is wrong
 
-1. **Dungeons are the core loop.** About 4 minutes a run in beginner gear (about 2 when melted in full BiS), all
-   three roles needed, loot every time. Four buttons and a dodge, never more: sets and boss weapons change what
-   buttons do, they never add one. Mistakes in beginner gear are genuinely dangerous, and skilled play opens
+1. **Dungeons are the core loop.** About 3 to 4 minutes a run in beginner gear (about 2 when melted in full BiS),
+   all three roles needed, loot every time. Four buttons and a dodge, never more: sets and boss weapons change
+   what buttons do, they never add one. Mistakes in beginner gear are genuinely dangerous, and skilled play opens
    windows to hit back harder.
 2. **Power creep you can feel, collecting that lasts.** Regular gear climbs Common → Rare in eight clears; Epic
    comes from each dungeon's 3-piece sets and boss weapons, and power climbs steeply enough that a geared party
@@ -78,6 +78,7 @@ power as Normal, with gilded looks and its own log. Teamwork between roles is th
 | Only the healer lifts curses (a swipe or Sunburst); a missed curse drops its hero to a tenth and never kills | Something only the healer can do, in the packs as well as the bosses |
 | An idle healer wipes the party by Sir Rattlebones; you as tank in Common gear with a bot healer still clear (tests check both) | The healer matters, and the other seats are never punished for it |
 | Crypt Seals are Heroic only | Normal got curses instead, so it doesn't get busier |
+| A class's first five runs glow the one button whose moment has come, fading out; a new class's first run offers its Crypt Trial | Teach in the moment, on the phone, with no new buttons and no walls of text |
 | Garden seeds drop from dungeon bosses and grow in clears, never on a clock | It feeds the dungeon loop with no timers or chores |
 | Brews are party-wide buffs that speed a run up, never needed to clear | Brewing pays off without being a chore |
 | Home is a tall house cut open that opens zoomed out on all of it: tap a room to go in (a room with one clear job opens it as you land), tap things to use them | Side things belong in the house, not in buttons, and the whole house is home |
@@ -107,7 +108,8 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   `house.ts` is the house's plan (each room's `main`, what a tap from far away opens, and the paddock's places). Register new content in `src/content/index.ts`; `checkContent()`
   and the tests catch broken ids.
 - `src/dungeon`: the engine, plain JS with no DOM: state `S`, entities, heroes, mobs, bots, the loop,
-  rendering to a canvas, and `walkout.js` (the lantern tells). It reaches the screen only through `HOOKS`
+  rendering to a canvas, `walkout.js` (the lantern tells) and `coach.js` (which button's moment has come, for
+  a class's first runs). It reaches the screen only through `HOOKS`
   and `emit`.
 - `src/meta`: TypeScript rules for everything that lasts: the profile and its migrations (heroes live here),
   loot (and when heroic opens), gear, achievements, what the collection log gives (`logs.ts`), the hearth,
@@ -116,15 +118,16 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   `houseart.ts`, every room in each look, your hero's name tag `nametag.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
   close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons
   (`dungeonsheet.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
-  (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`), settings (`settingssheet.ts`), the gear doll, satchel and spot
+  (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`), settings (`settingssheet.ts`), the gear doll, satchel and spot
   picker. Toasts, sound. `styles.css` is inlined by the build.
 - `src/sim` and `scripts/sim.mjs`: headless bot runs of the real engine (the balance numbers).
 - `tools/`: the art pipeline (Python writes SVG into `art/*.json`; the log's armour stands are in `art_wardrobe.py`; the heroes are in `art_heroes.py`, their
   faces in `art_heads.py`), `art_sheet.py` (look at your art), `pw_check.py` (screenshot the built game),
   `pw_perf.py` (measure the house's speed on a slowed-down phone).
 - `tests/`: `balance.test.ts` (bot clears must stay in their bands), `dungeon.test.ts` (threat, cages,
-  curses, numbers, tuning, where each hero's weapon and head are), `input.test.ts` (the touch controls, driven
-  without a browser), `meta.test.ts`, `vale.test.ts`.
+  curses, numbers, tuning, where each hero's weapon and head are), `coach.test.ts` (which button the coach
+  names), `input.test.ts` (the touch controls and party-frame swipes, driven without a browser), `meta.test.ts`,
+  `vale.test.ts`.
 
 ## Commands
 

@@ -11,15 +11,16 @@ import type { Rar, RoleId } from '../src/content/types';
 
 const gear = (rar: Rar) => Object.fromEntries((['tank', 'healer', 'dps'] as RoleId[]).map((r) => [r, plainLoadout(r, rar)]));
 
-test('balance: a Common party clears in about four minutes without wiping', () => {
+test('balance: a Common party clears in about three and a half minutes without wiping', () => {
   for (const [role, seed] of [['tank', 101], ['healer', 202], ['dps', 303]] as [RoleId, number][]) {
     const r = simRun({ role, seed });
     assert.equal(r.over, 'victory', `${role} seed ${seed} did not clear`);
     assert.equal(r.wipes, 0, `${role} seed ${seed} wiped`);
-    assert.ok(r.clear! > 215 && r.clear! < 280, `${role} seed ${seed} cleared in ${r.clear}s`);
+    assert.ok(r.clear! > 185 && r.clear! < 235, `${role} seed ${seed} cleared in ${r.clear}s`);
+    // the Gravekeeper's two Normal phases take about 80 seconds
     const keeper = r.packs.find((p) => p.id === 'G')!;
     const fight = keeper.cleared! - keeper.pulled;
-    assert.ok(fight > 90 && fight < 150, `the Gravekeeper took ${fight.toFixed(1)}s`);
+    assert.ok(fight > 70 && fight < 95, `the Gravekeeper took ${fight.toFixed(1)}s`);
   }
 });
 
@@ -138,11 +139,12 @@ test('balance: rogue melts single-target bosses faster than mage and tank, clear
   const tankHero = bossRogue.heroes.find((h) => h.role === 'tank')!;
   assert.ok(rogueHero.dmg > tankHero.dmg * 1.25, `Rogue single-target boss damage (${rogueHero.dmg}) clearly beats Tank (${tankHero.dmg})`);
 
-  // 2. Full Barrow Crypt clear with a Common Rogue party: 0 wipes, ~4 minutes
+  // 2. Full Barrow Crypt clear with a Common Rogue party: 0 wipes, about three minutes (the Rogue melts the
+  //    Gravekeeper in about 60 seconds to the Mage's 80)
   const fullRogue = simRun({ role: 'dps', seed: 303, loadouts: rogueLoadout(0) });
   assert.equal(fullRogue.over, 'victory');
   assert.equal(fullRogue.wipes, 0);
-  assert.ok(fullRogue.clear! > 200 && fullRogue.clear! < 280, `Rogue Common clear in ${fullRogue.clear}s`);
+  assert.ok(fullRogue.clear! > 160 && fullRogue.clear! < 230, `Rogue Common clear in ${fullRogue.clear}s`);
 
   // 3. Glass cannon: solo Rogue dies before Sir Rattlebones
   const soloRogue = simRun({ role: 'dps', seed: 505, solo: true, loadouts: rogueLoadout(0) });

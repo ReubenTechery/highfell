@@ -123,20 +123,30 @@ function knightAct(m, dt) {
   return false;
 }
 
-/* ---------- the Gravekeeper ---------- */
+/* ---------- the Gravekeeper ----------
+   Normal: two phases. At half health the lights go out: wisps, Soul Chain and Bone Cage till he's down.
+   Heroic: three. At two thirds he leaps in and the lights go out. At a third he buries the yard: his green
+   circle moves with him (Grave Stride), the dark outside it burns, he burrows, and Bone Cage starts. */
 export function keeperTick(m, dt) {
   const ab = m.ab;
+  const heroic = !!(S.opts && S.opts.heroic);
   if (!ab.init) { ab.init = true; ab.t = 0; ab.smash = 6; ab.toss = 4; ab.hands = 9.5; }
   ab.t += dt;
   if (!ab.enraged && ab.t > m.M.enrage) { ab.enraged = true; m.dmgMul = 3; banner('He’s done digging. This is the end.', 'warn', 2.6); sfx('roar'); }
-  if (m.phase === 1 && m.hp < m.maxHp * 0.66 && !m.act) {
+  if (!heroic && m.phase === 1 && m.hp < m.maxHp * 0.5 && !m.act) {
+    m.phase = 2; m.wind = 0; m.pose = null; S.darkTarget = 1;
+    ab.wisps = 3.5; ab.chain = 7; ab.cage = 11; ab.smash = 11; ab.toss = 9;
+    banner('Phase 2: lights out. Watch for wisps, chains and cages.', 'warn', 2.6); sfx('roar');
+    return true;
+  }
+  if (heroic && m.phase === 1 && m.hp < m.maxHp * 0.66 && !m.act) {
     m.phase = 2; m.act = { k: 'leap', t: 0 }; m.wind = 0; m.pose = null;
     ab.wisps = 3.5; ab.chain = 7; ab.smash = 11; ab.toss = 9;
     banner('Phase 2: lights out. Watch for wisps and chains.', 'warn', 2.6); sfx('roar');
     S.hazards.push({ shape: 'circle', x: MAP.arena.x, y: MAP.arena.y, r: 150, warn: 1.2, t: 0, dmg: 180, src: m, onFire: () => { shake(9); sfx('slam'); } });
     return true;
   }
-  if (m.phase === 2 && m.hp < m.maxHp * 0.33 && !m.act) {
+  if (heroic && m.phase === 2 && m.hp < m.maxHp * 0.33 && !m.act) {
     m.phase = 3; m.act = { k: 'bury', t: 0 }; m.wind = 0; m.pose = 'smash';
     ab.burrow = 6; ab.cage = 11; ab.smash = 9; ab.stride = 4.5;
     banner('Phase 3: his lantern burns the yard! Stay in his green circle!', 'warn', 2.8); sfx('roar');
@@ -159,7 +169,7 @@ export function keeperTick(m, dt) {
     return true;
   }
   // only the tank is ever caged: the boss turns on someone else until he's out and Slams it back
-  if (P === 3 && ab.cage <= 0) {
+  if (P === (heroic ? 3 : 2) && ab.cage <= 0) {
     ab.cage = 18;
     const v = S.heroes.find((h) => h.role === 'tank' && h.alive && !h.st.caged && !h.st.air);
     if (v) { makeCage(v, m); m.act = { k: 'gesture', t: 0, dur: 0.7 }; m.pose = 'smash'; return true; }
@@ -186,7 +196,7 @@ export function keeperTick(m, dt) {
     sfx('rumble');
     const pool = YARD_SPOTS.slice(0, 3).filter((p) => distXY(p.x, p.y, m.x, m.y) > 120);
     const to = pick(pool.length ? pool : YARD_SPOTS.slice(0, 3));
-    m.act = { k: 'stride', t: 0, dur: 0.9, from: { x: m.x, y: m.y }, to };
+    m.act = { k: 'hands', t: 0, dur: 0.9, from: { x: m.x, y: m.y }, to };
     return true;
   }
   if (P <= 2 && ab.toss <= 0) {
@@ -263,7 +273,7 @@ function keeperAct(m, dt) {
     if (a.t > 2.0) m.act = null;
     return true;
   }
-  if (a.k === 'stride') {
+  if (a.k === 'stride' || a.k === 'hands') {
     const k = Math.min(1, a.t / a.dur);
     const ease = k * k * (3 - 2 * k);
     m.x = lerp(a.from.x, a.to.x, ease);
