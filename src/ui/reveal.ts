@@ -270,7 +270,7 @@ export class Reveal {
       const pct = (got / all * 100).toFixed(1);
       el.hidden = false;
       el.innerHTML = `<h3>Collection Log · ${got} / ${all}</h3>
-        <p class="fine"><b>${extra.preview ? 'Cards above are examples.' : 'The gear is yours. The uniques are examples.'}</b> Fill all ${all} slots to unlock (the pet is a bonus):</p>
+        <p class="fine"><b>${extra.preview ? 'Cards above are examples.' : 'The gear is yours. The uniques are examples.'}</b> Fill all ${all} slots to unlock (the rarest are a bonus):</p>
         <div class="dgx-logbar" style="pointer-events: none"><span>Barrow Crypt log</span><b>${got}/${all}</b><i aria-hidden="true"><i style="width: ${pct}%"></i></i><span class="dgx-prize" aria-hidden="true">${tile('c_risen')}</span></div>
         ${ach ? rewards(ach, false) : ''}`;
     }

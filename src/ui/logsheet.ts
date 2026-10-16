@@ -77,7 +77,7 @@ function logRewards(p: Profile, dg: DungeonInfo): string {
   const extra = bonus.filter((id) => !p.collection[id]);
   return `<button type="button" class="btn small cl-back" data-act="entry" data-id="">${GLYPH.left}Everything</button>
     <div class="cl-head plain"><div><p class="eyebrow">Collection log</p><h3>${esc(dg.name)}</h3><p class="cl-obt">Obtained: <b class="${state}">${pr.have}/${pr.need}</b></p>
-      <p class="fine">Every drop for every role (the pet is a bonus), so it takes a tank, a healer and a DPS of yours. What it gives is for your whole account, for keeps.</p></div></div>
+      <p class="fine">Every drop for every role (the rarest are a bonus), so it takes a tank, a healer and a DPS of yours. What it gives is for your whole account, for keeps.</p></div></div>
     ${ach ? rewards(ach, done) : ''}
     ${left.length ? `<h3 class="section-title">Still to find</h3><div class="cl-grid">${left.map((id) => `<button type="button" class="cl-it miss" data-act="item" data-id="${id}" title="${esc(nameOf(id))}" style="--rc: ${colourOf(id)}"><span class="tile" aria-hidden="true">${iconOf(id)}</span><span class="n">${esc(nameOf(id))}</span></button>`).join('')}</div>` : ''}
     ${extra.length ? `<h3 class="section-title">Bonus, not needed to finish</h3><div class="cl-grid">${extra.map((id) => `<button type="button" class="cl-it miss" data-act="item" data-id="${id}" title="${esc(nameOf(id))}" style="--rc: ${colourOf(id)}"><span class="tile" aria-hidden="true">${iconOf(id)}</span><span class="n">${esc(nameOf(id))}</span></button>`).join('')}</div>` : ''}`;

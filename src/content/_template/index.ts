@@ -37,7 +37,7 @@ export const TEMPLATE_DUNGEON: DungeonInfo = {
   loot: TEMPLATE_LOOT,
   marksName: 'Warband Marks',
   collection: collectionFromLoot(TEMPLATE_LOOT),
-  // the pet is a bonus slot: shown in the log, never needed to finish it
-  bonus: collectionFromLoot(TEMPLATE_LOOT).filter((id) => id.startsWith('pet.')),
+  // the pet, mount and dye are bonus slots: shown in the log, never needed to finish it
+  bonus: collectionFromLoot(TEMPLATE_LOOT).filter((id) => /^(pet|mount|dye)\./.test(id)),
   achievements: TEMPLATE_ACHIEVEMENTS.map((a) => a.id),
 };

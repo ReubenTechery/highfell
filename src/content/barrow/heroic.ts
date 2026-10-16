@@ -33,7 +33,7 @@ const HEROIC_LOOT: BossLootDef[] = BARROW_LOOT.map((t) => ({ boss: t.boss, drops
 export const HEROIC_TITLES: TitleDef[] = [{ id: 'title.undying', text: 'the Undying' }];
 
 export const HEROIC_ACHIEVEMENTS: AchievementDef[] = [
-  { id: 'barrow-heroic.log', dungeon: 'barrow-heroic', tier: 'log', points: 500, name: 'Gilded to the Bone', how: 'Fill every slot of Heroic Barrow Crypt’s collection log (the pet is a bonus).',
+  { id: 'barrow-heroic.log', dungeon: 'barrow-heroic', tier: 'log', points: 500, name: 'Gilded to the Bone', how: 'Fill every slot of Heroic Barrow Crypt’s collection log (the pet, mount and dye are a bonus).',
     reward: { look: 'barrow-gilded', title: 'title.undying', collectible: 'cosmetic.gilded_bones', text: 'Gilded Barrow Hall for your house, the title the Undying, and gilded bones for your Risen' },
     log: 'barrow-heroic' },
 ];

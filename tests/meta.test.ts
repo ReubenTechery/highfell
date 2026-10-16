@@ -404,7 +404,7 @@ test('house: spots a save has never had fill with what is not on show, once; emp
 test('house looks: a room shows the look you put on it once you have earned it, and the tavern is always yours', () => {
   const { p } = withHero('tank');
   assert.equal(lookOf(p, 'hall'), 'tavern');
-  assert.deepEqual(lookProgress(p, 'barrow'), { have: 0, need: 19 });
+  assert.deepEqual(lookProgress(p, 'barrow'), { have: 0, need: 17 });
   assert.equal(setLook(p, 'hall', 'barrow'), false, 'not earned yet');
   assert.equal(setLook(p, 'hall', 'nope'), false);
   p.achievements['barrow.log'] = { at: 1 };
@@ -441,7 +441,7 @@ test('profile: a v5 save gets the tavern in every room, and what is in the house
 test('collection log: filling the Barrow’s whole log opens Barrow Hall, a title and the Risen, for keeps', () => {
   const { p } = withHero('tank');
   const ach = new Achiever(p, { dungeon: 'barrow', role: 'tank', practice: false, testGear: false });
-  assert.deepEqual(logProgress(p, 'barrow'), { have: 0, need: 19 }, 'the pet is a bonus slot: shown, never needed');
+  assert.deepEqual(logProgress(p, 'barrow'), { have: 0, need: 17 }, 'the pet, mount and dye are bonus slots: shown, never needed');
   assert.ok(BARROW.collection.includes('pet.pint_gravekeeper'), 'the pet still has its slot in the log');
   assert.equal(lookOpen(p, 'barrow'), false);
   assert.equal(opened(p, 'race', 'risen'), false);
@@ -450,12 +450,12 @@ test('collection log: filling the Barrow’s whole log opens Barrow Hall, a titl
   assert.equal(createHero(p, { name: 'Morrow Gravesend', race: 'risen', cls: 'warrior' }), null, 'the Risen are locked');
   // every slot but the last: the log isn't done
   const last = 'barrowguard.helm';
-  for (const id of BARROW.collection.filter((x) => x !== last && x !== 'pet.pint_gravekeeper')) { p.collection[id] = { n: 1, kc: 1, at: 1 }; assert.ok(!ach.collected(id).includes('barrow.log')); }
-  assert.deepEqual(progress(p, ACHIEVEMENTS['barrow.log']), { have: 18, need: 19 });
-  assert.deepEqual(lookProgress(p, 'barrow'), { have: 18, need: 19 });
+  for (const id of BARROW.collection.filter((x) => x !== last && !(BARROW.bonus || []).includes(x))) { p.collection[id] = { n: 1, kc: 1, at: 1 }; assert.ok(!ach.collected(id).includes('barrow.log')); }
+  assert.deepEqual(progress(p, ACHIEVEMENTS['barrow.log']), { have: 16, need: 17 });
+  assert.deepEqual(lookProgress(p, 'barrow'), { have: 16, need: 17 });
   p.collection[last] = { n: 1, kc: 1, at: 1 };
   assert.deepEqual(ach.collected(last), ['barrow.log'], 'done without the pet');
-  assert.equal(p.collection['pet.pint_gravekeeper'], undefined);
+  assert.ok(['pet.pint_gravekeeper', 'mount.gravehound', 'dye.ghostly'].every((id) => !p.collection[id]));
   assert.ok(p.titles.includes('title.gravewarden'));
   assert.ok(lookOpen(p, 'barrow'));
   assert.ok(opened(p, 'race', 'risen'));

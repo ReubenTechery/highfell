@@ -41,7 +41,7 @@ export const BARROW_ACHIEVEMENTS: AchievementDef[] = [
   { id: 'barrow.lucky', dungeon: D, tier: 'hidden', points: POINTS.hidden, name: 'Lucky Dig', how: 'Get the Pint-sized Gravekeeper.',
     reward: { text: 'Bragging rights' }, collect: 'pet.pint_gravekeeper' },
   // every drop for every role: you've played all three seats and seen it all
-  { id: 'barrow.log', dungeon: D, tier: 'log', points: POINTS.log, name: 'Every Last Bone', how: 'Fill every slot of Barrow Crypt’s collection log (the pet is a bonus).',
+  { id: 'barrow.log', dungeon: D, tier: 'log', points: POINTS.log, name: 'Every Last Bone', how: 'Fill every slot of Barrow Crypt’s collection log (the pet, mount and dye are a bonus).',
     reward: { look: 'barrow', title: 'title.gravewarden', race: 'risen', text: 'Barrow Hall for your house, the title the Gravewarden, and a new kind of hero: the Risen' },
     log: 'barrow' },
 ];

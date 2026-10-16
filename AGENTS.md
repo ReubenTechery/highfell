@@ -69,7 +69,7 @@ Dungeons and their collection logs are the core loop of the whole game: four-min
 | The house has one big button, always: Dungeons. The yard holds the 3 garden planter beds | Nobody should mistake a side trip for the main thing |
 | Your other heroes wait by their beds in the house; there is no camp | One place, one less screen |
 | Looks for a room or the whole house: the tavern, and each dungeon's look (and its heroic, gilded one) from finishing that dungeon's collection log. Looks only | The house shows what you've done, and a look can't be faked |
-| Finishing a dungeon's whole collection log (every drop, every role; the pet is a bonus slot, never needed, 1/2,500) gives a house look, a title and one big prize, for keeps and never power. The Barrow's big prize is the Risen, a race | The long chase that makes the log mean something |
+| Finishing a dungeon's whole collection log (every drop, every role; the pet, mount and dye are bonus slots, never needed) gives a house look, a title and one big prize, for keeps and never power. The Barrow's big prize is the Risen, a race | The long chase that makes the log mean something |
 | Races: dwarf, elf and human from the start; gnome, goblin, the Risen (undead) and orc are earned, each in its own dungeon. Classes: warrior, cleric, mage, rogue | Races are the flex you earn; four classes keep it to four buttons |
 | Not every dungeon opens a race: a log's big prize can be a race, a race and class combo, or something else | There will be a lot of dungeons |
 | Every dungeon gets a Heroic version, open after 10 clears of it and made for full Epic: harder, the same drops gilded at the same power, its own kill counts and log | Something to do after the gear cap, never more power |
@@ -110,7 +110,7 @@ The full systems design (abilities, sets, drop tables, achievements, balance rul
   collection log); a look you haven't earned is drawn as the tavern (the testing switch shows it). Decorate, then Looks, puts one on a room or the whole house. With
   every room in the same look, the frame (beams, outer walls, roof) follows it. What a look is lives in
   `src/content/house.ts` (`LOOKS`); how it's drawn, room by room, in `src/ui/houseart.ts`.
-- **Collection log rewards** (`src/meta/logs.ts`): filling a dungeon's whole log (`logDone`; its `bonus` slots, the pet, don't count) earns its log
+- **Collection log rewards** (`src/meta/logs.ts`): filling a dungeon's whole log (`logDone`; its `bonus` slots, the pet, mount and dye, don't count) earns its log
   achievement (tier `log`, checked whenever something new arrives). Its reward gives a title and can open a
   house look (`reward.look`), a race (`reward.race`) or a collectible (Gilded Bones). Earned stays earned,
   even if a slot is added to the log later. The Barrow's: Barrow Hall, the Gravewarden, the Risen. Heroic
