@@ -99,8 +99,8 @@ test('heroes: race and class are fixed, male or female look is saved, names are 
   assert.equal(defaultSex('human', 'rogue'), 'f');
   assert.equal(heroArt('dwarf', 'warrior', 'm'), 'dwarf.warrior.m', 'drawn in layers: its body');
   assert.equal(heroArt('dwarf', 'warrior', 'f'), 'dwarf.warrior.f');
-  assert.equal(heroArt('human', 'cleric', 'f'), 'healer');
-  assert.equal(heroArt('human', 'cleric', 'm'), 'healer_m');
+  assert.equal(heroArt('human', 'cleric', 'f'), 'human.cleric.f');
+  assert.equal(heroArt('human', 'cleric', 'm'), 'human.cleric.m');
   assert.equal(heroArt('elf', 'mage', 'f'), 'dps');
   assert.equal(heroArt('elf', 'mage', 'm'), 'dps_m');
   assert.equal(heroArt('human', 'rogue', 'f'), 'rogue');
@@ -108,8 +108,8 @@ test('heroes: race and class are fixed, male or female look is saved, names are 
   for (const r of ['gnome', 'goblin', 'risen'] as const) {
     assert.equal(heroArt(r, 'warrior', 'm'), `${r}.warrior.m`);
     assert.equal(heroArt(r, 'warrior', 'f'), `${r}.warrior.f`);
-    assert.equal(heroArt(r, 'cleric', 'f'), `${r}_healer`);
-    assert.equal(heroArt(r, 'cleric', 'm'), `${r}_healer_m`);
+    assert.equal(heroArt(r, 'cleric', 'f'), `${r}.cleric.f`);
+    assert.equal(heroArt(r, 'cleric', 'm'), `${r}.cleric.m`);
     assert.equal(heroArt(r, 'mage', 'f'), `${r}_dps`);
     assert.equal(heroArt(r, 'mage', 'm'), `${r}_dps_m`);
     assert.equal(heroArt(r, 'rogue', 'f'), `${r}_rogue`);

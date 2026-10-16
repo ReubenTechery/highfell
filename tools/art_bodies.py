@@ -5,8 +5,8 @@
 # Drawn at 1.25 times game size and shrunk by Z as they're drawn, like the old whole heroes (art_heroes.py).
 import art_gear as G
 import art_heads as H
-from art_heroes import Z, s, ln, c, both, head, m, beam, bone_limb, bone_hand, ribcage, pint_face, pint_back_head, pint_skin, \
-    BOOT, BRONZE, BONE, GOLD, RHAIR
+from art_heroes import Z, s, ln, c, both, head, halo, m, beam, bone_limb, bone_hand, ribcage, pint_face, pint_back_head, pint_skin, \
+    BOOT, BRONZE, BONE, GOLD, RHAIR, WOOD_D, GRN, GRN_L, C_SKIRT, C_BODICE, C_SLEEVE_STAFF, C_SLEEVE_HEAL, RC_SKIRT
 from art_heads import BEARD, BEARD_D
 
 LINEN, LINEN_D = '#D8C8A4', '#B09C78'
@@ -126,6 +126,82 @@ def risen_warrior(fem):
     return {'race': 'risen', 'cls': 'warrior', 'fem': fem, 'f': {'z': f, 'fit': fit('f')}, 'b': {'z': b, 'fit': fit('b')}}
 
 
+# ---------------------------------------------------------------- the cleric's stance (the human is its reference)
+G.ref('cleric', head=(0, -92.8), sh=-78.4, main=(-29.6, -38.4), off=(26.4, -43.2), arm=(-15.2, -72.8), arm2=(15.2, -72.8))
+SPARKLE = 'M0 -8 Q0 -1 7 -1 Q0 -1 0 6 Q0 -1 -7 -1 Q0 -1 0 -8 Z'
+
+
+def heal_hand(x, y, hand, glow='#F4B942', spark='#FFE08A', r=13, k=1.0):
+    """the cleric's healing hand, held up glowing, a little star of light over it"""
+    from art_heads import tp
+    return halo(x, y, r, glow, 0.38) + hand + s(tp(SPARKLE, x, y - 8 * k, k), spark, 1.8)
+
+
+def human_cleric(fem):
+    """a human in a linen shift and shoes, a hand of light held up: the cleric's reference body"""
+    f, b = {}, {}
+    shoes = both('M-15 -7 H-3 V0 H-18 C-19 -3 -18 -6 -15 -7 Z', WOOD_D, 3.5)
+    f['legs'] = b['legs'] = shoes + s(C_SKIRT, LINEN)
+    f['torso'] = b['torso'] = s(C_BODICE, LINEN) + s('M-18 -71 H18 V-64 H-18 Z', LINEN_D, 3)
+    f['arms'] = s(C_SLEEVE_STAFF, LINEN) + s(C_SLEEVE_HEAL, LINEN)
+    f['off'] = heal_hand(33, -54, c(33, -54, 5.5, H.HSKIN, 3.5))
+    f['hands'] = c(-37, -48, 5.5, H.HSKIN, 3.5)
+    neck = s('M-5 -103 H5 V-96 H-5 Z', H.HSKIN, 3)
+    f['head'] = neck + head(0, -116, H.human_head(Z, bun=fem, circlet=False, fem=fem))
+    b['arms'] = s(m(C_SLEEVE_HEAL), LINEN) + s(m(C_SLEEVE_STAFF), LINEN)
+    b['off'] = heal_hand(-33, -54, c(-33, -54, 5.5, H.HSKIN, 3.5))
+    b['hands'] = c(37, -48, 5.5, H.HSKIN, 3.5)
+    b['head'] = neck + head(0, -116, H.human_back(Z, bun=fem, circlet=False))
+    return {'race': 'human', 'cls': 'cleric', 'fem': fem, 'f': {'z': f, 'fit': G.identity_fit('cleric', 'f')}, 'b': {'z': b, 'fit': G.identity_fit('cleric', 'b')}}
+
+
+def pint_cleric(race, fem):
+    """a gnome or goblin cleric: the human's stance on a pint-sized body with a big head"""
+    skin = pint_skin(race)
+    f, b = {}, {}
+    shoes = both('M-13 -6 H-3 V0 H-16 C-17 -3 -16 -5 -13 -6 Z', WOOD_D, 3.2)
+    f['legs'] = b['legs'] = shoes + s('M-13 -44 C-18 -30 -24 -15 -27 -2 H27 C24 -15 18 -30 13 -44 Z', LINEN)
+    f['torso'] = b['torso'] = s('M-14 -66 C-17 -58 -16 -50 -13 -44 H13 C16 -50 17 -58 14 -66 Z', LINEN)
+    if race == 'goblin':
+        f['trim'] = s('M9 -45 C8 -38 16 -38 15 -45 Z', '#8A5A34', 2.2) + c(12, -41, 1.5, GOLD, 0)
+    arm, arm2 = 'M-17 -63 C-26 -57 -31 -48 -33 -38 C-28 -34 -22 -34 -18 -38 C-18 -46 -16 -53 -12 -58 Z', 'M17 -63 C25 -58 30 -50 32 -42 C28 -38 22 -38 18 -41 C17 -48 15 -54 12 -58 Z'
+    f['arms'] = s(arm, LINEN) + s(arm2, LINEN)
+    f['off'] = heal_hand(26, -35, c(26, -35, 4.8, skin, 3.2), r=11, k=0.86)
+    f['hands'] = c(-31, -34, 4.8, skin, 3.2)
+    f['head'] = head(0, -79, pint_face(race, fem=fem))
+    b['arms'] = s(m(arm2), LINEN) + s(m(arm), LINEN)
+    b['off'] = heal_hand(-26, -35, c(-26, -35, 4.8, skin, 3.2), r=11, k=0.86)
+    b['hands'] = c(31, -34, 4.8, skin, 3.2)
+    b['head'] = head(0, -79, pint_back_head(race, fem=fem))
+    spine = ([0, 0, 0.77], [-52.8, -35.2, 0.87], [-78.4, -52.8, 0.82])
+    fit = lambda view: G.fit('cleric', view, spine, head=[0, -63.2, 1.25], sh=[-52.8, 0.79], main=[-24.8, -27.2, 0.76],
+                             off=[20.8, -28, 0.8], arm=[-12, -48], arm2=[12, -48])
+    return {'race': race, 'cls': 'cleric', 'fem': fem, 'f': {'z': f, 'fit': fit('f')}, 'b': {'z': b, 'fit': fit('b')}}
+
+
+def risen_cleric(fem):
+    """a Risen cleric: bones in a ragged linen shift, a green light in the hand and the skull"""
+    f, b = {}, {}
+    feet = both('M-13 -6 H-3 V0 H-16 C-17 -3 -16 -5 -13 -6 Z', BONE, 3)
+    f['legs'] = b['legs'] = feet + s(RC_SKIRT, LINEN)
+    f['torso'] = b['torso'] = beam('M0 -80 V-72', BONE, 4.5, 3) + ribcage(0, -110, 26, 30) + s('M-16 -76 H16 V-68 H-16 Z', LINEN_D, 3)
+    arm, arm2 = 'M-30 -96 L-34 -78 L-37 -52', 'M28 -96 L31 -80 L33 -62'
+    f['arms'] = bone_limb(arm, 4.4) + bone_limb(arm2, 4.4)
+    f['off'] = heal_hand(33, -60, bone_hand(33, -60), glow=GRN, spark=GRN_L, r=14)
+    f['hands'] = bone_hand(-37, -50)
+    b['arms'] = bone_limb(m(arm2), 4.4) + bone_limb(m(arm), 4.4)
+    b['off'] = heal_hand(-33, -60, bone_hand(-33, -60), glow=GRN, spark=GRN_L, r=14)
+    b['hands'] = bone_hand(37, -50)
+    if fem:
+        f['hair'] = both('M-10.5 -124 C-16.5 -112 -16.5 -94 -12.5 -82 C-8.5 -86 -8 -102 -9 -118 Z', RHAIR, 2.8)
+    f['head'] = head(0, -126, H.risen_head(Z, fem=fem))
+    b['head'] = head(0, -126, H.risen_back(Z))
+    spine = ([0, 0, 0.71], [-52.8, -57.6, 0.93], [-78.4, -83.2, 0.94])
+    fit = lambda view: G.fit('cleric', view, spine, head=[0, -100.8, 1.1], sh=[-80.8, 1.0], main=[-29.6, -40, 1.0],
+                             off=[26.4, -48, 1.0], arm=[-13.6, -76.8], arm2=[13.6, -76.8])
+    return {'race': 'risen', 'cls': 'cleric', 'fem': fem, 'f': {'z': f, 'fit': fit('f')}, 'b': {'z': b, 'fit': fit('b')}}
+
+
 BODIES = {
     'dwarf.warrior.m': lambda: dwarf_warrior(False),
     'dwarf.warrior.f': lambda: dwarf_warrior(True),
@@ -135,4 +211,12 @@ BODIES = {
     'goblin.warrior.f': lambda: pint_warrior('goblin', True),
     'risen.warrior.m': lambda: risen_warrior(False),
     'risen.warrior.f': lambda: risen_warrior(True),
+    'human.cleric.f': lambda: human_cleric(True),
+    'human.cleric.m': lambda: human_cleric(False),
+    'gnome.cleric.f': lambda: pint_cleric('gnome', True),
+    'gnome.cleric.m': lambda: pint_cleric('gnome', False),
+    'goblin.cleric.f': lambda: pint_cleric('goblin', True),
+    'goblin.cleric.m': lambda: pint_cleric('goblin', False),
+    'risen.cleric.f': lambda: risen_cleric(True),
+    'risen.cleric.m': lambda: risen_cleric(False),
 }

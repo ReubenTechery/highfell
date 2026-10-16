@@ -128,10 +128,14 @@ test('the run bakes only its own heroes and lets them go when it ends', async ()
   dropHeroes();
   assert.ok(!spr['hero.test_f'] && !art['hero.test_b'], 'gone when it ends');
   assert.equal(Object.keys(SPR).length, before);
-  // the old whole-body warriors are gone from the sprites the run bakes at start
-  for (const name of Object.keys(RUN_ART)) assert.ok(!/^(tank|gnome_tank|goblin_tank|risen_tank)/.test(name), `${name} is still baked`);
-  // and every slot a warrior wears has a layer, at every rarity, for the bots and test gear (Epic wears the Rare look)
-  for (const rar of [0, 1, 2, 3] as const) for (const [slot, id] of Object.entries(plainSlots('tank', 'warrior', rar))) assert.ok(H.layers[id!], `${slot} at ${rar}`);
+  // the old whole-body heroes of every class drawn in layers are gone from the sprites the run bakes at start
+  const gone = [...new Set(BODIES.map((b) => b.combo.split('.')[1]))];
+  const old: Record<string, RegExp> = { warrior: /^(tank|gnome_tank|goblin_tank|risen_tank)/, cleric: /^(healer|gnome_healer|goblin_healer|risen_healer)/ };
+  for (const name of Object.keys(RUN_ART)) for (const cls of gone) assert.ok(!old[cls]?.test(name), `${name} is still baked`);
+  // and every slot each class wears has a layer, at every rarity, for the bots and test gear (Epic wears the Rare look)
+  for (const cls of gone) for (const rar of [0, 1, 2, 3] as const) {
+    for (const [slot, id] of Object.entries(plainSlots(CLASSES[cls as ClassId].role, cls, rar))) assert.ok(H.layers[id!], `${cls}: ${slot} at ${rar}`);
+  }
   const s: SlotId = 'helm';
   assert.equal(plainSlots('tank', 'warrior', 3)[s], 'gear.tank.helm.2');
 });

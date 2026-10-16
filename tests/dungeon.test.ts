@@ -135,7 +135,7 @@ test('heroes: every whole-body set the game can draw knows where its weapon is a
     }
   }
   // from behind, the weapon is in the other hand, and a hero drawn in layers brings its own fit
-  assert.equal(heroFit('healer_rags', true).wx, -heroFit('healer_rags', false).wx);
+  assert.equal(heroFit('dps_rags', true).wx, -heroFit('dps_rags', false).wx);
   const own = { weapon: [-40, -70], top: -101 };
   assert.deepEqual(heroFit('hero.x', true, own), { wx: 40, wy: -70, top: -101 });
 });
@@ -183,9 +183,9 @@ test('intro: the Crypt Trial plays as any class, and every one of them gets Sir 
 test('combat & gear look: heroes not yet in layers start in visual _rags, step to _iron and heroic armour, Cleave is a1 (2.2s cd), Perfect Block resets Cleave, and Boss Weapons buff core abilities', () => {
   // Visual progression of a whole-body set: Common -> _rags, Uncommon -> _iron, Rare/Epic -> full heroic armour
   // (a hero drawn in layers wears each slot's own piece: tests/heroart.test.ts)
-  assert.equal(heroSprite({ race: 'human', cls: 'cleric', sex: 'f', regular: { weapon: { rar: 0 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'healer'), 'healer_rags');
-  assert.equal(heroSprite({ race: 'human', cls: 'cleric', sex: 'f', regular: { weapon: { rar: 1 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'healer'), 'healer_iron');
-  assert.equal(heroSprite({ race: 'human', cls: 'cleric', sex: 'f', regular: { weapon: { rar: 2 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'healer'), 'healer');
+  assert.equal(heroSprite({ race: 'elf', cls: 'mage', sex: 'f', regular: { weapon: { rar: 0 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'dps'), 'dps_rags');
+  assert.equal(heroSprite({ race: 'elf', cls: 'mage', sex: 'f', regular: { weapon: { rar: 1 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'dps'), 'dps_iron');
+  assert.equal(heroSprite({ race: 'elf', cls: 'mage', sex: 'f', regular: { weapon: { rar: 2 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'dps'), 'dps');
 
   const { s, tank, healer, dps } = game('tank');
   assert.equal(abCd(tank, 'a1'), 2.2);

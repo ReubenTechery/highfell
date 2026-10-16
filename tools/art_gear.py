@@ -249,6 +249,17 @@ def centreline(svg):
     return [((pts[i][0] + pts[-1 - i][0]) / 2, (pts[i][1] + pts[-1 - i][1]) / 2) for i in range(n)]
 
 
+def held(piece, shafts, grip, hand, k):
+    """a stand's weapon in a hero's hand, mirrored so it faces out, the stand's grip point on the hand (both in
+    their own units: the stand's, and the hero's in game units); its shafts ({index in the silhouette: colour})
+    redrawn at the hero's weight. From behind it is in the other hand: the same, mirrored."""
+    sil, det = piece
+    (gx, gy), (hx, hy) = grip, hand
+    fn = lambda x, y: (hx + (gx - x) * k, hy + (y - gy) * k)
+    front = ''.join(shaft(p, fn, shafts[i]) if i in shafts else warp(p, fn) for i, p in enumerate(sil)) + warp(''.join(det), fn)
+    return front, warp(front, lambda x, y: (-x, y))
+
+
 def shaft(svg, fn, col, w=4.4, edge=4):
     """a stand's shaft redrawn at a hero's weight: a beam down its middle, moved by fn. At hero size the stand's
     own shaft would be all ink."""
@@ -268,8 +279,8 @@ def pair_scale(svg, k, px, py):
 # ---------------------------------------------------------------- art/heroes.json
 def class_modules():
     """each class drawn in layers, and the tool that draws its gear"""
-    import art_gear_tank
-    return {'warrior': art_gear_tank}
+    import art_gear_tank, art_gear_healer
+    return {'warrior': art_gear_tank, 'cleric': art_gear_healer}
 
 
 def classes():

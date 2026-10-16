@@ -150,14 +150,8 @@ def stand_piece(piece, at):
 
 
 def boss_weapon(piece, shafts, col, grip, k=0.42):
-    """a stand's weapon in the axe hand, mirrored so its blade faces out, the stand's grip point on the hero's;
-    its shafts (indices into its silhouette) redrawn at the hero's weight. From behind, the other hand."""
-    sil, det = piece
-    gx, gy = grip
-    hx, hy = -44 * Z, -42 * Z
-    fn = lambda x, y: (hx + (gx - x) * k, hy + (y - gy) * k)
-    front = ''.join(G.shaft(p, fn, col) if i in shafts else G.warp(p, fn) for i, p in enumerate(sil)) + G.warp(''.join(det), fn)
-    return front, G.warp(front, lambda x, y: (-x, y))
+    """a stand's weapon in the axe hand"""
+    return G.held(piece, {i: col for i in shafts}, grip, (-44 * Z, -42 * Z), k)
 
 
 def barrowguard():
