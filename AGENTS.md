@@ -71,7 +71,8 @@ power as Normal, with gilded looks and its own log. Teamwork between roles is th
 | Beginner gear is meant to struggle: dungeons hit hard, telegraphs pierce shields | Tanking, healing, dodging and blocking matter |
 | Only the tank is caged; inside, the boss turns on someone else | The party feels the tank's absence |
 | You see only your own numbers; mates' spell effects stay | Less noise, your numbers mean more |
-| The first garden harvest gives the Hill Goat | Earned, and it lives in the stall |
+| The first garden harvest gives the Hill Goat | Earned, and it stands in the paddock |
+| Every mount in the game has a place in the paddock beside the house; one you lack is a shadow with a "?" | Like the collection log, you see what's left to chase |
 | No trading or selling between players, ever | The collection log has to mean "I did this" |
 | A DPS alone dies before the mini boss (a test checks it) | All three roles are needed |
 | Garden seeds drop from dungeon bosses and grow in clears, never on a clock | It feeds the dungeon loop with no timers or chores |
@@ -81,6 +82,7 @@ power as Normal, with gilded looks and its own log. Teamwork between roles is th
 | Your other heroes wait by their beds in the house; there is no camp | One place, one less screen |
 | House looks come only from finishing a dungeon's log (a gilded one from its Heroic log) | The house shows what you've done; a look can't be faked |
 | A finished collection log gives a house look, a title and one big prize, never power | The long chase that makes the log mean something |
+| A log's pet, mount and dye are bonus slots, never needed to finish it | The rarest drops stay a flex, and finishing never waits on them |
 | Dwarf, elf and human from the start; the other races are earned in dungeons; four classes | Races are the flex you earn; four classes keep it to four buttons |
 | A log's big prize can be a race, a race and class combo, or something else | There will be a lot of dungeons |
 | Every dungeon gets a Heroic: harder, the same drops gilded at the same power, its own log | Something to do after the gear cap, never more power |
@@ -99,7 +101,7 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   four classes, which race and class combos have art in `HERO_ART`, name lists), one folder per dungeon
   (`barrow/`: map, mobs, bosses, script, items, loot tables, collectibles, achievements, and `heroic.ts`, its
   heroic version and gilded drops), and `vale/` (ingredients, recipes, ranks, and `garden.ts`).
-  `house.ts` is the house's plan. Register new content in `src/content/index.ts`; `checkContent()`
+  `house.ts` is the house's plan (and the paddock's places). Register new content in `src/content/index.ts`; `checkContent()`
   and the tests catch broken ids.
 - `src/dungeon`: the engine, plain JS with no DOM: state `S`, entities, heroes, mobs, bots, the loop,
   rendering to a canvas, and `walkout.js` (the lantern tells). It reaches the screen only through `HOOKS`

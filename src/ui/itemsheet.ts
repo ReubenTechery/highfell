@@ -8,7 +8,7 @@ import { DUNGEONS, SETS, thing } from '../content';
 import { ROLES } from '../content/roles';
 import { ROLE_SLOTS, gearKey } from '../content/gear';
 import type { CollectibleKind, ItemDef, RoleId } from '../content/types';
-import { GARDEN_TABLE } from '../content/vale';
+import { FIRST_HARVEST_GIFT, GARDEN_TABLE } from '../content/vale';
 import { bestRegular, compareFor, compareOn, floorWorn, itemShare, wearerOf, type Compare, type Effect, type Verdict } from '../meta/gear';
 import { spotById, spotOf } from '../meta/hearth';
 import type { Profile } from '../meta/profile';
@@ -57,15 +57,16 @@ export function itemSheet(p: Profile, id: string, hasBack: boolean): { head: str
   if (!source && t?.kind === 'collectible') source = t.def.source;
   const kc = (() => { for (const dg of Object.values(DUNGEONS)) for (const tb of dg.loot) if (tb.drops.some((d) => d.id === id)) return p.bosses[`${dg.id}.${tb.boss}`]?.kc || 0; return null; })();
   const vsrc = valeSource(id);
-  const got = e ? `Got it${e.kc ? ` at ${vsrc ? 'count' : 'kill count'} ${fmtN(e.kc)}` : ''} on ${fmtDate(e.at)}${e.n > 1 ? `. Seen ${e.n} times.` : '.'}`
+  const got = e ? `Got it${e.kc ? ` at ${vsrc || id === FIRST_HARVEST_GIFT ? 'harvest' : 'kill count'} ${fmtN(e.kc)}` : ''} on ${fmtDate(e.at)}${e.n > 1 ? `. Seen ${e.n} times.` : '.'}`
     : t?.kind === 'item' && t.def.kind === 'gear' ? 'Regular progression gear from dungeon clears.' : kc !== null ? `Not yet. Your kill count is ${fmtN(kc)}.` : vsrc ? `Not yet. You’ve ${vsrc.word} ${fmtN(p.counters[vsrc.key] || 0)} times.` : 'Not yet.';
   const spot = e ? spotOf(p, id) : null;
+  const home = spot ? ` It is in your house: ${spotById(spot)?.label.toLowerCase() || ''}.` : e && t?.kind === 'collectible' && t.def.kind === 'mount' ? ' It lives in your paddock.' : '';
   const acts = [hasBack ? `<button type="button" class="btn small" data-act="back">${GLYPH.left}Back</button>` : '', act].filter(Boolean).join('');
   const body = `<div class="detail"><span class="tile" aria-hidden="true" style="box-shadow: 0 3px 0 var(--ink), inset 0 0 0 4px ${colourOf(id)}">${iconOf(id)}</span>
       <div class="detail-side">${side}</div></div>
     ${vs}${more}
     <div class="stats"><span class="chip">From <b>${esc(source || 'Unknown')}</b></span></div>
-    <p class="fine">${esc(got)}${spot ? ` It is in your house: ${esc(spotById(spot)?.label.toLowerCase() || '')}.` : ''}</p>
+    <p class="fine">${esc(got + home)}</p>
     ${acts ? `<div class="actions">${acts}</div>` : ''}`;
   return { head: `<h2>${esc(nameOf(id))}</h2><p>${esc(kind)}</p>`, body };
 }

@@ -51,6 +51,7 @@ export function checkContent(): string[] {
   for (const d of Object.values(DUNGEONS)) {
     for (const t of d.loot) for (const dr of t.drops) if (!thing(dr.id)) bad.push(`${d.id} loot ${dr.id}`);
     for (const id of d.collection) if (!thing(id)) bad.push(`${d.id} collection ${id}`);
+    for (const id of d.bonus || []) if (!d.collection.includes(id)) bad.push(`${d.id} bonus ${id} is not in its log`);
     for (const id of d.achievements) if (!ACHIEVEMENTS[id]) bad.push(`${d.id} achievement ${id}`);
     if (d.heroicOf && !DUNGEONS[d.heroicOf]) bad.push(`${d.id} heroic of ${d.heroicOf}`);
   }

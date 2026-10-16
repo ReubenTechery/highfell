@@ -95,7 +95,7 @@ export class Garden {
     for (const id of fresh) if (COLLECTIBLES[id]) app.hearth.fresh.add(id);
     app.save();
     if (h.gift) await this.moment(h.gift, 'Your first harvest', 'She wandered into the garden and ate a row of something. She’s staying.');
-    for (const d of h.drops) if (d.isNew && ['pet', 'mount'].includes(COLLECTIBLES[d.id]?.kind)) await this.moment(d.id, `${fmtRate(d.rate)} · harvest ${fmtN(h.kc)}`, COLLECTIBLES[d.id].kind === 'pet' ? 'It followed you in. It’s by the fire.' : 'It’s waiting in the stall.');
+    for (const d of h.drops) if (d.isNew && ['pet', 'mount'].includes(COLLECTIBLES[d.id]?.kind)) await this.moment(d.id, `${fmtRate(d.rate)} · harvest ${fmtN(h.kc)}`, COLLECTIBLES[d.id].kind === 'pet' ? 'It followed you in. It’s by the fire.' : 'It’s out in the paddock.');
     this.busy = false;
     this.card = { kind: 'harvest', h, end, res, unlocked };
     this.render();
@@ -144,7 +144,7 @@ export class Garden {
     const pr = rankProgress(p.vale.xp.gather || 0);
     const pips = [0, 1, 2].map((i) => `<i class="${i < c.res.perfects ? 'perfect' : i < c.res.perfects + c.res.goods ? 'good' : 'rough'}"></i>`).join('');
     const seed = c.h.node.id, again = (p.vale.seeds[seed] || 0) > 0 && !p.vale.beds[c.h.bed]?.seed;
-    const gift = c.h.gift ? `<div class="vc-drop new"><span class="tile" aria-hidden="true">${iconOf(c.h.gift)}</span><div><b>${esc(nameOf(c.h.gift))} <i>New</i></b><span>Your first harvest</span><em>In the stall at home</em></div></div>` : '';
+    const gift = c.h.gift ? `<div class="vc-drop new"><span class="tile" aria-hidden="true">${iconOf(c.h.gift)}</span><div><b>${esc(nameOf(c.h.gift))} <i>New</i></b><span>Your first harvest</span><em>In the paddock at home</em></div></div>` : '';
     return `<div class="vc-gain"><span class="tile" aria-hidden="true">${tile(ing?.icon || '')}</span><div><b>+${c.end.gained} ${esc(ing?.name || '')}</b><span>${c.end.perfects ? `${c.end.perfects} Perfect${c.end.perfects > 1 ? 's' : ''}, +${c.end.perfects} for steady hands` : 'No Perfects this time'}</span></div><span class="toy-pips" aria-hidden="true">${pips}</span></div>
       ${c.h.dew ? `<div class="vc-line"><span class="tile" aria-hidden="true">${tile('g_dew')}</span><span>+${c.h.dew} Starlight Dew <em>it was shimmering</em></span></div>` : ''}
       ${gift}
@@ -185,7 +185,7 @@ function seedSources(): string {
 function dropsHtml(drops: ValeDrop[], kc: string): string {
   return drops.map((d) => {
     const c = COLLECTIBLES[d.id];
-    const note = d.dupe ? 'Duplicate: +2 Starlight Dew' : c?.kind === 'pet' ? 'Waiting by the fire at home' : c?.kind === 'mount' ? 'In the stall at home' : c?.kind === 'banner' ? 'Hanging up at home' : 'On a shelf at home';
+    const note = d.dupe ? 'Duplicate: +2 Starlight Dew' : c?.kind === 'pet' ? 'Waiting by the fire at home' : c?.kind === 'mount' ? 'In the paddock at home' : c?.kind === 'banner' ? 'Hanging up at home' : 'On a shelf at home';
     return `<div class="vc-drop ${d.dupe ? 'dupe' : 'new'}"><span class="tile" aria-hidden="true">${iconOf(d.id)}</span><div><b>${esc(nameOf(d.id))}${d.dupe ? '' : ' <i>New</i>'}</b><span>${fmtRate(d.rate)} · ${esc(kc)}</span><em>${esc(note)}</em></div></div>`;
   }).join('');
 }

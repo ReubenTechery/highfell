@@ -13,6 +13,7 @@ import type { Rar, RoleId, SlotId } from '../content/types';
 import { takeTrait, trialStarter, type Drop, type RunLoot, type Tell } from '../meta/loot';
 import { activeHero, heroById, roleOf, type Hero, type Profile } from '../meta/profile';
 import { readyBeds, seedTotal } from '../meta/vale';
+import { logProgress } from '../meta/logs';
 import { PLANTS } from '../content/vale';
 import { itemShare, waiting, worn } from '../meta/gear';
 import type { App } from './app';
@@ -194,7 +195,7 @@ export class Reveal {
         const dp = Math.round((newS.power - nowS.power) * 10) / 10, dh = Math.round((newS.health - nowS.health) * 10) / 10;
         if (dp > 0) gains = `<span class="lc-gains"><b class="up">${GLYPH.rise}+${dp}% ${esc(ROLE_STAT[it.role].short)}</b><b class="up">${GLYPH.rise}+${dh}% hp</b></span>`;
       }
-      note = d.dupe ? `Duplicate · Seen ${fmtN(this.app.p.collection[d.id]?.n || 2)}× in log` : c ? (c.kind === 'pet' ? 'Waiting by the fire' : c.kind === 'mount' ? 'In the stall at home' : c.kind === 'cosmetic' ? 'A new look' : 'On the mantel') : it?.setId ? `${esc(it.name.split(' ')[0])} set piece · ilvl ${itemShare(it).ilvl}` : it?.effectDesc ? esc(it.effectDesc) : '';
+      note = d.dupe ? `Duplicate · Seen ${fmtN(this.app.p.collection[d.id]?.n || 2)}× in log` : c ? (c.kind === 'pet' ? 'Waiting by the fire' : c.kind === 'mount' ? 'In the paddock at home' : c.kind === 'cosmetic' ? 'A new look' : 'On the mantel') : it?.setId ? `${esc(it.name.split(' ')[0])} set piece · ilvl ${itemShare(it).ilvl}` : it?.effectDesc ? esc(it.effectDesc) : '';
     }
     const stamp = example ? '<span class="stamp ex">Example</span>' : table ? (d.dupe ? '<span class="stamp dupe">Dupe</span>' : '<span class="stamp">New</span>') : d.offerTrait ? '' : '<span class="stamp" style="background: var(--green)">Up</span>';
     const tapHint = `<span class="lc-tap">${it ? 'Tap to compare stats' : 'Tap to inspect'}</span>`;
@@ -233,7 +234,7 @@ export class Reveal {
       el.setAttribute('role', 'dialog');
       el.setAttribute('aria-label', c.name);
       el.innerHTML = `<span class="rays"></span><div class="bm"><img src="${spriteURL(c.sprite || '')}" alt=""><h2>${esc(c.name)}</h2>
-        <p>${esc(fmtRate(d.rate))} · kill count ${fmtN(d.kc || 0)}</p><p>${c.kind === 'pet' ? 'He is waiting by the fire at home.' : 'Waiting in the stall at home.'}</p><p style="opacity: 0.7">Tap to carry on</p></div>`;
+        <p>${esc(fmtRate(d.rate))} · kill count ${fmtN(d.kc || 0)}</p><p>${c.kind === 'pet' ? 'He is waiting by the fire at home.' : 'Waiting in the paddock at home.'}</p><p style="opacity: 0.7">Tap to carry on</p></div>`;
       this.root.appendChild(el);
       SFX.play('petfound');
       this.momentDone = () => { el.remove(); this.momentDone = null; res(); };
@@ -247,7 +248,7 @@ export class Reveal {
   private after(): void {
     const loot = this.loot!, extra = this.extra!, p = this.app.p;
     const dg = DUNGEONS[loot.dungeon] || BARROW;
-    const got = dg.collection.filter((id) => p.collection[id]).length;
+    const { have: got, need: all } = logProgress(p, dg.id);
     const newSlots = extra.intro ? 0 : loot.drops.filter((d) => d.source === 'table' && d.isNew).length;
     const kc = Object.entries(loot.kc);
     const h = heroById(p, extra.hero);
@@ -257,7 +258,7 @@ export class Reveal {
       sum.innerHTML = `<h3>This run</h3><div class="rv-grid">
           <div class="kv"><span>Time</span><b>${fmtT(loot.time)}</b><small>${loot.newPb ? 'New best!' : loot.firstClear ? 'First clear!' : `Best ${fmtT(loot.pb)}`}</small></div>
           ${kc.map(([b, n]) => `<div class="kv"><span>${esc(dg.bosses.find((x) => x.id === b)?.name || b)}</span><b>KC ${fmtN(n)}</b></div>`).join('')}
-          <div class="kv"><span>Collection log</span><b>${got} / ${dg.collection.length}</b><small>${newSlots ? `+${newSlots} new` : ''}</small></div>
+          <div class="kv"><span>Collection log</span><b>${got} / ${all}</b><small>${newSlots ? `+${newSlots} new` : ''}</small></div>
           <div class="kv"><span>Party deaths</span><b>${extra.deaths}</b></div>
           ${gardenKv(p, loot)}
         </div>`;
@@ -266,11 +267,11 @@ export class Reveal {
     if (extra.intro) {
       const el = $('rv-log', this.root);
       const ach = ACHIEVEMENTS['barrow.log'];
-      const pct = (got / dg.collection.length * 100).toFixed(1);
+      const pct = (got / all * 100).toFixed(1);
       el.hidden = false;
-      el.innerHTML = `<h3>Collection Log · ${got} / ${dg.collection.length}</h3>
-        <p class="fine"><b>${extra.preview ? 'Cards above are examples.' : 'The gear is yours. The uniques are examples.'}</b> Fill all ${dg.collection.length} slots to unlock:</p>
-        <div class="dgx-logbar" style="pointer-events: none"><span>Barrow Crypt log</span><b>${got}/${dg.collection.length}</b><i aria-hidden="true"><i style="width: ${pct}%"></i></i><span class="dgx-prize" aria-hidden="true">${tile('c_risen')}</span></div>
+      el.innerHTML = `<h3>Collection Log · ${got} / ${all}</h3>
+        <p class="fine"><b>${extra.preview ? 'Cards above are examples.' : 'The gear is yours. The uniques are examples.'}</b> Fill all ${all} slots to unlock (the rarest are a bonus):</p>
+        <div class="dgx-logbar" style="pointer-events: none"><span>Barrow Crypt log</span><b>${got}/${all}</b><i aria-hidden="true"><i style="width: ${pct}%"></i></i><span class="dgx-prize" aria-hidden="true">${tile('c_risen')}</span></div>
         ${ach ? rewards(ach, false) : ''}`;
     }
     // what a filled log gave, with the way to it: make one of the new heroes, put the look up
@@ -343,7 +344,7 @@ export class Reveal {
     const set = h?.cls === 'rogue' ? 'shadeveil' : { tank: 'barrowguard', healer: 'candlewake', dps: 'rimebone' }[role];
     if (tell !== 'normal') drops.push({ id: `${set}.helm`, source: 'table', boss: 'keeper', rate: 1 / 50, kc: kcK, role, isNew: true, dupe: false, marks: 0, toEquip: true });
     if (tell === 'unique') drops.push({ id: 'trophy.rattlebones_plume', source: 'table', boss: 'knight', rate: 1 / 50, kc: kcN, role, isNew: false, dupe: true, marks: 3 });
-    if (tell === 'pet') drops.push({ id: 'pet.pint_gravekeeper', source: 'table', rate: 1 / 5000, boss: 'keeper', kc: kcK, role, isNew: true, dupe: false, marks: 0 });
+    if (tell === 'pet') drops.push({ id: 'pet.pint_gravekeeper', source: 'table', rate: 1 / 2500, boss: 'keeper', kc: kcK, role, isNew: true, dupe: false, marks: 0 });
     const loot: RunLoot = { dungeon: 'barrow', role, hero: h?.id || '', drops, tell, kc: { knight: kcN, keeper: kcK }, marks: 1 + drops.reduce((a, d) => a + d.marks, 0), clears: (p.dungeons.barrow?.clears || 0) + 1, time: 247, pb: p.dungeons.barrow?.pb ?? 247, newPb: false, firstClear: false };
     this.app.show('reveal');
     this.show(loot, { unlocked: kind === 'log' ? ['barrow.log'] : [], hero: h?.id || null, role, deaths: 0, again: null, preview: true });
