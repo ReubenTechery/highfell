@@ -10,7 +10,8 @@
  * Normal your own Warband heroes from your bunk room fill the other seats in their own gear (or bots stand
  * in until you make them); tap a hero for Who goes in, to play another or make one. Heroic needs at least
  * two players (party.ts), so its other seats wait for friends and the gold button stays locked until online
- * play. Then your brew (one button; its page has every bottle and what it does), and the gold button.
+ * play. Then your brew (one button; its page has every bottle and what it does), and the gold button. The first
+ * time, a tip under the door says who comes with you (your Warband), and your first bottle gets one too (tips.ts).
  */
 import { COLLECTIBLES, DUNGEONS, TITLES, heroicVersion } from '../content';
 import { KIT_RATE } from '../content/kits';
@@ -24,6 +25,7 @@ import { HEROIC_AFTER, heroicOpen, heroicProgress, lootFor } from '../meta/loot'
 import { logAchievement, logProgress } from '../meta/logs';
 import { groupOf, heroesFor, partyProblem, seats } from '../meta/party';
 import { activeHero, heroById, roleOf, setActive, type Hero, type Profile } from '../meta/profile';
+import { doorTip, finishTip, type DoorTip } from '../meta/tips';
 import type { App } from './app';
 import { esc, fmtRate, fmtT, GLYPH } from './dom';
 import { colourOf, heroImg, heroSprite, iconOf, nameOf, placeSprite, tile } from './art';
@@ -175,11 +177,12 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
   if (pick.page === 'brews') return { head: subHead('Your brew'), body: brewsPage(p), foot };
   const head = `<h2><button type="button" class="dgx-namebtn" data-act="dglist" aria-label="${esc(base.name)}. All dungeons">${esc(base.name)}${GLYPH.down}</button></h2><p>Tier ${meta.roman}${pick.heroic ? ' · Heroic' : ''} · ${statLine(rec?.clears || 0, keeper?.kc || 0, rec?.pb)}</p>`;
   // on a phone the log line opens the Loot page; on desktop the loot sits in its own column instead
-  const body = `<div class="dgx${pick.heroic ? ' heroic' : ''}">
-    ${door(p, base, pick.heroic, diff + steps(base.id))}
+  const tip = doorTip(p, pick.heroic);
+  const body = `<div class="dgx${pick.heroic ? ' heroic' : ''}${tip ? ' tipping' : ''}">
+    ${door(p, base, pick.heroic, diff + steps(base.id), tip === 'warband')}
     ${logLine(p, dg, true)}
     <aside class="dgx-lootcol" aria-label="Loot">${loot}</aside>
-    <div class="dgx-you">${brewButton(p)}</div>
+    <div class="dgx-you">${brewButton(p, tip === 'brew')}${tip === 'brew' ? brewTip() : ''}</div>
   </div>`;
   return { head, body, foot };
 }
@@ -293,8 +296,10 @@ export function dungeonActions(d: DungeonHost): Record<string, (el: HTMLElement)
     dgpick: (el) => { d.pick.dungeon = el.dataset.id || 'barrow'; d.pick.heroic = false; d.pick.page = 'door'; SFX.play('ui'); d.refresh(); },
     dgstep: (el) => { dungeonStep(d.pick, +(el.dataset.v || 1)); SFX.play('ui'); d.refresh(); },
     diff: (el) => { d.pick.heroic = el.dataset.v === 'heroic'; SFX.play('ui'); d.refresh(); },
-    seats: () => page('heroes'),
-    brews: () => page('brews'),
+    // tapping what a tip points at is the tip seen
+    seats: () => { seenTip(d, 'warband'); page('heroes'); },
+    brews: () => { seenTip(d, 'brew'); page('brews'); },
+    tipok: (el) => { finishTip(d.app.p, el.dataset.tip === 'brew' ? 'brew' : 'warband'); SFX.play('ui'); d.app.save(); },
     brewpick: (el) => {
       const p = d.app.p, id = el.dataset.id || null;
       p.vale.drink = id && RECIPES[id] ? id : null;
@@ -306,9 +311,16 @@ export function dungeonActions(d: DungeonHost): Record<string, (el: HTMLElement)
       const h = heroById(d.app.p, el.dataset.id || null); if (!h) return;
       setActive(d.app.p, h.id); d.pick.page = 'door'; SFX.play('place'); d.app.save();
     },
-    newseat: (el) => { const r = el.dataset.role as RoleId; SFX.play('ui'); d.close(); d.app.showCreate(r); },
+    newseat: (el) => { const r = el.dataset.role as RoleId; seenTip(d, 'warband'); SFX.play('ui'); d.close(); d.app.showCreate(r); },
     go: () => goIn(d),
   };
+}
+
+/** a door tip is showing and you tapped what it points at (or went in): it's seen */
+function seenTip(d: DungeonHost, tip: DoorTip): void {
+  if (doorTip(d.app.p, d.pick.heroic) !== tip) return;
+  finishTip(d.app.p, tip);
+  d.app.store.save();
 }
 
 /** the arrows (and the arrow keys): to the dungeon before or after this one in Act 1, on its Normal door */
@@ -331,6 +343,9 @@ function goIn(d: DungeonHost): void {
   const pr = d.pick, app = d.app;
   const { dg, open } = pickedDungeon(app.p, pr, app.dev.allOpen);
   if (!open || (pr.heroic && partyProblem(groupOf(app.p), { heroic: true }) && !app.dev.allOpen)) { SFX.play('nope'); return; }
+  // going in with a tip up is the tip seen (the run saves as it starts)
+  const tip = doorTip(app.p, pr.heroic);
+  if (tip) finishTip(app.p, tip);
   SFX.play('ui');
   app.startRun({ dungeon: dg.heroicOf || dg.id, start: 'entrance', testRar: null, heroic: pr.heroic });
 }
@@ -369,8 +384,9 @@ function item(p: Profile, d: DropDef): string {
 
 /** The door: your party standing in front of the dungeon's door, its final boss behind them. On Normal your
  *  own Warband heroes fill the other seats in their own gear, or a bot where you have no hero of that role;
- *  on Heroic the other seats wait for friends. Each hero's name plate is a button for Who goes in. */
-function door(p: Profile, base: DungeonInfo, heroic: boolean, diff: string): string {
+ *  on Heroic the other seats wait for friends. Each hero's name plate is a button for Who goes in. `warband`:
+ *  the first time here, the other seats glow and a tip under the door says who they are. */
+function door(p: Profile, base: DungeonInfo, heroic: boolean, diff: string, warband = false): string {
   const st = base.stage;
   if (!st) return `<div class="dgx-art">${banner(heroic, base.id)}${diff}</div>`;
   const h = activeHero(p);
@@ -384,11 +400,29 @@ function door(p: Profile, base: DungeonInfo, heroic: boolean, diff: string): str
   const plates = cast.map((c, i) => {
     const at = seatAt(st, i), style = `left: ${at.left.toFixed(2)}%; --feet: ${at.feet.toFixed(2)}%`;
     if (!c.sprite) return `<span class="dgx-seat open r-${c.role}" style="${style}"><span class="dgx-ghost" aria-hidden="true">${GLYPH.plus}</span><span class="dgx-plate">${esc(c.name)}</span></span>`;
-    return `<button type="button" class="dgx-seat r-${c.role}${c.tag === 'You' ? ' me' : ''}" style="${style}" data-act="seats" aria-label="${esc(c.label)}. Change who goes in">${c.tag ? `<span class="dgx-tag${c.tag === 'Bot' ? ' bot' : ''}">${c.tag}</span>` : ''}<span class="dgx-plate">${esc(c.name)}</span></button>`;
+    return `<button type="button" class="dgx-seat r-${c.role}${c.tag === 'You' ? ' me' : warband ? ' tip' : ''}" style="${style}" data-act="seats" aria-label="${esc(c.label)}. Change who goes in">${c.tag ? `<span class="dgx-tag${c.tag === 'Bot' ? ' bot' : ''}">${c.tag}</span>` : ''}<span class="dgx-plate">${esc(c.name)}</span></button>`;
   }).join('');
   return `<div class="dgx-door${heroic ? ' heroic' : ''}"><div class="dgx-stage${heroic ? ' heroic' : ''}" style="--stage-bg: ${st.bg}; --stage-shape: ${stageShape(st)}; --stage-k: ${(st.view[3] / st.view[2]).toFixed(4)}"><div class="dgx-stage-in">${stageSvg(base.id, st, heroic, cast.map((c) => c.sprite))}${plates}</div>${diff}</div>
-    ${heroic ? '<p class="dgx-note">Heroic needs 2 players. A bot fills the last seat.</p>' : ''}</div>`;
+    ${heroic ? '<p class="dgx-note">Heroic needs 2 players. A bot fills the last seat.</p>' : ''}${warband ? warbandTip(p) : ''}</div>`;
 }
+
+/** The first time at the door: who comes with you. Your other heroes take the other seats in their own gear,
+ *  and a bot stands in for a role you have no hero for yet (its button makes one, and comes back here). */
+function warbandTip(p: Profile): string {
+  const bot = seats(p, false).find((s) => !s.hero), room = p.roster.length < MAX_HEROES;
+  const make = bot && room ? `<button type="button" class="btn small" data-act="newseat" data-role="${bot.role}">${GLYPH.plus}Make a ${esc(word(bot.role))}</button>` : '';
+  return `<div class="dgx-tip" role="note">
+    <p class="dgx-tip-h"><span class="dgx-tip-new">New</span><b>Your Warband</b></p>
+    <p>Your other heroes fill these seats, in their own gear. ${bot ? 'A bot stands in until you make one.' : 'Tap a name to swap who goes in.'}</p>
+    <p>Better gear on them, faster runs.</p>
+    <div class="dgx-tip-acts">${make}<button type="button" class="btn small gold" data-act="tipok" data-tip="warband">Got it</button></div></div>`;
+}
+
+/** your first bottle: it's poured as you go in, for the whole party */
+const brewTip = (): string => `<div class="dgx-tip one" role="note">
+    <p class="dgx-tip-h"><span class="dgx-tip-new">New</span><b>Your Brew</b></p>
+    <p>One bottle is poured as you go in. It helps the whole party for the run.</p>
+    <div class="dgx-tip-acts"><button type="button" class="btn small gold" data-act="tipok" data-tip="brew">Got it</button></div></div>`;
 
 /** Who goes in: every hero by role, who you're playing and who comes along with you. Tap one to play them;
  *  for each other seat the hero of that role you played last comes along (a bot where you have none). */
@@ -419,10 +453,10 @@ function heroRow(p: Profile, x: Hero, role: RoleId, tag: string): string {
 /** the brew you'll pour at the door, if you have one: a single button with what it does in a few words,
  *  and how many bottles you have. It opens the Brews page. */
 const drinkOf = (p: Profile): string | null => (p.vale.drink && (p.vale.shelf[p.vale.drink] || 0) > 0 ? p.vale.drink : null);
-function brewButton(p: Profile): string {
+function brewButton(p: Profile, tip = false): string {
   if (!RECIPE_ORDER.some((id) => (p.vale.shelf[id] || 0) > 0)) return '';
   const id = drinkOf(p), r = id ? RECIPES[id] : null;
-  return `<button type="button" class="dgx-brew${r ? '' : ' none'}" data-act="brews" ${r ? `style="--c: ${r.color}"` : ''} aria-label="Brew: ${esc(r ? `${r.name}, ${r.short}` : 'none')}. Change brew">
+  return `<button type="button" class="dgx-brew${r ? '' : ' none'}${tip ? ' tip' : ''}" data-act="brews" ${r ? `style="--c: ${r.color}"` : ''} aria-label="Brew: ${esc(r ? `${r.name}, ${r.short}` : 'none')}. Change brew">
     ${r ? `<span class="tile" aria-hidden="true">${tile(r.icon)}</span>` : `<span class="tile dgx-pot" aria-hidden="true">${GLYPH.pot}</span>`}
     <span class="dgx-bname"><b>${esc(r ? r.name : 'No brew')}</b><small>${esc(r ? r.short : 'Go in as you are')}</small></span>
     ${r ? `<span class="dgx-count">×${p.vale.shelf[r.id]}</span>` : ''}<span class="dgx-go" aria-hidden="true">${GLYPH.right}</span></button>`;

@@ -122,6 +122,8 @@ export const LOOK_ROOMS: string[] = ROOMS.filter((r) => !OUTSIDE.includes(r.id))
 
 /** where your other heroes stand in the bunk room, by their beds */
 export const BUNK_SLOTS: [number, number][] = [[64, -1196], [164, -1192], [264, -1196], [364, -1192], [462, -1196]];
+/** where your hero stands in the hall, by the fire, and how big */
+export const HERO_AT = { x: 360, y: FLOORS.hall - 20, k: 2.2 };
 
 /** The room a point falls in, for going into whatever you tap from far away. */
 export function roomAt(x: number, y: number): RoomDef | null {
