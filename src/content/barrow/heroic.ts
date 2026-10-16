@@ -27,7 +27,7 @@ export const HEROIC_COLLECTIBLES: CollectibleDef[] = [
   // dropped in Heroic before the kits gilded your pieces; whoever has it keeps it, and it still works
   { id: gilded('dye.ghostly'), kind: 'cosmetic', name: 'Gravegold Dye', desc: 'Turns your Barrow set to gold.', icon: 'c_dye_gilded', sprite: 'tr_dye_gilded', source: 'Heroic, before gilding kits', retired: true },
   // the reward for the whole heroic log, not a drop
-  { id: 'cosmetic.gilded_bones', kind: 'cosmetic', name: 'Gilded Bones', desc: 'Your Risen heroes’ bones turn to gold.', icon: 'c_gilded_bones', source: 'Achievement: Gilded to the Bone' },
+  { id: 'cosmetic.gilded_bones', kind: 'cosmetic', name: 'Gilded Bones', desc: 'Your Risen heroes’ bones turn to gold.', icon: 'c_gilded_bones', source: 'Achievement: Gilded to the Bone', gilds: 'risen' },
 ];
 
 export const HEROIC_TITLES: TitleDef[] = [{ id: 'title.undying', text: 'the Undying' }];

@@ -113,7 +113,7 @@ export class Sheets {
         this.app.store.replace(freshProfile());
         this.app.toasts.text('Fresh start', 'Everything is back to zero. Make a hero to begin.');
       },
-      preview: (el) => { this.close(); this.app.reveal.preview(el.dataset.v as Tell | 'log'); },
+      preview: (el) => { this.close(); this.app.reveal.preview(el.dataset.v as Tell | 'log', this.pick.dungeon); },
       intro: () => { SFX.play('ui'); this.close(); this.app.startIntro(); },
       tour: () => { SFX.play('ui'); this.close(); this.app.hearth.startTour(); },
       drink: (el) => { const p = this.app.p, id = el.dataset.id || null; p.vale.drink = id && RECIPES[id] ? id : null; SFX.play(id ? 'clink' : 'ui'); this.app.save(); },

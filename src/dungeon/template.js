@@ -100,8 +100,9 @@ export function makeSealTrial(cfg = {}) {
  * The run script (`STARTS`, `setup`, `onBossPulled`, `onBossDead`, `triggers`, `onAmbush`, `onRespawn`) from
  * a config, so a new dungeon doesn't copy it:
  *   miniBoss, finalBoss  { id, name, room, gateIn, gateOut (the mini boss's way on), victoryText, chestX/Y (the
- *                        final one's chest) }. A boss's pull brings everyone through its gateIn door (Barrow
- *                        still gives the old `pullY`).
+ *                        final one's chest), wakeIn (the final one wakes when a hero is this close to the arena's
+ *                        middle: 30 inside its edge unless given) }. A boss's pull brings everyone through its
+ *                        gateIn door (Barrow still gives the old `pullY`).
  *   seal                 optional, and only ever on Heroic: the three-seat puzzle after pack `afterPack`.
  *   ambush               optional: pack `packId` bursts out of props (`propClosed` to `propOpen`) once a hero
  *                        passes `triggerY` in `room` after pack `afterPack` is down (Barrow's coffins).
@@ -240,7 +241,7 @@ export function makeDungeonScript(cfg) {
       const k = G.mobs[0];
       if (k && k.alive) {
         for (const h of S.heroes) {
-          if (h.alive && roomIndexOf(h.x, h.y) === (fin.room ?? 5) && dist(h, MAP.arena) < MAP.arena.r - 30) {
+          if (h.alive && roomIndexOf(h.x, h.y) === (fin.room ?? 5) && dist(h, MAP.arena) < (fin.wakeIn ?? MAP.arena.r - 30)) {
             aggro(k, h, 1);
             break;
           }

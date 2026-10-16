@@ -80,13 +80,15 @@ New colours are fine when a thing needs one; keep them flat and in this family (
 
 | Tool | Draws | Writes |
 | --- | --- | --- |
-| `tools/art_heroes.py`, `tools/art_heads.py` | the heroes, front and back (the Risen too, gilded as well); their faces and the backs of their heads | `art/sprites.json` (through `art_sprites.py`) |
+| `tools/art_heroes.py`, `tools/art_heads.py` | the heroes, front and back (the Risen and the Gnomes too, gilded as well); their faces and the backs of their heads | `art/sprites.json` (through `art_sprites.py`) |
 | `tools/art_sprites.py` | mobs, bosses, dungeon props, effects, and `gild()`; builds the heroes in with them | `art/sprites.json` |
 | `tools/art_icons.py` | ability icons, gear icons, the set pieces' icons (cut from the wardrobe) | `art/icons.json` |
 | `tools/art_wardrobe.py` | the wardrobe: the bare stand and every set piece and boss weapon as a layer, plain and gilded | `art/wardrobe.json` |
 | `tools/art_hearth.py` | the house's props (the lectern, armour stand, weapon rack, larder, bunks, signpost, the Barrow door, bricked arches, the brewing bench, the paddock's hay and trough), the fireplace and furniture, pets, mounts, trophies (and the dye bottle for the log's shelf), banners, lanterns, collectible icons | `art/hearth.json`, `art/collect_icons.json` |
+| `tools/art_thimble.py`, `tools/art_thimble2.py` | Thimblebriar Hollow: its mobs and two bosses; the bombs, the cuckoo clock (the reveal's three with hands), props, the round door and decals | `art/sprites.json` (through `art_sprites.py`) |
+| `tools/art_wardrobe_tb.py`, `tools/art_hearth_tb.py` | Thimblebriar's four sets and weapons on their stands (their icons are in `art_icons.py`); its pets, mount, trophies and dye | `art/wardrobe.json`, `art/hearth.json` (through `art_wardrobe.py` and `art_hearth.py`) |
 | `tools/art_vale.py` | the Vale: places, villagers, plants, Vale pets and mounts, ingredient and brew icons | `art/vale.json`, `art/vale_icons.json` |
-| `src/ui/valeart.ts`, `src/ui/houseart.ts`, `src/ui/toys.ts` | scenery, the house's rooms in each look (the tavern, Barrow Hall) and its roof, and close-ups, drawn live in the page, same rules | (in the page) |
+| `src/ui/valeart.ts`, `src/ui/houseart.ts`, `src/ui/houseworkshop.ts`, `src/ui/toys.ts` | scenery, the house's rooms in each look (the tavern, Barrow Hall, the Toadstool Workshop) and its roof, and close-ups, drawn live in the page, same rules | (in the page) |
 
 ## The loop for any new art
 

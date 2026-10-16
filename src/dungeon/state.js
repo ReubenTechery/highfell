@@ -5,6 +5,8 @@ import { bus } from '../core/events';
 
 /** @type {any} */
 export let S = null;
+/** mobs any dungeon can spawn on top of its own (the gadgets' bombs, bombs.js): makeMob looks here second */
+export const SHARED_MOBS = {};
 export function setS(v) { S = v; }
 
 export const HOOKS = {

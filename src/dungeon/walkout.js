@@ -8,11 +8,20 @@
              dust falls after the knocks and the bell rings.
      pet     every light in the yard dies and the sound goes with it. The lantern lifts off the
              ground, and something small walks out of the dark to carry it.
-   The first second looks the same every time, so you are always watching the lantern. */
+   The first second looks the same every time, so you are always watching the lantern.
+   That's the Barrow's. Another dungeon names its own (`walkout` in its engine def): Thimblebriar Hollow's is the
+   Tinker King's cuckoo clock (cuckoo.js), on the same clock with the same moments. */
 import { TAU } from '../core/math';
 import { vrand } from '../core/rng';
 import { S } from './state.js';
 import { dots, fx, fxText, sfx, shake } from './entities.js';
+import { cuckooBeats, cuckooPet, drawCuckoo } from './cuckoo.js';
+
+/** what each dungeon's walkout leaves beside the chest for each tell (the reveal shows the same): its sprites */
+export const TELL_SPRITES = {
+  lantern: { normal: 'lantern_out', kit: 'lantern', unique: 'lantern_gold' },
+  cuckoo: { normal: 'cuckoo_tell_still', kit: 'cuckoo_tell', unique: 'cuckoo_gold' },
+};
 
 export const WALKOUT_LEN = { normal: 2.6, kit: 3.2, unique: 3.4, pet: 6.4 };
 export const SPLIT = 1.1; // when the tells start to differ
@@ -20,7 +29,7 @@ export const SPLIT = 1.1; // when the tells start to differ
 /* `gild`: a gilding kit is in the chest too (the kit tell always has one; the pet's moment stays its own) */
 export function startWalkout(tell, x, y, gild) {
   const t = tell || 'normal';
-  S.walkout = { tell: t, gild: t === 'kit' || (!!gild && t === 'unique'), t: 0, x, y, lift: 0, glow: 1, gold: 0, done: false, beats: new Set(), pet: null };
+  S.walkout = { tell: t, style: (S.dg && S.dg.walkout) || 'lantern', gild: t === 'kit' || (!!gild && t === 'unique'), t: 0, x, y, lift: 0, glow: 1, gold: 0, done: false, beats: new Set(), pet: null };
 }
 
 /* runs every frame from the game loop */
@@ -29,8 +38,9 @@ export function tickWalkout(dt) {
   if (!w || w.done) return;
   w.t += dt;
   const t = w.t, once = (k, at, fn) => { if (t >= at && !w.beats.has(k)) { w.beats.add(k); fn(); } };
-  once('drop', 0.05, () => { sfx('thud', 0.5); dots(w.x, w.y, '#9BE15D', 8, 120); });
-  if (w.tell === 'normal') {
+  once('drop', 0.05, () => { sfx('thud', 0.5); dots(w.x, w.y, w.style === 'cuckoo' ? '#FF9F43' : '#9BE15D', 8, 120); });
+  if (w.style === 'cuckoo') cuckooTick(w, t, dt, once);
+  else if (w.tell === 'normal') {
     if (t > SPLIT) w.glow = Math.max(0, 1 - (t - SPLIT) / 1.1) * (0.6 + 0.4 * Math.abs(Math.sin(t * 23)));
     once('gutter', SPLIT + 1.0, () => { sfx('gutter'); for (let i = 0; i < 6; i++) S.parts.push({ x: w.x + vrand(-6, 6), y: w.y, z: 40, vx: vrand(-10, 10), vy: 0, vz: 0, up: true, col: '#6E6382', size: vrand(4, 7), t: 0, dur: 1.1 }); });
   } else if (w.tell === 'kit') {
@@ -55,7 +65,7 @@ export function tickWalkout(dt) {
     once('light', SPLIT + 4.6, () => { S.darkTarget = 0; });
   }
   if (w.gild) {
-    // gold dust sifts from the lantern down onto the chest, then the lid rings once like a little bell
+    // gold dust sifts from the lantern (or clock) down onto the chest, then the lid rings once like a little bell
     const from = w.tell === 'unique' ? SPLIT + 0.5 : SPLIT + 0.1, bell = from + 1.5;
     if (t > from && t < from + 0.8) { w.dust = (w.dust || 0) + dt * 40; while (w.dust >= 1) { w.dust--; goldDust(w); } }
     once('bell', bell, () => {
@@ -66,6 +76,22 @@ export function tickWalkout(dt) {
     });
   }
   if (t >= WALKOUT_LEN[w.tell]) { w.done = true; S.hush = false; if (w.tell === 'pet') S.darkTarget = 0; }
+}
+
+/* the cuckoo clock's moments, on the walkout's clock: its light, the pops and knocks, midnight and the pet */
+function cuckooTick(w, t, dt, once) {
+  cuckooBeats(w, t, once, SPLIT, knock, sfx);
+  if (w.tell === 'normal' && t > SPLIT) w.glow = Math.max(0, 1 - (t - SPLIT) / 1.6);
+  else if (w.tell === 'unique') {
+    if (t > SPLIT) { w.gold = Math.min(1, (t - SPLIT) / 0.35); w.glow = 1 + w.gold * 0.5; }
+    once('flare', SPLIT, () => { sfx('flare'); fx({ type: 'ring', x: w.x, y: w.y - 80, r0: 10, r1: 120, col: '#F2C230', dur: 0.45, w: 6 }); });
+  } else if (w.tell === 'pet') {
+    once('dark', SPLIT, () => { S.darkTarget = 1; S.dark = Math.max(S.dark, 0.7); S.hush = true; sfx('lightsout', 1, true); });
+    cuckooPet(w, dt, SPLIT);
+    once('chime', SPLIT + 1.7, () => sfx('petchime', 1, true));
+    once('caught', SPLIT + 4.2, () => { w.caught = true; w.flying = false; S.hush = false; sfx('petfound'); fx({ type: 'ring', x: w.pet ? w.pet.x : w.x, y: w.y - 40, r0: 10, r1: 90, col: '#C8F5E8', dur: 0.5, w: 5 }); });
+    once('light', SPLIT + 4.6, () => { S.darkTarget = 0; });
+  }
 }
 
 /* a mote of gold dust: from the lantern's flame, drifting down to land on the chest's lid */
@@ -101,6 +127,7 @@ export function walkoutFocus() {
 export function drawWalkout(ctx, drawSpr) {
   const w = S.walkout;
   if (!w) return;
+  if (w.style === 'cuckoo') { drawCuckoo(ctx, w, drawSpr); return; }
   const lit = w.tell === 'pet' ? 1 : w.glow;
   const col = w.gold > 0 ? '#F2C230' : '#9BE15D';
   // the lantern pops up off the ground so nobody stands in front of it, then the tell plays

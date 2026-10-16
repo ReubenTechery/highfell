@@ -12,7 +12,7 @@ from art_sprites import (K, s, ln, beam, c, e, halo, m, both, eyes, f,
                          BLUE, BLUE_D, WOOD, WOOD_D, PURP, PURP_D, STONE, STONE_T, STONE_D, FROST, FROST_L, FIRE, FLAME)
 from art_sprites import GK_COAT, GK_COAT_D, GK_SKIN, GK_SKIN_D
 import art_heads as heads
-from art_heroes import RIRON, RIRON_D, RIRON_L
+from art_heroes import RIRON, RIRON_D, RIRON_L, GNOME_GILD
 
 OUT = HF_ROOT + '/art/'
 SP = {}
@@ -586,6 +586,8 @@ def heroic_drops():
     o.append(A.skull(0, -4, 1.25))
     icon('c_gilded_bones', '#3A2C10', o, k=0.95, ground=34)
     ICONS['c_gilded_bones'] = A.gild(ICONS['c_gilded_bones'], tile=True)
+    # Gilded Gnomes: the gnome's portrait, its face in gold
+    ICONS['c_gilded_gnomes'] = A.gild(ICONS['c_gnome'], GNOME_GILD, tile=True)
 
 
 def house_props():
@@ -595,6 +597,8 @@ def house_props():
 
 def build():
     lanterns(); pets(); hound(); trophies(); fireplace(); fire(); rug(); paddock_props(); workbench(); window(); door(); furniture(); house_props(); heroic_drops()
+    import art_hearth_tb  # Thimblebriar Hollow's pets, mount, trophies and dye (here: it imports art_sprites' helpers)
+    art_hearth_tb.build(sprite, icon)
     return SP
 
 

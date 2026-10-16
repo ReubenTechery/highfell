@@ -47,7 +47,9 @@ test('heroic: its own tables are a kit for every unique, for any seat at one rat
   assert.deepEqual(checkContent(), []);
   assert.equal(KIT_RATE, 1 / 20);
   assert.equal(UNIQUES.length, 16);
-  assert.deepEqual(Object.keys(KITS).sort(), UNIQUES.map(gilded).sort(), 'one kit per unique, named for the piece it gilds');
+  // the Barrow's kits (every dungeon brings its own: Thimblebriar's are in tests/thimblebriar.test.ts)
+  const barrowKits = Object.keys(KITS).filter((id) => ITEMS[KITS[id].item].dungeon === 'barrow');
+  assert.deepEqual(barrowKits.sort(), UNIQUES.map(gilded).sort(), 'one kit per unique, named for the piece it gilds');
   for (const id of UNIQUES) {
     const k = KITS[gilded(id)];
     assert.equal(k.item, id);

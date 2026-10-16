@@ -18,7 +18,7 @@ export function settingsSheet(p: Profile, st: SyncState, dev: Dev, resetArmed: b
       <label class="vol"><span>Music</span><input type="range" min="0" max="100" step="5" value="${Math.round(MUSIC.volume * 100)}" data-act="music" aria-label="Music volume"></label></div></div>
     <div class="box"><h3 class="section-title">Your save</h3><p class="fine">${esc(where)}</p><p class="fine">Save ${fmtN(p.rev)} · started ${fmtDate(p.createdAt)} · ${p.roster.length} hero${p.roster.length === 1 ? '' : 'es'}</p></div>
     <div class="box"><h3 class="section-title">For testing</h3>
-      <p class="fine">See the end-of-run reveal without earning it. Nothing is added to your save.</p>
+      <p class="fine">See the end-of-run reveal of the dungeon picked on the Dungeons sheet, without earning it. Nothing is added to your save.</p>
       <div class="actions"><button type="button" class="btn small" data-act="preview" data-v="normal">Normal</button><button type="button" class="btn small" data-act="preview" data-v="kit">Kit</button><button type="button" class="btn small" data-act="preview" data-v="unique">Unique</button><button type="button" class="btn small" data-act="preview" data-v="pet">Pet</button><button type="button" class="btn small" data-act="preview" data-v="log">Log complete</button></div>
       <p class="fine">The garden: instant growth lets you harvest a bed that is still growing, and lucky makes its rares 50 times likelier. What you get still goes in your save.</p>
       <div class="seg"><button type="button" class="sg" role="switch" data-act="vfree" aria-checked="${dev.valeFree}">Instant growth</button><button type="button" class="sg" role="switch" data-act="vluck" aria-checked="${dev.valeLuck}">Lucky ×50</button></div>

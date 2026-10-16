@@ -18,6 +18,15 @@ const crypt = (bone: string, light: string, trim: string): string => `<svg viewB
     ${[15, 45, 75].map((x) => `<path d="M${x - 8} 49 V41 A8 8 0 0 1 ${x + 8} 41 V49 Z" style="fill: #2A2234; stroke: #1E1A1A; stroke-width: 2"/>`).join('')}
     <circle cx="45" cy="44" r="4.5" style="fill: ${bone}; stroke: #1E1A1A; stroke-width: 1.5"/><circle cx="15" cy="44" r="4.5" style="fill: ${bone}; stroke: #1E1A1A; stroke-width: 1.5"/>
     <path d="M0 50 H90 V60 H0 Z" style="fill: #4A4060; stroke: #1E1A1A; stroke-width: 2.5"/><path d="M30 50 V60 M70 50 V60" style="fill: none; stroke: #3A3150; stroke-width: 2"/></svg>`;
+/** Toadstool Workshop's piece of room: warm boards, a brass cog on the wall, a toadstool lamp; gilded, the brass is gold */
+const workshop = (brass: string, cap: string, light: string): string => `<svg viewBox="0 0 90 60" aria-hidden="true"><rect width="90" height="60" style="fill: #7A5234"/>
+    <path d="M0 14 H90 M0 28 H90" style="fill: none; stroke: #593A22; stroke-width: 2"/>
+    <circle cx="62" cy="24" r="30" style="fill: ${light}; opacity: 0.3"/>
+    <circle cx="28" cy="22" r="11" style="fill: ${brass}; stroke: #1E1A1A; stroke-width: 2.5"/><circle cx="28" cy="22" r="4" style="fill: #593A22; stroke: #1E1A1A; stroke-width: 2"/>
+    ${[0, 1, 2, 3, 4, 5].map((k) => { const a = (k / 6) * Math.PI * 2; return `<rect x="${(28 + Math.cos(a) * 12 - 3).toFixed(1)}" y="${(22 + Math.sin(a) * 12 - 3).toFixed(1)}" width="6" height="6" style="fill: ${brass}; stroke: #1E1A1A; stroke-width: 1.5"/>`; }).join('')}
+    <path d="M60 42 V30" style="fill: none; stroke: #1E1A1A; stroke-width: 5"/><path d="M60 42 V30" style="fill: none; stroke: #E9DDC3; stroke-width: 2.5"/>
+    <path d="M50 31 C50 20 70 20 70 31 Z" style="fill: ${cap}; stroke: #1E1A1A; stroke-width: 2.5"/><circle cx="56" cy="26" r="2" style="fill: #FFF6D0"/><circle cx="64" cy="27" r="1.6" style="fill: #FFF6D0"/>
+    <path d="M0 42 H90 V50 H0 Z" style="fill: #593A22; stroke: #1E1A1A; stroke-width: 2.5"/><path d="M0 50 H90 V60 H0 Z" style="fill: #8A5A34; stroke: #1E1A1A; stroke-width: 2.5"/><path d="M30 50 V60 M70 50 V60" style="fill: none; stroke: #6B4528; stroke-width: 2"/></svg>`;
 /** a little piece of a room in each look, for its card: the wall, a window, the floor and the light */
 export const SWATCH: Record<string, string> = {
   tavern: `<svg viewBox="0 0 90 60" aria-hidden="true"><rect width="90" height="60" style="fill: #D9C29A"/>
@@ -26,9 +35,11 @@ export const SWATCH: Record<string, string> = {
     <path d="M0 42 H90 V50 H0 Z" style="fill: #8A5A34; stroke: #1E1A1A; stroke-width: 2.5"/><path d="M0 50 H90 V60 H0 Z" style="fill: #A0703F; stroke: #1E1A1A; stroke-width: 2.5"/></svg>`,
   barrow: crypt('#F0E8D2', '#9BE15D', '#D8CDB0'),
   'barrow-gilded': crypt('#F2C230', '#E7D35A', '#F2C230'),
+  workshop: workshop('#D9A520', '#C8403F', '#FF9F43'),
+  'workshop-gilded': workshop('#F2C230', '#F2C230', '#FFE08A'),
 };
 /** the dot on a room's button: its wall and its light, in the look it has now */
-const DOT: Record<string, [string, string]> = { tavern: ['#D9C29A', '#FFC870'], barrow: ['#5C5070', '#9BE15D'], 'barrow-gilded': ['#5C5070', '#F2C230'] };
+const DOT: Record<string, [string, string]> = { tavern: ['#D9C29A', '#FFC870'], barrow: ['#5C5070', '#9BE15D'], 'barrow-gilded': ['#5C5070', '#F2C230'], workshop: ['#7A5234', '#FF9F43'], 'workshop-gilded': ['#7A5234', '#F2C230'] };
 
 /** The look you're putting on: the one you picked; before you pick, the newest one you have, or the next
  *  one to earn. */

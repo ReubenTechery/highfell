@@ -113,6 +113,8 @@ export const LOOKS: LookDef[] = [
   { id: 'tavern', name: 'Tavern', blurb: 'Warm wood, lamplight and a crackling fire.' },
   { id: 'barrow', name: 'Barrow Hall', blurb: 'Cold stone, old bones and the Gravekeeper’s green fire.' },
   { id: 'barrow-gilded', name: 'Gilded Barrow Hall', blurb: 'Barrow Hall for the Undying: gold on every bone, gold lanterns, the green fire burning high.' },
+  { id: 'workshop', name: 'Toadstool Workshop', blurb: 'Brass and mushrooms: cogs on the walls, toadstool lamps, and the gnomes’ clutter on every shelf.' },
+  { id: 'workshop-gilded', name: 'Gilded Toadstool Workshop', blurb: 'The Workshop for the Arch-Tinker: gold cogs, gold caps, and every lamp lit.' },
 ];
 export const DEFAULT_LOOK = 'tavern';
 /** the rooms a look can go on: every room inside the house */

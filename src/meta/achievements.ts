@@ -28,7 +28,10 @@ export class Achiever {
     const d = this.ctx.dungeon, p = this.p;
     const before = this.unlocked.length;
     switch (e.type) {
-      case 'mob.killed': count(p, 'kills'); if (e.undead) count(p, k(d, 'skeletons')); if (e.boss) count(p, k(d, 'bosses')); break;
+      case 'mob.killed': count(p, 'kills'); if (e.undead) count(p, k(d, 'skeletons')); if (e.boss) count(p, k(d, 'bosses')); if (e.tally) count(p, k(d, e.tally)); break;
+      case 'bomb.knocked': if (e.player) count(p, k(d, 'bombs')); break;
+      case 'bomb.batted': if (e.player) count(p, k(d, 'batted')); break;
+      case 'curse.lifted': if (e.player && e.kind === 'sticky') count(p, k(d, 'stickies')); break;
       case 'wisp.sliced': if (e.player) count(p, k(d, 'wisps')); break;
       case 'chain.cut': if (e.player) count(p, k(d, 'chains')); break;
       case 'cage.broken': if (e.player) count(p, 'cages'); break;

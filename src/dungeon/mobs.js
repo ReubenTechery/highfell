@@ -20,6 +20,8 @@ export function mobTick(m, dt) {
   m.flash -= dt; m.lunge -= dt; m.moving -= dt;
   m.exposed = Math.max(0, (m.exposed || 0) - dt);
   if (!m.alive) { m.deadT += dt; return; }
+  // something that isn't a fighter (a bomb) runs itself
+  if (m.M.tick) { m.M.tick(m, dt); return; }
   if (m.bleed && m.bleed.left > 0) {
     m.bleed.left -= dt;
     m.bleed.next -= dt;
@@ -132,7 +134,7 @@ function archerTick(m, dt) {
     const a = m.ab.aim; a.t -= dt; m.face = a.a; m.flip = Math.cos(a.a) < 0;
     if (a.t <= 0) {
       m.ab.aim = null; m.ab.shot = R.every * rand(0.9, 1.15);
-      S.projs.push({ team: 'mob', x: m.x + Math.cos(a.a) * 22, y: m.y + Math.sin(a.a) * 22, vx: Math.cos(a.a) * R.speed, vy: Math.sin(a.a) * R.speed, z: 40, sp: 'arrow', src: m, dmg: R.dmg, r: 9, life: 480 / R.speed });
+      S.projs.push({ team: 'mob', x: m.x + Math.cos(a.a) * 22, y: m.y + Math.sin(a.a) * 22, vx: Math.cos(a.a) * R.speed, vy: Math.sin(a.a) * R.speed, z: 40, sp: R.sp || 'arrow', spin: !!R.spin, src: m, dmg: R.dmg, r: 9, life: 480 / R.speed });
       m.lunge = 0.14; m.lungeA = a.a + Math.PI;
       sfx('arrow', 0.7);
     }
@@ -220,17 +222,20 @@ function wispTick(m, dt) {
 /* ---------- curses: only the healer lifts them ---------- */
 /* A Gravecaller curses one hero. In CURSE_TIME seconds it bursts and drops them to a tenth of their health; on
    its own it never kills. Only the healer lifts it: a swipe across them, or Sunburst. It goes when the fight
-   ends or the hero goes down, and never comes in the Crypt Trial. */
+   ends or the hero goes down, and never comes in the Crypt Trial.
+   Another dungeon's curse is the same thing in its own look (`o`: { kind, sp (the mark over the hero), col,
+   word, onBurst(h, c), onLift(h, c, by) }), like Thimblebriar's Sticky Bomb (bombs.js). */
 export const CURSE_TIME = 4;
 export const CURSE_COL = '#B79CFF';
-export function curseHero(m, h) {
+export function curseHero(m, h, o) {
   if (!h || !h.alive || h.st.caged || h.st.curse || (S.opts && S.opts.start === 'intro')) return null;
-  h.st.curse = { id: 'cu' + S.seq++, t: 0, by: m };
-  fx({ type: 'beam', x: m.x, y: m.y - 70, x2: h.x, y2: h.y - 120, col: CURSE_COL, dur: 0.3 });
-  dots(h.x, h.y - 120, CURSE_COL, 8, 90);
+  h.st.curse = Object.assign({ id: 'cu' + S.seq++, t: 0, by: m }, o || {});
+  const col = (o && o.col) || CURSE_COL;
+  fx({ type: 'beam', x: m.x, y: m.y - 70, x2: h.x, y2: h.y - 120, col, dur: 0.3 });
+  dots(h.x, h.y - 120, col, 8, 90);
   sfx('curse', h.isPlayer || S.player.role === 'healer' ? 1 : 0.55);
-  if (h.isPlayer || S.player.role === 'healer') fxText(h.x, h.y - 205, 'Cursed!', CURSE_COL, 22, { dur: 1.1 });
-  emit({ type: 'curse.cast', player: !!h.isPlayer, name: h.isPlayer ? 'you' : h.name });
+  if (h.isPlayer || S.player.role === 'healer') fxText(h.x, h.y - 205, (o && o.word) || 'Cursed!', col, 22, { dur: 1.1 });
+  emit({ type: 'curse.cast', player: !!h.isPlayer, name: h.isPlayer ? 'you' : h.name, ...(o && o.kind ? { kind: o.kind } : {}) });
   return h.st.curse;
 }
 export function curseTick(h, dt) {
@@ -240,28 +245,32 @@ export function curseTick(h, dt) {
   if (c.t >= CURSE_TIME) burstCurse(h);
 }
 function burstCurse(h) {
+  const c = h.st.curse, col = c.col || CURSE_COL;
   h.st.curse = null;
   const lost = Math.max(0, h.hp - Math.round(h.maxHp * 0.1));
   if (lost > 0) { h.hp -= lost; h.stats.taken += lost; h.flash = 0.12; h.hurtT = 0.25; }
-  fx({ type: 'ring', x: h.x, y: h.y - 60, r0: 14, r1: 100, col: CURSE_COL, dur: 0.4, w: 7 });
-  dots(h.x, h.y - 70, CURSE_COL, 14, 190);
+  fx({ type: 'ring', x: h.x, y: h.y - 60, r0: 14, r1: 100, col, dur: 0.4, w: 7 });
+  dots(h.x, h.y - 70, col, 14, 190);
   sfx('burst');
   if (h.isPlayer) { shake(7); S.hurtFlash = Math.min(1, S.hurtFlash + 0.6); if (lost) fxText(h.x, h.y - 60, '-' + lost, '#FF6B5E', 26); }
   S.stats.bursts = (S.stats.bursts || 0) + 1;
-  emit({ type: 'curse.burst', player: !!h.isPlayer });
+  if (c.onBurst) c.onBurst(h, c);
+  emit({ type: 'curse.burst', player: !!h.isPlayer, ...(c.kind ? { kind: c.kind } : {}) });
 }
 export function liftCurse(h, by) {
-  if (!h.st.curse) return false;
+  const c = h.st.curse;
+  if (!c) return false;
   if (by && by.kind === 'hero' && by.role !== 'healer') return false;
   h.st.curse = null;
   if (by) {
     by.mana = Math.min(by.maxMana, by.mana + 5);
-    fxText(h.x, h.y - 150, 'Lifted!', '#F2C230', 24, { dur: 1.1 });
+    fxText(h.x, h.y - 150, c.kind === 'sticky' ? 'Swiped off!' : 'Lifted!', '#F2C230', 24, { dur: 1.1 });
     fx({ type: 'ring', x: h.x, y: h.y - 120, r0: 8, r1: 64, col: '#FFE08A', dur: 0.3, w: 5 });
     dots(h.x, h.y - 120, '#FFE08A', 10, 150);
     sfx('lift');
     S.stats.lifts = (S.stats.lifts || 0) + 1;
-    emit({ type: 'curse.lifted', player: !!by.isPlayer });
+    if (c.onLift) c.onLift(h, c, by);
+    emit({ type: 'curse.lifted', player: !!by.isPlayer, ...(c.kind ? { kind: c.kind } : {}) });
   }
   return true;
 }

@@ -50,7 +50,9 @@ not in the game. Its names, numbers and art are stand-ins.
 5. Register it in `src/content/index.ts` (`DUNGEONS`, `DUNGEON_ENGINES`, `ITEMS`, `SETS`, `COLLECTIBLES`,
    `TITLES`, `ACHIEVEMENTS`, and its Heroic's `KITS`). `checkContent()` and the tests catch broken ids.
    Draw its door in `stage.ts` (`tests/meta.test.ts` checks there's room for the heroes).
-6. Give it its own walkout tell. `src/dungeon/walkout.js` is the Barrow's lantern today.
+6. Give it its own walkout tell: name it in the engine def (`walkout`), on the same clock as the Barrow's
+   lantern (`src/dungeon/walkout.js`). Thimblebriar's cuckoo clock (`src/dungeon/cuckoo.js`) is the example,
+   and `TELL_SPRITES` in walkout.js is what the reveal shows beside the chest.
 7. Give its final boss a garden seed (`seeds` in `index.ts`).
 8. Run `npm run sim -- --dungeon <id>` until the times land, then copy the checks in `tests/template.test.ts`.
 9. `npm run all`, look at it on a phone and a desktop, and write it up in `docs/design.md`.
@@ -90,4 +92,12 @@ doing from the mob's `acts`.
   them.
 - `makeCage` (the Gravekeeper's Bone Cage) is built from Barrow's `rattler`.
 - A mob with `priority: true` is what DPS bots go for first (the example's beacons).
+- Something on the floor that isn't a fighter (Thimblebriar's bombs, `src/dungeon/bombs.js`) is a mob with
+  `thing: true` (no threat, no pulls, no pushing), its own `tick`, `onHit` (what any hero's hit does to it) and
+  `draw`. A mob's `onDeath` runs when it dies (a Waddlecap's spore cloud) and `tally` names the lifetime counter
+  its kills add to. `phaseSprites` swaps a boss's sprite by phase. Wall decor can be any sprite: one whose name
+  ends in `_lamp` glows like a torch.
+- A curse can wear its own look and do its own thing when it bursts or is lifted (`curseHero(m, h, o)` in
+  `src/dungeon/mobs.js`): Thimblebriar's Sticky Bomb is one, so the healer's swipe, the frames and the bots
+  all work for it.
 - The sprites and props here are Barrow's, standing in until the dungeon's own art is drawn.

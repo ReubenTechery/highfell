@@ -3,7 +3,7 @@ import { angDiff, TAU } from '../core/math';
 import { rand, rng, vrand } from '../core/rng';
 import { hpMultiplier } from '../content/gear';
 import { ROLES } from '../content/roles';
-import { HOOKS, S, emit } from './state.js';
+import { HOOKS, S, SHARED_MOBS, emit } from './state.js';
 import { onBossDead, checkPack, startBoss } from './game.js';
 import { breakCage, cutChain, interruptCast } from './mobs.js';
 import { onPerfectBlock } from './heroes.js';
@@ -58,7 +58,7 @@ export function makeHero(role, isPlayer, loadout) {
 }
 
 export function makeMob(type, x, y, pack) {
-  const M = S.dg.mobs[type];
+  const M = S.dg.mobs[type] || SHARED_MOBS[type];
   // the dungeon's tuning: ordinary mobs get its health multiplier, bosses theirs (as written outside heroic),
   // and a mob named in its hp gets that one instead
   const own = S.tune.hp && S.tune.hp[type];
@@ -125,7 +125,7 @@ export function call(str, kind, dur) { S.call = { str, kind: kind || '', t: 0, d
    Every hit adds threat (the tank's 1.3 times, Slam's twice that), heals add a little on everything in the fight, and a mob
    goes for whoever has the most, switching once someone beats its target by a tenth. Slam and Charge are how
    the tank grabs things back. A caged hero can't be targeted, so the boss turns on whoever is next. */
-export function addThreat(m, h, v) { if (m.cage || m.M.wisp) return; m.threat.set(h.id, (m.threat.get(h.id) || 0) + v); }
+export function addThreat(m, h, v) { if (m.cage || m.M.wisp || m.M.thing) return; m.threat.set(h.id, (m.threat.get(h.id) || 0) + v); }
 export function topThreat(m) { let v = 0; m.threat.forEach((x) => { if (x > v) v = x; }); return v; }
 const targetable = (h) => h.alive && !h.st.caged;
 export function pickTarget(m) {
@@ -136,7 +136,7 @@ export function pickTarget(m) {
   return best;
 }
 export function aggro(m, h, v) {
-  if (!m.alive || m.cage) return;
+  if (!m.alive || m.cage || m.M.thing) return;
   if (m.state === 'idle') { m.state = 'fight'; m.fightT = 0; m.atkT = Math.max(m.atkT, 0.5); onMobAggro(m); }
   if (h) addThreat(m, h, v || 1);
 }
@@ -148,7 +148,7 @@ function onMobAggro(m) {
   }
 }
 export function taunt(m, h, dur) {
-  if (!m.alive || m.cage || m.M.wisp) return;
+  if (!m.alive || m.cage || m.M.wisp || m.M.thing) return;
   aggro(m, h, 1);
   m.threat.set(h.id, Math.max(topThreat(m) * 1.3 + 40, m.threat.get(h.id) || 0));
   m.forced = h; m.forcedT = dur || 4; m.target = h;
@@ -265,6 +265,8 @@ export function killHero(h) {
 export function hurtMob(m, amt, src, o) {
   o = o || {};
   if (!m.alive || m.untargetable || S.over) return 0;
+  // something that isn't a fighter (a bomb) turns a hit into its own thing
+  if (m.M.onHit) return m.M.onHit(m, amt, src, o) || 0;
   // only the healer can banish wisps
   if (m.M.wisp && src && src.role !== 'healer') return 0;
   if (m.cage) { m.hp -= 1; m.flash = 0.1; sfx('cagehit'); bits(m.x, m.y - 50, 'shard_bone', 1, 90); if (m.hp <= 0) breakCage(m, true, src); return 1; }
@@ -303,7 +305,7 @@ export function hurtMob(m, amt, src, o) {
 }
 export function killMob(m, src) {
   m.hp = 0; m.alive = false; m.deadT = 0; m.cast = null; m.state = 'dead';
-  emit({ type: 'mob.killed', mob: m.type, boss: !!m.isBoss, undead: !!m.M.skeleton, byPlayer: !!(src && src.isPlayer) });
+  emit({ type: 'mob.killed', mob: m.type, boss: !!m.isBoss, undead: !!m.M.skeleton, byPlayer: !!(src && src.isPlayer), ...(m.M.tally ? { tally: m.M.tally } : {}) });
   if (m.M.wisp) {
     dots(m.x, m.y - 40, '#C8F5E8', 10, 160); fx({ type: 'ring', x: m.x, y: m.y - 40, r0: 8, r1: 46, col: '#C8F5E8', dur: 0.25, w: 4 }); sfx('pop');
     // Soul Spark backlash: banishing a wisp during a boss fight zaps the boss and restores healer mana
@@ -334,9 +336,11 @@ export function killMob(m, src) {
       exposeMob(k, 3.0, 'Armour Cracked! Exposed!');
     }
   }
+  // what a mob leaves behind when it dies (a Waddlecap's spore cloud)
+  if (m.M.onDeath) m.M.onDeath(m, src);
   const big = m.M.big;
-  bits(m.x, m.y - (big ? 70 : 40), 'shard_bone', big ? 10 : 5, big ? 260 : 190);
-  bits(m.x, m.y - (big ? 90 : 60), 'shard_skull', 1, 150);
+  bits(m.x, m.y - (big ? 70 : 40), m.M.shard || 'shard_bone', big ? 10 : 5, big ? 260 : 190);
+  if (!m.M.shard) bits(m.x, m.y - (big ? 90 : 60), 'shard_skull', 1, 150);
   sfx(big ? 'bigdie' : 'die');
   if (src && src.isPlayer) hitstop(big ? 0.09 : 0.04);
   if (m.isBoss) onBossDead(m);

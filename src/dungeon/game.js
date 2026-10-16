@@ -58,7 +58,7 @@ export function placeParty(cp) {
 export function startBoss(pack) {
   const m = pack.mobs[0];
   S.boss = m; m.fightT = 0;
-  S.bossFight = { boss: m.type, started: S.t, smashes: 0, smashPerfect: 0 };
+  S.bossFight = { boss: m.type, started: S.t, smashes: 0, smashPerfect: 0, bombed: 0 };
   if (S.dg.script.onBossPulled) S.dg.script.onBossPulled(pack);
   banner(m.name, 'boss', 2.2);
   sfx('gate'); sfx('roar');
@@ -81,7 +81,7 @@ export function onBossDead(m) {
   // where its loot lands: a boss with a lantern drops the lantern
   const L = m.M.light, x = L ? m.x + L.dx * (m.flip ? -1 : 1) : m.x, y = m.y;
   emit({ type: 'boss.killed', boss: m.type, time: S.t - f.started, armorUp: m.armorUp > 0, onlyPlayerAlive: up.length === 1 && up[0] === S.player && S.heroes.length > 1,
-    smashes: f.smashes, smashPerfect: f.smashPerfect, playerIsTank: S.player.role === 'tank', x, y });
+    smashes: f.smashes, smashPerfect: f.smashPerfect, playerIsTank: S.player.role === 'tank', x, y, bombed: f.bombed || 0 });
   if (S.dg.script.onBossDead) S.dg.script.onBossDead(m);
 }
 /* the final chest: the run is cleared once the party opens it */
@@ -155,6 +155,7 @@ export function runSummary() {
     dungeon: S.dg.id, role: S.player.role, practice: (S.opts.start || 'entrance') !== 'entrance', testGear: !!S.opts.testGear,
     time: S.clearTime || S.t - S.startedAt, deaths: S.stats.deaths, wipes: S.stats.wipes,
     handHits: S.stats.handHits || 0, ringHits: S.stats.ringHits || 0, saves: S.stats.saves || 0,
+    bombHits: S.stats.bombHits || 0, lifts: S.stats.lifts || 0, bursts: S.stats.bursts || 0,
     playerDeaths: S.player.stats.deaths, kicks: S.stats.kicks, perfectBlocks: S.player.stats.perfect,
   };
 }
@@ -284,7 +285,7 @@ function tickThralls(dt) {
 function separate() {
   const L = [];
   for (const h of S.heroes) if (h.alive && h.dodgeT <= 0 && !h.dash) L.push(h);
-  for (const m of S.mobs) if (m.alive && !m.cage && !m.M.wisp && !m.hidden && m.rise <= 0) L.push(m);
+  for (const m of S.mobs) if (m.alive && !m.cage && !m.M.wisp && !m.M.thing && !m.hidden && m.rise <= 0) L.push(m);
   for (let i = 0; i < L.length; i++) {
     for (let j = i + 1; j < L.length; j++) {
       const a = L[i], b = L[j];
@@ -327,6 +328,8 @@ function tickProjs(dt) {
 function tickHazards(dt) {
   for (let i = S.hazards.length - 1; i >= 0; i--) {
     const z = S.hazards[i];
+    // a hit in here can end a fight (a perfect block's riposte finishing a boss clears the hazards)
+    if (!z) continue;
     z.t += dt;
     if (z.src && z.src.kind === 'mob' && !z.src.alive && !z.fired) { S.hazards.splice(i, 1); continue; }
     if (z.follow && z.follow.alive && !z.fired) { z.x = z.follow.x; z.y = z.follow.y; }
@@ -355,7 +358,7 @@ function fireHazard(z) {
   const mul = (z.src && z.src.dmgMul) || 1;
   for (const h of S.heroes) {
     if (!h.alive || !inHaz(z, h.x, h.y, h.r)) continue;
-    const got = hurtHero(h, z.dmg * mul, z.src, { heavy: z.heavy, block: z.block === true, magic: z.magic, kind: z.kind, hazard: true });
+    const got = hurtHero(h, z.dmg * mul, z.src, { heavy: z.heavy, block: z.block === true, magic: z.magic, kind: z.kind, hazard: true, ...(z.counted ? { smash: true } : {}) });
     if (got > 0 && z.knock) { const a = Math.atan2(h.y - z.y, h.x - z.x); h.st.kx += Math.cos(a) * z.knock; h.st.ky += Math.sin(a) * z.knock; }
     if (got > 0 && z.root) { h.st.root = z.root; if (h.isPlayer) fxText(h.x, h.y - 112, 'Grabbed', '#C9B79A', 17); }
     if (got > 0 && z.stun) { h.st.stun = Math.max(h.st.stun, z.stun); }
@@ -367,7 +370,9 @@ function tickZones(dt) {
     z.t += dt; z.tickT -= dt;
     if (z.tickT <= 0) {
       z.tickT = z.tick;
-      if (z.kind === 'heal') {
+      // a zone that does its own thing every tick (a gadget's turret)
+      if (z.fn) z.fn(z);
+      else if (z.kind === 'heal') {
         for (const h of S.heroes) if (h.alive && distXY(h.x, h.y, z.x, z.y) <= z.r + h.r * 0.5) healHero(z.src, h, z.val || 36, { size: 16 });
         if (z.src && z.src.bonuses && z.src.bonuses.has('candlewake3')) {
           for (const m of S.mobs) if (isFoe(m) && !m.cage && distXY(m.x, m.y, z.x, z.y) <= z.r + m.r * 0.5) hurtMob(m, 32, z.src, { col: '#FFE08A', size: 16, noCrit: true });

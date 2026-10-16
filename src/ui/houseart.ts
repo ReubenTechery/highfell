@@ -5,8 +5,9 @@
  * stay where they are. The tavern is wood, plaster and lamplight. Barrow Hall is the Barrow's own brick,
  * flagstones, bone niches and the Gravekeeper's green fire (gilded, from the heroic log: gold bones, gold
  * trim and lanterns, the green burning higher), and with every room in it the frame turns to stone and
- * slate too. Outside: the garden's yard on the left, the paddock's field and fences on the right (a look
- * never goes outside). What you can tap, and what it does, lives in the scene (hearth.ts) and the
+ * slate too. Toadstool Workshop, Thimblebriar Hollow's, is drawn in houseworkshop.ts from the kit at the
+ * end of this file. Outside: the garden's yard on the left, the paddock's field and fences on the right (a
+ * look never goes outside). What you can tap, and what it does, lives in the scene (hearth.ts) and the
  * house's plan (content/house.ts). House units: x across, y down, the ground floor's floor at y = 0.
  * What moves (the fire, the smoke, the birds, the fireflies, the wisps) is drawn as bits (houseBits), so the
  * house never redraws for it. See-through shapes use fill-opacity, not opacity, which would make the browser
@@ -14,6 +15,7 @@
  */
 import { FLOORS, HOUSE_W, LOOK_ROOMS, PADDOCK } from '../content/house';
 import { placeSprite, spriteBit, type Bit } from './art';
+import { WS_FRAME, WS_GILT, WS_PLAIN, workshop } from './houseworkshop';
 import { L, P, SKY_STOPS, cloud, house as cottage, tree } from './valeart';
 
 const K = '#1E1A1A';
@@ -54,9 +56,9 @@ const B = {
 };
 /** the frame's colours: beams, outer walls, chimney, stairs and roof */
 type Frame = Pick<typeof T, 'trim' | 'timber' | 'beam' | 'stone' | 'stoneLine' | 'roof' | 'roofLine' | 'stairs'>;
-const FRAMES: Record<string, Frame> = { tavern: T, barrow: B, 'barrow-gilded': { ...B, trim: '#D9A520' } };
+const FRAMES: Record<string, Frame> = { tavern: T, barrow: B, 'barrow-gilded': { ...B, trim: '#D9A520' }, workshop: WS_FRAME, 'workshop-gilded': { ...WS_FRAME, trim: WS_GILT.brass } };
 /** the trim round a room's windows in each look */
-const TRIM: Record<string, string> = { tavern: T.trim, barrow: B.trim, 'barrow-gilded': '#D9A520' };
+const TRIM: Record<string, string> = { tavern: T.trim, barrow: B.trim, 'barrow-gilded': '#D9A520', workshop: WS_PLAIN.brass, 'workshop-gilded': WS_GILT.brass };
 /** the frame follows the rooms when every one of them has the same look, and is the tavern's otherwise */
 function frameOf(look: LookAt): Frame {
   const first = look(LOOK_ROOMS[0]);
@@ -320,7 +322,7 @@ function fireflies(): Bit[] {
   return FLIES.map(([x, y], i) => ({ box: [x - 34, y - 34, 68, 68], body: glow(x, y, 34, 'h-fly') + C(x, y, 6, '#FFF3A0', 0), cls: `firefly f${i % 3}` }));
 }
 
-/* ---------------------------------------------------------------- pieces both looks use */
+/* ---------------------------------------------------------------- pieces the looks share */
 /** cut stone in rows with the joints staggered, from (x0, y0) down to (x1, y1) */
 function blocks(x0: number, y0: number, x1: number, y1: number, line: string, rowH: number, bw: number): string {
   const o: string[] = [];
@@ -349,10 +351,11 @@ const FK = 0.92;
 const hearthFire = (): string => placeSprite('fireplace', 600, HW, { k: FK }) + placeSprite('logs', 600, HW - 6 * FK, { k: FK });
 /** the hall's fire, two frames taking turns: orange in the tavern, the Gravekeeper's green in Barrow Hall */
 const fireBits = (fire: 'fire' | 'gfire'): Bit[] => [spriteBit(`${fire}_a`, 600, HW - 12 * FK, { k: FK, cls: 'fire-a' }), spriteBit(`${fire}_b`, 600, HW - 12 * FK, { k: FK, cls: 'fire-b' })].filter((b): b is Bit => !!b);
-/** the rest of the hall: the rug, torches each side of the fire, the table and its stools */
-const hallThings = (): string => placeSprite('rug', 600, FLOORS.hall - 26, { k: 0.82 })
-  + [384, 816].map((x) => glow(x, -900, 90, 'h-warm') + placeSprite('torch', x, -860)).join('')
+/** the rest of the hall: the rug, the table and its stools */
+const hallFurniture = (): string => placeSprite('rug', 600, FLOORS.hall - 26, { k: 0.82 })
   + placeSprite('stool', 944, FLOORS.hall - 22) + placeSprite('table', 1052, FLOORS.hall - 26) + placeSprite('stool', 1160, FLOORS.hall - 22);
+/** ...and torches each side of the fire, in the tavern and Barrow Hall */
+const hallThings = (): string => hallFurniture() + [384, 816].map((x) => glow(x, -900, 90, 'h-warm') + placeSprite('torch', x, -860)).join('');
 /** the brewing room's doorway out to the garden, with the barn door swung open */
 const barnDoor = (): string => R(-WALL - 4, -336, WALL + 8, 336, '#3A2A2C', 0)
   + P('M-30 -334 L-176 -360 L-176 -16 L-30 0 Z', T.trim, 4) + L('M-62 -330 L-62 -6 M-98 -336 L-98 -10 M-134 -342 L-134 -12', T.timber, 3) + beam('M-40 -60 L-166 -300', T.timber, 6);
@@ -393,7 +396,7 @@ function wainscot(x0: number, x1: number, bottom: number, h: number, step0: numb
 }
 
 /** one room in one look: its back wall and floor, its furniture, its light, and anything in it that moves */
-interface RoomArt { wall: () => string; furnish: () => string; light: () => string; bits?: () => Bit[] }
+export interface RoomArt { wall: () => string; furnish: () => string; light: () => string; bits?: () => Bit[] }
 
 const TAVERN: Record<string, RoomArt> = {
   loft: {
@@ -537,6 +540,13 @@ function crypt(c: Crypt): Record<string, RoomArt> {
   };
 }
 
-const ROOM_ART: Record<string, Record<string, RoomArt>> = { tavern: TAVERN, barrow: crypt(PLAIN), 'barrow-gilded': crypt(GILT) };
+/** what a look drawn in its own file borrows from here: the furniture every look keeps in its place, and where
+ *  each room's walls are (Toadstool Workshop: houseworkshop.ts) */
+const KIT = { gable, shelves, cushion, bunks, hearthFire, fireBits, hallFurniture, brewLeft, barnDoor, arches, GABLE, STRIP, LW, UP, UW, HC, HW, GC, GW, CC, CW };
+export type Kit = typeof KIT;
+
+const ROOM_ART: Record<string, Record<string, RoomArt>> = {
+  tavern: TAVERN, barrow: crypt(PLAIN), 'barrow-gilded': crypt(GILT), workshop: workshop(WS_PLAIN, KIT), 'workshop-gilded': workshop(WS_GILT, KIT),
+};
 /** a room in a look, or in the tavern when that look has no art for it */
 const roomArt = (look: string, room: string): RoomArt => ROOM_ART[look]?.[room] || TAVERN[room];

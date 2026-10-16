@@ -65,6 +65,8 @@ export interface CollectibleDef {
   saddle?: { x: number; y: number; k: number };
   /** doesn't drop any more: kept, and still works, for whoever has it; hidden from everyone else */
   retired?: boolean;
+  /** a heroic log's prize that draws a whole race in gold, switched on or off like any look (Gilded Bones: 'risen') */
+  gilds?: string;
 }
 
 /** A gilding kit, Heroic's own drop: the gilded look of one unique (a set piece or a boss weapon), for good
@@ -179,6 +181,8 @@ export interface DungeonInfo {
   heroicOf?: string;
   /** its door, as the Dungeons sheet draws it with your party in front (a heroic dungeon uses its normal one's) */
   stage?: DungeonStage;
+  /** the chest's headline after a clear (the Barrow's: "The Gravekeeper is buried") */
+  clearTitle?: string;
 }
 
 /** A sprite on a dungeon's stage, placed by its ground point; k scales it and flip mirrors it. */
