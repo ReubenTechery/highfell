@@ -108,9 +108,10 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   for the Dungeons sheet, and `heroic.ts`, its heroic version: its gilding kits and gilded twins;
   `thimblebriar/`, dungeon 2, the same shape plus `signature.js`, its bombs), `_template/`
   (a small working dungeon to copy for a new one; its `README.md` has the rules for every new dungeon),
-  `kits.ts` (gilding kits, Heroic's own drops, built from any dungeon's tables), and `vale/` (ingredients,
-  recipes, ranks, and `garden.ts`).
-  `house.ts` is the house's plan (each room's `main`, what a tap from far away opens, and the paddock's places). Register new content in `src/content/index.ts`; `checkContent()`
+  `kits.ts` (gilding kits, Heroic's own drops, built from any dungeon's tables), `act1.ts` (the dungeons in the order
+  you meet them, built or still to come), and `vale/` (ingredients, recipes, ranks, and `garden.ts`).
+  `house.ts` is the house's plan (each room's `main`, what a tap from far away opens, the paddock's places and the
+  cellar's Hall of Doors). Register new content in `src/content/index.ts`; `checkContent()`
   and the tests catch broken ids.
 - `src/dungeon`: the engine, plain JS with no DOM: state `S`, entities, heroes, mobs, bots, the loop,
   rendering to a canvas, `walkout.js` (the lantern tells; `cuckoo.js`, Thimblebriar's clock) and `coach.js`
@@ -124,7 +125,8 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   loot (and when heroic opens), gear, achievements, what the collection log gives (`logs.ts`), the hearth,
   the party's seats (`party.ts`), and `vale.ts` (seeds, planter beds, harvests, ranks, brewing).
 - `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, its drawing
-  `houseart.ts`, every room in each look, the Toadstool Workshop's in `houseworkshop.ts`, your hero's name tag `nametag.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
+  `houseart.ts`, every room in each look, the Toadstool Workshop's in `houseworkshop.ts`, the cellar's doors
+  `halldoors.ts`, your hero's name tag `nametag.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
   close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons
   (`dungeonsheet.ts`, its door's picture in `stage.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
   (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`), settings (`settingssheet.ts`), a hero's gear in the armoury

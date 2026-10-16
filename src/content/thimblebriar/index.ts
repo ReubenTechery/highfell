@@ -32,5 +32,6 @@ export const THIMBLEBRIAR: DungeonInfo = {
   bonus: ['dye.sporeglow', 'mount.clockwork_beetle', 'pet.pint_tinker'],
   achievements: THIMBLEBRIAR_ACHIEVEMENTS.map((a) => a.id),
   stage: THIMBLEBRIAR_STAGE,
+  houseDoor: 'door_thimble',
   clearTitle: 'The Tinker King is beaten',
 };

@@ -14,7 +14,7 @@ import { SLOT_IDS, gearId } from '../src/content/gear';
 import { INGREDIENTS, RECIPES } from '../src/content/vale';
 import { Achiever, progress } from '../src/meta/achievements';
 import { logProgress, markSeen, opened, shelfOf, standPieces, standsOf } from '../src/meta/logs';
-import { HEARTH_SPOTS, MOUNTS, autoPlace, lookOf, lookOpen, lookProgress, paddock, place, setLook, spotOf } from '../src/meta/hearth';
+import { HEARTH_SPOTS, MOUNTS, autoPlace, cellarDoors, lookOf, lookOpen, lookProgress, paddock, place, setLook, spotOf } from '../src/meta/hearth';
 import { HOUSE_SPOTS, LOOK_ROOMS, OUTSIDE, PADDOCK, ROOMS, THINGS, paddockSlots } from '../src/content/house';
 import { groupOf, heroesFor, partyProblem, pickRole, seats, seatsFor } from '../src/meta/party';
 import { lootFor } from '../src/meta/loot';
@@ -498,8 +498,9 @@ test('paddock: a mount in the old stall or the garden moves to the paddock, and 
   assert.deepEqual(migrate(JSON.parse(JSON.stringify(q))).hearth.spots, q.hearth.spots, 'loading again changes nothing');
 });
 
-test('house: every thing does something, everything is in a room, and the Barrow door is there', () => {
-  const actions = ['dungeons', 'garden', 'gear', 'logs', 'brew', 'satchel'];
+test('house: every thing does something, everything is in a room, and the cellar has its doors', () => {
+  // the Dungeons are the cellar's doors, one for every dungeon (tests/house.test.ts)
+  const actions = ['garden', 'gear', 'logs', 'brew', 'satchel'];
   for (const t of THINGS) {
     assert.ok(actions.includes(t.action), t.id);
     assert.ok(ROOMS.some((r) => r.id === t.room), t.id);
@@ -508,15 +509,18 @@ test('house: every thing does something, everything is in a room, and the Barrow
   assert.ok(!ROOMS.some((r) => r.id === 'stable'), 'the stable is gone: mounts live out in the paddock');
   assert.equal(new Set(THINGS.map((t) => t.id)).size, THINGS.length);
   for (const a of actions) assert.ok(THINGS.some((t) => t.action === a), `something in the house does ${a}`);
+  assert.ok(cellarDoors(freshProfile()).length >= 3, 'a door for every dungeon');
 });
 
 test('house: from far away a room with one clear job opens it, and the hall, with several, just zooms in', () => {
   assert.ok(!ROOMS.find((r) => r.id === 'hall')!.main, 'the hall has several things');
-  assert.equal(ROOMS.find((r) => r.id === 'cellar')!.main, 'dungeons', 'the Barrow’s room opens the Dungeons');
+  assert.equal(ROOMS.find((r) => r.id === 'cellar')!.main, 'dungeons', 'the cellar, with its doors, opens the Dungeons');
   for (const r of ROOMS) {
     if (!r.main) continue;
-    // a room's main thing is in it: a thing there that does it, the heroes by their beds, the mounts in the paddock
-    const inside = r.main === 'heroes' ? r.id === 'bunks' : r.main === 'mounts' ? r.id === 'paddock' : THINGS.some((t) => t.room === r.id && t.action === r.main);
+    // a room's main thing is in it: a thing there that does it, the heroes by their beds, the mounts in the paddock,
+    // the doors in the cellar
+    const inside = r.main === 'heroes' ? r.id === 'bunks' : r.main === 'mounts' ? r.id === 'paddock' : r.main === 'dungeons' ? r.id === 'cellar'
+      : THINGS.some((t) => t.room === r.id && t.action === r.main);
     assert.ok(inside, `${r.id} opens ${r.main}`);
   }
 });
@@ -806,7 +810,7 @@ test('art: every icon and sprite the content names exists', async () => {
   }
   for (const n of ['lantern', 'lantern_gold', 'lantern_out', 'pet_keeper', 'pet_keeper_reach', 'fireplace', 'fire_a', 'fire_b', 'rug', 'hay_bale', 'trough', 'workbench']) if (!sprites[n]) missing.push('sprite ' + n);
   for (const t of THINGS) if (!sprites[t.sprite]) missing.push('sprite ' + t.sprite + ' for ' + t.id);
-  for (const n of ['bunk_a', 'bunk_b', 'bunk_c', 'bricked_arch', 'weapon_rack', 'table', 'stool', 'woodpile', 'torch', 'candles', 'skullpile', 'gfire_a', 'gfire_b', 'coffin', 'tomb1', 'bones', 'wisp']) if (!sprites[n]) missing.push('sprite ' + n);
+  for (const n of ['bunk_a', 'bunk_b', 'bunk_c', 'weapon_rack', 'table', 'stool', 'woodpile', 'torch', 'candles', 'skullpile', 'gfire_a', 'gfire_b', 'coffin', 'tomb1', 'bones', 'wisp']) if (!sprites[n]) missing.push('sprite ' + n);
   // every hero a race and class can be drawn as (male and female), front and back, and gilded for the Risen
   for (const art of allHeroArt()) for (const v of ['_f', '_b', ...(art.startsWith('risen') ? ['_gilded_f', '_gilded_b'] : [])]) if (!sprites[art + v]) missing.push('sprite ' + art + v);
   for (const r of Object.values(RACES)) if (!tiles[r.icon]) missing.push('icon ' + r.icon + ' for race ' + r.id);

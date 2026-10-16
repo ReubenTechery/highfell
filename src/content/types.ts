@@ -181,6 +181,9 @@ export interface DungeonInfo {
   heroicOf?: string;
   /** its door, as the Dungeons sheet draws it with your party in front (a heroic dungeon uses its normal one's) */
   stage?: DungeonStage;
+  /** its door in the house's cellar, the Hall of Doors: a sprite drawn in four states, this name for plain and with
+   *  `_lit`, `_gold` and `_gilded` on the end (tools/art_doors.py; a heroic dungeon uses its normal one's) */
+  houseDoor?: string;
   /** the chest's headline after a clear (the Barrow's: "The Gravekeeper is buried") */
   clearTitle?: string;
 }

@@ -1,8 +1,8 @@
 /**
  * The Hearth: home, a tall house cut open so you can see into every room. It opens zoomed out on the
  * whole house, a sign on each room, every time you come home; tap a room to go in, and one with one clear
- * job (its `main`) opens it as the camera lands. Zoomed in, you tap things to use them: the Barrow door in
- * the cellar (the dungeons), the planter beds in the yard (the garden), the armour stand (your gear), the
+ * job (its `main`) opens it as the camera lands. Zoomed in, you tap things to use them: a door for every dungeon
+ * in the cellar (the Hall of Doors), the planter beds in the yard (the garden), the armour stand (your gear), the
  * big book in the loft (the collection log), the cauldron and the larder. Your hero stands by the fire
  * under a name tag; your other heroes wait by their beds upstairs. Pets, trophies and banners go in spots
  * all over the house; Decorate shows the empty ones. Out in the paddock every mount in the game has its own
@@ -13,7 +13,7 @@
  */
 import { COLLECTIBLES } from '../content';
 import { CLASSES, MAX_HEROES, RACES, type ClassId, type RaceId } from '../content/folk';
-import { BUNK_SLOTS, FLOORS, HOUSE_SPOTS, LOOK_ROOMS, PADDOCK, ROOMS, THINGS, paddockSlots, roomAt, type HouseAction, type HouseSpot, type ThingDef } from '../content/house';
+import { BUNK_SLOTS, FLOORS, HALL, HOUSE_SPOTS, LOOK_ROOMS, PADDOCK, ROOMS, THINGS, paddockSlots, roomAt, type HouseAction, type HouseSpot, type ThingDef } from '../content/house';
 import { lookOf, ownedOfKind, paddock } from '../meta/hearth';
 import { loadoutFor, waiting } from '../meta/gear';
 import { activeHero, finishHearthTour, finishSeedTour, needsHearthTour, needsSeedTour, roleOf, type Hero } from '../meta/profile';
@@ -25,6 +25,7 @@ import { SFX } from './sound';
 import { Camera } from './camera';
 import { HOUSE_BOUNDS, HOUSE_FIT, houseBack, houseBits, houseDefs, houseFront } from './houseart';
 import { bedLook } from './garden';
+import { hallDoors } from './halldoors';
 import { NameTag } from './nametag';
 
 /** how big each kind of thing is drawn in a spot, its tap area, and how it moves */
@@ -44,8 +45,9 @@ const [X0, Y0] = HOUSE_BOUNDS;
 /** what a scene draws besides the layer you tap: the bits that move (y-sorted like the layer) and the pips */
 interface Extras { bits: { y: number; bit: Bit }[]; pips: Bit[] }
 
-/** a step of a guided tour of the house: its room, what it points at (a thing's id, 'me' for your hero by
- *  the fire, 'newhero' for the empty bed), where its pin stands and, if not over the pin, where the camera looks */
+/** a step of a guided tour of the house: its room, what it points at (a thing's id, 'door.<dungeon>' for a door in the
+ *  cellar, 'me' for your hero by the fire, 'newhero' for the empty bed), where its pin stands and, if not over the pin,
+ *  where the camera looks */
 interface TourStep { room: string; thing?: string; at: [number, number]; cam?: number; callout: string; step: string; title: string; sub: string; next: string }
 /** the 3-step guided tour shown after making your first hero: points directly at the object in each room */
 const TOUR_STEPS: TourStep[] = [
@@ -73,8 +75,9 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     room: 'cellar',
-    thing: 'barrow',
-    at: [300, 140],
+    thing: 'door.barrow',
+    at: [HALL.x0, 140],
+    cam: 430,
     callout: 'Tap Door · Enter Dungeon',
     step: '3 / 3',
     title: 'Dungeons',
@@ -314,11 +317,11 @@ export class Hearth {
     else this.cam.flyTo(fx, fy, this.roomZ, 480, done);
   }
   /** From the whole house, go into a room; one with one clear job opens it as the camera lands (the garden
-   *  opens the bed you tapped, or the one that wants you). */
-  private enter(id: string, bed?: number): void {
+   *  opens the bed you tapped, or the one that wants you; the Dungeons, the door you tapped). */
+  private enter(id: string, pick: Pick = {}): void {
     const main = ROOMS.find((x) => x.id === id)?.main;
     if (!main) { this.goRoom(id); return; }
-    this.goRoom(id, false, () => { this.dropTour(); this.act(main, bed, true); });
+    this.goRoom(id, false, () => { this.dropTour(); this.act(main, pick, true); });
   }
   private overview(jump = false): void {
     const [x0, y0, x1, y1] = HOUSE_FIT;
@@ -364,14 +367,15 @@ export class Hearth {
     const el = (e.target as Element).closest(TAPPABLE);
     const box = this.root.getBoundingClientRect();
     const px = e.clientX - box.left, py = e.clientY - box.top;
-    // from far away, a tap takes you into the room you tapped, and opens its main thing (a garden bed you hit, that bed)
+    // from far away, a tap takes you into the room you tapped, and opens its main thing (a garden bed you hit, that
+    // bed; a door you hit, its dungeon)
     if (this.far() && !this.decorating) {
       const [wx, wy] = this.cam.toWorld(px, py);
       const r = roomAt(wx, wy);
       if (!r) return;
       SFX.play('ui');
-      const t = THINGS.find((x) => x.id === (el as SVGElement | null)?.dataset.thing);
-      this.enter(r.id, t && t.room === r.id && t.action === r.main ? t.bed : undefined);
+      const d = (el as SVGElement | null)?.dataset, t = THINGS.find((x) => x.id === d?.thing);
+      this.enter(r.id, { bed: t && t.room === r.id && t.action === r.main ? t.bed : undefined, dungeon: r.main === 'dungeons' ? d?.door : undefined });
       return;
     }
     if (el) { this.use(el); return; }
@@ -388,7 +392,8 @@ export class Hearth {
     SFX.play('ui');
     this.dropTour();
     this.out = this.far();
-    if (d.thing) { const t = THINGS.find((x) => x.id === d.thing); if (t) this.act(t.action, t.bed); }
+    if (d.thing) { const t = THINGS.find((x) => x.id === d.thing); if (t) this.act(t.action, { bed: t.bed }); }
+    else if (d.door) this.act('dungeons', { dungeon: d.door });
     else if (d.spot) this.app.sheets.open({ kind: 'picker', spot: d.spot });
     else if (d.mount) this.app.sheets.open({ kind: 'item', id: d.mount });
     else if (d.hero) { if (d.hero === this.app.p.active) this.act('gear'); else this.app.sheets.open({ kind: 'hero', hero: d.hero }); }
@@ -402,14 +407,15 @@ export class Hearth {
     const h = activeHero(this.app.p);
     if (h) this.hud(h);
   }
-  /** What a thing in the house, or a room's main thing, opens (the caller plays the click). `out`: it was
-   *  opened from the whole house, so closing it goes back out there. */
-  private act(a: HouseAction, bed?: number, out = this.far()): void {
+  /** What a thing in the house, or a room's main thing, opens (the caller plays the click): the garden on `pick.bed`,
+   *  the Dungeons on `pick.dungeon`, if there's one. `out`: it was opened from the whole house, so closing it goes back
+   *  out there. */
+  private act(a: HouseAction, pick: Pick = {}, out = this.far()): void {
     const app = this.app;
     this.out = out;
     switch (a) {
-      case 'dungeons': app.sheets.open({ kind: 'dungeon' }); break;
-      case 'garden': app.garden.open(bed ?? bedToOpen(app.p)); break;
+      case 'dungeons': app.sheets.open(pick.dungeon ? { kind: 'dungeon', dungeon: pick.dungeon } : { kind: 'dungeon' }); break;
+      case 'garden': app.garden.open(pick.bed ?? bedToOpen(app.p)); break;
       case 'gear': { const h = activeHero(app.p); if (h) app.sheets.open({ kind: 'gear', hero: h.id }); break; }
       case 'logs': app.sheets.open({ kind: 'logs', tab: 'collection' }); break;
       case 'brew': app.showBrew(); break;
@@ -428,7 +434,9 @@ export class Hearth {
     const layer: { y: number; svg: string }[] = [];
     for (const t of THINGS) layer.push({ y: t.y, svg: this.thing(t, h, extra) });
     for (const s of HOUSE_SPOTS) layer.push({ y: spotY(s), svg: this.spot(s, extra) });
-    layer.push(...this.heroes(h, extra), ...this.mounts(extra));
+    const hall = hallDoors(p, this.step?.thing);
+    layer.push(...this.heroes(h, extra), ...this.mounts(extra), ...hall.layer);
+    extra.bits.push(...hall.bits);
     layer.sort((a, b) => a.y - b.y);
     if (Object.keys(p.collection).some((id) => !p.seen[id])) extra.pips.push(pip(600, -1940, '!'));
     return `<defs><radialGradient id="h-hero"><stop offset="0" stop-color="${light}" stop-opacity="0.38"/><stop offset="0.6" stop-color="${light}" stop-opacity="0.12"/><stop offset="1" stop-color="${light}" stop-opacity="0"/></radialGradient></defs>
@@ -588,10 +596,12 @@ export const ilvl = (score: number): string => (Math.round(score * 10) / 10).toS
 const plus = (x: number, y: number): string => `<path class="plus" d="M${x - 10} ${y} H${x + 10} M${x} ${y - 10} V${y + 10}"/>`;
 /** a little red count, like the one on a button, bobbing over what it counts */
 const pip = (x: number, y: number, t: string): Bit => ({ box: [x - 27, y - 27, 54, 54], body: `<circle cx="${x}" cy="${y}" r="24"/><text x="${x}" y="${y + 9}">${esc(t)}</text>`, cls: 'pip' });
+/** what a tap on something in the house picks out for what it opens: a garden bed, a dungeon's door */
+type Pick = { bed?: number; dungeon?: string };
 /** where a spot sorts in the layer: pets by where they stand, the rest at the back */
 const spotY = (s: HouseSpot): number => (s.kind === 'pet' ? s.y : -9999);
 /** what you can tap in the house */
-const TAPPABLE = '[data-thing], [data-spot], [data-hero], [data-new], [data-mount]';
+const TAPPABLE = '[data-thing], [data-door], [data-spot], [data-hero], [data-new], [data-mount]';
 const f1 = (n: number): string => (Math.round(n * 10) / 10).toString();
 /** the house, for the zoom-out button */
 const HOUSE_GLYPH = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21 V9 L12 3 L20 9 V21 Z M4 13 H20 M4 17 H20 M12 13 V21" style="fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round"/></svg>';

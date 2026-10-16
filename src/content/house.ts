@@ -1,6 +1,7 @@
 /**
  * The house: home, drawn as a tall house cut open so you can see into every room. This file is its
- * plan: the rooms, the things you tap to do something, and the spots where your collection goes.
+ * plan: the rooms, the things you tap to do something, the spots where your collection goes, and the cellar's
+ * Hall of Doors (a door for every dungeon).
  *
  * House units: x runs across (0 to 1200 between the outer walls), y runs down, and the ground floor's
  * floor is at y = 0, so the loft is far up (negative y) and the cellar is below ground. A thing or a
@@ -44,16 +45,16 @@ export const ROOMS: RoomDef[] = [
   // the hall's sign stands right of the fire, clear of your hero's name tag
   { id: 'hall', name: 'Hall', x: 0, y: -1144, w: 1200, h: 624, focus: [545, -830], sign: [990, -830] },
   { id: 'brewery', name: 'Brewing', x: 0, y: -484, w: 1200, h: 484, focus: [860, -230], sign: [600, -230], main: 'brew' },
-  { id: 'cellar', name: 'The Barrow', x: 0, y: 36, w: 1200, h: 464, focus: [420, 300], main: 'dungeons' },
+  // the cellar's sign stands over the stairs, so it never hides a door from far away
+  { id: 'cellar', name: 'Dungeons', x: 0, y: 36, w: 1200, h: 464, focus: [430, 300], sign: [1000, 290], main: 'dungeons' },
   { id: 'yard', name: 'Garden', x: -900, y: -520, w: 872, h: 520, focus: [-400, -210], sign: [-400, -250], main: 'garden' },
   { id: 'paddock', name: 'Paddock', x: 1228, y: -520, w: 1080, h: 520, focus: [1770, -210], sign: [1600, -250], main: 'mounts' },
 ];
 /** the rooms out in the open, which a look never goes on */
 export const OUTSIDE = ['yard', 'paddock'];
 
-/** the things you tap: each one opens what used to be a button */
+/** the things you tap: each one opens what used to be a button (the cellar's doors are the Hall of Doors, below) */
 export const THINGS: ThingDef[] = [
-  { id: 'barrow', room: 'cellar', label: 'The door to the Barrow: dungeons', action: 'dungeons', sprite: 'barrow_door', x: 300, y: 444 },
   { id: 'bed.0', room: 'yard', label: 'A garden bed', action: 'garden', sprite: 'bed', x: -600, y: 0, bed: 0 },
   { id: 'bed.1', room: 'yard', label: 'A garden bed', action: 'garden', sprite: 'bed', x: -400, y: 0, bed: 1 },
   { id: 'bed.2', room: 'yard', label: 'A garden bed', action: 'garden', sprite: 'bed', x: -200, y: 0, bed: 2 },
@@ -94,6 +95,14 @@ export function paddockSlots(n: number): { x: number; y: number; k: number }[] {
   const step = (PADDOCK.x1 - PADDOCK.x0) / Math.max(1, n);
   return Array.from({ length: n }, (_, i) => ({ x: PADDOCK.x0 + step * (i + 0.5), y: i % 2 ? PADDOCK.front - 56 : PADDOCK.front, k: i % 2 ? 0.94 : 1.04 }));
 }
+
+/** The Hall of Doors along the cellar's back wall: a door for every dungeon, in the order you meet them (the Act 1
+ *  list), standing on the floor at the foot of the wall, `step` apart from `x0`. Season 0's three fit between the
+ *  candles and the stairs, all in a phone's view of the room. */
+export const HALL = { x0: 220, step: 210, floor: FLOORS.cellar - 56 };
+export const hallSlots = (n: number): { x: number; y: number }[] => Array.from({ length: n }, (_, i) => ({ x: HALL.x0 + HALL.step * i, y: HALL.floor }));
+/** the door of a dungeon still to come: an arch bricked up, with a chalk "?" (a built one names its own, `houseDoor`) */
+export const SOON_DOOR = 'door_soon';
 
 /** two shelves of four trophies on one side of the loft, the lower shelf first */
 function shelf(xs: number[], n0: number): HouseSpot[] {

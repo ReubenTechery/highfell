@@ -36,6 +36,12 @@ export function logDone(p: Profile, dungeon: string): boolean {
 
 /** The achievement for filling a dungeon's whole log. */
 export const logAchievement = (dungeon: string): AchievementDef | undefined => ACHIEVEMENT_LIST.find((a) => a.log === dungeon);
+/** A dungeon's log is finished: its achievement is earned, which is for keeps even if a slot is added to the log
+ *  later (a dungeon with no log achievement: every slot that counts is filled). */
+export function logFinished(p: Profile, dungeon: string): boolean {
+  const a = logAchievement(dungeon);
+  return a ? !!p.achievements[a.id] : logDone(p, dungeon);
+}
 
 /** The achievement whose reward gives a look or a race, if one does (the rest are open from the start). */
 export const unlockOf = (kind: 'look' | 'race', id: string): AchievementDef | undefined => ACHIEVEMENT_LIST.find((a) => a.reward[kind] === id);

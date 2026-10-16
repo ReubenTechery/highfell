@@ -81,7 +81,6 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .house .newhero .ring { fill: rgba(255, 248, 236, 0.72); stroke: var(--ink); stroke-width: 4; stroke-dasharray: 12 9; }
 .house .newhero .plus { stroke: var(--ink); }
 .house .sign { font-family: var(--f-display); font-size: 30px; fill: var(--ink); text-anchor: middle; pointer-events: none; }
-.house .a-dungeons .lbl { font-size: 30px; fill: #D8FFB8; }
 .bit.pip circle { fill: var(--red); stroke: var(--ink); stroke-width: 4; }
 .bit.pip text { font-family: var(--f-display); font-size: 27px; fill: #FFFFFF; text-anchor: middle; }
 /* a mount you haven't got, in the paddock: its shadow and a question mark */
@@ -107,6 +106,8 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
   .bit.firefly { animation: glimmer 7.2s steps(1) infinite; }
   .bit.firefly.f1 { animation-delay: -2.7s; animation-direction: reverse; }
   .bit.firefly.f2 { animation-delay: -4.95s; }
+  /* the light round a lit door in the cellar breathes slowly */
+  .bit.doorglow { animation: glow 2.6s ease-in-out infinite alternate; }
   .bit.bob { animation: bob 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
   .bit.breathe { animation: breathe 3.2s ease-in-out infinite; transform-origin: 50% 100%; }
   .bit.sway { animation: sway 4s ease-in-out infinite; transform-origin: 50% 0%; }
