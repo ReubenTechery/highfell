@@ -6,7 +6,7 @@ import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, SETS, checkContent, heroic
 import { BARROW } from '../src/content/barrow';
 import { activeHero, classRuns, countClassRun, countLift, createHero, dungeonRecord, finishCurseTip, finishHearthTour, finishIntroRun, freshProfile, learnGlow, markClassTrial, migrate, nameProblem, needsClassTrial, needsCurseTip, needsHearthTour, needsIntroRun, needsSwipeHint, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, startHearthTour, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
 import { DUPE_MARKS, grantTrialStarter, heroicOpen, heroicProgress, resolveRun, rollTable, trialStarter } from '../src/meta/loot';
-import { bestRegular, buyTrait, compareFor, compareOn, effectsOf, equip, floorWorn, itemScore, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, wearerOf, worn } from '../src/meta/gear';
+import { bestRegular, buyTrait, compareFor, compareOn, effectsOf, equip, floorWorn, itemScore, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, weaponTrait, wearerOf, worn } from '../src/meta/gear';
 import { CLASSES, FOUNDERS, HERO_ART, MAX_HEROES, RACES, allHeroArt, canMake, cleanName, defaultSex, heroArt } from '../src/content/folk';
 import { SLOT_IDS, gearId } from '../src/content/gear';
 import { INGREDIENTS, RECIPES } from '../src/content/vale';
@@ -298,6 +298,20 @@ test('gear: nothing goes on by itself, and putting it on is yours to do', () => 
   h.bag.weapon = { rar: 3, trait: 'splinter' }; p.dungeons.barrow.marks = 10;
   assert.ok(buyTrait(p, h, 'barrow', 'quickfrost'));
   assert.equal(h.bag.weapon!.trait, 'quickfrost');
+});
+
+test('gear: a weapon trait works while its weapon is on, or under a unique weapon', () => {
+  const { p, h } = withHero('tank');
+  assert.equal(weaponTrait(p, h), null, 'no trait below Rare');
+  h.regular.weapon = { rar: 1 };
+  h.bag.weapon = { rar: 2, trait: 'wide' };
+  assert.deepEqual(weaponTrait(p, h), { trait: 'wide', rar: 2, on: false }, 'picked, but the Rare axe still waits in the bag');
+  assert.ok(buyTrait(p, h, 'barrow', 'headsman'), 'it can still be picked before the axe is on');
+  putOn(p, h, 'weapon');
+  assert.deepEqual(weaponTrait(p, h), { trait: 'headsman', rar: 2, on: true });
+  p.collection['gravekeeper.tank'] = { n: 1, kc: 1, at: 1 };
+  assert.ok(equip(p, h, 'weapon', 'gravekeeper.tank'));
+  assert.equal(weaponTrait(p, h)?.on, true, 'it stays on under a unique weapon');
 });
 
 test('profile: a v4 save keeps what everyone wears, with empty bags', () => {

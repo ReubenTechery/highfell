@@ -240,3 +240,12 @@ export function buyTrait(p: Profile, h: Hero, dungeon: string, trait: string): b
   reg.trait = trait;
   return true;
 }
+
+/** The trait the trait buttons pick: the one on the best regular weapon you have (Rare or better, worn or
+ *  still in the bag). It works while that weapon is on, or under a unique weapon; one still in the bag works
+ *  once it goes on. Null below Rare. */
+export function weaponTrait(p: Profile, h: Hero): { trait: string | undefined; rar: Rar; on: boolean } | null {
+  const best = bestRegular(h, 'weapon');
+  if (best.rar < 2) return null;
+  return { trait: best.trait, rar: best.rar, on: !!best.trait && worn(p, h).weapon.trait === best.trait };
+}

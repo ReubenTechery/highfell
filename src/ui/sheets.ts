@@ -14,7 +14,7 @@ import { INGREDIENTS, INGREDIENT_ORDER, LORE, PLANTS, RECIPES, RECIPE_ORDER, SEE
 import { rankProgress, recipeUnlocked } from '../meta/vale';
 import { activeHero, freshProfile, heroById, nameProblem, removeHero, renameHero, roleOf, setActive, type Hero } from '../meta/profile';
 import { pickRole } from '../meta/party';
-import { bestRegular, buyTrait, effectsOf, equip, healthPct, itemShare, loadoutFor, ownedFor, powerPct, putOn, seenSlot, waitingFor, worn, type Waiting, type Worn } from '../meta/gear';
+import { bestRegular, buyTrait, effectsOf, equip, healthPct, itemShare, loadoutFor, ownedFor, powerPct, putOn, seenSlot, waitingFor, weaponTrait, worn, type Waiting, type Worn } from '../meta/gear';
 import { HEARTH_SPOTS, place, setLook, spotById, spotOf } from '../meta/hearth';
 import type { App } from './app';
 import { actions, cap, esc, fmtN, fmtRate, GLYPH } from './dom';
@@ -218,14 +218,27 @@ export class Sheets {
     if (spec.kind === 'dungeon' && !inDungeon(this.spec)) { this.pick.role = null; this.pick.alts = false; this.pick.log = false; }
     if (spec.kind === 'hero' && !(this.spec && this.spec.kind === 'hero' && this.spec.hero === spec.hero)) { clearTimeout(this.heroTimer); this.heroSt = { delArmed: false, renaming: false, err: '' }; }
     if (spec.kind !== 'logs' && spec.kind !== 'item') this.logView.peek = null;
+    const looked = this.leaveSlot(spec);
     this.spec = spec;
     this.render(!was);
+    if (looked) this.app.save();
   }
   close(): void {
     if (!this.spec) return;
+    const looked = this.leaveSlot(null);
     this.spec = null; this.logView.tryOn = false; this.logView.peek = null;
     this.root.innerHTML = '';
     this.app.hearth.closed();
+    if (looked) this.app.save();
+  }
+  /** Moving on from a gear slot you had open: you've looked, so its new uniques stop glowing (they stay
+   *  yours to wear). True when that changed anything. */
+  private leaveSlot(next: SheetSpec | null): boolean {
+    const s = this.spec;
+    if (!s || s.kind !== 'gear' || !s.slot) return false;
+    if (next && next.kind === 'gear' && next.hero === s.hero && next.slot === s.slot) return false;
+    const h = heroById(this.app.p, s.hero);
+    return !!h && seenSlot(h, s.slot);
   }
   refresh(): void { if (this.spec) this.render(false); }
 
@@ -399,10 +412,11 @@ export class Sheets {
         <div class="setline ${n >= 3 ? 'on' : ''} ${set.bonus3.ready ? '' : 'later'}"><i>3</i><span>${esc(set.bonus3.desc)}${set.bonus3.ready ? '' : ' <em>(coming in a later update)</em>'}</span></div>
         <p class="fine">Epic set pieces drop from the Gravekeeper, 1 in 35 each. ${esc(set.look)}.</p></div>`;
     }).join('');
-    // weapon trait (unlocked at Rare, free to toggle)
-    const regW = bestRegular(h, 'weapon');
-    const traitBox = regW.rar >= 2 ? `<div class="box"><h3 class="section-title">Weapon trait<small>Unlocked at Rare · free to swap</small></h3>
-      <div class="offer">${TRAITS[gk].map((t) => `<button type="button" class="opt" data-act="trait" data-trait="${t.id}" aria-pressed="${regW.trait === t.id}" ${regW.trait === t.id ? 'disabled' : ''}><b>${esc(t.name)}</b>${esc(t.desc)}${regW.trait === t.id ? '<span class="m">Active on your hero</span>' : `<span class="m">Tap to activate</span>`}</button>`).join('')}</div>
+    // weapon trait (unlocked at Rare, free to toggle); one picked on a weapon still in the bag works once it's on
+    const wt = weaponTrait(p, h);
+    const pickedNote = wt && !wt.on ? `Works once your ${esc(ITEMS[gearId(gk, 'weapon', wt.rar)].name)} is on` : 'Active on your hero';
+    const traitBox = wt ? `<div class="box"><h3 class="section-title">Weapon trait<small>Unlocked at Rare · free to swap</small></h3>
+      <div class="offer">${TRAITS[gk].map((t) => `<button type="button" class="opt" data-act="trait" data-trait="${t.id}" aria-pressed="${wt.trait === t.id}" ${wt.trait === t.id ? 'disabled' : ''}><b>${esc(t.name)}</b>${esc(t.desc)}${wt.trait === t.id ? `<span class="m">${pickedNote}</span>` : `<span class="m">Tap to activate</span>`}</button>`).join('')}</div>
       ${w.weapon.unique ? '<p class="fine">Your unlocked weapon trait stays active alongside your unique weapon.</p>' : ''}</div>`
       : `<p class="fine">At Rare your weapon unlocks all three traits so you can swap how an ability works freely.</p>`;
     // title
