@@ -145,32 +145,25 @@ export function pickedDungeon(p: Profile, pick: DungeonPick, allOpen: boolean): 
   return { dg: hero, open: allOpen || heroicOpen(p, base.id) };
 }
 
-/** Build the 3-dungeon Act 1 stepped progression strip at the top of the sheet. */
-function dungeonStrip(p: Profile, activeId: string): string {
+/** The Act 1 dungeons as name tabs above the picture: the one you're looking at in its own light, the ones
+ *  still being built dashed. Everything else about a dungeon is said once, on its picture or its loot. */
+function dungeonStrip(activeId: string): string {
   const tabs = ACT1_DUNGEONS.map((m) => {
-    const live = DUNGEONS[m.id];
-    const on = activeId === m.id;
-    const recIlvl = live?.recIlvl ?? m.recIlvl;
-    const dropsIlvl = live?.dropsIlvl ?? m.dropsIlvl;
-    const prog = live ? logProgress(p, live.id) : { have: 0, need: 16 };
-    const clears = p.dungeons[m.id]?.clears || 0;
-    return `<button type="button" class="dgx-tab${on ? ' on' : ''}${live ? '' : ' preview'}" role="tab" aria-selected="${on}" data-act="dgpick" data-id="${esc(m.id)}" style="--dc: ${m.themeLight}">
-      <span class="dgx-t-top">
-        <span class="dgx-t-tier">Tier ${m.roman}</span>
-        <span class="dgx-t-ilvl">ilvl ${dropsIlvl}</span>
-      </span>
-      <b class="dgx-t-name">${esc(live?.name || m.name)}</b>
-      <span class="dgx-t-sub">${live ? `Rec. ilvl ${recIlvl} · Log ${prog.have}/${prog.need}${clears ? ` · ${clears} clr` : ''}` : `Rec. ilvl ${recIlvl} · Act 1 Tier ${m.roman}`}</span>
-    </button>`;
+    const live = DUNGEONS[m.id], on = activeId === m.id, name = live?.name || m.name;
+    return `<button type="button" class="dgx-tab${on ? ' on' : ''}${live ? '' : ' soon'}" role="tab" aria-selected="${on}" aria-label="${esc(name)}${live ? '' : ', coming soon'}" data-act="dgpick" data-id="${esc(m.id)}" style="--dc: ${m.themeLight}">${esc(name.split(' ')[0])}</button>`;
   }).join('');
-  return `<div class="dgx-strip" role="tablist" aria-label="Act 1 Dungeons">${tabs}</div>`;
+  return `<div class="dgx-strip" role="tablist" aria-label="Dungeons">${tabs}</div>`;
 }
+
+/** the one line of numbers on a dungeon's picture */
+const statLine = (clears: number, kc: number, pb: number | null | undefined): string =>
+  clears ? `<b>${clears}</b> clear${clears === 1 ? '' : 's'} · KC <b>${kc}</b> · best <b>${fmtT(pb)}</b>` : 'No clears yet';
 
 export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): { head: string; body: string; foot: string } {
   const reqId = pick.dungeon || 'barrow';
   const meta = ACT1_DUNGEONS.find((m) => m.id === reqId) || ACT1_DUNGEONS[0];
   const liveBase = DUNGEONS[reqId];
-  const strip = dungeonStrip(p, reqId);
+  const strip = dungeonStrip(reqId);
   const role = pickedRole(p, pick);
   const h = activeHero(p);
   const myIlvl = h ? +ilvl(loadoutFor(p, h).score) : 10;
@@ -181,8 +174,7 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
     const body = `${strip}<div class="dgx preview-dg">
       <div class="dgx-side">
         <div class="dgx-art">${banner(false, meta.id)}
-          <div class="dgx-name"><div class="dgx-tier-badge"><span>Tier ${meta.roman} · Recommended ilvl <b>${meta.recIlvl}</b> · Drops Epic ilvl <b>${meta.dropsIlvl}</b></span></div>
-            <h3>${esc(meta.name)}</h3><span class="dg-stats"><span>Bosses <b>${esc(meta.bossNames[0])} &amp; ${esc(meta.bossNames[1])}</b></span></span></div>
+          <div class="dgx-name"><h3>${esc(meta.name)}</h3><p class="dgx-line">Bosses <b>${esc(meta.bossNames[0])}</b> &amp; <b>${esc(meta.bossNames[1])}</b></p></div>
         </div>
         <p class="fine dgx-blurb">${esc(meta.blurb)}</p>
         <section class="dgx-log">
@@ -205,7 +197,7 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
         </section>
       </div>
     </div>`;
-    const foot = `<p class="fine dgx-shut">${GLYPH.lock}${esc(meta.name)} (Tier ${meta.roman} · ilvl ${meta.dropsIlvl} drops) is the next Act 1 dungeon in the ladder.</p>`;
+    const foot = `<p class="fine dgx-shut">${GLYPH.lock}${esc(meta.name)} is coming soon.</p>`;
     return { head: '<h2>Dungeons</h2>', body, foot };
   }
 
@@ -231,12 +223,11 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
   const body = `${strip}<div class="dgx${pick.heroic ? ' heroic' : ''}">
     <div class="dgx-side">
       <div class="dgx-art">${banner(pick.heroic, base.id)}${diff}
-        <div class="dgx-name"><div class="dgx-tier-badge"><span>Tier ${meta.roman} · Rec. ilvl <b>${recIlvl}</b> · Drops up to <b>ilvl ${dropsIlvl}${pick.heroic ? ' (Gilded)' : ''}</b></span></div>
-          <h3>${esc(base.name)}${pick.heroic ? ' <em class="dgx-h">Heroic</em>' : ''}</h3><span class="dg-stats"><span>Clears <b>${rec ? rec.clears : 0}</b></span><span>Best <b>${fmtT(rec?.pb)}</b></span><span>KC <b>${keeper ? keeper.kc : 0}</b></span></span></div>
+        <div class="dgx-name"><h3>${esc(base.name)}</h3><p class="dgx-line">${statLine(rec?.clears || 0, keeper?.kc || 0, rec?.pb)}</p></div>
       </div>
       <section class="dgx-log">
         <button type="button" class="dgx-logbar${done ? ' done' : ''}" data-act="logx" aria-expanded="${pick.log}"><span>Collection log</span><b>${got}/${all}</b><i aria-hidden="true"><i style="width: ${((got / all) * 100).toFixed(1)}%"></i></i>${main ? `<span class="dgx-prize${done ? ' got' : ''}" title="${esc(main.name)}" aria-hidden="true">${tile(main.icon)}</span>` : ''}<span class="dgx-more">${pick.log ? 'Hide' : 'Loot'}${pick.log ? GLYPH.up : GLYPH.down}</span></button>
-        ${pick.log ? `<div class="dgx-loot">${ach ? rewards(ach, done) : ''}${ORDER.flatMap((r) => r === 'dps' ? [lootRow(p, 'Mage', 'dps', lootFor(dg, 'dps', 'mage').mine, role === 'dps' && h?.cls !== 'rogue'), lootRow(p, 'Rogue', 'dps', lootFor(dg, 'dps', 'rogue').mine, role === 'dps' && h?.cls === 'rogue')] : [lootRow(p, ROLES[r].title, r, lootFor(dg, r).mine, r === role)]).join('')}${lootRow(p, 'Anyone', null, lootFor(dg, role).shared, false)}
+        ${pick.log ? `<div class="dgx-loot"><p class="dgx-ilvl">Drops up to <b>ilvl ${dropsIlvl}</b>${pick.heroic ? `, gilded · made for <b>ilvl ${recIlvl}</b>` : ''}</p>${ach ? rewards(ach, done) : ''}${ORDER.flatMap((r) => r === 'dps' ? [lootRow(p, 'Mage', 'dps', lootFor(dg, 'dps', 'mage').mine, role === 'dps' && h?.cls !== 'rogue'), lootRow(p, 'Rogue', 'dps', lootFor(dg, 'dps', 'rogue').mine, role === 'dps' && h?.cls === 'rogue')] : [lootRow(p, ROLES[r].title, r, lootFor(dg, r).mine, r === role)]).join('')}${lootRow(p, 'Anyone', null, lootFor(dg, role).shared, false)}
           <button type="button" class="btn small" data-act="entry" data-id="${dg.id}.${dg.finalBoss}">${GLYPH.book}Open the collection log</button></div>` : ''}
       </section>
     </div>
