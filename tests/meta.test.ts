@@ -425,6 +425,17 @@ test('house: every thing does something, everything is in a room, and the Barrow
   for (const a of actions) assert.ok(THINGS.some((t) => t.action === a), `something in the house does ${a}`);
 });
 
+test('house: from far away a room with one clear job opens it, and the hall, with several, just zooms in', () => {
+  assert.ok(!ROOMS.find((r) => r.id === 'hall')!.main, 'the hall has several things');
+  assert.equal(ROOMS.find((r) => r.id === 'cellar')!.main, 'dungeons', 'the Barrow’s room opens the Dungeons');
+  for (const r of ROOMS) {
+    if (!r.main) continue;
+    // a room's main thing is in it: a thing there that does it, the heroes by their beds, the mounts in the paddock
+    const inside = r.main === 'heroes' ? r.id === 'bunks' : r.main === 'mounts' ? r.id === 'paddock' : THINGS.some((t) => t.room === r.id && t.action === r.main);
+    assert.ok(inside, `${r.id} opens ${r.main}`);
+  }
+});
+
 test('house: spots a save has never had fill with what is not on show, once; emptied spots stay empty', () => {
   const p = freshProfile();
   const trophies = Object.values(COLLECTIBLES).filter((c) => c.kind === 'trophy').map((c) => c.id);

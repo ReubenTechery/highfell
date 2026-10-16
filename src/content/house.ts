@@ -10,8 +10,9 @@
  */
 import type { CollectibleKind } from './types';
 
-/** What tapping a thing in the house does. */
-export type HouseAction = 'dungeons' | 'garden' | 'gear' | 'logs' | 'brew' | 'satchel';
+/** What tapping a thing in the house does, or a room's main thing: your heroes (the bunk room's list) and
+ *  every mount (the paddock's) belong to a room, not to one thing in it. */
+export type HouseAction = 'dungeons' | 'garden' | 'gear' | 'logs' | 'brew' | 'satchel' | 'heroes' | 'mounts';
 
 export interface RoomDef {
   id: string;
@@ -23,6 +24,9 @@ export interface RoomDef {
   focus: [number, number];
   /** where its sign sits when you're zoomed out, if not at the focus */
   sign?: [number, number];
+  /** a room with one clear job: tapped from far away, it zooms in and opens this in one go. A room with
+   *  several things (the hall, the loft) has none and just zooms in. */
+  main?: HouseAction;
 }
 /** bed: for the garden's planter beds, which bed (its sprite follows what grows in it) */
 export interface ThingDef { id: string; room: string; label: string; action: HouseAction; sprite: string; x: number; y: number; k?: number; bed?: number }
@@ -35,13 +39,14 @@ export const FLOORS = { loft: -1700, upper: -1180, hall: -520, ground: 0, cellar
 
 export const ROOMS: RoomDef[] = [
   { id: 'loft', name: 'Trophy loft', x: 0, y: -2400, w: 1200, h: 700, focus: [600, -1960] },
-  { id: 'bunks', name: 'Heroes', x: 0, y: -1664, w: 520, h: 484, focus: [270, -1430] },
-  { id: 'armory', name: 'Armory', x: 680, y: -1664, w: 520, h: 484, focus: [930, -1430] },
-  { id: 'hall', name: 'Hall', x: 0, y: -1144, w: 1200, h: 624, focus: [545, -830] },
-  { id: 'brewery', name: 'Brewing', x: 0, y: -484, w: 1200, h: 484, focus: [860, -230], sign: [600, -230] },
-  { id: 'cellar', name: 'The Barrow', x: 0, y: 36, w: 1200, h: 464, focus: [420, 300] },
-  { id: 'yard', name: 'Garden', x: -900, y: -520, w: 872, h: 520, focus: [-400, -210], sign: [-400, -250] },
-  { id: 'paddock', name: 'Paddock', x: 1228, y: -520, w: 1080, h: 520, focus: [1770, -210], sign: [1600, -250] },
+  { id: 'bunks', name: 'Heroes', x: 0, y: -1664, w: 520, h: 484, focus: [270, -1430], main: 'heroes' },
+  { id: 'armory', name: 'Armory', x: 680, y: -1664, w: 520, h: 484, focus: [930, -1430], main: 'gear' },
+  // the hall's sign stands right of the fire, clear of your hero's name tag
+  { id: 'hall', name: 'Hall', x: 0, y: -1144, w: 1200, h: 624, focus: [545, -830], sign: [990, -830] },
+  { id: 'brewery', name: 'Brewing', x: 0, y: -484, w: 1200, h: 484, focus: [860, -230], sign: [600, -230], main: 'brew' },
+  { id: 'cellar', name: 'The Barrow', x: 0, y: 36, w: 1200, h: 464, focus: [420, 300], main: 'dungeons' },
+  { id: 'yard', name: 'Garden', x: -900, y: -520, w: 872, h: 520, focus: [-400, -210], sign: [-400, -250], main: 'garden' },
+  { id: 'paddock', name: 'Paddock', x: 1228, y: -520, w: 1080, h: 520, focus: [1770, -210], sign: [1600, -250], main: 'mounts' },
 ];
 /** the rooms out in the open, which a look never goes on */
 export const OUTSIDE = ['yard', 'paddock'];
@@ -116,7 +121,7 @@ export const LOOK_ROOMS: string[] = ROOMS.filter((r) => !OUTSIDE.includes(r.id))
 /** where your other heroes stand in the bunk room, by their beds */
 export const BUNK_SLOTS: [number, number][] = [[64, -1196], [164, -1192], [264, -1196], [364, -1192], [462, -1196]];
 
-/** The room a point falls in, for zooming in on whatever you tap from far away. */
+/** The room a point falls in, for going into whatever you tap from far away. */
 export function roomAt(x: number, y: number): RoomDef | null {
   for (const r of ROOMS) if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h + 60) return r;
   return null;

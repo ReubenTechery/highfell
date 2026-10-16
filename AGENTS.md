@@ -77,7 +77,7 @@ power as Normal, with gilded looks and its own log. Teamwork between roles is th
 | A DPS alone dies before the mini boss (a test checks it) | All three roles are needed |
 | Garden seeds drop from dungeon bosses and grow in clears, never on a clock | It feeds the dungeon loop with no timers or chores |
 | Brews are party-wide buffs that speed a run up, never needed to clear | Brewing pays off without being a chore |
-| Home is a tall house cut open: zoom out to see it all, tap things to use them | Side things belong in the house, not in buttons |
+| Home is a tall house cut open that opens zoomed out on all of it: tap a room to go in (a room with one clear job opens it as you land), tap things to use them | Side things belong in the house, not in buttons, and the whole house is home |
 | The house has one big button, always: Dungeons | Nobody should mistake a side trip for the main thing |
 | Your other heroes wait by their beds in the house; there is no camp | One place, one less screen |
 | House looks come only from finishing a dungeon's log (a gilded one from its Heroic log) | The house shows what you've done; a look can't be faked |
@@ -101,7 +101,7 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   four classes, which race and class combos have art in `HERO_ART`, name lists), one folder per dungeon
   (`barrow/`: map, mobs, bosses, script, items, loot tables, collectibles, achievements, and `heroic.ts`, its
   heroic version and gilded drops), and `vale/` (ingredients, recipes, ranks, and `garden.ts`).
-  `house.ts` is the house's plan (and the paddock's places). Register new content in `src/content/index.ts`; `checkContent()`
+  `house.ts` is the house's plan (each room's `main`, what a tap from far away opens, and the paddock's places). Register new content in `src/content/index.ts`; `checkContent()`
   and the tests catch broken ids.
 - `src/dungeon`: the engine, plain JS with no DOM: state `S`, entities, heroes, mobs, bots, the loop,
   rendering to a canvas, and `walkout.js` (the lantern tells). It reaches the screen only through `HOOKS`
@@ -110,10 +110,10 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   loot (and when heroic opens), gear, achievements, what the collection log gives (`logs.ts`), the hearth,
   the party's seats (`party.ts`), and `vale.ts` (seeds, planter beds, harvests, ranks, brewing).
 - `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, its drawing
-  `houseart.ts`, every room in each look), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
+  `houseart.ts`, every room in each look, your hero's name tag `nametag.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
   close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons
-  (`dungeonsheet.ts`), a hero (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
-  (`lookssheet.ts`), the logs (`logsheet.ts`), settings (`settingssheet.ts`), the gear doll, satchel and spot
+  (`dungeonsheet.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
+  (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`), settings (`settingssheet.ts`), the gear doll, satchel and spot
   picker. Toasts, sound. `styles.css` is inlined by the build.
 - `src/sim` and `scripts/sim.mjs`: headless bot runs of the real engine (the balance numbers).
 - `tools/`: the art pipeline (Python writes SVG into `art/*.json`; the heroes are in `art_heroes.py`, their

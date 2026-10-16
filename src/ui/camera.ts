@@ -77,11 +77,12 @@ export class Camera {
     this.clamp();
     this.apply();
   }
-  /** A smooth move to a point and a zoom; with reduced motion, a jump. */
-  flyTo(cx: number, cy: number, z: number, ms = 480): void {
+  /** A smooth move to a point and a zoom; with reduced motion, a jump. `done` runs when it lands, unless
+   *  something else moves the camera first. */
+  flyTo(cx: number, cy: number, z: number, ms = 480, done?: () => void): void {
     const from = { cx: this.cx, cy: this.cy, z: this.z };
     const to = this.clamped(cx, cy, clamp(z, this.zMin, this.zMax));
-    if (reducedMotion() || (Math.hypot(to.cx - from.cx, to.cy - from.cy) < 1 && Math.abs(to.z / from.z - 1) < 0.002)) { this.set(to.cx, to.cy, to.z); return; }
+    if (reducedMotion() || (Math.hypot(to.cx - from.cx, to.cy - from.cy) < 1 && Math.abs(to.z / from.z - 1) < 0.002)) { this.set(to.cx, to.cy, to.z); done?.(); return; }
     this.stop();
     const id = this.flight;
     this.flying = true;
@@ -98,6 +99,7 @@ export class Camera {
       this.flying = false;
       this.rebase();
       this.write();
+      done?.();
     };
     requestAnimationFrame(step);
   }

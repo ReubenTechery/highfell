@@ -10,7 +10,7 @@ import { Achiever } from '../src/meta/achievements';
 import { resolveRun } from '../src/meta/loot';
 import { pourFor } from '../src/meta/party';
 import {
-  BOTTLE_XP, CUT_XP, HARVEST_XP, LAP_XP, SHIMMER_XP, bedPhase, beginHarvest, brew, broughtBrew, canBrew, clearsLeft, cutXp, endHarvest,
+  BOTTLE_XP, CUT_XP, HARVEST_XP, LAP_XP, SHIMMER_XP, bedPhase, bedToOpen, beginHarvest, brew, broughtBrew, canBrew, clearsLeft, cutXp, endHarvest,
   finishBrew, growBeds, lapXp, plant, rankOf, readyBeds, rollSeeds, skillRank, spendBottle, startBrew,
 } from '../src/meta/vale';
 import { simRun } from '../src/sim/run';
@@ -135,6 +135,18 @@ test('garden: a seed grows one step per clear, is ready after three, and never w
   let shim = 0;
   for (let i = 0; i < 7000; i++) { const q = freshProfile(T0); q.vale.seeds.glowcap = 1; plant(q, 0, 'glowcap', makeRng(i + 11)); if (q.vale.beds[0].shimmer) shim++; }
   assert.ok(Math.abs(shim / 7000 - SHIMMER) < 0.02, `shimmer rate ${shim / 7000}`);
+});
+
+test('garden: tapped from across the house, it opens the bed that wants you: ready, then empty with a seed, then nearest ready', () => {
+  const p = freshProfile(T0);
+  assert.equal(bedToOpen(p), 0, 'nothing planted and no seed: the first bed, which says where seeds come from');
+  p.vale.beds[0] = { seed: 'glowcap', grown: 1, shimmer: false };
+  p.vale.beds[2] = { seed: 'glowcap', grown: 2, shimmer: false };
+  assert.equal(bedToOpen(p), 2, 'no seed to plant: the bed nearest ready');
+  p.vale.seeds.glowcap = 1;
+  assert.equal(bedToOpen(p), 1, 'a seed to plant: the empty bed');
+  readyBed(p, 0);
+  assert.equal(bedToOpen(p), 0, 'a ready bed comes first');
 });
 
 test('garden: a harvest rolls at the start, gives 8 or more herbs, Perfects add at the end, shimmer gives dew', () => {

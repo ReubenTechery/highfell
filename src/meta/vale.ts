@@ -83,6 +83,18 @@ export const bedPhase = (b: BedState): BedPhase => (!b.seed ? 'empty' : b.grown 
 /** clears still to go before a bed is ready */
 export const clearsLeft = (b: BedState): number => Math.max(0, GROW_CLEARS - b.grown);
 export const readyBeds = (p: Profile): number => p.vale.beds.filter((b) => bedPhase(b) === 'ready').length;
+/** The bed that wants you most, for tapping the garden from across the house: a ready one, then an empty
+ *  one you have a seed for, then the one nearest ready (the first bed if nothing is planted). */
+export function bedToOpen(p: Profile): number {
+  const beds = p.vale.beds;
+  const ready = beds.findIndex((b) => bedPhase(b) === 'ready');
+  if (ready >= 0) return ready;
+  const empty = beds.findIndex((b) => bedPhase(b) === 'empty');
+  if (empty >= 0 && seedTotal(p) > 0) return empty;
+  let near = -1;
+  beds.forEach((b, i) => { if (bedPhase(b) === 'growing' && (near < 0 || clearsLeft(b) < clearsLeft(beds[near]))) near = i; });
+  return Math.max(0, near);
+}
 
 /** Plant a seed in an empty bed. Whether it shimmers is rolled now, so you see it while it grows. */
 export function plant(p: Profile, bed: number, seed: string, rng: Rng): boolean {

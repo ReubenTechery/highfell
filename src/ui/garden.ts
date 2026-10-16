@@ -64,7 +64,8 @@ export class Garden {
   /** the save changed: redraw the open card */
   update(): void { if (this.card && !this.busy) this.render(); }
 
-  private close(): void { this.card = null; this.render(); }
+  /** the card is done with: back to the house (out to the whole house, if that's where it was opened) */
+  private close(): void { this.card = null; this.render(); this.app.hearth.closed(); }
 
   private sow(bed: number, seed: string): void {
     const app = this.app;
@@ -74,6 +75,7 @@ export class Garden {
     this.card = null;
     app.save();
     this.render();
+    app.hearth.closed();
   }
 
   /* ---------------------------------------------------------------- harvesting */
