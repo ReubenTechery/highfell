@@ -174,7 +174,8 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-side { gap: 8px; }
 @media (min-width: 820px) { .dgx { grid-template-columns: minmax(0, 1.2fr) minmax(300px, 1fr); gap: 20px; align-items: start; } }
 .dgx-mode { display: grid; gap: 10px; }
-.dgx-art { position: relative; height: min(21vh, 176px); border: 3px solid var(--ink); border-radius: 18px; overflow: hidden; background: #241C33; box-shadow: 0 4px 0 var(--ink); }
+/* the picture is at least 158px tall so a short phone still fits the switch, the tier line and the name */
+.dgx-art { position: relative; height: clamp(158px, 21vh, 176px); border: 3px solid var(--ink); border-radius: 18px; overflow: hidden; background: #241C33; box-shadow: 0 4px 0 var(--ink); }
 @media (min-width: 820px) { .dgx-art { height: auto; aspect-ratio: 640 / 330; } }
 .dgx-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .dgx-name { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; padding: 8px 12px 9px; background: rgba(23, 18, 31, 0.8); color: var(--panel); }
@@ -1444,7 +1445,8 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-t-ilvl { font-family: var(--f-mono); font-size: 10px; font-weight: 700; color: #2E6B2A; background: #E4F5DD; border: 1.5px solid var(--ink); border-radius: 999px; padding: 0 6px; }
 .dgx-t-name { font-family: var(--f-display); font-weight: 400; font-size: 15px; line-height: 1.1; margin-top: 2px; }
 .dgx-t-sub { font-family: var(--f-mono); font-size: 10px; color: var(--dim); line-height: 1.2; }
-.dgx-tier-badge { position: absolute; left: 10px; top: 10px; z-index: 2; padding: 3px 9px; border-radius: 999px; background: rgba(23, 18, 31, 0.85); border: 2px solid rgba(255, 248, 236, 0.32); color: #EDE3D1; font-family: var(--f-mono); font-size: 10.5px; }
+/* the tier line sits on the picture just above the dungeon's name: the top right is the Normal / Heroic switch */
+.dgx-tier-badge { position: absolute; left: 12px; bottom: calc(100% + 6px); max-width: calc(100% - 20px); box-sizing: border-box; padding: 3px 9px; border-radius: 999px; background: rgba(23, 18, 31, 0.85); border: 2px solid rgba(255, 248, 236, 0.32); color: #EDE3D1; font-family: var(--f-mono); font-size: 10.5px; }
 .dgx-tier-badge b { color: var(--gold); }
 .dgx-blurb { margin: 2px 2px 0; line-height: 1.4; }
 .dgx-ready { display: grid; gap: 3px; padding: 9px 12px; border: 2.5px solid var(--ink); border-radius: 14px; background: var(--panel-2); font-size: 13px; }
@@ -1458,7 +1460,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
   .dgx-tab { padding: 6px 7px; border-radius: 12px; }
   .dgx-t-name { font-size: 13px; }
   .dgx-t-sub { font-size: 9.5px; }
-  .dgx-tier-badge { font-size: 9.5px; left: 8px; top: 8px; padding: 2px 7px; }
+  .dgx-tier-badge { font-size: 9.5px; padding: 2px 7px; }
 }
 
 /* ---- Clickable chest drop comparison hint & Slot-First Armoury ---- */
