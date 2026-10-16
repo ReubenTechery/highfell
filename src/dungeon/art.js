@@ -30,7 +30,7 @@ export function bakeAll(S) {
   for (const s of Object.values(SPR)) {
     if (s.bmp && s.S === S) continue;
     if (s.img) { bakeOne(s, S, s.img); s.img = null; continue; }
-    void loadImg(s).then((img) => { if (img && BAKE_S === S) bakeOne(s, S, img); });
+    void loadImg(s).then((img) => { if (img && BAKE_S === S && SPR[s.name] === s) bakeOne(s, S, img); });
   }
   makePatterns(S);
 }
@@ -42,9 +42,31 @@ export function bakeOne(s, S, img) {
   free(s.bmp); for (const k of VARIANTS) free(s[k]);
   s.bmp = c; s.S = S; for (const k of VARIANTS) s[k] = null;
 }
-const VARIANTS = ['flash', 'frost', 'dark', 'ghost', 'gold'];
+const VARIANTS = ['flash', 'frost', 'dark', 'ghost', 'gold', 'spore'];
 /** let every tinted copy go (made as a run needs them): called when a run ends, so they never pile up */
 export function dropVariants() { for (const s of Object.values(SPR)) for (const k of VARIANTS) if (s[k]) { free(s[k]); s[k] = null; } }
+
+/* A hero drawn in layers comes to the run as one picture per view, composed by the run screen
+   (src/ui/heroart.ts). It is baked once, at the run's scale, like any sprite (a new zoom bakes it again), and
+   let go with its tinted copies when the run ends (dropHeroes), so no run leaves a hero behind. Every
+   combination of gear is never baked: only the three heroes in this run. Resolves once they're baked. */
+export function addHeroes(pics) {
+  const waits = [];
+  for (const [name, pic] of Object.entries(pics)) {
+    if (SPR[name]) continue;
+    ART[name] = pic;
+    const s = SPR[name] = { name, vb: pic.vb, ok: false, img: null, loading: null, hero: true };
+    if (BAKE_S && typeof Image !== 'undefined') waits.push(loadImg(s).then((img) => { if (img && SPR[name] === s) bakeOne(s, BAKE_S, img); }));
+  }
+  return Promise.all(waits);
+}
+export function dropHeroes() {
+  for (const s of Object.values(SPR)) {
+    if (!s.hero) continue;
+    free(s.bmp); for (const k of VARIANTS) free(s[k]);
+    delete SPR[s.name]; delete ART[s.name];
+  }
+}
 /** let a canvas go now: a phone frees its memory at once only when it has no size left */
 function free(c) { if (c) { c.width = 0; c.height = 0; } }
 export function variant(s, kind) {

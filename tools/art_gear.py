@@ -23,7 +23,7 @@ HF_ROOT = _hf_os.environ.get('HIGHFELL_ROOT') or _hf_os.path.dirname(_hf_os.path
 # same at run time from art/heroes.json, so a layer is stored once per class, not once per body.
 import json, math, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from art_sprites import f, gild
+from art_sprites import f, gild, GILD, BONE, BONE_D, GOLD, GOLD_D
 
 BANDS = {
     'f': ('cape', 'mane', 'legs', 'torso', 'trim', 'arms', 'off', 'shoulders', 'hair', 'weapon', 'hands', 'hood', 'head', 'helm'),
@@ -255,3 +255,90 @@ def shaft(svg, fn, col, w=4.4, edge=4):
     from art_sprites import beam
     pts = [fn(x, y) for x, y in centreline(svg)]
     return beam('M' + ' L'.join(f'{f(x)} {f(y)}' for x, y in pts), col, w, edge)
+
+
+def pair_scale(svg, k, px, py):
+    """a mirrored pair (two pauldrons) each scaled by k about its own pivot: (px, py) for the left one, (-px, py)
+    for the right. Each shape is all on one side, so its points know which pivot is theirs."""
+    ax = abs(px)
+    return warp(svg, lambda x, y: ((ax + (abs(x) - ax) * k) * (1 if x >= 0 else -1), py + (y - py) * k))
+
+
+
+# ---------------------------------------------------------------- art/heroes.json
+def class_modules():
+    """each class drawn in layers, and the tool that draws its gear"""
+    import art_gear_tank
+    return {'warrior': art_gear_tank}
+
+
+def classes():
+    """every class's gear, by look id; each layer knows its class"""
+    out = {}
+    for cls, mod in class_modules().items():
+        for lid, L in mod.layers().items():
+            out[lid] = {**L, 'cls': cls}
+    return out
+
+
+def sheets(data):
+    """a contact sheet per class (for tools/art_sheet.py): every body in its class's SHEET outfits, front and
+    back, as composed from art/heroes.json, with a set's outfit gilded too"""
+    import art_bodies
+    out = {}
+    for cls, mod in class_modules().items():
+        sheet = {}
+        for bid, make in art_bodies.BODIES.items():
+            body = make()
+            if body['cls'] != cls:
+                continue
+            for name, ids in mod.SHEET.items():
+                worn = {data['layers'][i]['slot']: data['layers'][i] for i in ids}
+                gold = [(name, ())] + ([(name + '_gilded', tuple(worn))] if any(not i.startswith('gear.') for i in ids) and name != 'mixed' else [])
+                for label, gl in gold:
+                    for v in ('f', 'b'):
+                        sheet[f'{bid}.{label}_{v}'] = sprite(compose(body, v, worn, gl), data['bodies'][bid][v]['vb'])
+        out[cls] = sheet
+    return out
+
+
+def head_top(body, view, helms):
+    """the top of a body's head in any of its helms: what floats over a hero (a curse, a name) goes above it"""
+    return min([bbox(body[view]['z']['head'])[1]] + [bbox(compose(body, view, {'helm': L}))[1] for L in helms])
+
+
+def build():
+    import art_bodies
+    layers = classes()
+    bodies = {}
+    for bid, make in art_bodies.BODIES.items():
+        body = make()
+        mine = [L for L in layers.values() if L['cls'] == body['cls']]
+        helms = [L for L in mine if L['slot'] == 'helm']
+        bodies[bid] = {'cls': body['cls'], 'fem': body['fem'], **{v: {
+            'vb': fit_box(body, v, mine), 'top': round(head_top(body, v, helms), 1), 'fit': body[v]['fit'],
+            'z': {b: z for b, z in body[v]['z'].items() if z}} for v in ('f', 'b')}}
+    out_layers = {}
+    for lid, L in layers.items():
+        o = {'cls': L['cls'], 'slot': L['slot'], **{k: [list(fr) for fr in L[k]] for k in ('f', 'b', 'fw', 'bw') if k in L}}
+        if 'glow' in L:
+            o['glow'] = list(L['glow'])
+        out_layers[lid] = o
+    # a race's gold look (Gilded Bones, Gilded Gnomes): the colours it turns, and whether its gear's metal goes too
+    from art_heroes import GNOME_GILD
+    races = {'risen': {'map': {BONE: GOLD, BONE_D: GOLD_D}, 'gear': False},
+             'gnome': {'map': {**GILD, **GNOME_GILD}, 'gear': True}}
+    return {'bands': {v: list(b) for v, b in BANDS.items()}, 'slots': list(SLOT_ORDER), 'ref': REF, 'bodies': bodies,
+            'layers': out_layers, 'gild': GILD, 'races': races}
+
+
+if __name__ == '__main__':
+    # Usage: python3 tools/art_gear.py -> art/heroes.json, and shots/heroes_<class>.json, a contact sheet per class:
+    #   python3 tools/art_sheet.py shots/heroes_warrior.png shots/heroes_warrior.json --cols 8
+    import art_gear  # the module the bodies and gear register with, not this __main__ copy of it
+    data = art_gear.build()
+    json.dump(data, open(HF_ROOT + '/art/heroes.json', 'w'), separators=(',', ':'))
+    os.makedirs(HF_ROOT + '/shots', exist_ok=True)
+    for cls, sheet in art_gear.sheets(data).items():
+        json.dump(sheet, open(f'{HF_ROOT}/shots/heroes_{cls}.json', 'w'))
+    print('heroes:', len(data['bodies']), 'bodies,', len(data['layers']), 'layers,', os.path.getsize(HF_ROOT + '/art/heroes.json'), 'bytes')

@@ -19,14 +19,14 @@ import { LOOKS } from '../content/house';
 import { ORDER, ROLES } from '../content/roles';
 import type { AchievementDef, DropDef, DungeonInfo, DungeonStage, RoleId } from '../content/types';
 import { RECIPES, RECIPE_ORDER } from '../content/vale';
-import { loadoutFor } from '../meta/gear';
+import { loadoutFor, partyRar } from '../meta/gear';
 import { HEROIC_AFTER, heroicOpen, heroicProgress, lootFor } from '../meta/loot';
 import { logAchievement, logProgress } from '../meta/logs';
 import { groupOf, heroesFor, partyProblem, seats } from '../meta/party';
 import { activeHero, heroById, roleOf, setActive, type Hero, type Profile } from '../meta/profile';
 import type { App } from './app';
 import { esc, fmtRate, fmtT, GLYPH } from './dom';
-import { colourOf, heroImg, heroSprite, iconOf, nameOf, placeSprite, tile } from './art';
+import { botSprite, colourOf, heroImg, heroSprite, iconOf, nameOf, placeSprite, tile } from './art';
 import { ilvl } from './hearth';
 import { SWATCH } from './lookssheet';
 import { SFX } from './sound';
@@ -378,8 +378,9 @@ function door(p: Profile, base: DungeonInfo, heroic: boolean, diff: string): str
     const you = !!h && s.hero?.id === h.id;
     if (heroic && !you) return { role: s.role, sprite: null, name: 'Friend', tag: '', label: '' };
     if (s.hero) return { role: s.role, sprite: heroSprite(s.hero, s.role, p), name: s.hero.name.split(' ')[0], tag: you ? 'You' : '', label: `${s.hero.name}, ${word(s.role)}, item level ${ilvl(loadoutFor(p, s.hero).score)}${you ? ', playing' : ''}` };
+    // a bot wears what bots in your party wear: plain gear as good as yours on average
     const bot = s.bot || ROLES[s.role].name;
-    return { role: s.role, sprite: ROLES[s.role].sprite, name: bot, tag: 'Bot', label: `${bot}, a bot, as ${word(s.role)}` };
+    return { role: s.role, sprite: botSprite(s.role, h ? partyRar(p, h) : 0), name: bot, tag: 'Bot', label: `${bot}, a bot, as ${word(s.role)}` };
   });
   const plates = cast.map((c, i) => {
     const at = seatAt(st, i), style = `left: ${at.left.toFixed(2)}%; --feet: ${at.feet.toFixed(2)}%`;
@@ -398,7 +399,7 @@ function heroesPage(p: Profile, heroic: boolean): string {
     const list = heroesFor(p, r), along = !heroic && h && roleOf(h) !== r ? list[0] : null;
     const rows = list.map((x) => heroRow(p, x, r, x.id === h?.id ? 'You' : x.id === along?.id ? 'Comes along' : ''));
     if (!list.length) {
-      rows.push(`<div class="dgx-hero none r-${r}"><span class="dgx-hfig" aria-hidden="true">${heroImg(ROLES[r].sprite, { cls: 'dgx-himg' })}</span><span class="dgx-hname"><b>No ${esc(word(r))} yet</b><small>${esc(ROLES[r].name)}, a bot, ${heroic ? 'can stand in' : 'comes along'}</small></span></div>`);
+      rows.push(`<div class="dgx-hero none r-${r}"><span class="dgx-hfig" aria-hidden="true">${heroImg(botSprite(r, h ? partyRar(p, h) : 0), { cls: 'dgx-himg' })}</span><span class="dgx-hname"><b>No ${esc(word(r))} yet</b><small>${esc(ROLES[r].name)}, a bot, ${heroic ? 'can stand in' : 'comes along'}</small></span></div>`);
       if (room) rows.push(`<button type="button" class="dgx-hero new r-${r}" data-act="newseat" data-role="${r}"><span class="dgx-hfig" aria-hidden="true">${GLYPH.plus}</span><span class="dgx-hname"><b>Make a ${esc(word(r))}</b><small>${room} bed${room === 1 ? '' : 's'} free</small></span></button>`);
     }
     return `<section class="dgx-group r-${r}"><p class="dgx-gh"><i aria-hidden="true"></i>${esc(ROLES[r].title)}</p><div class="dgx-heroes">${rows.join('')}</div></section>`;

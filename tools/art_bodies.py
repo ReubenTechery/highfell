@@ -87,7 +87,7 @@ def pint_warrior(race, fem):
     b['hands'] = c(36, -34, 6.6, skin)
     b['head'] = head(0, -77, pint_back_head(race, fem=fem))
     spine = ([0, 0, 0.8], [-30.4, -22.4, 0.76], [-65.6, -51.2, 0.78])
-    fit = lambda view: G.fit('warrior', view, spine, head=[0, -61.6, 1.0], sh=[-51.2, 0.8], main=[-28.8, -27.2, 0.85],
+    fit = lambda view: G.fit('warrior', view, spine, head=[0, -61.6, 1.0], sh=[-49, 0.66], main=[-28.8, -27.2, 0.85],
                              off=[27.2, -34.4, 0.9], arm=[-16.8, -42.4], arm2=[16.8, -42.4])
     return {'race': race, 'cls': 'warrior', 'fem': fem, 'f': {'z': f, 'fit': fit('f')}, 'b': {'z': b, 'fit': fit('b')}}
 

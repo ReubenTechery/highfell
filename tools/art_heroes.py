@@ -90,178 +90,6 @@ def back_vb(vb):
     return (-(x + w), y, w, h)
 
 
-# ---------------------------------------------------------------- the dwarf warrior
-D_AXE = 'M-46 -104 C-64 -116 -76 -96 -72 -76 C-62 -84 -54 -84 -47 -80 Z'
-D_AXE_SHINE = 'M-52 -100 C-62 -104 -68 -96 -68 -86'
-D_HATCHET = 'M-46 -96 C-58 -102 -66 -92 -63 -80 C-56 -84 -51 -84 -46 -82 Z'
-D_ARM_AXE = 'M-30 -70 C-40 -64 -45 -56 -46 -50 L-37 -48 C-36 -54 -33 -60 -26 -64 Z'
-D_ARM_SHIELD = 'M30 -70 C40 -66 45 -60 46 -54 L38 -51 C37 -57 34 -62 26 -64 Z'
-D_VB = (-80, -138, 148, 144)
-
-
-def dwarf_legs(o, tier=2):
-    o.append(both('M-25 -15 H-5 V0 H-30 C-32 -6 -30 -12 -25 -15 Z', BOOT))
-    if tier >= 1:
-        o.append(both('M-25 -15 H-5 V-11 H-26 Z', STEEL_D, 3))
-    o.append(both('M-21 -34 H-5 V-15 H-23 Z', RAG_D if tier == 0 else BOOT if tier == 1 else BLUE_D))
-
-
-def dwarf_shoulders(o, tier=2):
-    """tier 0: stitched burlap wraps; tier 1: plain iron pads; tier 2: big trimmed pauldrons"""
-    if tier == 0:
-        o.append(both('M-14 -82 C-18 -93 -42 -94 -48 -76 L-46 -68 C-36 -73 -24 -75 -14 -74 Z', RAG_D))
-        o.append(ln('M-38 -84 L-32 -78 M-28 -86 L-24 -80 M38 -84 L32 -78 M28 -86 L24 -80', ROPE, 2.2))
-        return
-    if tier == 1:
-        o.append(both('M-14 -83 C-18 -97 -47 -99 -54 -78 L-52 -69 C-41 -75 -26 -77 -14 -75 Z', STEEL_D))
-        o.append(ln('M-44 -88 C-36 -93 -26 -94 -20 -90 M44 -88 C36 -93 26 -94 20 -90', STEEL, 2.5))
-        return
-    o.append(both('M-57 -66 C-46 -72 -32 -72 -22 -68 L-23 -61 C-32 -64 -45 -62 -55 -56 Z', STEEL_D))
-    o.append(both('M-14 -84 C-18 -101 -52 -104 -60 -79 L-58 -69 C-46 -76 -27 -78 -14 -76 Z', STEEL))
-    o.append(both('M-58 -69 C-46 -76 -27 -78 -14 -76 L-14 -71 C-28 -73 -45 -71 -57 -63 Z', BLUE, 3.5))
-    o.append(ln('M-48 -90 C-40 -96 -28 -97 -21 -92 M48 -90 C40 -96 28 -97 21 -92', STEEL_L, 3))
-    for x, y in ((50, -69), (38, -73.5), (26, -75)):
-        o.append(c(-x, y, 1.8, K, 0) + c(x, y, 1.8, K, 0))
-
-
-def dwarf_helm(o, back=False, fem=False, tier=2):
-    if tier == 0:
-        # bare copper hair dome + simple rag headband (no helmet or horns!)
-        o.append(s('M-16.5 -98 C-17.5 -120 17.5 -120 16.5 -98 Z', BEARD, 3.5))
-        o.append(ln('M-8 -115 C-11 -109 -12 -103 -11 -98 M8 -115 C11 -109 12 -103 11 -98 M0 -117 V-104', BEARD_D, 2.2))
-        o.append(s('M-17.5 -101 H17.5 V-96 H-17.5 Z', RAG_D, 3))
-        return
-    if tier == 1:
-        # simple iron pot-helm (no horns or gems yet)
-        if fem:
-            o.append(s('M-16.5 -98 C-17.5 -120 17.5 -120 16.5 -98 Z', BEARD, 3.5))
-            o.append(s('M-18 -101 H18 V-95.5 H-18 Z', STEEL, 3.2))
-        else:
-            o.append(s('M-17 -98 C-17 -120 17 -120 17 -98 Z', STEEL_D) + s('M-18.5 -101.5 H18.5 V-95.5 H-18.5 Z', STEEL, 3.5))
-        return
-    if fem:
-        # lush copper hair crown on top of the head, with a winged Valkyrie war-coronet & bone horns
-        o.append(s('M-16.5 -98 C-17.5 -121 17.5 -121 16.5 -98 Z', BEARD, 3.5))
-        o.append(ln('M-8 -115 C-11 -109 -12 -103 -11 -98 M8 -115 C11 -109 12 -103 11 -98 M0 -117 V-104', BEARD_D, 2.2))
-        o.append(both('M-15 -106 C-28 -108 -36 -120 -33 -132 C-27 -123 -21 -118 -12 -115 Z', BONE, 3.5))
-        if back:
-            o.append(s('M-18 -101 H18 V-95 H-18 Z', GOLD, 3.2))
-        else:
-            o.append(s('M-18 -96 L-18 -102 L-9 -100 L0 -111 L9 -100 L18 -102 L18 -96 Z', GOLD, 3.2))
-            o.append(c(0, -102, 3.2, FROST, 2.2))
-        return
-    o.append(s('M-17 -98 C-17 -121 17 -121 17 -98 Z', STEEL) + s('M-18.5 -101.5 H18.5 V-95.5 H-18.5 Z', STEEL_D, 3.5))
-    if back:
-        o.append(ln('M0 -118 V-102', STEEL_D, 3))
-    else:
-        o.append(c(-9, -98.5, 1.4, K, 0) + c(9, -98.5, 1.4, K, 0) + c(0, -98.5, 1.4, K, 0))
-    o.append(both('M-15 -107 C-28 -109 -36 -121 -33 -133 C-27 -124 -21 -119 -12 -116 Z', BONE, 3.5))
-    if not back:
-        o.append(c(0, -111, 3.2, FROST, 2.2))
-
-
-def round_shield(o, x, y, back=False, tier=2):
-    if tier == 0:
-        # crude wooden buckler with plank lines and iron boss
-        o.append(c(x, y, 20, WOOD_D) + c(x, y, 16, WOOD, 3))
-        o.append(ln(f'M{x - 14} {y - 5} H{x + 14} M{x - 14} {y + 5} H{x + 14}', WOOD_D, 2.2))
-        if not back:
-            o.append(c(x, y, 4.5, BRONZE, 2.6))
-        return
-    o.append(c(x, y, 23, STEEL_D if tier == 1 else BLUE))
-    if back:
-        o.append(c(x, y, 16.5, WOOD, 3) + ln(f'M{x} {y - 16} V{y + 16} M{x - 16} {y} H{x + 16}', WOOD_D, 2.6) + s(f'M{x - 9} {y - 4} H{x + 9} V{y + 4} H{x - 9} Z', '#4A3A30', 3))
-    else:
-        o.append(c(x, y, 16.5, WOOD if tier == 1 else BLUE_D, 3) + c(x, y, 6, STEEL if tier == 1 else GOLD, 3))
-    for a in range(0, 360, 45):
-        o.append(c(x + 19.5 * math.cos(math.radians(a)), y + 19.5 * math.sin(math.radians(a)), 1.6, K, 0))
-
-
-def dwarf_front(fem=False, key='tank', tier=2):
-    o = []
-    dwarf_legs(o, tier)
-    # chest: rag tunic (0), iron mail (1), gleaming plate (2)
-    body_col = RAG if tier == 0 else STEEL_D if tier == 1 else STEEL
-    o.append(s('M-27 -82 C-31 -66 -30 -50 -25 -38 H25 C30 -50 31 -66 27 -82 Z', body_col))
-    if tier == 0:
-        # stitched rag patch and rope belt
-        o.append(s('M-20 -68 L-9 -66 L-10 -54 L-21 -56 Z', RAG_D, 2.4))
-        o.append(s('M-27 -41 H27 V-34 H-27 Z', ROPE, 3) + c(0, -37.5, 3.8, ROPE, 2.6))
-    elif tier == 1:
-        o.append(s('M-28 -42 H28 V-32 H-28 Z', BOOT, 3.5) + s('M-7 -43 H7 V-31 H-7 Z', STEEL, 2.8))
-    else:
-        o.append(ln('M-19 -76 C-22 -64 -21 -54 -18 -46', STEEL_L, 3.2))
-        o.append(s('M-28 -42 H28 V-32 H-28 Z', BLUE, 3.5) + s('M-8 -44 H8 V-30 H-8 Z', GOLD, 3) + c(0, -37, 3, FROST, 2))
-    if fem:
-        o.append(s('M-6 -86 H6 V-76 H-6 Z', H.DSKIN, 2.8))
-        o.append(s('M-9 -82 L0 -71 L9 -82 Z', H.DSKIN, 2.8))
-        if tier >= 2:
-            o.append(ln('M-11 -80 L0 -68 L11 -80', GOLD, 3))
-            o.append(c(0, -60, 5.5, GOLD, 2.6) + c(0, -60, 2.4, FROST, 0))
-    else:
-        o.append(s('M-16 -80 C-22 -64 -15 -50 0 -44 C15 -50 22 -64 16 -80 Z', BEARD) + ln('M-7 -70 C-7 -60 -5 -54 -3 -50 M7 -70 C7 -60 5 -54 3 -50', BEARD_D, 2.5))
-        if tier >= 2:
-            o.append(c(-3.5, -47, 2.8, GOLD, 2) + c(3.5, -47, 2.8, GOLD, 2))
-    arm_col = RAG_D if tier == 0 else BOOT if tier == 1 else BLUE_DD
-    o.append(s(D_ARM_AXE, arm_col))
-    if tier >= 1:
-        o.append(s('M-47 -54 L-36 -51 L-37 -44 L-48 -46 Z', STEEL_D if tier == 1 else STEEL, 3.5))
-    o.append(s(D_ARM_SHIELD, arm_col))
-    round_shield(o, 40, -54, tier=tier)
-    dwarf_shoulders(o, tier)
-    if fem:
-        clasp = ROPE if tier == 0 else STEEL if tier == 1 else GOLD
-        for sx in (-1, 1):
-            bx = 14 * sx
-            o.append(c(bx, -81, 5.6, BEARD, 2.8) + c(bx * 1.05, -72, 5.4, BEARD, 2.8) + c(bx, -63, 5.0, BEARD, 2.8))
-            o.append(s(f'M{bx - 4.2} -58 H{bx + 4.2} V-53 H{bx - 4.2} Z', clasp, 2.4))
-            o.append(s(f'M{bx - 3.5} -53 L{bx - 5.5} -44 L{bx} -46 L{bx + 5.5} -44 L{bx + 3.5} -53 Z', BEARD, 2.6))
-    # weapon: chipped bronze hatchet (0), iron axe (1), steel war-axe (2)
-    o.append(beam('M-44 -2 L-47 -100' if tier == 0 else 'M-44 -2 L-47 -108', WOOD if tier <= 1 else BLUE_D, 5.5))
-    if tier == 0:
-        o.append(s(D_HATCHET, BRONZE) + ln('M-58 -92 L-53 -88', BRONZE_D, 2.2))
-    else:
-        o.append(s(D_AXE, STEEL if tier == 1 else STEEL_L) + ln(D_AXE_SHINE, '#FFFFFF', 2.2))
-    o.append(c(-44, -42, 8.0, H.DSKIN if tier == 0 else STEEL_D if tier == 1 else STEEL))
-    o.append(head(0, -91.5, H.dwarf_face(Z, fem=fem)))
-    dwarf_helm(o, fem=fem, tier=tier)
-    sprite(key + '_f', D_VB, o, 'Dwarf warrior front')
-
-
-def dwarf_back(fem=False, key='tank', tier=2):
-    o = []
-    dwarf_legs(o, tier)
-    body_col = RAG if tier == 0 else STEEL_D if tier == 1 else STEEL
-    o.append(s('M-27 -82 C-31 -66 -30 -50 -25 -38 H25 C30 -50 31 -66 27 -82 Z', body_col))
-    o.append(s('M-28 -42 H28 V-32 H-28 Z', ROPE if tier == 0 else BOOT if tier == 1 else BLUE, 3.5))
-    if tier >= 1:
-        o.append(s('M-21 -82 C-25 -66 -25 -48 -22 -28 L-11 -32 L0 -27 L11 -32 L22 -28 C25 -48 25 -66 21 -82 Z', RAG_D if tier == 1 else BLUE))
-    clasp = ROPE if tier == 0 else STEEL if tier == 1 else GOLD
-    if fem:
-        for sx in (-1, 1):
-            bx = 9 * sx
-            o.append(c(bx, -78, 5, BEARD, 2.8) + c(bx, -69, 4.8, BEARD, 2.8) + c(bx, -60, 4.5, BEARD, 2.8))
-            o.append(c(bx, -53, 3.4, clasp, 2.2) + c(bx, -47, 4, BEARD, 2.5))
-    else:
-        o.append(s('M-5 -84 C-7 -72 -5 -60 0 -52 C5 -60 7 -72 5 -84 Z', BEARD, 3.5) + ln('M-3 -76 L3 -72 M-3 -66 L3 -62', BEARD_D, 2.2) + c(0, -52, 3, clasp, 2.2))
-    arm_col = RAG_D if tier == 0 else BOOT if tier == 1 else BLUE_DD
-    round_shield(o, -40, -54, back=True, tier=tier)
-    o.append(s(m(D_ARM_SHIELD), arm_col))
-    o.append(s(m(D_ARM_AXE), arm_col))
-    if tier >= 1:
-        o.append(s(m('M-47 -54 L-36 -51 L-37 -44 L-48 -46 Z'), STEEL_D if tier == 1 else STEEL, 3.5))
-    dwarf_shoulders(o, tier)
-    o.append(beam('M44 -2 L47 -100' if tier == 0 else 'M44 -2 L47 -108', WOOD if tier <= 1 else BLUE_D, 5.5))
-    if tier == 0:
-        o.append(s(m(D_HATCHET), BRONZE))
-    else:
-        o.append(s(m(D_AXE), STEEL if tier == 1 else STEEL_L) + ln(m(D_AXE_SHINE), '#FFFFFF', 2.2))
-    o.append(c(44, -42, 8.0, H.DSKIN if tier == 0 else STEEL_D if tier == 1 else STEEL))
-    o.append(head(0, -91.5, H.dwarf_back(Z)))
-    dwarf_helm(o, back=True, fem=fem, tier=tier)
-    sprite(key + '_b', back_vb(D_VB), o, 'Dwarf warrior back')
-
-
 # ---------------------------------------------------------------- the human cleric
 C_SKIRT = 'M-15 -66 C-22 -44 -30 -21 -35 -3 H35 C30 -21 22 -44 15 -66 Z'
 C_HEM = 'M-35 -9 C-12 -5 12 -5 35 -9 L36 -2 C12 2 -12 2 -36 -2 Z'
@@ -465,16 +293,7 @@ def elf_back(fem=True, key='dps', tier=2):
     sprite(key + '_b', back_vb(E_VB), o, 'Elf mage back')
 
 
-# ---------------------------------------------------------------- the Risen warrior
-R_CAPE = 'M-22 -112 C-32 -86 -34 -60 -32 -34 L-26 -39 L-20 -31 L-13 -38 L-6 -30 L0 -37 L6 -30 L13 -38 L20 -31 L26 -39 L32 -34 C34 -60 32 -86 22 -112 Z'
-R_BLADE = 'M-44 -66 L-46 -144 L-41 -154 L-36 -144 L-38 -66 Z'
-R_SHORT_BLADE = 'M-43 -66 L-45 -116 L-41 -124 L-37 -116 L-39 -66 Z'
-R_KITE = 'M24 -102 H54 C56 -82 50 -62 39 -48 C28 -62 22 -82 24 -102 Z'
-R_ARM_SWORD = 'M-30 -98 L-38 -78 L-41 -64'
-R_ARM_SHIELD = 'M30 -98 L36 -84 L38 -74'
-R_VB = (-58, -168, 118, 174)
-
-
+# ---------------------------------------------------------------- the Risen (legs, shared by the rogue)
 def risen_legs(o, tier=2):
     """long thin legs in rags (0) or iron greaves and sabatons (1+)"""
     for sx in (-1, 1):
@@ -482,101 +301,6 @@ def risen_legs(o, tier=2):
         if tier >= 1:
             o.append(s(f'M{sx * 16} -36 L{sx * 6} -36 L{sx * 7} -13 L{sx * 15} -13 Z', RIRON, 3.2))
     o.append(both('M-19 -13 H-6 V0 H-23 C-24 -5 -22 -11 -19 -13 Z', RAG_D if tier == 0 else RIRON_D))
-
-
-def sword(o, mx=1, tier=2):
-    if tier == 0:
-        o.append(s(tp(R_SHORT_BLADE, mx=mx), BRONZE, 3.2))
-        o.append(s(tp('M-49 -66 H-33 V-61 H-49 Z', mx=mx), WOOD_D, 2.8))
-        return
-    o.append(s(tp(R_BLADE, mx=mx), STEEL if tier == 1 else STEEL_L, 3.5) + ln(tp('M-41 -146 V-70', mx=mx), '#FFFFFF', 1.6))
-    o.append(c(-43 * mx, -112, 1.8, RUST, 0) + c(-40 * mx, -96, 1.6, RUST, 0))
-    o.append(s(tp('M-52 -66 H-30 V-60 H-52 Z', mx=mx), RIRON_D, 3))
-
-
-def risen_pauldrons(o, tier=2):
-    if tier == 0:
-        o.append(both('M-12 -110 C-16 -120 -34 -121 -40 -104 L-38 -97 C-29 -102 -19 -104 -12 -102 Z', RAG_D))
-        return
-    o.append(both('M-12 -112 C-16 -127 -42 -131 -51 -107 L-49 -96 C-37 -104 -22 -106 -12 -104 Z', RIRON))
-    o.append(both('M-49 -96 C-37 -104 -22 -106 -12 -104 L-12 -99 C-22 -101 -36 -98 -48 -90 Z', RIRON_D, 3.2))
-    if tier >= 2:
-        o.append(both('M-26 -123 L-29 -142 L-19 -124 Z', BONE, 3) + both('M-38 -118 L-47 -135 L-32 -116 Z', BONE, 3))
-    o.append(ln('M-44 -114 C-36 -122 -26 -124 -18 -120 M44 -114 C36 -122 26 -124 18 -120', RIRON_L, 2.6))
-
-
-def iron_crown(o, fem=False, tier=2):
-    if tier == 0:
-        if fem:
-            o.append(s('M-14.5 -137 C-15 -153 15 -153 14.5 -137 Z', RHAIR, 3.2))
-        return
-    if tier == 1:
-        o.append(s('M-16 -140 H16 V-134 H-16 Z', RIRON_D, 3.2))
-        return
-    if fem:
-        o.append(s('M-14.5 -137 C-15 -154 15 -154 14.5 -137 Z', RHAIR, 3.2))
-        o.append(s('M-16 -134 L-15 -142 L-8 -139 L0 -152 L8 -139 L15 -142 L16 -134 Z', RIRON_D, 3))
-        o.append(c(0, -139, 3.2, GRN, 2))
-        return
-    o.append(s('M-14.5 -137 C-14.5 -153 14.5 -153 14.5 -137 Z', RIRON) + s('M-16 -140 H16 V-134 H-16 Z', RIRON_D, 3.2))
-    for x in (-10, -3.5, 3.5, 10):
-        o.append(s(f'M{x - 3} -149 L{x} -162 L{x + 3} -149 Z', RIRON_L, 2.6))
-
-
-def risen_warrior_front(fem=False, key='risen_tank', tier=2):
-    o = []
-    if tier >= 1:
-        o.append(s(R_CAPE, RAG_D if tier == 1 else PURP_D))
-    risen_legs(o, tier)
-    o.append(s('M-12 -66 C-14 -57 -8 -54 0 -55 C8 -54 14 -57 12 -66 Z', BONE, 3.2))
-    o.append(s('M-10 -68 L-11 -51 L-5.5 -54 L0 -49 L5.5 -54 L11 -51 L10 -68 Z', RAG if tier == 0 else PURP, 3.2))
-    o.append(s('M-16 -72 H16 V-65 H-16 Z', ROPE if tier == 0 else RIRON_D, 3) + c(0, -68.5, 3.6, BONE, 2.2))
-    o.append(beam('M0 -76 V-72', BONE, 4.5, 3))
-    o.append(ribcage(0, -106, 27, 32))
-    o.append(bone_limb(R_ARM_SWORD, 4.6))
-    o.append(bone_limb(R_ARM_SHIELD, 4.6))
-    if tier == 0:
-        round_shield(o, 39, -76, tier=0)
-    else:
-        o.append(s(R_KITE, RSHIELD) + ln('M26 -99 H52 C53 -82 48 -65 39 -53 C30 -65 25 -82 26 -99', RIRON_L, 2.4))
-        if tier >= 2:
-            o.append(s('M32 -84 C32 -96 46 -96 46 -84 C46 -80 43 -78 42 -77 H36 C35 -78 32 -80 32 -84 Z', BONE, 2.8))
-            o.append(e(36.5, -85, 2.2, 2.6, K, 0) + e(41.5, -85, 2.2, 2.6, K, 0) + c(36.5, -84.7, 0.9, GRN, 0) + c(41.5, -84.7, 0.9, GRN, 0))
-    risen_pauldrons(o, tier)
-    sword(o, 1, tier)
-    o.append(c(-41, -62, 6.6, BONE if tier == 0 else RIRON))
-    if fem:
-        for sx in (-1, 1):
-            bx = 14 * sx
-            o.append(c(bx, -110, 5.2, RHAIR, 2.8) + c(bx * 1.05, -101, 5.0, RHAIR, 2.8) + c(bx, -92, 4.6, RHAIR, 2.8))
-            o.append(s(f'M{bx - 4} -87 H{bx + 4} V-82 H{bx - 4} Z', ROPE if tier == 0 else GOLD, 2.4))
-            o.append(s(f'M{bx - 3.2} -82 L{bx - 5} -73 L{bx} -75 L{bx + 5} -73 L{bx + 3.2} -82 Z', RHAIR, 2.5))
-    o.append(head(0, -126, H.risen_head(Z, fem=fem)))
-    iron_crown(o, fem=fem, tier=tier)
-    sprite(key + '_f', R_VB, o, 'Risen warrior front')
-
-
-def risen_warrior_back(fem=False, key='risen_tank', tier=2):
-    o = []
-    risen_legs(o, tier)
-    if tier == 0:
-        round_shield(o, -39, -76, back=True, tier=0)
-    else:
-        o.append(s(m(R_KITE), '#5A4A3A') + ln('M-28 -92 H-50 M-30 -72 H-48', '#3E3228', 3))
-        o.append(s(R_CAPE, RAG_D if tier == 1 else PURP_D))
-    if fem:
-        for sx in (-1, 1):
-            bx = 8.5 * sx
-            o.append(c(bx, -108, 4.8, RHAIR, 2.6) + c(bx, -99, 4.5, RHAIR, 2.6) + c(bx, -90, 4.2, RHAIR, 2.6))
-            o.append(c(bx, -83, 3.2, ROPE if tier == 0 else GOLD, 2.2))
-    o.append(bone_limb(m(R_ARM_SHIELD), 4.6))
-    o.append(bone_limb(m(R_ARM_SWORD), 4.6))
-    risen_pauldrons(o, tier)
-    sword(o, -1, tier)
-    o.append(c(41, -62, 6.6, BONE if tier == 0 else RIRON))
-    o.append(head(0, -126, H.risen_back(Z)))
-    iron_crown(o, fem=fem, tier=tier)
-    sprite(key + '_b', back_vb(R_VB), o, 'Risen warrior back')
 
 
 # ---------------------------------------------------------------- the Risen cleric
@@ -866,7 +590,6 @@ def risen_rogue_back(fem=True, key='risen_rogue', tier=2):
 
 
 # ---------------------------------------------------------------- the pint-sized heroes (gnome & goblin)
-SM_WAR_VB = (-74, -126, 140, 132)
 SM_CLR_VB = (-58, -138, 112, 144)
 SM_MAG_VB = (-48, -144, 102, 150)
 SM_ROG_VB = (-56, -128, 112, 134)
@@ -882,111 +605,6 @@ def pint_back_head(race, fem=False):
 
 def pint_skin(race):
     return GSKIN if race == 'gnome' else GBSKIN
-
-
-def pint_warrior_front(race='gnome', fem=False, key='gnome_tank', tier=2):
-    o = []
-    skin = pint_skin(race)
-    o.append(both('M-20 -12 H-4 V0 H-24 C-25 -5 -24 -10 -20 -12 Z', BOOT))
-    if tier >= 1:
-        o.append(both('M-20 -12 H-4 V-8.5 H-21 Z', STEEL_D, 2.8))
-    o.append(both('M-17 -26 H-4 V-12 H-19 Z', RAG_D if tier == 0 else BOOT if tier == 1 else BLUE_D))
-    body_col = RAG if tier == 0 else STEEL_D if tier == 1 else STEEL
-    o.append(s('M-21 -64 C-24 -52 -23 -38 -19 -28 H19 C23 -38 24 -52 21 -64 Z', body_col))
-    if tier == 0:
-        o.append(s('M-15 -54 L-6 -52 L-7 -42 L-16 -44 Z', RAG_D, 2.2))
-        o.append(s('M-21 -32 H21 V-26 H-21 Z', ROPE, 2.8) + c(0, -29, 3.2, ROPE, 2.4))
-    elif tier == 1:
-        o.append(s('M-22 -33 H22 V-25 H-22 Z', BOOT, 3.2) + s('M-6 -34 H6 V-24 H-6 Z', STEEL, 2.6))
-    else:
-        o.append(ln('M-14 -58 C-16 -49 -15 -41 -13 -35', STEEL_L, 2.8))
-        belt_col = RED if race == 'goblin' else BLUE
-        o.append(s('M-22 -33 H22 V-25 H-22 Z', belt_col, 3.2) + s('M-6.5 -34.5 H6.5 V-23.5 H-6.5 Z', GOLD, 2.8) + c(0, -29, 2.6, FROST if race == 'gnome' else GRN, 1.8))
-        o.append(c(0, -48, 5.2, GOLD, 2.6) + c(0, -48, 2.2, FROST if race == 'gnome' else RED, 0))
-    if race == 'goblin':
-        o.append(s('M11 -31 C10 -24 18 -24 17 -31 Z', '#8A5A34', 2.4) + c(14, -27, 1.6, GOLD, 0))
-    arm_col = RAG_D if tier == 0 else BOOT if tier == 1 else BLUE_DD
-    o.append(s('M-23 -56 C-31 -51 -35 -45 -36 -39 L-28 -37 C-27 -42 -25 -47 -19 -50 Z', arm_col))
-    o.append(s('M23 -56 C31 -52 35 -47 36 -42 L29 -39 C28 -44 25 -48 19 -50 Z', arm_col))
-    round_shield(o, 34, -43, tier=tier)
-    if tier == 0:
-        o.append(both('M-11 -64 C-15 -73 -34 -74 -39 -59 L-37 -52 C-29 -56 -19 -58 -11 -57 Z', RAG_D))
-        o.append(ln('M-30 -65 L-25 -60 M30 -65 L25 -60', ROPE, 2.0))
-    elif tier == 1:
-        o.append(both('M-11 -65 C-15 -77 -38 -79 -44 -61 L-42 -53 C-33 -58 -21 -60 -11 -58 Z', STEEL_D))
-    else:
-        trim = RED if race == 'goblin' else BLUE
-        o.append(both('M-11 -66 C-15 -80 -42 -82 -48 -62 L-46 -53 C-36 -59 -22 -61 -11 -59 Z', STEEL))
-        o.append(both('M-46 -53 C-36 -59 -22 -61 -11 -59 L-11 -54 C-22 -56 -35 -54 -45 -48 Z', trim, 3.2))
-        if race == 'goblin':
-            o.append(both('M-34 -74 L-41 -86 L-27 -75 Z', BONE, 2.8))
-        else:
-            for x in (-36, 36):
-                o.append(c(x, -64, 3.2, GOLD, 2.2))
-    o.append(beam('M-36 -2 L-39 -86' if tier == 0 else 'M-36 -2 L-39 -94', WOOD if tier <= 1 else BLUE_D, 5.0))
-    if tier == 0:
-        o.append(s('M-38 -82 C-50 -88 -58 -78 -55 -66 C-48 -70 -43 -70 -38 -68 Z', BRONZE))
-    else:
-        o.append(s('M-38 -90 C-55 -101 -66 -82 -62 -64 C-53 -71 -45 -71 -39 -67 Z', STEEL if tier == 1 else STEEL_L))
-        o.append(ln('M-44 -86 C-53 -90 -58 -82 -58 -73', '#FFFFFF', 2.0))
-        if tier >= 2 and race == 'gnome':
-            o.append(c(-45, -78, 3.8, GOLD, 2.2))
-    o.append(c(-36, -34, 6.6, skin if tier == 0 else STEEL_D if tier == 1 else STEEL))
-    o.append(head(0, -77, pint_face(race, fem=fem, goggles=(race == 'gnome' and tier == 0))))
-    if tier == 1:
-        if not fem:
-            o.append(s('M-15.5 -86.5 C-15.5 -102 15.5 -102 15.5 -86.5 Z', STEEL_D))
-        o.append(s('M-16.5 -90.5 H16.5 V-85.5 H-16.5 Z', STEEL, 3.2))
-    elif tier >= 2:
-        if not fem:
-            o.append(s('M-15.5 -86.5 C-15.5 -104 15.5 -104 15.5 -86.5 Z', STEEL))
-        o.append(s('M-16.5 -90.5 L-8 -88.5 L0 -96 L8 -88.5 L16.5 -90.5 V-85.5 H-16.5 Z', GOLD if fem else STEEL_D, 3.2))
-        o.append(both('M-13 -93 C-24 -95 -30 -105 -27 -115 C-22 -107 -17 -103 -10 -100 Z', GOLD if race == 'gnome' else BONE, 3.2))
-        o.append(c(0, -90.5, 2.8, FROST if race == 'gnome' else RED, 2.0))
-    sprite(key + '_f', SM_WAR_VB, o, f'{race.capitalize()} warrior front')
-
-
-def pint_warrior_back(race='gnome', fem=False, key='gnome_tank', tier=2):
-    o = []
-    skin = pint_skin(race)
-    o.append(both('M-20 -12 H-4 V0 H-24 C-25 -5 -24 -10 -20 -12 Z', BOOT))
-    o.append(both('M-17 -26 H-4 V-12 H-19 Z', RAG_D if tier == 0 else BOOT if tier == 1 else BLUE_D))
-    body_col = RAG if tier == 0 else STEEL_D if tier == 1 else STEEL
-    o.append(s('M-21 -64 C-24 -52 -23 -38 -19 -28 H19 C23 -38 24 -52 21 -64 Z', body_col))
-    if tier >= 1:
-        cape_col = RAG_D if tier == 1 else (RED_D if race == 'goblin' else BLUE)
-        o.append(s('M-17 -64 C-21 -50 -21 -36 -18 -20 L-9 -24 L0 -19 L9 -24 L18 -20 C21 -36 21 -50 17 -64 Z', cape_col))
-    arm_col = RAG_D if tier == 0 else BOOT if tier == 1 else BLUE_DD
-    round_shield(o, -34, -43, back=True, tier=tier)
-    o.append(s(m('M23 -56 C31 -52 35 -47 36 -42 L29 -39 C28 -44 25 -48 19 -50 Z'), arm_col))
-    o.append(s(m('M-23 -56 C-31 -51 -35 -45 -36 -39 L-28 -37 C-27 -42 -25 -47 -19 -50 Z'), arm_col))
-    if tier == 0:
-        o.append(both('M-11 -64 C-15 -73 -34 -74 -39 -59 L-37 -52 C-29 -56 -19 -58 -11 -57 Z', RAG_D))
-    elif tier == 1:
-        o.append(both('M-11 -65 C-15 -77 -38 -79 -44 -61 L-42 -53 C-33 -58 -21 -60 -11 -58 Z', STEEL_D))
-    else:
-        trim = RED if race == 'goblin' else BLUE
-        o.append(both('M-11 -66 C-15 -80 -42 -82 -48 -62 L-46 -53 C-36 -59 -22 -61 -11 -59 Z', STEEL))
-        o.append(both('M-46 -53 C-36 -59 -22 -61 -11 -59 L-11 -54 C-22 -56 -35 -54 -45 -48 Z', trim, 3.2))
-        if race == 'goblin':
-            o.append(both('M-34 -74 L-41 -86 L-27 -75 Z', BONE, 2.8))
-    o.append(beam('M36 -2 L39 -86' if tier == 0 else 'M36 -2 L39 -94', WOOD if tier <= 1 else BLUE_D, 5.0))
-    if tier == 0:
-        o.append(s(m('M-38 -82 C-50 -88 -58 -78 -55 -66 C-48 -70 -43 -70 -38 -68 Z'), BRONZE))
-    else:
-        o.append(s(m('M-38 -90 C-55 -101 -66 -82 -62 -64 C-53 -71 -45 -71 -39 -67 Z'), STEEL if tier == 1 else STEEL_L))
-    o.append(c(36, -34, 6.6, skin if tier == 0 else STEEL_D if tier == 1 else STEEL))
-    o.append(head(0, -77, pint_back_head(race, fem=fem)))
-    if tier == 1:
-        if not fem:
-            o.append(s('M-15.5 -86.5 C-15.5 -102 15.5 -102 15.5 -86.5 Z', STEEL_D))
-        o.append(s('M-16.5 -90.5 H16.5 V-85.5 H-16.5 Z', STEEL, 3.2))
-    elif tier >= 2:
-        if not fem:
-            o.append(s('M-15.5 -86.5 C-15.5 -104 15.5 -104 15.5 -86.5 Z', STEEL))
-        o.append(s('M-16.5 -90.5 H16.5 V-85.5 H-16.5 Z', GOLD if fem else STEEL_D, 3.2))
-        o.append(both('M-13 -93 C-24 -95 -30 -105 -27 -115 C-22 -107 -17 -103 -10 -100 Z', GOLD if race == 'gnome' else BONE, 3.2))
-    sprite(key + '_b', back_vb(SM_WAR_VB), o, f'{race.capitalize()} warrior back')
 
 
 def pint_cleric_front(race='gnome', fem=True, key='gnome_healer', tier=2):
@@ -1227,16 +845,12 @@ def pint_rogue_back(race='gnome', fem=True, key='gnome_rogue', tier=2):
 
 def build():
     for tier, suf in ((0, '_rags'), (1, '_iron'), (2, '')):
-        dwarf_front(False, 'tank' + suf, tier); dwarf_back(False, 'tank' + suf, tier)
-        dwarf_front(True, 'tank_w' + suf, tier); dwarf_back(True, 'tank_w' + suf, tier)
         cleric_front(True, 'healer' + suf, tier); cleric_back(True, 'healer' + suf, tier)
         cleric_front(False, 'healer_m' + suf, tier); cleric_back(False, 'healer_m' + suf, tier)
         elf_front(True, 'dps' + suf, tier); elf_back(True, 'dps' + suf, tier)
         elf_front(False, 'dps_m' + suf, tier); elf_back(False, 'dps_m' + suf, tier)
         rogue_front(True, 'rogue' + suf, tier); rogue_back(True, 'rogue' + suf, tier)
         rogue_front(False, 'rogue_m' + suf, tier); rogue_back(False, 'rogue_m' + suf, tier)
-        risen_warrior_front(False, 'risen_tank' + suf, tier); risen_warrior_back(False, 'risen_tank' + suf, tier)
-        risen_warrior_front(True, 'risen_tank_w' + suf, tier); risen_warrior_back(True, 'risen_tank_w' + suf, tier)
         risen_cleric_front(True, 'risen_healer' + suf, tier); risen_cleric_back(True, 'risen_healer' + suf, tier)
         risen_cleric_front(False, 'risen_healer_m' + suf, tier); risen_cleric_back(False, 'risen_healer_m' + suf, tier)
         risen_mage_front(True, 'risen_dps' + suf, tier); risen_mage_back(True, 'risen_dps' + suf, tier)
@@ -1244,8 +858,6 @@ def build():
         risen_rogue_front(True, 'risen_rogue' + suf, tier); risen_rogue_back(True, 'risen_rogue' + suf, tier)
         risen_rogue_front(False, 'risen_rogue_m' + suf, tier); risen_rogue_back(False, 'risen_rogue_m' + suf, tier)
         for race in ('gnome', 'goblin'):
-            pint_warrior_front(race, False, f'{race}_tank' + suf, tier); pint_warrior_back(race, False, f'{race}_tank' + suf, tier)
-            pint_warrior_front(race, True, f'{race}_tank_w' + suf, tier); pint_warrior_back(race, True, f'{race}_tank_w' + suf, tier)
             pint_cleric_front(race, True, f'{race}_healer' + suf, tier); pint_cleric_back(race, True, f'{race}_healer' + suf, tier)
             pint_cleric_front(race, False, f'{race}_healer_m' + suf, tier); pint_cleric_back(race, False, f'{race}_healer_m' + suf, tier)
             pint_mage_front(race, True, f'{race}_dps' + suf, tier); pint_mage_back(race, True, f'{race}_dps' + suf, tier)

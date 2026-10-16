@@ -119,9 +119,10 @@ test('cages: a bot tank in a cage mashes its own way out', () => {
   assert.ok(tank.alive);
 });
 
-test('heroes: every one the game can draw knows where its weapon is and how tall it stands, front and back, across all gear tiers', () => {
+test('heroes: every whole-body set the game can draw knows where its weapon is and how tall it stands, front and back, across all gear tiers', () => {
   const sprites = SPRITES as Record<string, { vb: number[] }>;
-  for (const set of allHeroArt()) {
+  // a name with dots is a body drawn in layers: its fit comes with it (tests/heroart.test.ts)
+  for (const set of allHeroArt().filter((a) => !a.includes('.'))) {
     assert.ok((HERO_FIT as Record<string, unknown>)[set], `no fit for ${set}`);
     const tiers = ['_rags', '_iron', '', ...(set.startsWith('risen') || set.startsWith('gnome') ? ['_gilded'] : [])];
     for (const g of tiers) for (const back of [false, true]) {
@@ -133,8 +134,10 @@ test('heroes: every one the game can draw knows where its weapon is and how tall
       assert.ok(top >= vy && top < -90, `${name}: the head's top is on the sprite`);
     }
   }
-  // from behind, the weapon is in the other hand
-  assert.equal(heroFit('tank_rags', true).wx, -heroFit('tank_rags', false).wx);
+  // from behind, the weapon is in the other hand, and a hero drawn in layers brings its own fit
+  assert.equal(heroFit('healer_rags', true).wx, -heroFit('healer_rags', false).wx);
+  const own = { weapon: [-40, -70], top: -101 };
+  assert.deepEqual(heroFit('hero.x', true, own), { wx: 40, wy: -70, top: -101 });
 });
 
 test('intro: starts in the Ossuary, protects the party from dying, and spawns the walkout and chest when Sir Rattlebones falls', () => {
@@ -177,11 +180,12 @@ test('intro: the Crypt Trial plays as any class, and every one of them gets Sir 
   }
 });
 
-test('combat & gear look: heroes start in visual _rags, step to _iron and heroic armour, Cleave is a1 (2.2s cd), Perfect Block resets Cleave, and Boss Weapons buff core abilities', () => {
-  // Visual progression: Common -> _rags, Uncommon -> _iron, Rare/Epic -> full heroic armour
-  assert.equal(heroSprite({ race: 'dwarf', cls: 'warrior', sex: 'm', regular: { weapon: { rar: 0 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'tank'), 'tank_rags');
-  assert.equal(heroSprite({ race: 'dwarf', cls: 'warrior', sex: 'm', regular: { weapon: { rar: 1 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'tank'), 'tank_iron');
-  assert.equal(heroSprite({ race: 'dwarf', cls: 'warrior', sex: 'm', regular: { weapon: { rar: 2 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'tank'), 'tank');
+test('combat & gear look: heroes not yet in layers start in visual _rags, step to _iron and heroic armour, Cleave is a1 (2.2s cd), Perfect Block resets Cleave, and Boss Weapons buff core abilities', () => {
+  // Visual progression of a whole-body set: Common -> _rags, Uncommon -> _iron, Rare/Epic -> full heroic armour
+  // (a hero drawn in layers wears each slot's own piece: tests/heroart.test.ts)
+  assert.equal(heroSprite({ race: 'human', cls: 'cleric', sex: 'f', regular: { weapon: { rar: 0 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'healer'), 'healer_rags');
+  assert.equal(heroSprite({ race: 'human', cls: 'cleric', sex: 'f', regular: { weapon: { rar: 1 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'healer'), 'healer_iron');
+  assert.equal(heroSprite({ race: 'human', cls: 'cleric', sex: 'f', regular: { weapon: { rar: 2 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'healer'), 'healer');
 
   const { s, tank, healer, dps } = game('tank');
   assert.equal(abCd(tank, 'a1'), 2.2);

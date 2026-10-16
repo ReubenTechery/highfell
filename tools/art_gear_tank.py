@@ -7,8 +7,10 @@
 import art_gear as G
 import art_sprites as A
 import art_wardrobe as W
+import art_wardrobe_tb as TB
 from art_gear import frag
-from art_heroes import s, ln, beam, c, both, m, round_shield, dwarf_shoulders, \
+import math
+from art_heroes import s, ln, beam, c, both, m, \
     STEEL, STEEL_D, STEEL_L, GOLD, BLUE, BLUE_D, WOOD, WOOD_D, FROST, BONE, BONE_D, GRN, \
     BOOT, BLUE_DD, RAG, RAG_D, ROPE, BRONZE, BRONZE_D, RCLOTH, RCLOTH_D, Z
 from art_bodies import D_TORSO, D_ARM_AXE, D_ARM_SHIELD, D_LEG
@@ -22,6 +24,26 @@ D_AXE = 'M-46 -104 C-64 -116 -76 -96 -72 -76 C-62 -84 -54 -84 -47 -80 Z'
 D_AXE_SHINE = 'M-52 -100 C-62 -104 -68 -96 -68 -86'
 D_HATCHET = 'M-46 -96 C-58 -102 -66 -92 -63 -80 C-56 -84 -51 -84 -46 -82 Z'
 GLOW = (-48, -75)
+# the big pauldrons (Rare and the sets) are drawn a quarter smaller than they stand, each about where it sits on
+# its shoulder, so the head reads at run size
+PAULDRON_K, PAULDRON_AT = 0.75, (-28.8, -56)
+
+
+def round_shield(o, x, y, back=False, tier=2):
+    if tier == 0:
+        # crude wooden buckler with plank lines and iron boss
+        o.append(c(x, y, 20, WOOD_D) + c(x, y, 16, WOOD, 3))
+        o.append(ln(f'M{x - 14} {y - 5} H{x + 14} M{x - 14} {y + 5} H{x + 14}', WOOD_D, 2.2))
+        if not back:
+            o.append(c(x, y, 4.5, BRONZE, 2.6))
+        return
+    o.append(c(x, y, 23, STEEL_D if tier == 1 else BLUE))
+    if back:
+        o.append(c(x, y, 16.5, WOOD, 3) + ln(f'M{x} {y - 16} V{y + 16} M{x - 16} {y} H{x + 16}', WOOD_D, 2.6) + s(f'M{x - 9} {y - 4} H{x + 9} V{y + 4} H{x - 9} Z', '#4A3A30', 3))
+    else:
+        o.append(c(x, y, 16.5, WOOD if tier == 1 else BLUE_D, 3) + c(x, y, 6, STEEL if tier == 1 else GOLD, 3))
+    for a in range(0, 360, 45):
+        o.append(c(x + 19.5 * math.cos(math.radians(a)), y + 19.5 * math.sin(math.radians(a)), 1.6, '#1E1A1A', 0))
 
 
 def shield(tier, back=False):
@@ -64,8 +86,20 @@ def chest(tier):
 
 
 def shoulders(tier):
-    o = []
-    dwarf_shoulders(o, tier)
+    """stitched burlap wraps (Common), plain iron pads (Uncommon), big trimmed pauldrons (Rare)"""
+    if tier == 0:
+        o = [both('M-14 -82 C-18 -93 -42 -94 -48 -76 L-46 -68 C-36 -73 -24 -75 -14 -74 Z', RAG_D),
+             ln('M-38 -84 L-32 -78 M-28 -86 L-24 -80 M38 -84 L32 -78 M28 -86 L24 -80', ROPE, 2.2)]
+    elif tier == 1:
+        o = [both('M-14 -83 C-18 -97 -47 -99 -54 -78 L-52 -69 C-41 -75 -26 -77 -14 -75 Z', STEEL_D),
+             ln('M-44 -88 C-36 -93 -26 -94 -20 -90 M44 -88 C36 -93 26 -94 20 -90', STEEL, 2.5)]
+    else:
+        o = [both('M-57 -66 C-46 -72 -32 -72 -22 -68 L-23 -61 C-32 -64 -45 -62 -55 -56 Z', STEEL_D),
+             both('M-14 -84 C-18 -101 -52 -104 -60 -79 L-58 -69 C-46 -76 -27 -78 -14 -76 Z', STEEL),
+             both('M-58 -69 C-46 -76 -27 -78 -14 -76 L-14 -71 C-28 -73 -45 -71 -57 -63 Z', BLUE, 3.5),
+             ln('M-48 -90 C-40 -96 -28 -97 -21 -92 M48 -90 C40 -96 28 -97 21 -92', STEEL_L, 3)]
+        o += [c(-x, y, 1.8, '#1E1A1A', 0) + c(x, y, 1.8, '#1E1A1A', 0) for x, y in ((50, -69), (38, -73.5), (26, -75))]
+        o = [G.pair_scale(''.join(o), PAULDRON_K, *PAULDRON_AT)]
     part = frag('shoulders', 'sh', *o)
     return {'slot': 'shoulders', 'f': [part], 'b': [part]}
 
@@ -132,10 +166,11 @@ def barrowguard():
     helm_f = frag('helm', 'head', stand_piece(st['helm'], ON_HEAD))
     helm_b = frag('helm', 'head', G.from_stand(st['helm'][0] + [A.ln('M0 -242 L0 -208', BONE_D, 3)], **ON_HEAD))
     # pauldrons: the skull on each; from behind, the dome and its lames, the shine on them
-    sh_f = frag('shoulders', 'sh', stand_piece(st['shoulders'], ON_SHOULDERS))
+    small = lambda svg: G.pair_scale(svg, PAULDRON_K, *PAULDRON_AT)
+    sh_f = frag('shoulders', 'sh', small(stand_piece(st['shoulders'], ON_SHOULDERS)))
     domes = [p for i, p in enumerate(st['shoulders'][0]) if i % 4 != 3]
     shine = [A.ln(d, '#FFFFFF', 3) for d in ('M-82 -181 C-77 -190 -69 -195 -61 -197', 'M82 -181 C77 -190 69 -195 61 -197')]
-    sh_b = frag('shoulders', 'sh', G.from_stand(domes + shine, **ON_SHOULDERS))
+    sh_b = frag('shoulders', 'sh', small(G.from_stand(domes + shine, **ON_SHOULDERS)))
     # chest: the bone plate and its ribs, a dark gambeson under it, bone vambraces, greaves and a fist, and the
     # coffin-lid shield
     plate_f = stand_piece(st['chest'], ON_CHEST)
@@ -162,14 +197,67 @@ COFFIN_IN = 'M33.5 -79 L46.5 -79 L54.5 -67 L49 -29 L31 -29 L25.5 -67 Z'
 def coffin_lid(back=False):
     """Barrowguard's shield: a coffin lid of dark wood, bone studs at its corners and a skull on its face"""
     if back:
-        studs = ''.join(c(-x, y, 2.2, BONE, 1.8) for x, y in ((23.5, -68), (56.5, -68), (30, -27.5), (50, -27.5)))
-        return (s(m(COFFIN), WOOD_D) + ln(m(COFFIN_IN), '#4A3424', 2.6)
-                + ln(m('M27 -64 L51 -30 M53 -64 L29 -30'), '#4A3424', 5) + c(-40, -47, 3.4, BONE, 2.2) + studs)
+        # the lid's back, held a little lower so its shoulders show under the pauldron: warm planks, a dark strap
+        # across, bone at the corners, so it stands apart from the bone pauldron and the dark cape
+        low = lambda d: tp(m(d), 0, 9)
+        studs = ''.join(c(-x, y + 9, 2.4, BONE, 2) for x, y in ((23.5, -68), (56.5, -68), (30, -27.5), (50, -27.5)))
+        return (s(low(COFFIN), '#B07A48') + ln(low('M34 -80 L33 -26 M46 -80 L47 -26'), WOOD, 2.6)
+                + s(low('M24 -52 H56 V-44 H24 Z'), '#4A3424', 3) + studs)
     skull_ = s('M33 -48 C33 -60 47 -60 47 -48 C47 -44 44 -42 43 -41 H37 C36 -42 33 -44 33 -48 Z', BONE, 2.8)
     eyes = c(37.5, -49, 2.4, '#1E1A1A', 0) + c(42.5, -49, 2.4, '#1E1A1A', 0) + c(37.5, -48.7, 1, GRN, 0) + c(42.5, -48.7, 1, GRN, 0)
     teeth = ln('M38 -41.5 V-38.5 M40 -41.5 V-38 M42 -41.5 V-38.5', '#1E1A1A', 1.6)
     studs = ''.join(c(x, y, 2.2, BONE, 1.8) for x, y in ((31.5, -80.5), (48.5, -80.5), (23.5, -68), (56.5, -68), (30, -27.5), (50, -27.5)))
     return s(COFFIN, WOOD_D) + ln(COFFIN_IN, '#4A3424', 2.6) + studs + skull_ + eyes + teeth
+
+
+# ---------------------------------------------------------------- Clockguard: riveted brass, spring-coiled pauldrons
+# a closed brass bucket of a helm over the whole head, its clock visor at the brow
+ON_HEAD_TB = dict(k=0.56, ty=39.96)
+LEATHER = TB.BELT
+
+
+def clockguard():
+    st = TB.clockguard()
+    small = lambda svg: G.pair_scale(svg, PAULDRON_K, *PAULDRON_AT)
+    helm_f = frag('helm', 'head', stand_piece(st['helm'], ON_HEAD_TB))
+    seam = [A.ln('M0 -238 L0 -200', TB.BRASS_D, 3)] + TB.rivets([(-27, -189), (-14, -191.5), (14, -191.5), (27, -189)])
+    helm_b = frag('helm', 'head', G.from_stand(st['helm'][0] + seam, **ON_HEAD_TB))
+    sh_f = frag('shoulders', 'sh', small(stand_piece(st['shoulders'], ON_SHOULDERS)))
+    sh_b = frag('shoulders', 'sh', small(G.from_stand(st['shoulders'][0] + [A.ln(d, '#FFFFFF', 3) for d in
+                                                       ('M-84 -188 C-78 -196 -70 -200 -62 -201', 'M84 -188 C78 -196 70 -200 62 -201')], **ON_SHOULDERS)))
+    # the breastplate and its tassets from the stand; dark leather sleeves and breeches, steel cuffs and fist,
+    # brass greaves, and the ticking bulwark. From behind, a riveted back plate with a big wind-up key in it
+    plate_f = stand_piece(st['chest'], ON_CHEST)
+    back_seams = [A.ln('M0 -180 L0 -108', TB.BRASS_D, 3.5), A.ln('M-42 -136 C-20 -130 20 -130 42 -136', TB.BRASS_D, 3.5)]
+    plate_b = G.from_stand(st['chest'][0] + back_seams + TB.rivets([(-36, -131.5), (-24, -129), (24, -129), (36, -131.5), (0, -170), (0, -150)]), **ON_CHEST)
+    # the key that winds him, sticking out between his shoulder blades: its bow seen end on, over hair and beard
+    key = (s('M0 -62 C-4 -71 -14 -71 -14 -62 C-14 -53 -4 -53 0 -62 C4 -71 14 -71 14 -62 C14 -53 4 -53 0 -62 Z', STEEL, 3.2)
+           + c(-8, -62, 2.6, STEEL_D, 0) + c(8, -62, 2.6, STEEL_D, 0) + c(0, -62, 3.6, STEEL_L, 2.4))
+    legs = frag('legs', 'spine', both(GREAVE, TB.BRASS, 3), both(D_LEG, LEATHER))
+    F = [legs, frag('torso', 'spine', plate_f)] + arms(LEATHER, STEEL) + [frag('off', 'off', bulwark())]
+    B = [legs, frag('torso', 'spine', plate_b), frag('hair', 'spine', key)] + arms(LEATHER, STEEL, back=True) + [frag('off', 'off', bulwark(back=True))]
+    wf, wb = boss_weapon(st['weapon'], shafts=(1,), col=WOOD, grip=(64, -80))
+    return {
+        'clockguard.helm': {'slot': 'helm', 'f': [helm_f], 'b': [helm_b]},
+        'clockguard.shoulders': {'slot': 'shoulders', 'f': [sh_f], 'b': [sh_b]},
+        'clockguard.chest': {'slot': 'chest', 'f': F, 'b': B},
+        'tinker.tank': {'slot': 'weapon', 'f': [frag('weapon', 'main', wf)], 'b': [frag('weapon', 'main', wb)], 'glow': (-50, -86)},
+    }
+
+
+def bulwark(back=False):
+    """Clockguard's shield, the ticking bulwark: a cog of brass round a steel boss with a clock face in it; from
+    behind, its wooden back, a strap and the key that winds it"""
+    x = -40 if back else 40
+    rim = s(TB.cog(x, -54, 26, 22, 12), TB.BRASS_D, 3.5)
+    if back:
+        return (rim + c(x, -54, 18, WOOD, 3) + ln(f'M{x} -71 V-37 M{x - 17} -54 H{x + 17}', WOOD_D, 2.6)
+                + s(f'M{x - 9} -58 H{x + 9} V-50 H{x - 9} Z', LEATHER, 3) + s(f'M{x + 18} -56 H{x + 27} V-52 H{x + 18} Z', STEEL, 2.4)
+                + s(f'M{x + 26} -61 C{x + 33} -61 {x + 33} -47 {x + 26} -47 Z', STEEL, 2.6))
+    ticks = ln(f'M{x} -64 V-61 M{x} -47 V-44 M{x - 10} -54 H{x - 7} M{x + 7} -54 H{x + 10}', '#1E1A1A', 2)
+    return (rim + c(x, -54, 19, TB.BRASS, 3.5) + c(x, -54, 12.5, BONE, 3) + ticks
+            + ln(f'M{x} -54 L{x} -61 M{x} -54 L{x + 5} -51', '#1E1A1A', 2.6) + c(x, -54, 1.8, '#1E1A1A', 0)
+            + ''.join(c(x + 15.5 * math.cos(math.radians(a)), -54 + 15.5 * math.sin(math.radians(a)), 1.7, TB.BRASS_L, 1.6) for a in range(22, 360, 45)))
 
 
 def layers():
@@ -181,31 +269,16 @@ def layers():
         out[f'gear.tank.helm.{tier}'] = helm(tier)
         out[f'gear.tank.weapon.{tier}'] = weapon(tier)
     out.update(barrowguard())
+    out.update(clockguard())
     return out
 
 
-OUTFITS = {
+# the warrior's contact sheet (art_gear.py writes it): every body in these outfits, front and back
+SHEET = {
     'common': ('gear.tank.chest.0', 'gear.tank.shoulders.0', 'gear.tank.helm.0', 'gear.tank.weapon.0'),
     'uncommon': ('gear.tank.chest.1', 'gear.tank.shoulders.1', 'gear.tank.helm.1', 'gear.tank.weapon.1'),
     'rare': ('gear.tank.chest.2', 'gear.tank.shoulders.2', 'gear.tank.helm.2', 'gear.tank.weapon.2'),
     'mixed': ('gear.tank.chest.1', 'barrowguard.shoulders', 'gear.tank.helm.0', 'gear.tank.weapon.2'),
     'barrowguard': ('barrowguard.chest', 'barrowguard.shoulders', 'barrowguard.helm', 'gravekeeper.tank'),
-    'gilded': ('barrowguard.chest', 'barrowguard.shoulders', 'barrowguard.helm', 'gravekeeper.tank'),
+    'clockguard': ('clockguard.chest', 'clockguard.shoulders', 'clockguard.helm', 'tinker.tank'),
 }
-
-
-if __name__ == '__main__':
-    import json, os, art_bodies
-    Ls = layers()
-    out = {}
-    for bid in art_bodies.BODIES:
-        body = art_bodies.BODIES[bid]()
-        for view in ('f', 'b'):
-            vb = G.fit_box(body, view, list(Ls.values()))
-            for name, ids in OUTFITS.items():
-                worn = {Ls[i]['slot']: Ls[i] for i in ids}
-                gl = set(worn) if name == 'gilded' else ()
-                out[f'{bid.split(".")[0]}_{bid[-1]}_{name}_{view}'] = G.sprite(G.compose(body, view, worn, gl), vb)
-    os.makedirs(G.HF_ROOT + '/shots', exist_ok=True)
-    json.dump(out, open(G.HF_ROOT + '/shots/gear_tank.json', 'w'))
-    print('wrote shots/gear_tank.json', len(out))

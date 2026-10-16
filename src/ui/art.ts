@@ -9,10 +9,12 @@ import VALE_ICONS from '../../art/vale_icons.json';
 import WARDROBE from '../../art/wardrobe.json';
 import { COLLECTIBLES, ITEMS, KITS, itemOf } from '../content';
 import { RARITY, ROLE_SLOTS, gearKey } from '../content/gear';
-import { heroArt } from '../content/folk';
+import { FOUNDERS, defaultSex, heroArt } from '../content/folk';
 import { ROLES } from '../content/roles';
-import type { RoleId } from '../content/types';
-import type { Profile } from '../meta/profile';
+import type { Rar, RoleId, SlotId } from '../content/types';
+import { gildedOn, worn } from '../meta/gear';
+import type { Hero, Profile } from '../meta/profile';
+import { bodyId, composeLook, fitOfLook, layerOf, layered, lookName, plainSlots, weaponByEffect, type HeroFitOut, type Look } from './heroart';
 
 type Sprite = { svg: string; vb: number[] };
 export const TILES: Record<string, string> = { ...(ICONS as Record<string, string>), ...(COLLECT_ICONS as Record<string, string>), ...(VALE_ICONS as Record<string, string>) };
@@ -147,14 +149,50 @@ export function riderSvg(heroSprite: string, mountId: string, x: number, y: numb
  *  that race is drawn in gold. */
 export const gildedRace = (p: Profile, race: string): boolean =>
   Object.values(COLLECTIBLES).some((c) => c.gilds === race && !!p.collection[c.id] && !p.settings.looksOff.includes(c.id));
-/** The sprite set a hero is drawn with: its race and class art, visually stepped from starter rags
- *  (`_rags` at Common) to iron/apprentice gear (`_iron` at Uncommon) to full heroic plate/robes (Rare+),
- *  or gilded when its race's gold look is on (Gilded Bones, Gilded Gnomes). */
-export function heroSprite(
-  h: { race: string; cls: string; sex?: string; regular?: Record<string, { rar: number }>; equip?: Partial<Record<string, string | null>> },
-  role: RoleId,
-  p?: Profile,
-): string {
+
+/** Layered heroes (src/ui/heroart.ts) as sprites: each look composed once, front and back, and kept in ART
+ *  under its name while it is one of the last few used, so heroImg, placeSprite and the run take it like any
+ *  other sprite. An older one is let go, with its cached pictures. */
+const LOOKS: string[] = [];
+const MAX_LOOKS = 40;
+const FITS: Record<string, HeroFitOut> = {};
+export function lookSprite(look: Look): string {
+  const name = lookName(look), at = LOOKS.indexOf(name);
+  if (at >= 0) { LOOKS.splice(at, 1); LOOKS.push(name); return name; }
+  const f = composeLook(look, 'f'), b = composeLook(look, 'b'), fit = fitOfLook(look);
+  if (!f || !b || !fit) return '';
+  ART[`${name}_f`] = f; ART[`${name}_b`] = b; FITS[name] = fit;
+  LOOKS.push(name);
+  while (LOOKS.length > MAX_LOOKS) forget(LOOKS.shift() as string);
+  return name;
+}
+function forget(name: string): void {
+  for (const v of ['_f', '_b']) { delete ART[name + v]; delete urls[name + v]; delete inner[name + v]; delete shaded[name + v]; }
+  delete FITS[name];
+}
+/** A layered sprite's weapon glow and head top, for the run (null for a whole-body sprite). */
+export const spriteFit = (name: string): HeroFitOut | null => FITS[name] || null;
+
+type HeroLike = { race: string; cls: string; sex?: string; regular?: Record<string, { rar: number }>; equip?: Partial<Record<string, string | null>> };
+const isHero = (h: HeroLike): h is Hero => 'bag' in h && 'id' in h;
+const sexOf = (h: HeroLike): string => (h.sex === 'm' || h.sex === 'f' ? h.sex : defaultSex(h.race, h.cls));
+/** What a hero wears, as layers: each slot's piece (gilded once its kit is yours and on), and their race's gold
+ *  look. A hero being made (the hero maker) wears its regular pieces only. */
+function heroLook(h: HeroLike, role: RoleId, p?: Profile): Look {
+  const slots: Partial<Record<SlotId, string>> = {}, gold: SlotId[] = [];
+  if (p && isHero(h)) {
+    for (const [slot, w] of Object.entries(worn(p, h)) as [SlotId, ReturnType<typeof worn>[SlotId]][]) {
+      slots[slot] = layerOf(w.def);
+      if (w.unique && gildedOn(p, w.def.id)) gold.push(slot);
+    }
+  } else Object.assign(slots, plainSlots(role, h.cls, h.regular || 0));
+  return { body: bodyId(h.race, h.cls, sexOf(h)), slots, gold, race: p && gildedRace(p, h.race) ? h.race : null };
+}
+/** The sprite a hero is drawn with: in layers (their body and what they wear in each slot) once their class is
+ *  drawn that way, or the old whole-body sets, stepped from starter rags (`_rags` at Common) to iron (`_iron` at
+ *  Uncommon) to full plate or robes (Rare+), or gilded when its race's gold look is on. */
+export function heroSprite(h: HeroLike, role: RoleId, p?: Profile): string {
+  if (layered(h.race, h.cls, sexOf(h))) return lookSprite(heroLook(h, role, p));
   const art = heroArt(h.race, h.cls, h.sex) || ROLES[role].sprite;
   if (p && gildedRace(p, h.race)) return `${art}_gilded`;
   let maxRar = 0;
@@ -166,9 +204,23 @@ export function heroSprite(
       if (uid && ITEMS[uid] && (!p || p.collection[uid])) maxRar = Math.max(maxRar, ITEMS[uid].rar);
     }
   }
-  const suffix = maxRar <= 0 ? '_rags' : maxRar === 1 ? '_iron' : '';
-  return ART[ `${art}${suffix}_f`] ? `${art}${suffix}` : art;
+  return tierSprite(art, maxRar as Rar);
 }
+const tierSprite = (art: string, rar: Rar): string => { const s = `${art}${rar <= 0 ? '_rags' : rar === 1 ? '_iron' : ''}`; return ART[`${s}_f`] ? s : art; };
+/** A hero in plain gear at one rarity (test runs, the Crypt Trial), holding a boss weapon when the run hands
+ *  one out (by its effect). */
+export function plainSprite(h: { race: string; cls: string; sex?: string }, role: RoleId, rar: Rar, unique?: string | null): string {
+  const sex = sexOf(h);
+  if (!layered(h.race, h.cls, sex)) return tierSprite(heroArt(h.race, h.cls, sex) || ROLES[role].sprite, rar);
+  const slots = plainSlots(role, h.cls, rar), wid = weaponByEffect(unique);
+  if (wid) slots.weapon = wid;
+  return lookSprite({ body: bodyId(h.race, h.cls, sex), slots, gold: [] });
+}
+/** A bot in plain gear: the founder of its role (Brannoc, Maren, Ivy). */
+export const botSprite = (role: RoleId, rar: Rar, unique?: string | null): string => plainSprite(FOUNDERS[role], role, rar, unique);
+/** A race shown off as a log's prize: a warrior of it in Rare gear, in gold for the heroic log's. */
+export const prizeSprite = (race: string, gold: boolean): string =>
+  lookSprite({ body: bodyId(race, 'warrior', 'm'), slots: plainSlots('tank', 'warrior', 2), gold: [], race: gold ? race : null });
 /** A hero's front sprite as an <img>, sized by its own height (against HERO_H) so a dwarf stands shorter
  *  than an elf. */
 const HERO_H = 150;

@@ -24,7 +24,7 @@ import { actions, esc, fmtN, fmtRate, fmtT, GLYPH, reducedMotion, wait } from '.
 import { colourOf, iconOf, nameOf, spriteURL, standSvg, tile } from './art';
 import { ROLE_STAT } from './itemsheet';
 import { mainReward, rewards } from './dungeonsheet';
-import { PRIZE_ART, dropOf, slotTag } from './logbook';
+import { dropOf, prizeArt, slotTag } from './logbook';
 import { SFX } from './sound';
 import type { RunOpts } from './run';
 
@@ -153,7 +153,7 @@ export class Reveal {
       el.setAttribute('role', 'dialog');
       el.setAttribute('aria-label', a.name);
       el.innerHTML = `<span class="rays"></span><div class="bm"><p class="eyebrow">${esc(dg?.name || '')} · collection log complete</p>
-        ${PRIZE_ART[id] ? `<img src="${spriteURL(PRIZE_ART[id])}" alt="">` : ''}<h2>${esc(a.name)}</h2>
+        ${prizeArt(id) ? `<img src="${spriteURL(prizeArt(id) as string)}" alt="">` : ''}<h2>${esc(a.name)}</h2>
         <p>${esc(a.reward.text)}.</p><p style="opacity: 0.7">Tap to carry on</p></div>`;
       this.root.appendChild(el);
       SFX.play('petfound');
