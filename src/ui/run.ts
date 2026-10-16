@@ -24,7 +24,7 @@ import { Achiever } from '../meta/achievements';
 import { loadoutFor, partyRar, plainLoadout, worn } from '../meta/gear';
 import { countBossWipe, countRunStart, resolveClear, resolveKill, runLoot, tellOf, type ClearLoot, type KillLoot } from '../meta/loot';
 import { pourFor, seatsFor } from '../meta/party';
-import { activeHero, finishIntroRun, heroById, roleOf, type Hero } from '../meta/profile';
+import { activeHero, finishCurseTip, finishIntroRun, heroById, needsCurseTip, roleOf, type Hero } from '../meta/profile';
 import { heroArt, type ClassId } from '../content/folk';
 import { RECIPES } from '../content/vale';
 import { broughtBrew, spendBottle } from '../meta/vale';
@@ -102,6 +102,8 @@ export class RunScene implements InputUI {
   private tutKey: string | null = null;
   private hintsDone = new Set<string>();
   private trail = 1;
+  /** seconds to the next heartbeat while a mate is nearly down (the healer's) */
+  private beatT = 0;
   private lastRoom = -1;
   private bound = false;
 
@@ -419,6 +421,10 @@ export class RunScene implements InputUI {
       this.app.store.save();
     } else if (e.type === 'boss.pulled' && !this.practice) {
       this.app.store.save();
+    } else if (e.type === 'curse.cast' && S.player.role === 'healer' && needsCurseTip(p)) {
+      finishCurseTip(p);
+      banner(`Cursed! Swipe across ${e.player ? 'yourself' : e.name} to lift it.`, 'warn', 3.2);
+      this.app.store.save();
     }
   }
   private unlockedNow(id: string): void {
@@ -599,9 +605,16 @@ export class RunScene implements InputUI {
       const mp = el.querySelector('.mpf'); if (mp) setW(mp, h.mana / h.maxMana);
       el.classList.toggle('dead', !h.alive);
       el.classList.toggle('low', h.alive && h.hp < h.maxHp * 0.35);
+      el.classList.toggle('danger', h.alive && h.hp < h.maxHp * 0.15);
+      el.classList.toggle('cursed', h.alive && !!h.st.curse);
       el.classList.toggle('aggro', h.alive && h.role !== 'tank' && targeted.has(h.role));
       el.classList.toggle('far', p.role === 'healer' && h.alive && dist(h, p) > MEND.range);
     });
+    // as the healer, a mate under 15% in a fight sets your heart going
+    if (p.role === 'healer' && p.alive && S.inCombat && S.heroes.some((h: any) => h.alive && h.hp < h.maxHp * 0.15)) {
+      this.beatT -= dt;
+      if (this.beatT <= 0) { this.beatT = 0.85; SFX.play('heartbeat'); }
+    } else this.beatT = 0;
     const bb = $('bossbar');
     const B = S.boss && S.boss.alive ? S.boss : null;
     if (B) {

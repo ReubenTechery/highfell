@@ -358,3 +358,6 @@ export const finishHearthTour = (p: Profile): void => { p.counters['intro.tour']
 export const startSeedTour = (p: Profile): void => { if (!p.counters['intro.seed'] && !p.counters['vale.planted']) p.counters['intro.seed'] = 1; };
 export const needsSeedTour = (p: Profile): boolean => p.roster.length > 0 && p.counters['intro.seed'] === 1;
 export const finishSeedTour = (p: Profile): void => { p.counters['intro.seed'] = 2; };
+/** The first curse that lands while you're the healer brings a one-line tip on lifting it, once a save. */
+export const needsCurseTip = (p: Profile): boolean => !p.counters['tip.curse'];
+export const finishCurseTip = (p: Profile): void => { p.counters['tip.curse'] = 1; };
