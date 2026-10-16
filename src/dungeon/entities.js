@@ -301,10 +301,12 @@ export function killMob(m, src) {
   }
   // Sir Rattlebones Phase 2: killing a rallied guard lashes the boss and cracks his rally armour when the last one falls
   if (m.rally && S.boss && S.boss.alive && S.boss.type === 'knight') {
-    hurtMob(S.boss, Math.round(S.boss.maxHp * 0.04), src, { raw: true, noCrit: true, col: '#FFE08A', size: 19 });
-    if (!S.mobs.some((o) => o !== m && o.alive && o.rally)) {
-      S.boss.armorUp = 0;
-      exposeMob(S.boss, 3.0, 'Armour Cracked! Exposed!');
+    // the lash can finish him, and then there's no boss left to crack
+    const k = S.boss;
+    hurtMob(k, Math.round(k.maxHp * 0.04), src, { raw: true, noCrit: true, col: '#FFE08A', size: 19 });
+    if (k.alive && !S.mobs.some((o) => o !== m && o.alive && o.rally)) {
+      k.armorUp = 0;
+      exposeMob(k, 3.0, 'Armour Cracked! Exposed!');
     }
   }
   const big = m.M.big;
