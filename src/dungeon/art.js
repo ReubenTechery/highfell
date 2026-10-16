@@ -6,34 +6,47 @@ export const SPR = {};
 export let BAKE_S = 0;
 export const mkCanvas = (w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, w); c.height = Math.max(1, h); return c; };
 
+/* Each sprite's SVG is kept as a loaded picture only until it is baked: a loaded SVG picture is a whole
+   document in the browser, and keeping all of them (over 300) cost a phone about 55 MB for nothing. The
+   game bakes them once at start (prebake in render.js) and lets them go. A new zoom loads them again; until
+   then the old bitmap still draws, just at the old sharpness. */
+function loadImg(s) {
+  if (s.loading) return s.loading;
+  const img = new Image();
+  s.loading = new Promise((res) => {
+    img.onload = () => res(img);
+    img.onerror = () => res(null);
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(ART[s.name].svg);
+  }).then((im) => { s.loading = null; s.ok = s.ok || !!im; return im; });
+  return s.loading;
+}
 export function loadArt() {
-  const jobs = [];
-  for (const [name, a] of Object.entries(ART)) {
-    const img = new Image();
-    const s = { name, img, vb: a.vb, ok: false };
-    SPR[name] = s;
-    jobs.push(new Promise((res) => {
-      img.onload = () => { s.ok = true; res(); };
-      img.onerror = () => res();
-      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(a.svg);
-    }));
-  }
-  return Promise.all(jobs);
+  for (const [name, a] of Object.entries(ART)) SPR[name] = { name, vb: a.vb, ok: false, img: null, loading: null };
+  return Promise.all(Object.values(SPR).map((s) => loadImg(s).then((img) => { s.img = img; })));
 }
 
 export function bakeAll(S) {
   BAKE_S = S;
-  for (const s of Object.values(SPR)) bakeOne(s, S);
+  for (const s of Object.values(SPR)) {
+    if (s.bmp && s.S === S) continue;
+    if (s.img) { bakeOne(s, S, s.img); s.img = null; continue; }
+    void loadImg(s).then((img) => { if (img && BAKE_S === S) bakeOne(s, S, img); });
+  }
   makePatterns(S);
 }
-export function bakeOne(s, S) {
-  if (!s.ok) return;
+export function bakeOne(s, S, img) {
   const [, , w, h] = s.vb;
   const cw = Math.ceil(w * S), ch = Math.ceil(h * S);
   const c = mkCanvas(cw, ch);
-  c.getContext('2d').drawImage(s.img, 0, 0, cw, ch);
-  s.bmp = c; s.S = S; s.flash = null; s.frost = null; s.dark = null;
+  c.getContext('2d').drawImage(img, 0, 0, cw, ch);
+  free(s.bmp); for (const k of VARIANTS) free(s[k]);
+  s.bmp = c; s.S = S; for (const k of VARIANTS) s[k] = null;
 }
+const VARIANTS = ['flash', 'frost', 'dark', 'ghost', 'gold'];
+/** let every tinted copy go (made as a run needs them): called when a run ends, so they never pile up */
+export function dropVariants() { for (const s of Object.values(SPR)) for (const k of VARIANTS) if (s[k]) { free(s[k]); s[k] = null; } }
+/** let a canvas go now: a phone frees its memory at once only when it has no size left */
+function free(c) { if (c) { c.width = 0; c.height = 0; } }
 export function variant(s, kind) {
   if (!s.bmp) return null;
   if (s[kind]) return s[kind];

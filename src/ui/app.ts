@@ -9,7 +9,7 @@ import { GAME_NAME } from '../content';
 import { Store } from '../core/store';
 import { loadArt } from '../dungeon/art.js';
 import { setHooks } from '../dungeon/state.js';
-import { VIEW, resizeView } from '../dungeon/render.js';
+import { VIEW, prebake, resizeView } from '../dungeon/render.js';
 import type { RunLoot } from '../meta/loot';
 import { activeHero, roleOf } from '../meta/profile';
 import type { RoleId } from '../content/types';
@@ -84,6 +84,7 @@ export class App {
     setHooks({ sound: (n: string, v?: number) => SFX.play(n, v) });
     VIEW.cv = $<HTMLCanvasElement>('cv'); VIEW.ctx = VIEW.cv.getContext('2d');
     await loadArt();
+    prebake();
     if (document.fonts && document.fonts.load) document.fonts.load('24px "Lilita One"').catch(() => {});
     let rz = 0;
     window.addEventListener('resize', () => { clearTimeout(rz); rz = window.setTimeout(() => this.onResize(), 80); });

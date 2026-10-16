@@ -19,17 +19,24 @@ export const FONT = "'Lilita One', 'Trebuchet MS', sans-serif";
 /** @type {{ get: null | (() => any) }} */
 export const AIM = { get: null };
 
+/** the zoom a view of this size draws the dungeon at, in screen pixels per world unit */
+const viewScale = (W, H) => { const portrait = H > W; return clamp(Math.min(W / (portrait ? 560 : 900), H / (portrait ? 980 : H < 520 ? 640 : 860)), 0.42, 1.35); };
+const bakeScale = (S) => Math.ceil(S * 4) / 4;
+/** bake the sprites once at start, at the size a run on this screen will want, so their SVGs can be let go */
+export function prebake() {
+  bakeAll(bakeScale(viewScale(window.innerWidth, window.innerHeight) * Math.min(2, window.devicePixelRatio || 1)));
+}
 export function resizeView() {
   const cv = VIEW.cv, box = cv.parentElement.getBoundingClientRect();
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   VIEW.W = box.width; VIEW.H = box.height; VIEW.dpr = dpr;
   cv.width = Math.round(box.width * dpr); cv.height = Math.round(box.height * dpr);
   const portrait = VIEW.H > VIEW.W;
-  VIEW.scale = clamp(Math.min(VIEW.W / (portrait ? 560 : 900), VIEW.H / (portrait ? 980 : VIEW.H < 520 ? 640 : 860)), 0.42, 1.35);
+  VIEW.scale = viewScale(VIEW.W, VIEW.H);
   VIEW.S = VIEW.scale * dpr;
   VIEW.portrait = portrait;
   VIEW.fx = VIEW.W / 2; VIEW.fy = VIEW.H * (portrait ? 0.6 : 0.58);
-  const want = Math.ceil(VIEW.S * 4) / 4;
+  const want = bakeScale(VIEW.S);
   if (Math.abs(want - BAKE_S) > 0.01) bakeAll(want);
 }
 export function camTarget() {

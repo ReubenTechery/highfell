@@ -51,6 +51,14 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 /* the camera moves .h-cam as one picture; .h-world holds the house's layers in world units (camera.ts) */
 .h-cam, .h-world, .h-world > * { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 .h-cam { will-change: transform; cursor: default; pointer-events: none; }
+/* On a tall screen (a phone) the world is clipped to its own box. The sky, hills and ground are drawn far
+   wider than it, for wide screens zoomed right out; left unclipped they made the house's picture more than
+   twice the size, which a phone can't hold (parts of the house went blank). A phone never sees past the sides,
+   and past the top and bottom .hearth shows the sky and the earth. Wide screens keep the wide backdrop. */
+@media (max-aspect-ratio: 1/1) {
+  .h-world { overflow: hidden; overflow: clip; }
+  .hearth { background: linear-gradient(#2E2A55 50%, #6B4A3A 50%); }
+}
 .h-world > svg { display: block; }
 .h-back { overflow: visible; }
 .bit { position: absolute; display: block; }

@@ -20,6 +20,7 @@ import { momentFor } from '../dungeon/coach.js';
 import { CURSE_TIME } from '../dungeon/mobs.js';
 import { inHaz } from '../dungeon/bots.js';
 import { render, resizeView, updateCam, VIEW } from '../dungeon/render.js';
+import { dropVariants } from '../dungeon/art.js';
 import { roomIndexOf } from '../dungeon/world.js';
 import { lootGlint, startWalkout } from '../dungeon/walkout.js';
 import { Achiever } from '../meta/achievements';
@@ -365,6 +366,7 @@ export class RunScene implements InputUI {
     $('ov-msg').hidden = true;
     $('intro-skip').hidden = true;
     $('intro-tag').hidden = true;
+    dropVariants();
   }
   skipIntro(): void {
     finishIntroRun(this.app.p);

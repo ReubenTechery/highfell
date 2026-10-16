@@ -3,7 +3,7 @@
  * flights to a point. It never redraws the drawing to move: the drawing sits in a `layer` the browser moves
  * and scales as a picture, and inside it a `world` holds everything in world units at the zoom it was last
  * drawn sharp at (`base`). When the camera comes to rest at a new zoom, it rebases: the world is drawn
- * sharp again at that zoom and the layer goes back to scale 1. What a tap does is up to the scene, which
+ * sharp again at that zoom (never past SHARP_MAX, and at no more than 2x pixels) and the layer goes back to scale 1. What a tap does is up to the scene, which
  * asks `moved()` first so the click that ends a drag or a pinch never counts as a tap. Pointers that start
  * on the scene's buttons (anything inside `.no-cam`) are left alone.
  */
@@ -22,6 +22,10 @@ const dist = (a: Pt, b: Pt): number => Math.hypot(a.x - b.x, a.y - b.y);
 const mid = (a: Pt, b: Pt): Pt => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 /** how long the camera must be still before the world is drawn sharp again */
 const REST_MS = 150;
+/** The sharpest the world is ever drawn. Past this zoom the layer is only scaled up as a picture (a little
+ *  soft), because drawing the whole world sharp at a close zoom makes a picture far bigger than a phone will
+ *  hold: iOS then leaves parts of it blank. A room fills a phone at about 0.6, so that stays sharp. */
+const SHARP_MAX = 0.8;
 
 export class Camera {
   /** the world point at the middle of the screen, and the zoom in screen pixels per world unit */
@@ -126,8 +130,10 @@ export class Camera {
   }
   /** draw the world sharp at the zoom the camera is at now (a repaint, so only when it has changed) */
   private rebase(): void {
-    if (this.base && Math.abs(this.z / this.base - 1) < 0.002) return;
-    this.base = this.z;
+    // a 3x phone gets the world drawn at 2x and scaled up a touch, like the dungeon: a third of the memory
+    const dpr = window.devicePixelRatio || 1, want = Math.min(this.z, SHARP_MAX) * (dpr > 2 ? 2 / dpr : 1);
+    if (this.base && Math.abs(want / this.base - 1) < 0.002) return;
+    this.base = want;
     this.world.style.transform = `scale(${this.base})`;
   }
   /** after the camera has been still a moment, with no finger down and no flight, draw it sharp */
