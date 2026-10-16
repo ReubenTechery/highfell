@@ -10,7 +10,7 @@
  * furniture) and the front (the lights) are built only when a look changes; between them are what you
  * tap (things, spots, heroes) and the bits that move, each its own small picture (art.ts), and the pips.
  */
-import { COLLECTIBLES, DUNGEONS } from '../content';
+import { COLLECTIBLES } from '../content';
 import { CLASSES, MAX_HEROES, RACES, type ClassId, type RaceId } from '../content/folk';
 import { BUNK_SLOTS, FLOORS, HOUSE_SPOTS, LOOK_ROOMS, PADDOCK, ROOMS, THINGS, paddockSlots, roomAt, type HouseAction, type HouseSpot, type ThingDef } from '../content/house';
 import { lookOf, ownedOfKind, paddock } from '../meta/hearth';
@@ -18,7 +18,7 @@ import { loadoutFor, waiting } from '../meta/gear';
 import { activeHero, finishHearthTour, finishSeedTour, needsHearthTour, needsSeedTour, roleOf, type Hero } from '../meta/profile';
 import type { App } from './app';
 import { actions, esc, GLYPH } from './dom';
-import { ART, bitsHtml, heroSprite, placeSprite, spriteBit, tile, type Bit } from './art';
+import { ART, bitsHtml, heroSprite, placeSprite, spriteBit, type Bit } from './art';
 import { SFX } from './sound';
 import { Camera } from './camera';
 import { HOUSE_BOUNDS, HOUSE_FIT, houseBack, houseBits, houseDefs, houseFront } from './houseart';
@@ -500,7 +500,6 @@ export class Hearth {
   private hud(h: Hero): void {
     const p = this.app.p, role = roleOf(h);
     const cls = CLASSES[h.cls as ClassId], race = RACES[h.race as RaceId];
-    const rec = p.dungeons.barrow, dg = DUNGEONS.barrow;
     const up = waiting(p, h).length;
     this.top.innerHTML = `
       <button type="button" class="h-tag" data-act="gear" style="--light: ${race?.light || '#F4B942'}" aria-label="${esc(h.name)}, item level ${ilvl(loadoutFor(p, h).score)}: gear${up ? `, ${up} new to put on` : ''}">
@@ -508,7 +507,6 @@ export class Hearth {
         ${up ? `<i class="badge" aria-hidden="true">${up}</i>` : ''}
       </button>
       <div class="right">
-        <span class="chip dark" title="${esc(dg.marksName)}"><span class="ic">${tile('marks')}</span><b>${rec ? rec.marks : 0}</b><span class="long">${esc(dg.marksName)}</span></span>
         <span class="chip dark" id="sync-chip" hidden></span>
         <button type="button" class="icon-btn" data-act="deco" aria-pressed="${this.decorating}" aria-label="Decorate" title="Decorate">${GLYPH.pen}</button>
         <button type="button" class="icon-btn" data-act="settings" aria-label="Settings" title="Settings">${GLYPH.gear}</button>

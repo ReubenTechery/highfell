@@ -19,7 +19,7 @@ export const HEROIC_ITEMS: ItemDef[] = BARROW_ITEMS.map((d) => ({
 }));
 
 export const HEROIC_COLLECTIBLES: CollectibleDef[] = [
-  { id: gilded('pet.pint_gravekeeper'), kind: 'pet', name: 'Pint-sized Gilded Gravekeeper', desc: 'Gold shovel, gold lantern, same attitude.', icon: 'c_pet_keeper_gilded', sprite: 'pet_keeper_gilded', source: 'Heroic: the Gravekeeper, 1 in 5,000' },
+  { id: gilded('pet.pint_gravekeeper'), kind: 'pet', name: 'Pint-sized Gilded Gravekeeper', desc: 'Gold shovel, gold lantern, same attitude.', icon: 'c_pet_keeper_gilded', sprite: 'pet_keeper_gilded', source: 'Heroic: the Gravekeeper, 1 in 2,500' },
   { id: gilded('mount.gravehound'), kind: 'mount', name: 'Gilded Gravehound', desc: 'A bone dog the size of a pony, in solid gold. Still a good boy.', icon: 'c_mount_hound_gilded', sprite: 'mount_hound_gilded', source: 'Heroic: the Gravekeeper, 1 in 1,000', saddle: { x: -4, y: -94, k: 0.9 } },
   { id: gilded('dye.ghostly'), kind: 'cosmetic', name: 'Gravegold Dye', desc: 'Turns your Barrow set to gold.', icon: 'c_dye_gilded', source: 'Heroic: the Gravekeeper, 1 in 1,000' },
   { id: gilded('trophy.rattlebones_plume'), kind: 'trophy', name: 'Sir Rattlebones’ Gilded Plume', desc: 'He polished it every night. Now you can.', icon: 'c_plume_gilded', sprite: 'tr_plume_gilded', source: 'Heroic: Sir Rattlebones, 1 in 50' },
@@ -33,7 +33,7 @@ const HEROIC_LOOT: BossLootDef[] = BARROW_LOOT.map((t) => ({ boss: t.boss, drops
 export const HEROIC_TITLES: TitleDef[] = [{ id: 'title.undying', text: 'the Undying' }];
 
 export const HEROIC_ACHIEVEMENTS: AchievementDef[] = [
-  { id: 'barrow-heroic.log', dungeon: 'barrow-heroic', tier: 'log', points: 500, name: 'Gilded to the Bone', how: 'Fill every slot of Heroic Barrow Crypt’s collection log.',
+  { id: 'barrow-heroic.log', dungeon: 'barrow-heroic', tier: 'log', points: 500, name: 'Gilded to the Bone', how: 'Fill every slot of Heroic Barrow Crypt’s collection log (the pet, mount and dye are a bonus).',
     reward: { look: 'barrow-gilded', title: 'title.undying', collectible: 'cosmetic.gilded_bones', text: 'Gilded Barrow Hall for your house, the title the Undying, and gilded bones for your Risen' },
     log: 'barrow-heroic' },
 ];
@@ -49,6 +49,7 @@ export const BARROW_HEROIC: DungeonInfo = {
   seeds: [{ boss: 'keeper', seed: 'glowcap', rate: 1 / 3 }],
   marksName: BARROW.marksName,
   collection: BARROW.collection.map(gilded),
+  bonus: (BARROW.bonus || []).map(gilded),
   achievements: HEROIC_ACHIEVEMENTS.map((a) => a.id),
   heroicOf: BARROW.id,
 };

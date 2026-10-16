@@ -14,7 +14,7 @@ import { Achiever, progress } from '../src/meta/achievements';
 import { logProgress, opened } from '../src/meta/logs';
 import { HEARTH_SPOTS, MOUNTS, autoPlace, lookOf, lookOpen, lookProgress, paddock, place, setLook, spotOf } from '../src/meta/hearth';
 import { HOUSE_SPOTS, LOOK_ROOMS, OUTSIDE, PADDOCK, ROOMS, THINGS, paddockSlots } from '../src/content/house';
-import { heroesFor, pickRole, seats } from '../src/meta/party';
+import { groupOf, heroesFor, partyProblem, pickRole, seats, seatsFor } from '../src/meta/party';
 import { lootFor } from '../src/meta/loot';
 import type { GameEvent, RunSummary } from '../src/content/types';
 
@@ -176,7 +176,7 @@ test('loot: each line rolls at its own rate and role locks hold', () => {
   near('barrowguard.helm', 1 / 35);
   near('gravekeeper.tank', 1 / 50);
   near('mount.gravehound', 1 / 1000);
-  near('pet.pint_gravekeeper', 1 / 5000);
+  near('pet.pint_gravekeeper', 1 / 2500);
   assert.equal(hits['candlewake.helm'] || 0, 0);
   assert.equal(hits['gravekeeper.dps'] || 0, 0);
 });
@@ -445,7 +445,7 @@ test('house: spots a save has never had fill with what is not on show, once; emp
 test('house looks: a room shows the look you put on it once you have earned it, and the tavern is always yours', () => {
   const { p } = withHero('tank');
   assert.equal(lookOf(p, 'hall'), 'tavern');
-  assert.deepEqual(lookProgress(p, 'barrow'), { have: 0, need: 20 });
+  assert.deepEqual(lookProgress(p, 'barrow'), { have: 0, need: 17 });
   assert.equal(setLook(p, 'hall', 'barrow'), false, 'not earned yet');
   assert.equal(setLook(p, 'hall', 'nope'), false);
   p.achievements['barrow.log'] = { at: 1 };
@@ -482,7 +482,8 @@ test('profile: a v5 save gets the tavern in every room, and what is in the house
 test('collection log: filling the Barrow’s whole log opens Barrow Hall, a title and the Risen, for keeps', () => {
   const { p } = withHero('tank');
   const ach = new Achiever(p, { dungeon: 'barrow', role: 'tank', practice: false, testGear: false });
-  assert.deepEqual(logProgress(p, 'barrow'), { have: 0, need: 20 });
+  assert.deepEqual(logProgress(p, 'barrow'), { have: 0, need: 17 }, 'the pet, mount and dye are bonus slots: shown, never needed');
+  assert.ok(BARROW.collection.includes('pet.pint_gravekeeper'), 'the pet still has its slot in the log');
   assert.equal(lookOpen(p, 'barrow'), false);
   assert.equal(opened(p, 'race', 'risen'), false);
   assert.ok(['dwarf', 'elf', 'human'].every((r) => opened(p, 'race', r)), 'dwarves, elves and humans are open from the start');
@@ -490,11 +491,12 @@ test('collection log: filling the Barrow’s whole log opens Barrow Hall, a titl
   assert.equal(createHero(p, { name: 'Morrow Gravesend', race: 'risen', cls: 'warrior' }), null, 'the Risen are locked');
   // every slot but the last: the log isn't done
   const last = 'barrowguard.helm';
-  for (const id of BARROW.collection.filter((x) => x !== last)) { p.collection[id] = { n: 1, kc: 1, at: 1 }; assert.ok(!ach.collected(id).includes('barrow.log')); }
-  assert.deepEqual(progress(p, ACHIEVEMENTS['barrow.log']), { have: 19, need: 20 });
-  assert.deepEqual(lookProgress(p, 'barrow'), { have: 19, need: 20 });
+  for (const id of BARROW.collection.filter((x) => x !== last && !(BARROW.bonus || []).includes(x))) { p.collection[id] = { n: 1, kc: 1, at: 1 }; assert.ok(!ach.collected(id).includes('barrow.log')); }
+  assert.deepEqual(progress(p, ACHIEVEMENTS['barrow.log']), { have: 16, need: 17 });
+  assert.deepEqual(lookProgress(p, 'barrow'), { have: 16, need: 17 });
   p.collection[last] = { n: 1, kc: 1, at: 1 };
-  assert.deepEqual(ach.collected(last), ['barrow.log']);
+  assert.deepEqual(ach.collected(last), ['barrow.log'], 'done without the pet');
+  assert.ok(['pet.pint_gravekeeper', 'mount.gravehound', 'dye.ghostly'].every((id) => !p.collection[id]));
   assert.ok(p.titles.includes('title.gravewarden'));
   assert.ok(lookOpen(p, 'barrow'));
   assert.ok(opened(p, 'race', 'risen'));
@@ -507,7 +509,7 @@ test('collection log: filling the Barrow’s whole log opens Barrow Hall, a titl
   assert.ok(opened(p, 'race', 'risen') && lookOpen(p, 'barrow'));
   // a log already full when the save loads counts too
   const q = withHero('dps').p;
-  for (const id of DUNGEONS['barrow-heroic'].collection) q.collection[id] = { n: 1, kc: 1, at: 1 };
+  for (const id of DUNGEONS['barrow-heroic'].collection.filter((x) => !(DUNGEONS['barrow-heroic'].bonus || []).includes(x))) q.collection[id] = { n: 1, kc: 1, at: 1 };
   assert.ok(new Achiever(q, { dungeon: 'barrow', role: 'dps', practice: false, testGear: false }).check().includes('barrow-heroic.log'));
   assert.ok(q.titles.includes('title.undying'));
   assert.ok(q.collection['cosmetic.gilded_bones'], 'gilded bones for your Risen');
@@ -567,6 +569,34 @@ test('party: you take your hero’s seat, your Warband heroes take the others on
   const tank2 = newHero(p, { name: 'Brakka Stoutmantle', race: 'dwarf', cls: 'warrior' })!;
   setActive(p, tank2.id, 3);
   assert.deepEqual(heroesFor(p, 'tank').map((h) => h.id), [tank2.id, tank.id], 'the tank you played last comes first');
+});
+
+test('party: Heroic needs at least two real players and a bot takes the third seat, never your Warband; Normal is fine solo', () => {
+  // you play a tank, with your own healer and DPS waiting in the bunk room
+  const p = freshProfile();
+  const tank = newHero(p, { name: 'Hollis Emberhand', race: 'dwarf', cls: 'warrior' })!;
+  const myHealer = newHero(p, { name: 'Wren Ashby', race: 'human', cls: 'cleric' })!;
+  const myDps = newHero(p, { name: 'Ivo Larkspur', race: 'elf', cls: 'mage' })!;
+  setActive(p, tank.id, 1);
+  // friends bring their own heroes, from their own saves
+  const friendHealer = newHero(freshProfile(), { name: 'Tam Hollow', race: 'human', cls: 'cleric' })!;
+  const friendDps = newHero(freshProfile(), { name: 'Sel Moonwhisper', race: 'elf', cls: 'mage' })!;
+  // Normal on your own: allowed, and your Warband fills the other two seats
+  assert.equal(partyProblem([tank], { heroic: false }), null);
+  assert.deepEqual(seatsFor(p, [tank], false).map((s) => s.hero?.id), [tank.id, myHealer.id, myDps.id]);
+  // Heroic on your own: blocked, in plain words; until online play your group is just you
+  assert.deepEqual(groupOf(p).map((h) => h.id), [tank.id]);
+  assert.equal(partyProblem(groupOf(p), { heroic: true }), 'Heroic needs at least two players. Bring a friend.');
+  assert.equal(partyProblem([tank], { heroic: true, practice: true }), null, 'practice gives nothing, so it is open solo');
+  // two players and a bot: allowed, and the empty seat is a bot, never your own DPS
+  assert.equal(partyProblem([tank, friendHealer], { heroic: true }), null);
+  assert.deepEqual(seatsFor(p, [tank, friendHealer], true).map((s) => s.hero?.id ?? s.bot), [tank.id, friendHealer.id, 'Ivy']);
+  // three players: allowed, no bots
+  assert.equal(partyProblem([tank, friendHealer, friendDps], { heroic: true }), null);
+  assert.deepEqual(seatsFor(p, [tank, friendHealer, friendDps], true).map((s) => s.hero?.id), [tank.id, friendHealer.id, friendDps.id]);
+  // two players can't take one seat
+  const friendTank = newHero(freshProfile(), { name: 'Brakka Stoutmantle', race: 'dwarf', cls: 'warrior' })!;
+  assert.ok(partyProblem([tank, friendTank], { heroic: true }));
 });
 
 test('party: picking a role switches to your hero of that role you played last, or changes nothing', () => {
