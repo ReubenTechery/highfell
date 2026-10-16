@@ -226,7 +226,6 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-lootpage { display: grid; gap: 12px; }
 .dgx-rows { display: grid; gap: 4px; }
 .dgx-open { justify-self: stretch; }
-.dgx-mode { display: grid; gap: 10px; }
 /* The sheet keeps to five sizes (28 titles, 23 the big button and your hero, 17 buttons, names and labels,
    14 notes, 12 numbers), nothing under 12px, and a black line with a shadow only on what you can tap. */
 /* the picture is at least 158px tall so a short phone still fits the switch and the name */
@@ -269,6 +268,13 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-ghost { position: absolute; left: 50%; top: 2%; bottom: 46px; width: 62%; translate: -50% 0; display: grid; place-items: center; border: 3px dashed rgba(255, 248, 236, 0.55); border-radius: 28px 28px 10px 10px; color: rgba(255, 248, 236, 0.7); }
 .dgx-ghost svg { width: 28px; height: 28px; }
 .dgx-note { margin: 0; font-family: var(--f-body); font-size: 14px; color: var(--soft); text-align: center; }
+/* the foot: Practice beside the gold button, which always says where you're going */
+.dgx-foot { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; }
+.dgx-foot .btn.big { width: 100%; padding: 0 12px; white-space: nowrap; font-size: clamp(20px, 5.9vw, 23px); }
+.dgx-prac { min-height: 58px; padding: 0 14px; gap: 6px; border-radius: 16px; font-size: 17px; }
+.dgx-prac svg { width: 20px; height: 20px; }
+@media (min-width: 820px) { .dgx-foot { width: auto; grid-template-columns: auto 340px; } }
+.k-dungeon .seg { gap: 8px; }
 /* Who goes in: your heroes by role */
 .dgx-group { display: grid; gap: 8px; }
 .dgx-gh { margin: 0; display: flex; align-items: center; gap: 8px; font-family: var(--f-display); font-size: 17px; }
@@ -361,8 +367,6 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-it small { min-height: 16px; font-family: var(--f-mono); font-size: 12px; color: var(--dim); display: grid; place-items: center; }
 .dgx-it.got small { color: #2E7D32; }
 .dgx-it small svg { width: 15px; height: 15px; }
-.seg-row b { font-family: var(--f-display); font-weight: 400; font-size: 17px; }
-.k-dungeon .box { border: 0; }
 
 /* items, gear */
 .setbox { display: grid; gap: 6px; }

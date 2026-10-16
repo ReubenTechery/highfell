@@ -63,7 +63,7 @@ const LEFT_SLOTS: SlotId[] = ['helm', 'shoulders', 'chest'];
 export class Sheets {
   spec: SheetSpec | null = null;
   /** the dungeon picker remembers its choices while the page is open */
-  private pick: DungeonPick = { dungeon: 'barrow', page: 'door', mode: 'loot', start: 'keeper', gear: 'mine', heroic: false };
+  private pick: DungeonPick = { dungeon: 'barrow', page: 'door', start: 'keeper', gear: 'mine', heroic: false };
   private resetArmed = false;
   /** the look picked in the looks sheet, while the page is open */
   private lookPick: string | null = null;

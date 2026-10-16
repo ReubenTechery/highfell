@@ -9,7 +9,8 @@
  * Normal your own Warband heroes from your bunk room fill the other seats in their own gear (or bots stand
  * in until you make them); tap a hero for Who goes in, to play another or make one. Heroic needs at least
  * two players (party.ts), so its other seats wait for friends and for now it opens only for practice.
- * Then your brew (one button; its page has every bottle and what it does), and loot or practice.
+ * Then your brew (one button; its page has every bottle and what it does). The gold button goes in for loot;
+ * Practice beside it has its own page: where to start and which gear to try.
  */
 import { COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, TITLES, heroicVersion } from '../content';
 import { MAX_HEROES, RACES, type RaceId } from '../content/folk';
@@ -31,14 +32,13 @@ import { SFX } from './sound';
 import { seatAt, stageShape, stageSvg } from './stage';
 
 /** the sheet's pages: the door (the everyday one) and the ones a tap away, each with a back arrow */
-export type DgPage = 'door' | 'loot' | 'heroes' | 'brews';
+export type DgPage = 'door' | 'loot' | 'heroes' | 'brews' | 'practice';
 
-/** what the sheet remembers while the page is open: which page, the run's options, Normal or Heroic, and
+/** what the sheet remembers while the page is open: which page, practice's options, Normal or Heroic, and
  *  which dungeon */
 export interface DungeonPick {
   dungeon?: string;
   page: DgPage;
-  mode: 'loot' | 'practice';
   start: string;
   gear: 'mine' | 2 | 3;
   heroic: boolean;
@@ -200,7 +200,7 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
   const base = liveBase;
   const { dg, open } = pickedDungeon(p, pick, allOpen);
   const rec = p.dungeons[dg.id], keeper = p.bosses[`${dg.id}.${dg.finalBoss}`];
-  const practice = pick.mode === 'practice';
+  const practice = pick.page === 'practice';
   // who may go in is party.ts's rule; the "Everything open" testing switch lets you in anyway
   const blocked = allOpen ? null : partyProblem(groupOf(p), { heroic: pick.heroic, practice });
   const hp = heroicProgress(p, base.id);
@@ -209,36 +209,37 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
       <button type="button" class="dgx-d" role="radio" data-act="diff" data-v="normal" aria-checked="${!pick.heroic}">Normal</button>
       <button type="button" class="dgx-d h" role="radio" data-act="diff" data-v="heroic" aria-checked="${pick.heroic}">${hOpen ? '' : GLYPH.lock}Heroic${hOpen ? '' : ` <small>${hp.have}/${hp.need}</small>`}</button></div>`;
   const starts = (DUNGEON_ENGINES[base.id]?.starts || []).filter((s: { id: string; name: string }) => s.id !== 'intro');
+  // the gold button goes in; Practice waits beside it (on its own page the gold button starts the practice)
+  const prac = `<button type="button" class="btn dgx-prac" data-act="practice">${GLYPH.target}Practice</button>`;
   let foot: string;
   if (!open) foot = `<p class="fine dgx-shut">${GLYPH.lock}Heroic opens after ${HEROIC_AFTER} clears of the ${esc(base.name.split(' ')[0])}. You have ${hp.have}.</p>`;
   else if (!h) foot = `<button type="button" class="btn gold big" data-act="newhero">${GLYPH.plus}Make a hero</button>`;
-  // Heroic's two-player rule is shown on the door itself, so here the button just stays locked
-  else if (blocked && pick.heroic && !practice) foot = `<button type="button" class="btn gold big heroic" disabled>${GLYPH.lock}Enter Heroic</button>`;
+  else if (blocked && !practice && pick.heroic) foot = `<div class="dgx-foot">${prac}<button type="button" class="btn gold big heroic" disabled>${GLYPH.lock}Enter Heroic</button></div>`;
   else if (blocked) foot = `<p class="fine dgx-shut">${GLYPH.lock}${esc(blocked)}</p>`;
-  else foot = `<button type="button" class="btn gold big${pick.heroic ? ' heroic' : ''}" data-act="go">${practice ? 'Start practice' : pick.heroic ? 'Enter Heroic' : `Enter the ${esc(base.name.split(' ')[0])}`}</button>`;
+  else if (practice) foot = `<button type="button" class="btn gold big${pick.heroic ? ' heroic' : ''}" data-act="go">Start practice</button>`;
+  else foot = `<div class="dgx-foot">${prac}<button type="button" class="btn gold big${pick.heroic ? ' heroic' : ''}" data-act="go">${pick.heroic ? 'Enter Heroic' : `Enter the ${esc(base.name.split(' ')[0])}`}</button></div>`;
   const loot = lootPanel(p, dg, role);
   if (pick.page === 'loot') return { head: subHead(`${pick.heroic ? 'Heroic ' : ''}${base.name.split(' ')[0]} loot`), body: `<div class="dgx-lootpage">${loot}</div>`, foot };
   if (pick.page === 'heroes') return { head: subHead('Who goes in'), body: heroesPage(p, pick.heroic), foot };
   if (pick.page === 'brews') return { head: subHead('Your brew'), body: brewsPage(p), foot };
+  if (practice) return { head: subHead(pick.heroic ? 'Heroic practice' : 'Practice'), body: practicePage(pick, starts), foot };
   const head = `<h2>${esc(base.name)}</h2><p>Tier ${meta.roman}${pick.heroic ? ' · Heroic' : ''} · ${statLine(rec?.clears || 0, keeper?.kc || 0, rec?.pb)}</p>`;
   // on a phone the log line opens the Loot page; on desktop the loot sits in its own column instead
   const body = `${strip}<div class="dgx${pick.heroic ? ' heroic' : ''}">
     ${door(p, base, pick.heroic, diff)}
     ${logLine(p, dg, true)}
     <aside class="dgx-lootcol" aria-label="Loot">${loot}</aside>
-    <div class="dgx-you">
-      ${brewButton(p)}
-      <section class="dgx-mode">
-        ${seg('mode', pick.mode, [['loot', 'For loot'], ['practice', 'Practice']])}
-        ${practice ? `<div class="box">
-            <div class="seg-row"><b>Start at</b> ${seg('start', pick.start, starts.map((s: { id: string; name: string }) => [s.id, s.name] as [string, string]))}</div>
-            <div class="seg-row"><b>Gear</b> ${seg('tgear', String(pick.gear), [['mine', 'Mine'], ['2', 'Try Rare'], ['3', 'Try Epic']])}</div>
-            <p class="fine">No loot, kill counts or achievements.</p>
-          </div>` : ''}
-      </section>
-    </div>
+    <div class="dgx-you">${brewButton(p)}</div>
   </div>`;
   return { head, body, foot };
+}
+
+/** Practice: where to start and which gear to try. It gives nothing, and your brew works without using up
+ *  its bottle. */
+function practicePage(pick: DungeonPick, starts: { id: string; name: string }[]): string {
+  return `<section class="dgx-group"><p class="dgx-gh">Start at</p>${seg('start', pick.start, starts.map((s) => [s.id, s.name] as [string, string]))}</section>
+    <section class="dgx-group"><p class="dgx-gh">Gear</p>${seg('tgear', String(pick.gear), [['mine', 'Mine'], ['2', 'Try Rare'], ['3', 'Try Epic']])}</section>
+    <p class="dgx-note">No loot, kill counts or achievements. Your brew works, and the bottle stays.</p>`;
 }
 
 /** an inner page's head: back to the door, and the page's name */
@@ -296,7 +297,7 @@ export function dungeonActions(d: DungeonHost): Record<string, (el: HTMLElement)
     dgback: () => page('door'),
     dgpick: (el) => { d.pick.dungeon = el.dataset.id || 'barrow'; d.pick.heroic = false; d.pick.page = 'door'; SFX.play('ui'); d.refresh(); },
     diff: (el) => { d.pick.heroic = el.dataset.v === 'heroic'; SFX.play('ui'); d.refresh(); },
-    mode: (el) => { d.pick.mode = el.dataset.v as 'loot' | 'practice'; SFX.play('ui'); d.refresh(); },
+    practice: () => page('practice'),
     start: (el) => { d.pick.start = el.dataset.v!; SFX.play('ui'); d.refresh(); },
     tgear: (el) => { const v = el.dataset.v!; d.pick.gear = v === 'mine' ? 'mine' : (+v as 2 | 3); SFX.play('ui'); d.refresh(); },
     seats: () => page('heroes'),
@@ -327,7 +328,7 @@ export function dungeonBack(pick: DungeonPick): boolean {
 /** into the dungeon: Normal for loot, Heroic when your group may, or practice */
 function goIn(d: DungeonHost): void {
   const pr = d.pick, app = d.app;
-  const practice = pr.mode === 'practice';
+  const practice = pr.page === 'practice';
   const { dg, open } = pickedDungeon(app.p, pr, app.dev.allOpen);
   if (!open) { SFX.play('nope'); return; }
   if (pr.heroic && !practice && !app.dev.allOpen) { SFX.play('nope'); return; }
