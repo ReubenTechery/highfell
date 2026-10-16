@@ -20,8 +20,8 @@ The owner has chosen this direction. It isn't built, and it changes the brief, s
   a little current-season regular gear, so it's never wasted.
 - **Lasting progress is the collection:** logs, looks, pets, mounts, titles, house looks. Power is per
   season.
-- **The three Act 1 dungeons (Barrow Crypt, Thimblebriar Hollow, Moonmere Sanctum) become Season 1**, and
-  are timewalked when Season 2 arrives.
+- **The three Act 1 dungeons (Barrow Crypt, Thimblebriar Hollow, Moonmere Sanctum) are Season 0** (the game
+  shows it, 17 Oct), and are timewalked when Season 1 arrives.
 - **The 6pm live raid night is off.** Raids follow the dungeon rules: Normal playable with your Warband and
   bots, Heroic the group flex.
 - **Pricing idea:** about $2–6 a season, sell content and never power or catch-up. Older seasons later as a
@@ -30,7 +30,7 @@ The owner has chosen this direction. It isn't built, and it changes the brief, s
 What it replaces or changes: the brief's "later dungeons drop upgrade attachments that awaken older dungeon
 gear" (old gear becomes collection instead), "raids are a later bonus activity" (each season has one), and
 the Free Trial → Base Game → Expansions model in `docs/dungeons.md`. Still to settle (a `/grill-me`): how much
-power a season adds, what timewalked runs give, the wing timing, the price, and whether Season 1 is free.
+power a season adds, what timewalked runs give, the wing timing, the price, and whether Season 0 is free.
 
 ## Proposal: make every run pay (dungeon materials)
 

@@ -65,6 +65,8 @@ export class Garden {
   }
   /** the save changed: redraw the open card */
   update(): void { if (this.card && !this.busy) this.render(); }
+  /** a bed's card, or a harvest, is over the house */
+  get showing(): boolean { return !!this.card || this.busy; }
 
   /** the card is done with: back to the house (out to the whole house, if that's where it was opened) */
   private close(): void { this.card = null; this.render(); this.app.hearth.closed(); }

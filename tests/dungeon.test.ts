@@ -631,3 +631,16 @@ test('the Gravekeeper: a banished wisp’s bolt can finish him, and the run goes
   assert.equal(s.boss, null);
   step(1);
 });
+
+test('flawless: a hand, a burrow ring or a bomb that lands is counted, and one that misses is not', async () => {
+  const { runSummary } = await import('../src/dungeon/game.js');
+  const { s, dps, healer } = game('dps');
+  const at = (h: any, kind: string) => ({ shape: 'circle', x: h.x, y: h.y, r: 40, warn: 0.05, t: 0, dmg: 50, kind, src: null });
+  s.hazards.push(at(dps, 'hand'), { ...at(dps, 'hand'), x: dps.x + 900 }, at(healer, 'bomb'));
+  s.rings.push({ x: dps.x - 100, y: dps.y, r: 40, speed: 270, w: 26, max: 200, hit: new Set(), dmg: 50, src: null });
+  step(1);
+  const r = runSummary();
+  assert.equal(r.handHits, 1, 'the hand on the DPS lands, the one far off misses');
+  assert.equal(r.bombHits, 1);
+  assert.equal(r.ringHits, 1);
+});

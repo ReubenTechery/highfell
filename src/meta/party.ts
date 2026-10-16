@@ -3,9 +3,12 @@
  * your own: you take your hero's seat and your own Warband heroes from your bunk room fill the others
  * (bots stand in for roles you have no hero for), or you can group up. Heroic is the group run: it needs
  * at least two real players, a bot takes the seat nobody fills, and your Warband heroes never sit in.
+ * A hero short of a dungeon's recommended Power is warned first, never stopped.
  */
+import { RARITY } from '../content/gear';
 import { ORDER, ROLES } from '../content/roles';
-import type { RoleId } from '../content/types';
+import type { DungeonInfo, RoleId } from '../content/types';
+import { loadoutFor, wholeIlvl } from './gear';
 import { activeHero, roleOf, setActive, type Hero, type Profile } from './profile';
 
 export interface Seat { role: RoleId; hero: Hero | null; bot: string | null }
@@ -26,6 +29,22 @@ export function partyProblem(players: Hero[], o: { heroic: boolean }): string | 
   if (new Set(players.map(roleOf)).size < players.length) return 'Two players can’t take the same seat.';
   if (o.heroic && players.length < HEROIC_MIN_PLAYERS) return 'Heroic needs at least two players. Bring a friend.';
   return null;
+}
+
+/** How far a hero falls short of the Power a dungeon recommends: their Power, the dungeon's, and the gap.
+ *  `likely` is a whole rarity short or more (Rare against Thimblebriar's 22), where a wipe is very likely. */
+export interface PowerGap { have: number; want: number; short: number; likely: boolean }
+/** a whole rarity: Common 10, Uncommon 14, Rare 18, Epic 22 */
+const RARITY_STEP = RARITY[1].score - RARITY[0].score;
+
+/** The hero against a dungeon's recommended Power (the item level the game shows, as a whole number), or null
+ *  when they meet it or it recommends none (a Heroic doesn't yet). A warning, never a lock: the Barrow wants 10,
+ *  so a fresh hero is never warned there. */
+export function underPowered(p: Profile, h: Hero, dg: DungeonInfo): PowerGap | null {
+  const want = dg.recIlvl;
+  if (!want) return null;
+  const have = wholeIlvl(loadoutFor(p, h).score);
+  return have < want ? { have, want, short: want - have, likely: want - have >= RARITY_STEP } : null;
 }
 
 /** The three seats, tank first, for a group of real players: each sits in their own role's seat. On Normal
