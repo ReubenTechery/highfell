@@ -3,7 +3,7 @@
  * with what finishing it gives at the end of its bar; the garden; the other rewards), the
  * achievements, Bramblewick's story (if you found any of it) and the stats. The sheets wire up its buttons and mark what you've seen.
  */
-import { ACHIEVEMENT_LIST, COLLECTIBLES, DUNGEONS } from '../content';
+import { ACHIEVEMENT_LIST, COLLECTIBLES, DUNGEONS, ITEMS } from '../content';
 import { ROLES } from '../content/roles';
 import type { BossInfo, DropDef, DungeonInfo, RoleId, Tier } from '../content/types';
 import { GARDEN_TABLE, LORE } from '../content/vale';
@@ -12,7 +12,7 @@ import { logAchievement, logProgress } from '../meta/logs';
 import type { Profile } from '../meta/profile';
 import { skillRank } from '../meta/vale';
 import { esc, fmtDate, fmtN, fmtRate, fmtT, GLYPH } from './dom';
-import { colourOf, iconOf, nameOf, spriteURL, tile } from './art';
+import { iconOf, nameOf, rarLook, spriteURL, tile } from './art';
 import { mainReward, rewards } from './dungeonsheet';
 
 export type LogTab = 'collection' | 'achievements' | 'lore' | 'stats';
@@ -59,10 +59,12 @@ function clog(p: Profile, entry: string | undefined, heroicWas: boolean): { html
           <i class="cl-bar" aria-hidden="true"><i style="width: ${((pr.have / Math.max(1, pr.need)) * 100).toFixed(1)}%"></i></i>${main ? `<span class="cl-prize${won ? ' got' : ''}" aria-hidden="true">${tile(main.icon)}</span>` : ''}</button>`;
       } else list += `<h4 class="cl-group">${esc(group)}</h4>`;
     }
-    const got = e.items.filter((id) => p.collection[id]).length;
+    const need = e.items.filter((id) => !(e.dg?.bonus || []).includes(id));
+    const got = need.filter((id) => p.collection[id]).length;
     const fresh = e.items.some((id) => p.collection[id] && !p.seen[id]);
-    list += `<button type="button" class="cl-entry ${got === e.items.length ? 'done' : got ? 'part' : ''}" data-act="entry" data-id="${e.id}" aria-current="${e === cur && !!entry}" aria-pressed="${e === cur}">
-      <span>${esc(e.name)}${fresh ? '<i class="dot" aria-hidden="true"></i>' : ''}</span><b>${got}/${e.items.length}</b></button>`;
+    const on = !logDg && e === cur;
+    list += `<button type="button" class="cl-entry ${got === need.length ? 'done' : got ? 'part' : ''}" data-act="entry" data-id="${e.id}" aria-current="${on && !!entry}" aria-pressed="${on}">
+      <span>${esc(e.name)}${fresh ? '<i class="dot" aria-hidden="true"></i>' : ''}</span><b>${got}/${need.length}</b></button>`;
   }
   const page = logDg ? logRewards(p, logDg) : logPage(p, cur);
   return { html: `<div class="clog ${entry ? 'has-entry' : ''}"><nav class="cl-list" aria-label="Bosses and places">${list}</nav><section class="cl-page" aria-label="${esc(logDg ? logDg.name : cur.name)}">${page}</section></div>`, heroic };
@@ -79,46 +81,72 @@ function logRewards(p: Profile, dg: DungeonInfo): string {
     <div class="cl-head plain"><div><p class="eyebrow">Collection log</p><h3>${esc(dg.name)}</h3><p class="cl-obt">Obtained: <b class="${state}">${pr.have}/${pr.need}</b></p>
       <p class="fine">Every drop for every role (the rarest are a bonus), so it takes a tank, a healer and a DPS of yours. What it gives is for your whole account, for keeps.</p></div></div>
     ${ach ? rewards(ach, done) : ''}
-    ${left.length ? `<h3 class="section-title">Still to find</h3><div class="cl-grid">${left.map((id) => `<button type="button" class="cl-it miss" data-act="item" data-id="${id}" title="${esc(nameOf(id))}" style="--rc: ${colourOf(id)}"><span class="tile" aria-hidden="true">${iconOf(id)}</span><span class="n">${esc(nameOf(id))}</span></button>`).join('')}</div>` : ''}
-    ${extra.length ? `<h3 class="section-title">Bonus, not needed to finish</h3><div class="cl-grid">${extra.map((id) => `<button type="button" class="cl-it miss" data-act="item" data-id="${id}" title="${esc(nameOf(id))}" style="--rc: ${colourOf(id)}"><span class="tile" aria-hidden="true">${iconOf(id)}</span><span class="n">${esc(nameOf(id))}</span></button>`).join('')}</div>` : ''}`;
+    ${left.length ? `<h3 class="section-title">Still to find</h3><div class="cl-grid">${left.map((id) => slot(p, id, { ...dropOf(dg, id) })).join('')}</div>` : ''}
+    ${extra.length ? `<h3 class="section-title">Bonus, not needed to finish</h3><div class="cl-grid">${extra.map((id) => slot(p, id, { ...dropOf(dg, id), bonus: true })).join('')}</div>` : ''}`;
 }
 
 function logPage(p: Profile, e: LogEntry): string {
-  const got = e.items.filter((id) => p.collection[id]).length;
-  const state = got === e.items.length ? 'done' : got ? 'part' : 'none';
+  const bonus = e.dg?.bonus || [];
+  const need = e.items.filter((id) => !bonus.includes(id)), extra = e.items.filter((id) => bonus.includes(id));
+  const got = need.filter((id) => p.collection[id]).length;
+  const state = got === need.length ? 'done' : got ? 'part' : 'none';
   let head = '';
   if (e.boss && e.dg) {
     const r = p.bosses[`${e.dg.id}.${e.boss.id}`];
     head = `<div class="cl-head"><span class="art" aria-hidden="true"><img src="${spriteURL(e.boss.id)}" alt=""></span><div>
       <p class="eyebrow">${esc(e.dg.name)}</p><h3>${esc(e.boss.name)}</h3>
-      <p class="cl-obt">Obtained: <b class="${state}">${got}/${e.items.length}</b></p>
-      <p class="cl-kc">${esc(e.boss.name)} kills: <b>${fmtN(r?.kc || 0)}</b></p>
+      <p class="cl-obt">Obtained: <b class="${state}">${got}/${need.length}</b>${extra.length ? ` · Bonus <b>${extra.filter((id) => p.collection[id]).length}/${extra.length}</b>` : ''}</p>
+      <p class="cl-kc">Kill count: <b>${fmtN(r?.kc || 0)}</b></p>
       <div class="stats"><span class="chip">Fastest <b>${fmtT(r?.pb)}</b></span><span class="chip">Wipes <b>${r?.wipes || 0}</b></span></div></div></div>`;
   } else if (e.vale) {
     head = `<div class="cl-head vale"><span class="art" aria-hidden="true"><img src="${spriteURL('node_glowcap')}" alt=""></span><div>
       <p class="eyebrow">${esc(e.group)}</p><h3>${esc(e.name)}</h3>
-      <p class="cl-obt">Obtained: <b class="${state}">${got}/${e.items.length}</b></p>
+      <p class="cl-obt">Obtained: <b class="${state}">${got}/${need.length}</b></p>
       <p class="cl-kc">Harvests: <b>${fmtN(p.counters['vale.harvests'] || 0)}</b></p></div></div>`;
   } else {
-    head = `<div class="cl-head plain"><div><p class="eyebrow">${esc(e.group)}</p><h3>${esc(e.name)}</h3><p class="cl-obt">Obtained: <b class="${state}">${got}/${e.items.length}</b></p><p class="fine">Pets, mounts, trophies, banners and looks that achievements and firsts give. Never power.</p></div></div>`;
+    head = `<div class="cl-head plain"><div><p class="eyebrow">${esc(e.group)}</p><h3>${esc(e.name)}</h3><p class="cl-obt">Obtained: <b class="${state}">${got}/${need.length}</b></p><p class="fine">Pets, mounts, trophies, banners and looks that achievements and firsts give. Never power.</p></div></div>`;
   }
-  const rateOf = (id: string): number | undefined => { if (e.vale) return e.vale.table.find((d) => d.id === id)?.rate; if (!e.dg || !e.boss) return undefined; return e.dg.loot.find((t) => t.boss === e.boss!.id)?.drops.find((d) => d.id === id)?.rate; };
-  const whoOfDrop = (id: string): string | undefined => {
-    if (!e.dg || !e.boss) return undefined;
-    const d = e.dg.loot.find((t) => t.boss === e.boss!.id)?.drops.find((x) => x.id === id);
-    if (!d?.role) return undefined;
-    return d.cls === 'rogue' ? 'Rogue' : d.role === 'dps' ? 'Mage' : ROLES[d.role].title;
-  };
   const grid = e.items.map((id) => {
-    const c = p.collection[id];
-    const isNew = c && !p.seen[id];
-    const who = whoOfDrop(id);
-    const ach = !e.boss && !e.vale ? ACHIEVEMENT_LIST.find((a) => a.reward.collectible === id) : undefined;
-    const cap = c ? (c.kc ? `KC ${fmtN(c.kc)}` : 'Owned') : e.boss || e.vale ? `${fmtRate(rateOf(id))}${who ? ` · ${who}` : ''}` : ach ? ach.name : COLLECTIBLES[id]?.source || '';
-    return `<button type="button" class="cl-it ${c ? 'got' : 'miss'} ${isNew ? 'new' : ''}" data-act="item" data-id="${id}" title="${esc(nameOf(id))}" aria-label="${esc(nameOf(id))}${c ? `, obtained${c.n > 1 ? ' ' + c.n + ' times' : ''}` : ', not yet'}" style="--rc: ${colourOf(id)}">
-      <span class="tile" aria-hidden="true">${iconOf(id)}</span>${c && c.n > 1 ? `<i class="q">${fmtN(c.n)}</i>` : ''}<span class="n">${esc(nameOf(id))}</span><span class="m">${esc(cap)}</span></button>`;
+    if (e.vale) return slot(p, id, { rate: e.vale.table.find((d) => d.id === id)?.rate, harvest: true });
+    if (e.dg) return slot(p, id, { ...dropOf(e.dg, id), bonus: bonus.includes(id) });
+    const ach = ACHIEVEMENT_LIST.find((a) => a.reward.collectible === id);
+    return slot(p, id, { note: ach ? ach.name : COLLECTIBLES[id]?.source || '' });
   }).join('');
   return `<button type="button" class="btn small cl-back" data-act="entry" data-id="">${GLYPH.left}Everything</button>${head}<div class="cl-grid">${grid}</div>`;
+}
+
+/** where a dungeon drop comes from: its rate and, for a role's drop, who can get it */
+function dropOf(dg: DungeonInfo, id: string): { rate?: number; who?: string } {
+  for (const t of dg.loot) {
+    const d = t.drops.find((x) => x.id === id);
+    if (d) return { rate: d.rate, who: d.role ? (d.cls === 'rogue' ? 'Rogue' : d.role === 'dps' ? 'Mage' : ROLES[d.role].title) : undefined };
+  }
+  return {};
+}
+
+/** the word on a slot's ribbon and its colours: the rarity for gear, Bonus for a log's bonus slots, the kind
+ *  for everything else. `pale` grounds take ink-coloured words. */
+export function slotTag(id: string, bonus = false): { word: string; bg: string; ink: string; pale: boolean } {
+  if (bonus) return { word: 'Bonus', bg: '#9BE15D', ink: '#2E6B2A', pale: true };
+  if (ITEMS[id]) { const r = rarLook(id); return { word: r.name, bg: r.color, ink: r.ink, pale: r.key === 'unique' }; }
+  const k = COLLECTIBLES[id]?.kind;
+  if (k === 'pet') return { word: 'Pet', bg: '#9BE15D', ink: '#2E6B2A', pale: true };
+  if (k === 'mount') return { word: 'Mount', bg: '#8FD6FF', ink: '#2F5F99', pale: true };
+  return { word: k === 'trophy' ? 'Trophy' : k === 'banner' ? 'Banner' : id.startsWith('dye.') ? 'Dye' : 'Look', bg: '#D9B98C', ink: '#6B4528', pale: true };
+}
+
+/** One slot of the log: its picture in its rarity's frame with the word on a ribbon, its name, its drop rate
+ *  (or where it comes from) always, and once it's yours the kill count you got it at and how often you've
+ *  seen it. A slot you haven't got is faded, never hidden: you can see what you're after. */
+function slot(p: Profile, id: string, o: { rate?: number; who?: string; bonus?: boolean; harvest?: boolean; note?: string }): string {
+  const c = p.collection[id], t = slotTag(id, o.bonus);
+  const isNew = !!c && !p.seen[id];
+  const where = o.rate ? `${fmtRate(o.rate)}${o.who ? ` · ${o.who}` : ''}` : o.note || '';
+  const kc = c ? (c.kc ? `${o.harvest ? 'Harvest' : 'KC'} ${fmtN(c.kc)}` : 'Yours') : '';
+  const label = `${nameOf(id)}, ${t.word}${o.rate ? `, ${fmtRate(o.rate)}` : ''}${c ? `, yours${c.kc ? ` since ${o.harvest ? 'harvest' : 'kill count'} ${fmtN(c.kc)}` : ''}${c.n > 1 ? `, seen ${fmtN(c.n)} times` : ''}` : ', not yet'}`;
+  return `<button type="button" class="cl-it ${c ? 'got' : 'miss'}${isNew ? ' new' : ''}" data-act="item" data-id="${esc(id)}" aria-label="${esc(label)}" title="${esc(c ? `${nameOf(id)}: got ${fmtDate(c.at)}` : nameOf(id))}" style="--rc: ${t.bg}; --ri: ${t.ink}">
+    ${isNew ? '<i class="cl-new" aria-hidden="true">New</i>' : ''}<span class="cl-tl" aria-hidden="true"><span class="tile">${iconOf(id)}</span><i class="cl-rar${t.pale ? ' pale' : ''}">${esc(t.word)}</i></span>
+    <span class="n">${esc(nameOf(id))}</span>${where ? `<span class="m">${esc(where)}</span>` : ''}${kc ? `<span class="kc">${esc(kc)}</span>` : ''}${c && c.n > 1 ? `<span class="seen">Seen ${fmtN(c.n)}×</span>` : ''}</button>`;
 }
 
 function stats(p: Profile): string {
