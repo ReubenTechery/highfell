@@ -15,6 +15,14 @@ export function logSlots(dungeon: string): string[] {
   return dg ? dg.collection.filter((id) => !(dg.bonus || []).includes(id)) : [];
 }
 
+/** Everything in the collection counts as seen once the log has shown it, so its New flags go. Says whether
+ *  anything changed, so the caller knows to save. */
+export function markSeen(p: Profile, at = Date.now()): boolean {
+  let changed = false;
+  for (const id of Object.keys(p.collection)) if (!p.seen[id]) { p.seen[id] = at; changed = true; }
+  return changed;
+}
+
 /** How full a dungeon's collection log is: slots filled, out of the ones that count. */
 export function logProgress(p: Profile, dungeon: string): { have: number; need: number } {
   const slots = logSlots(dungeon);

@@ -50,20 +50,35 @@ export function colourOf(id: string): string {
 export const nameOf = (id: string): string => ITEMS[id]?.name || COLLECTIBLES[id]?.name || id;
 
 /** A set on its armour stand (art/wardrobe.json): the pieces `on` says you have are put on, the rest are
- *  dashed ghosts (styles.css draws a piece with the class `ghost` as its silhouette only), and `drop` is the
- *  piece that has just arrived. The weapon leans behind the stand; the chest, shoulders and helm go on top. */
-const WD: { vb: number[]; stand: string; pieces: Record<string, string> } = WARDROBE;
+ *  ghosts, and `drop` is the piece that has just arrived. The weapon leans behind the stand; the chest,
+ *  shoulders and helm go on top. A ghost is one dashed line round the piece's whole silhouette: the
+ *  silhouette masks out its own line, so only the outer half shows and shapes that overlap don't, then the
+ *  silhouette is filled faintly as one layer (styles.css: .gm, .go, .gf). */
+const WD: { vb: number[]; stand: string; pieces: Record<string, string>; boxes: Record<string, number[]> } = WARDROBE;
 const LAYERS = ['weapon', 'stand', 'chest', 'shoulders', 'helm'];
+let ghosts = 0;
+function ghostOf(g: string): string {
+  const sil = g.slice(g.indexOf('<g class="sil">') + 15, g.indexOf('</g><g class="det">'));
+  const [x, y, w, h] = WD.vb, box = `x="${x}" y="${y}" width="${w}" height="${h}"`, id = `wg${++ghosts}`;
+  return `${g.slice(0, g.indexOf('>') + 1).replace('class="pc ', 'class="pc ghost ')}<mask id="${id}" maskUnits="userSpaceOnUse" ${box}><rect ${box} fill="#fff"/><g class="gm">${sil}</g></mask>`
+    + `<g class="go" mask="url(#${id})">${sil}</g><g class="gf">${sil}</g></g>`;
+}
 export function standSvg(pieces: string[], on: (id: string) => boolean, o: { drop?: string; cls?: string } = {}): string {
   const [x, y, w, h] = WD.vb;
   const layer = (slot: string): string => {
     if (slot === 'stand') return WD.stand;
     const id = pieces.find((pid) => ITEMS[pid]?.slot === slot), g = id && WD.pieces[id];
     if (!id || !g) return '';
-    const cls = `${on(id) ? '' : ' ghost'}${id === o.drop ? ' drop' : ''}`;
-    return cls ? g.replace('class="pc ', `class="pc${cls} `) : g;
+    if (!on(id)) return ghostOf(g);
+    return id === o.drop ? g.replace('class="pc ', 'class="pc drop ') : g;
   };
   return `<svg class="stand ${o.cls || ''}" viewBox="${x} ${y} ${w} ${h}" aria-hidden="true">${LAYERS.map(layer).join('')}</svg>`;
+}
+/** One piece of a set (or a boss weapon) on its own, in full colour, framed by its box: what it looks like.
+ *  A gilded piece has its plain one's box. */
+export function pieceSvg(id: string, cls = ''): string {
+  const g = WD.pieces[id], b = WD.boxes[id.replace(/\.gilded$/, '')];
+  return g && b ? `<svg class="${cls}" viewBox="${b.join(' ')}" aria-hidden="true">${g}</svg>` : '';
 }
 /** A sprite as an <img> source. Cached. */
 const urls: Record<string, string> = {};
