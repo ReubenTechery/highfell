@@ -269,7 +269,7 @@ function earth(x0: number, y0: number, x1: number, y1: number, c: WorkshopLook):
     o.push(P(`M${x - 11} ${y0} C${x - 10} ${y0 + len * 0.4} ${x + s * 14} ${y0 + len * 0.6} ${x + s * 4} ${y0 + len} C${x + s * 10} ${y0 + len * 0.6} ${x + 3} ${y0 + len * 0.4} ${x + 11} ${y0} Z`, WS.root, 3));
   }
   // (the middle one over the gap between the second door and the third: the Hall of Doors, halldoors.ts)
-  for (const [x, y, k] of [[66, 236, 1], [536, 124, 0.85], [1000, 236, 0.9]]) o.push(bracket(x, y, k, c));
+  for (const [x, y, k] of [[66, 236, 1], [536, 150, 0.85], [1000, 236, 0.9]]) o.push(bracket(x, y, k, c));
   return o.join('');
 }
 /** bracket fungi, a little stack of them, growing out of a wall at (x, y): caps with no stems */
