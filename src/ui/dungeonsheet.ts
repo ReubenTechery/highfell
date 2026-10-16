@@ -223,7 +223,8 @@ function logLine(p: Profile, dg: DungeonInfo, button: boolean): string {
 }
 
 /** the loot: the log's line, the item levels it drops, what finishing it gives, then every drop by who can
- *  get it, the role you're looking at first (tap one to hold it up against what that role wears) */
+ *  get it, the role you're looking at first (tap one to hold it up against what that role wears). The way into
+ *  the collection log sits under the list, so on desktop it stays put while the list scrolls. */
 function lootPanel(p: Profile, dg: DungeonInfo, role: RoleId): string {
   const h = activeHero(p), base = DUNGEONS[dg.heroicOf || dg.id] || dg;
   const ach = logAchievement(dg.id), done = !!ach && !!p.achievements[ach.id];
@@ -237,11 +238,11 @@ function lootPanel(p: Profile, dg: DungeonInfo, role: RoleId): string {
   }
   rows.sort((a, b) => Number(b.yours) - Number(a.yours));
   rows.push({ label: 'Anyone', role: null, drops: lootFor(dg, role).shared, yours: false });
-  return `${logLine(p, dg, false)}
+  return `<div class="dgx-lootlist">${logLine(p, dg, false)}
     ${drops ? `<p class="dgx-ilvl">Drops up to <b>ilvl ${drops}</b>${dg.heroicOf ? ` · made for <b>ilvl ${drops - 2}</b>` : ''}</p>` : ''}
     ${dg.heroicOf ? `<p class="dgx-ilvl">Everything Normal drops, plus a gilding kit for every piece: any seat, <b>${fmtRate(KIT_RATE)}</b> each. Same power.</p>` : ''}
     ${ach ? rewards(ach, done) : ''}
-    <div class="dgx-rows">${rows.map((r) => lootRow(p, r.label, r.role, r.drops, r.yours)).join('')}</div>
+    <div class="dgx-rows">${rows.map((r) => lootRow(p, r.label, r.role, r.drops, r.yours)).join('')}</div></div>
     <button type="button" class="btn small dgx-open" data-act="entry" data-id="${dg.id}.${dg.finalBoss}">${GLYPH.book}Open the collection log</button>`;
 }
 

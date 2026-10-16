@@ -246,10 +246,13 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
   .dgx { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto auto; grid-template-areas: "pic loot" "log loot" "you loot"; gap: 14px 22px; align-items: start; }
   /* the log's line stays under the picture, as a line rather than a way in: the loot is right beside it */
   .dgx > .dgx-logbar { border-color: transparent; background: var(--panel-2); box-shadow: none; pointer-events: none; }
-  .dgx > .dgx-logbar .dgx-go, .dgx-lootcol > .dgx-logbar { display: none; }
+  .dgx > .dgx-logbar .dgx-go, .dgx-lootcol .dgx-lootlist > .dgx-logbar { display: none; }
   /* The left column (the door, the log, the brew) sets the height; the loot column matches it and, on a short
      screen only, scrolls inside itself. It is as tight as it can be and still be read, so on a laptop it fits. */
-  .dgx-lootcol { align-self: stretch; height: 0; min-height: 100%; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: 8px; padding: 12px; border-radius: 18px; background: var(--panel-2); min-width: 0; }
+  .dgx-lootcol { align-self: stretch; height: 0; min-height: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 18px; background: var(--panel-2); min-width: 0; }
+  /* only the list scrolls (on a screen too short for it); the way into the collection log stays whole under it */
+  .dgx-lootcol .dgx-lootlist { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; align-content: start; gap: 8px; }
+  .dgx-lootcol > .dgx-open { flex: none; }
   .dgx-lootcol .dgx-rewards { background: var(--panel); padding: 8px 10px; gap: 6px; }
   .dgx-lootcol .dgx-rw-pic { width: 40px; height: 40px; }
   .dgx-lootcol .dgx-rw.main .dgx-rw-pic { width: 44px; height: 44px; }
@@ -263,7 +266,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 /* an inner page: back to the door, and the page's name */
 .dgx-sub { display: flex; align-items: center; gap: 12px; }
 .dgx-sub .icon-btn { flex: none; }
-.dgx-lootpage { display: grid; gap: 12px; }
+.dgx-lootpage, .dgx-lootlist { display: grid; gap: 12px; min-width: 0; }
 .dgx-rows { display: grid; gap: 4px; }
 .dgx-open { justify-self: stretch; }
 /* The sheet keeps to five sizes (28 titles, 23 the big button and your hero, 17 buttons, names and labels,
