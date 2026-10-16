@@ -121,8 +121,8 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   `houseart.ts`, every room in each look, your hero's name tag `nametag.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
   close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons
   (`dungeonsheet.ts`, its door's picture in `stage.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
-  (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`), settings (`settingssheet.ts`), the gear doll, satchel and spot
-  picker. Toasts, sound (`sound.ts`: the embedded effects, each with its synthesised fallback) and music
+  (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`), settings (`settingssheet.ts`), a hero's gear in the armoury
+  (`armoury.ts`; the card for the piece you pick in `armourycard.ts`), the satchel and the spot picker. Toasts, sound (`sound.ts`: the embedded effects, each with its synthesised fallback) and music
   (`music.ts`: the streamed loops and the victory sting). `styles.css` is inlined by the build.
 - `audio/`: the sounds, made by `tools/audio.py` from `tools/audio_list.py`: `sfx/*.mp3` and `sfx.json` (the
   build embeds it), `music/*.mp3` and `music.json` (streamed from the live page's own files, never embedded).

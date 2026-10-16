@@ -127,7 +127,7 @@ function held(p: Profile, d: ItemDef): { html: string; act: string; c: Compare }
   const v = VERDICT[c.verdict];
   const top = `<div class="cmp-verdict">${v.mark}<b>${v.word}</b><span>${c.verdict === 'wearing' ? `${esc(who)} has it on` : `compared to ${esc(who)}’s equipped ${esc(d.slot)}`}</span></div>`;
   const ownsPiece = !!(p.collection[d.id] || (d.kind === 'gear' && h && bestRegular(h, d.slot).rar >= d.rar));
-  const act = h && ownsPiece && c.verdict !== 'wearing' ? `<button type="button" class="btn small gold" data-act="gearat" data-hero="${esc(h.id)}" data-slot="${d.slot}">${GLYPH.shield}View &amp; Equip in Armoury</button>` : '';
+  const act = h && ownsPiece && c.verdict !== 'wearing' ? `<button type="button" class="btn small gold" data-act="gearat" data-hero="${esc(h.id)}" data-slot="${d.slot}" data-id="${esc(d.id)}">${GLYPH.shield}View &amp; Equip in Armoury</button>` : '';
   if (c.verdict === 'wearing') return { html: `<section class="cmp v-on" aria-label="Against what you wear">${top}</section>`, act, c };
   const now = c.now.def, nl = rarLook(now.id), dl = rarLook(d.id);
   const vsCards = `<div class="tw-vs" style="margin: 0 12px">

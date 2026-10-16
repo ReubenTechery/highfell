@@ -40,7 +40,7 @@ export const FLOORS = { loft: -1700, upper: -1180, hall: -520, ground: 0, cellar
 export const ROOMS: RoomDef[] = [
   { id: 'loft', name: 'Trophy loft', x: 0, y: -2400, w: 1200, h: 700, focus: [600, -1960] },
   { id: 'bunks', name: 'Heroes', x: 0, y: -1664, w: 520, h: 484, focus: [270, -1430], main: 'heroes' },
-  { id: 'armory', name: 'Armory', x: 680, y: -1664, w: 520, h: 484, focus: [930, -1430], main: 'gear' },
+  { id: 'armory', name: 'Armoury', x: 680, y: -1664, w: 520, h: 484, focus: [930, -1430], main: 'gear' },
   // the hall's sign stands right of the fire, clear of your hero's name tag
   { id: 'hall', name: 'Hall', x: 0, y: -1144, w: 1200, h: 624, focus: [545, -830], sign: [990, -830] },
   { id: 'brewery', name: 'Brewing', x: 0, y: -484, w: 1200, h: 484, focus: [860, -230], sign: [600, -230], main: 'brew' },

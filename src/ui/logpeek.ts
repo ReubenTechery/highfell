@@ -23,7 +23,7 @@ import { slotTag, whoOf } from './logbook';
 const SLOT_WORD: Record<string, string> = { helm: 'Helm', shoulders: 'Shoulders', chest: 'Chest', weapon: 'Weapon' };
 
 /** where a log slot drops: the dungeon, the boss's name, its rate and your kill count on that boss */
-function dropSource(p: Profile, id: string): { dg: DungeonInfo; boss: string; rate: number; kc: number } | null {
+export function dropSource(p: Profile, id: string): { dg: DungeonInfo; boss: string; rate: number; kc: number } | null {
   for (const dg of Object.values(DUNGEONS)) for (const t of dg.loot) {
     const d = t.drops.find((x) => x.id === id);
     if (d) return { dg, boss: dg.bosses.find((b) => b.id === t.boss)?.name || '', rate: d.rate, kc: p.bosses[`${dg.id}.${t.boss}`]?.kc || 0 };
@@ -85,7 +85,7 @@ function gear(p: Profile, d: ItemDef, found: number): { html: string; act: strin
   const vs = `<div class="pk-cmp v-${v.cls}"><p class="pk-v">${v.mark}<b>${esc(v.word)}</b><span>${on ? `${esc(who)} has it on` : `for ${esc(who)}`}</span></p>
     <div class="pk-ss">${stat(String(share.ilvl), 'Item level', cmp.ilvl[1] - cmp.ilvl[0])}${share.power > 0 ? stat(`+${share.power}%`, cap(word.short), cmp.power, '%') + stat(`+${share.health}%`, 'Health', cmp.health, '%') : ''}</div></div>`;
   const owns = !!(p.collection[d.id] || (d.kind === 'gear' && h && bestRegular(h, d.slot).rar >= d.rar));
-  const act = h && owns && cmp.verdict !== 'wearing' ? `<button type="button" class="btn small gold" data-act="gearat" data-hero="${esc(h.id)}" data-slot="${d.slot}">${GLYPH.shield}Put it on</button>` : '';
+  const act = h && owns && cmp.verdict !== 'wearing' ? `<button type="button" class="btn small gold" data-act="gearat" data-hero="${esc(h.id)}" data-slot="${d.slot}" data-id="${esc(d.id)}">${GLYPH.shield}Put it on</button>` : '';
   const fx = d.effectDesc ? `<p class="pk-fx"><b>When worn</b> ${esc(d.effectDesc)}</p>` : '';
   const s = d.setId ? SETS[d.setId] : undefined;
   const set = s ? `<div class="lb-bonus pk-set"><p class="pk-set-h"><b>${esc(s.name)} set</b><small>${found} of ${s.pieces.length} found</small></p>
