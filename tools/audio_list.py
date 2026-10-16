@@ -47,6 +47,7 @@ SFX = {
     # ---- the mage
     'bolt': S('A small snowball thrown and hitting: one soft quick whoosh and a light icy pat.', 0.5, 0.2, take=13),
     'icicle': S('An icicle spear zipping past and shattering: a sharp icy whistle and a crisp crystal crack.', 0.5, 0.35, take=2),
+    'shatter': S('A frozen enemy shattering: one quick bright ice crack and three falling glassy ticks over a short hiss.', 0.5, 0.35, take=2),
     'blizzard': S('A short blizzard gust: a swirling icy wind whoosh full of tinkling ice crystals.', 1.5, 1.2, take=2),
     'nova': S('A frost nova: a sudden icy blast, a crunchy freezing crackle bursting outward.', 0.7, 0.5, take=1),
     'castup': S('A spell charging up: a quick rising magic hum with a little crackle.', 0.7, 0.5, take=2),
@@ -116,7 +117,7 @@ SFX = {
 LEVEL = {
     -20: 'ui deal flip',
     -17: 'page place nope coin shieldup cagehit holy bolt arrowhit heartbeat',
-    -12: 'sweep thud charge taunt crit perfect nova blizzard circle sunburst comet curse burst down revive saved rise roar '
+    -12: 'sweep thud charge taunt crit shatter perfect nova blizzard circle sunburst comet curse burst down revive saved rise roar '
          'gate windup rumble wail pulse fire cagebreak chest rare equip ach lightsout petchime petfound victory fanfare knock',
     -10: 'smash slam erupt bigdie wipe',
 }
