@@ -5,8 +5,9 @@
  * at the end of the bar (the Barrow's: a new kind of hero, the Risen). It opens to show those rewards and
  * what each role can get (what you have lit up, every drop rate; tap one to hold it up against what you
  * wear). Then the main thing: your role, your hero (picking a role picks the hero of that role you played
- * last; change to another or make one) and your brew, then loot or practice. Your own Warband heroes from
- * your bunk room fill the other seats in their own gear (or bots stand in until you make them).
+ * last; change to another or make one) and your brew, then loot or practice. On Normal your own Warband
+ * heroes from your bunk room fill the other seats in their own gear (or bots stand in until you make them);
+ * Heroic needs at least two players (party.ts), so for now it opens only for practice.
  */
 import { COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, TITLES, heroicVersion } from '../content';
 import { MAX_HEROES, RACES, type RaceId } from '../content/folk';
@@ -17,7 +18,7 @@ import { RECIPES, RECIPE_ORDER } from '../content/vale';
 import { loadoutFor } from '../meta/gear';
 import { HEROIC_AFTER, heroicOpen, heroicProgress, lootFor } from '../meta/loot';
 import { logAchievement, logProgress } from '../meta/logs';
-import { heroesFor, seats } from '../meta/party';
+import { groupOf, heroesFor, partyProblem, seats } from '../meta/party';
 import { activeHero, roleOf, type Profile } from '../meta/profile';
 import { esc, fmtRate, fmtT, GLYPH } from './dom';
 import { colourOf, heroImg, heroSprite, iconOf, nameOf, placeSprite, tile } from './art';
@@ -213,6 +214,8 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
   const rec = p.dungeons[dg.id], keeper = p.bosses[`${dg.id}.${dg.finalBoss}`];
   const playing = !!h && roleOf(h) === role;
   const practice = pick.mode === 'practice';
+  // who may go in is party.ts's rule; the "Everything open" testing switch lets you in anyway
+  const blocked = allOpen ? null : partyProblem(groupOf(p), { heroic: pick.heroic, practice });
   const { have: got, need: all } = logProgress(p, dg.id);
   const ach = logAchievement(dg.id);
   const done = !!ach && !!p.achievements[ach.id];
@@ -257,7 +260,7 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
   if (!open) foot = `<p class="fine dgx-shut">${GLYPH.lock}Heroic opens after ${HEROIC_AFTER} clears of the ${esc(base.name.split(' ')[0])}. You have ${hp.have}.</p>`;
   else if (!playing && p.roster.length < MAX_HEROES) foot = `<button type="button" class="btn gold big" data-act="newseat" data-role="${role}">${GLYPH.plus}Make a ${esc(word(role))}</button>`;
   else if (!playing) foot = `<p class="fine">Your bunk room is full. Let a hero go to make a ${esc(word(role))}.</p>`;
-  else if (pick.heroic && !practice && !allOpen) foot = `<p class="fine dgx-shut">${GLYPH.lock}Heroic is Friends &amp; Party Finder only (Warband disabled). Switch to Practice or enable "Everything open" in Settings to test solo.</p>`;
+  else if (blocked) foot = `<p class="fine dgx-shut">${GLYPH.lock}${esc(blocked)}</p>`;
   else foot = `<button type="button" class="btn gold big${pick.heroic ? ' heroic' : ''}" data-act="go">${practice ? 'Start practice' : pick.heroic ? 'Enter Heroic' : `Enter the ${esc(base.name.split(' ')[0])}`}</button>`;
   return { head: '<h2>Dungeons</h2>', body, foot };
 }
@@ -294,7 +297,8 @@ function item(p: Profile, d: DropDef): string {
     <span class="tile" aria-hidden="true">${iconOf(d.id)}</span><small>${have ? GLYPH.check : fmtRate(d.rate)}</small></button>`;
 }
 
-/** who plays the role: your hero, a way to change to another of yours, and party rules (Normal: Warband & Group; Heroic: Friends & Party Finder only) */
+/** who plays the role: your hero, a way to change to another of yours, and who comes along (Normal: your
+ *  Warband or a group; Heroic: two or three players and a bot, never your Warband) */
 function me(p: Profile, role: RoleId, pick: DungeonPick): string {
   const h = activeHero(p);
   if (!h || roleOf(h) !== role) return `<div class="dgx-me none r-${role}"><b>No ${esc(word(role))} yet</b><span class="fine">Make one to play this seat.</span></div>`;
@@ -307,7 +311,7 @@ function me(p: Profile, role: RoleId, pick: DungeonPick): string {
     ? `<div class="seat-pick">${others.map((x) => `<button type="button" class="btn small" data-act="playseat" data-id="${esc(x.id)}">${GLYPH.play}${esc(x.name.split(' ')[0])}</button>`).join('')}${room ? `<button type="button" class="btn small" data-act="newseat" data-role="${role}">${GLYPH.plus}New ${esc(word(role))}</button>` : ''}</div>`
     : '';
   const partyLine = pick.heroic
-    ? `<p class="fine"><b>Friends &amp; Party Finder only:</b> Warband companions are disabled on Heroic.</p>`
+    ? `<p class="fine"><b>Group run:</b> two or three players, and a bot in an empty seat. Your Warband stays home.</p>`
     : `<p class="fine"><b>Warband &amp; Group:</b> ${esc(mates.join(' & '))} join your party (or group with friends).</p>`;
   return `<div class="dgx-me r-${role}">
       <span class="dgx-fig" aria-hidden="true">${heroImg(heroSprite(h, role, p), { cls: 'dgx-img' })}</span>
