@@ -339,6 +339,14 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-note { margin: 0; font-family: var(--f-body); font-size: 14px; color: var(--soft); text-align: center; }
 /* the foot: one gold button, as wide as a thumb could want, that always says where you're going */
 .btn.big.dgx-enter { width: min(100%, 420px); white-space: nowrap; }
+/* the warning in its place when your hero is short of the dungeon's Power: the numbers, the odds, and two ways on */
+.dgx-warn { display: grid; gap: 10px; width: min(100%, 420px); }
+.dgx-warn p { margin: 0; display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-radius: 14px; background: #F9DCD3; font-family: var(--f-display); font-size: 17px; line-height: 1.3; color: var(--ink); }
+.dgx-warn p svg { width: 24px; height: 24px; flex: none; color: var(--red); }
+.dgx-warn b { font-weight: 400; color: #A3412F; }
+.dgx-warn-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* the season a dungeon came in, in front of its tier under its name */
+.dgx-season { display: inline-block; margin-right: 8px; padding: 0 8px; border-radius: 999px; background: var(--ink); color: var(--panel); font-family: var(--f-mono); font-size: 12px; line-height: 20px; letter-spacing: 0.06em; text-transform: uppercase; }
 /* Who goes in: your heroes by role */
 .dgx-group { display: grid; gap: 8px; }
 .dgx-gh { margin: 0; display: flex; align-items: center; gap: 8px; font-family: var(--f-display); font-size: 17px; }

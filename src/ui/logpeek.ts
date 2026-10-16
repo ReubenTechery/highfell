@@ -83,7 +83,7 @@ function gear(p: Profile, d: ItemDef, found: number): { html: string; act: strin
   const v = VERDICT[cmp.verdict], on = cmp.verdict === 'wearing';
   const stat = (n: string, label: string, change: number, unit = ''): string => `<span class="pk-s"><b>${n}</b><small>${esc(label)}</small>${on ? '' : tag(change, unit)}</span>`;
   const vs = `<div class="pk-cmp v-${v.cls}"><p class="pk-v">${v.mark}<b>${esc(v.word)}</b><span>${on ? `${esc(who)} has it on` : `for ${esc(who)}`}</span></p>
-    <div class="pk-ss">${stat(String(share.ilvl), 'Item level', cmp.ilvl[1] - cmp.ilvl[0])}${share.power > 0 ? stat(`+${share.power}%`, cap(word.short), cmp.power, '%') + stat(`+${share.health}%`, 'Health', cmp.health, '%') : ''}</div></div>`;
+    <div class="pk-ss">${stat(String(share.ilvl), 'Power', cmp.ilvl[1] - cmp.ilvl[0])}${share.power > 0 ? stat(`+${share.power}%`, cap(word.short), cmp.power, '%') + stat(`+${share.health}%`, 'Health', cmp.health, '%') : ''}</div></div>`;
   const owns = !!(p.collection[d.id] || (d.kind === 'gear' && h && bestRegular(h, d.slot).rar >= d.rar));
   const act = h && owns && cmp.verdict !== 'wearing' ? `<button type="button" class="btn small gold" data-act="gearat" data-hero="${esc(h.id)}" data-slot="${d.slot}" data-id="${esc(d.id)}">${GLYPH.shield}Put it on</button>` : '';
   const fx = d.effectDesc ? `<p class="pk-fx"><b>When worn</b> ${esc(d.effectDesc)}</p>` : '';

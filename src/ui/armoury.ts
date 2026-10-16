@@ -147,7 +147,7 @@ function gear(p: Profile, h: Hero, s: GearSpec, view: ArmouryView): { body: stri
   const j = view.justOn && view.justOn.hero === h.id && performance.now() - view.justOn.at < 1400 ? view.justOn : null;
   const stage = `<div class="ar-stage${j ? ' just-on' : ''}" style="--light: ${race?.light || '#F4B942'}">
     <span class="ar-glow" aria-hidden="true"></span>${heroImg(heroSprite(h, role, p), { cls: 'ar-img', alt: h.name })}<span class="ar-floor" aria-hidden="true"></span>
-    <div class="ar-il"><b>${ilvl(L.score)}</b><span>Item level</span></div>
+    <div class="ar-il"><b>${ilvl(L.score)}</b><span>Power</span></div>
     <div class="ar-pw"><span>${esc(cap(ROLE_STAT[role].short))}</span><b>+${powerPct(L)}%</b><span>Health</span><b>+${healthPct(L)}%</b></div>
     ${p.active === h.id ? '<span class="ar-playing">Playing</span>' : `<button type="button" class="btn small ar-play" data-act="playas">${GLYPH.play}Play as ${esc(first)}</button>`}
   </div>`;
@@ -166,7 +166,7 @@ function slotTile(p: Profile, h: Hero, it: Worn, sets: Record<string, number>, o
   const d = it.def, look = rarLook(d.id), name = ROLE_SLOTS[gearKey(h)][it.slot].name, shown = lookId(p, d.id);
   const isNew = !!waitingFor(p, h, it.slot), up = !isNew && betterFor(p, h, it.slot);
   const set = d.setId ? SETS[d.setId] : undefined;
-  return `<button type="button" class="ar-slot${isNew ? ' new' : ''}${just ? ' just-on' : ''}" role="tab" aria-selected="${on}" data-act="arslot" data-slot="${it.slot}" style="--rc: ${look.color}" aria-label="${esc(name)}: ${esc(nameOf(shown))}, ${esc(look.name)}, item level ${itemScore(d)}${isNew ? ', something new to put on' : up ? ', something better to put on' : ''}">
+  return `<button type="button" class="ar-slot${isNew ? ' new' : ''}${just ? ' just-on' : ''}" role="tab" aria-selected="${on}" data-act="arslot" data-slot="${it.slot}" style="--rc: ${look.color}" aria-label="${esc(name)}: ${esc(nameOf(shown))}, ${esc(look.name)}, Power ${itemScore(d)}${isNew ? ', something new to put on' : up ? ', something better to put on' : ''}">
     <span class="ar-st"><span class="tile">${iconOf(shown)}</span>${isNew ? '<i class="ar-new">New</i>' : ''}${up ? `<i class="ar-up" title="Something better">${GLYPH.rise}</i>` : ''}${set ? `<i class="ar-setn">${sets[set.id] || 0}/3</i>` : d.kind === 'unique' ? `<i class="ar-star">${STAR}</i>` : ''}<i class="ar-lv">${itemScore(d)}</i>${just ? BURST : ''}</span>
     <span class="ar-sn">${esc(name)}</span></button>`;
 }
@@ -187,7 +187,7 @@ function foot(p: Profile, h: Hero, slot: SlotId, x: ShelfPiece, j: ArmouryView['
   const next = SLOT_IDS.find((sl) => sl !== slot && waitingFor(p, h, sl));
   const nextBtn = next ? `<button type="button" class="btn small ar-next" data-act="arslot" data-slot="${next}"><span>Next new: ${esc(ROLE_SLOTS[gearKey(h)][next].name)}</span>${GLYPH.right}</button>` : '';
   if (!x.found) return `<p class="ar-note"><i class="ar-qi" aria-hidden="true">?</i><span>Not found yet</span></p>${nextBtn}`;
-  if (x.worn) return `<p class="ar-note on">${GLYPH.check}<span>Wearing it<small>${j ? `Item level ${ilvl(j.to)}` : 'Tap another piece to compare'}</small></span></p>${nextBtn}`;
+  if (x.worn) return `<p class="ar-note on">${GLYPH.check}<span>Wearing it<small>${j ? `Power ${ilvl(j.to)}` : 'Tap another piece to compare'}</small></span></p>${nextBtn}`;
   const worse = compareOn(worn(p, h), gearKey(h), x.def).verdict === 'worse';
   return `<button type="button" class="btn big ar-wear${worse ? '' : ' gold'}" data-act="arwear">${GLYPH.shield}Put it on</button>`;
 }
