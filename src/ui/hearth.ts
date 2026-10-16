@@ -24,7 +24,7 @@ import { actions, esc, GLYPH } from './dom';
 import { ART, bitsHtml, heroSprite, placeSprite, spriteBit, type Bit } from './art';
 import { SFX } from './sound';
 import { Camera } from './camera';
-import { BACKDROP, HOUSE_BOUNDS, HOUSE_FIT, houseBack, houseBits, houseDefs, houseFront } from './houseart';
+import { BACKDROP, HOUSE_BOUNDS, HOUSE_FIT, houseBack, houseBits, houseDefs, houseLights, houseWalls } from './houseart';
 import { HousePaint } from './housepaint';
 import { bedLook } from './garden';
 import { NameTag } from './nametag';
@@ -55,7 +55,8 @@ export class Hearth {
   private svg: SVGSVGElement;
   /** the back layer (sky, hill, walls, furniture) as pictures: housepaint.ts */
   private paint: HousePaint;
-  private front: SVGSVGElement;
+  /** each room's light, over everything, as one soft picture */
+  private light: HousePaint;
   private fx: HTMLElement;
   private bits: HTMLElement;
   private pips: HTMLElement;
@@ -91,7 +92,7 @@ export class Hearth {
       <div class="h-signs no-cam"></div><div class="h-top no-cam"></div><div class="h-bottom no-cam"></div>`;
     this.svg = root.querySelector('svg.house')!;
     this.paint = new HousePaint(root.querySelector('.h-world')!, root.querySelector('svg.h-back')!, [X0, Y0]);
-    this.front = root.querySelector('svg.h-front')!;
+    this.light = new HousePaint(root.querySelector('.h-world')!, root.querySelector('svg.h-front')!, [X0, Y0], { soft: true });
     this.fx = root.querySelector('.h-fx')!;
     this.bits = root.querySelector('.h-bits')!;
     this.pips = root.querySelector('.h-pips')!;
@@ -99,7 +100,7 @@ export class Hearth {
     this.top = root.querySelector('.h-top')!;
     this.bottom = root.querySelector('.h-bottom')!;
     this.tag = new NameTag(root, this.top, this.bottom);
-    this.cam = new Camera(root, root.querySelector('.h-cam')!, root.querySelector('.h-world')!, { bounds: HOUSE_BOUNDS, onChange: () => this.onView(), onRest: () => this.rested() });
+    this.cam = new Camera(root, root.querySelector('.h-cam')!, root.querySelector('.h-world')!, { bounds: HOUSE_BOUNDS, onChange: () => this.onView(), onRest: () => this.rested(), onAim: (x, y, z) => this.aimed(x, y, z) });
     actions(root, {
       dungeon: () => { SFX.play('ui'); if (this.tourStep !== null) this.endTour(true); else { this.out = this.far(); app.sheets.open({ kind: 'dungeon' }); } },
       gear: () => { SFX.play('ui'); if (this.tourStep !== null) this.endTour(false); this.act('gear'); },
@@ -221,8 +222,10 @@ export class Hearth {
     const looks = LOOK_ROOMS.map(look).join(' ');
     if (looks !== this.looks) {
       this.looks = looks;
-      this.paint.set(houseDefs(), houseBack(look));
-      this.front.innerHTML = houseFront(look);
+      // the outer walls' cut edges go in the back picture; each room's light is a soft picture of its own, over
+      // your heroes (live, the two were a second full-size layer the browser redrew every time the camera stopped)
+      this.paint.set(houseDefs(), houseBack(look) + houseWalls(look));
+      this.light.set(houseDefs(), houseLights(look));
       this.fx.innerHTML = bitsHtml(houseBits(look), X0, Y0);
     }
     const extra: Extras = { bits: [], pips: [] };
@@ -260,16 +263,21 @@ export class Hearth {
       r = [x0, y0, x1 - x0, y1 - y0];
     }
     this.paint.whole(r, this.fitZ * pxPerUnit() * 1.25);
+    // the rooms' light lives only inside the house: its picture covers just that
+    const [fx0, fy0, fx1, fy1] = HOUSE_FIT;
+    this.light.whole([fx0, fy0, fx1 - fx0, fy1 - fy0], this.fitZ * pxPerUnit() * 1.25);
   }
   /** the camera has stopped: the part on screen gets drawn sharp, if the whole picture is too soft for it */
-  private rested(): void {
-    const c = this.cam, w = c.w / c.z, h = c.h / c.z;
-    this.paint.rest([c.cx - w / 2, c.cy - h / 2, w, h], c.z * pxPerUnit());
+  private rested(): void { this.aimed(this.cam.cx, this.cam.cy, this.cam.z); }
+  /** the camera is flying to a view (or has stopped at one): its sharp picture starts now, to be ready on landing */
+  private aimed(cx: number, cy: number, z: number): void {
+    const w = this.cam.w / z, h = this.cam.h / z;
+    this.paint.sharp([cx - w / 2, cy - h / 2, w, h], z * pxPerUnit());
   }
   /** your Warband is open (or the testing switch opens everything) */
   private warband(): boolean { return warbandOpen(this.app.p) || this.app.dev.allOpen; }
   /** The house is off screen: its pictures let go of their memory. */
-  sleep(): void { this.paint.sleep(); }
+  sleep(): void { this.paint.sleep(); this.light.sleep(); }
 
   /** fit the camera to the screen: on the first look, and coming home, show the whole house */
   layout(): void {

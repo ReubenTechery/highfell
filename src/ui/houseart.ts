@@ -155,14 +155,16 @@ export function houseBack(look: LookAt): string {
   return o.join('');
 }
 
-/** in front of everything: the cut edges of the outer walls, and the light in each room */
-export function houseFront(look: LookAt): string {
+/** the cut edges of the outer walls: timber down to the ground (the doorway out to the garden in the left one),
+ *  stone below. Drawn over the back layer, in the same picture. */
+export function houseWalls(look: LookAt): string {
   const fr = frameOf(look);
-  // outer walls: timber down to the ground (the doorway out to the garden in the left one), stone below
-  const o = [R(-WALL, GABLE.eave, WALL, -336 - GABLE.eave, fr.timber, 4) + R(W, GABLE.eave, WALL, -GABLE.eave + BEAM, fr.timber, 4)];
-  o.push(R(-WALL, FLOORS.ground + BEAM, WALL, FLOORS.cellar - FLOORS.ground - BEAM, fr.stone, 4) + R(W, FLOORS.ground + BEAM, WALL, FLOORS.cellar - FLOORS.ground - BEAM, fr.stone, 4));
-  for (const id of LOOK_ROOMS) o.push(roomArt(look(id), id).light());
-  return o.join('');
+  return R(-WALL, GABLE.eave, WALL, -336 - GABLE.eave, fr.timber, 4) + R(W, GABLE.eave, WALL, -GABLE.eave + BEAM, fr.timber, 4)
+    + R(-WALL, FLOORS.ground + BEAM, WALL, FLOORS.cellar - FLOORS.ground - BEAM, fr.stone, 4) + R(W, FLOORS.ground + BEAM, WALL, FLOORS.cellar - FLOORS.ground - BEAM, fr.stone, 4);
+}
+/** in front of everything: the light in each room, warming your heroes and the things in it */
+export function houseLights(look: LookAt): string {
+  return LOOK_ROOMS.map((id) => roomArt(look(id), id).light()).join('');
 }
 
 /** what moves: the smoke from the chimney, the birds and the fireflies outside, and each room's own (the

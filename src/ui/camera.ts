@@ -16,6 +16,8 @@ export interface CameraOpts {
   onChange: () => void;
   /** called once the camera has come to rest (no finger down, no flight, drawn sharp) */
   onRest?: () => void;
+  /** called as a flight sets off, with where it will land: the middle and the zoom */
+  onAim?: (cx: number, cy: number, z: number) => void;
 }
 type Pt = { x: number; y: number };
 
@@ -92,6 +94,7 @@ export class Camera {
     const to = this.clamped(cx, cy, clamp(z, this.zMin, this.zMax));
     if (reducedMotion() || (Math.hypot(to.cx - from.cx, to.cy - from.cy) < 1 && Math.abs(to.z / from.z - 1) < 0.002)) { this.set(to.cx, to.cy, to.z); done?.(); return; }
     this.stop();
+    this.o.onAim?.(to.cx, to.cy, to.z);
     const id = this.flight;
     this.flying = true;
     const t0 = performance.now();
