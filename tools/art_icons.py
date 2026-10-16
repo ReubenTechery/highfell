@@ -347,8 +347,8 @@ for set_id, (bg, mark) in MARKS_TB.items():
 
 
 # ---- the Tinker King's four weapons, drawn as on their stands
-def turned(x, y, deg, body):
-    return f'<g transform="translate({x} {y}) rotate({deg})">{body}</g>'
+def turned(x, y, deg, body, k=1):
+    return f'<g transform="translate({x} {y}) rotate({deg}) scale({k})">{body}</g>'
 
 
 EAR = 'M0 -19 C-2 -24 -6 -27 -9.5 -26 C-13.5 -25 -13.5 -19.5 -9.5 -18 C-6 -17 -3 -17.5 0 -19 Z'
@@ -384,8 +384,7 @@ def fusecutter(side):
 
 spark = lambda x, y: (f'<circle cx="{x}" cy="{y}" r="6" style="fill: #FFE08A; opacity: 0.45"/>' +
                       F(f'M{x} {y - 5} L{x + 1.5} {y - 1.5} L{x + 5} {y} L{x + 1.5} {y + 1.5} L{x} {y + 5} L{x - 1.5} {y + 1.5} L{x - 5} {y} L{x - 1.5} {y - 1.5} Z', '#FFE08A', 1.6))
-T['u_fusecutters'] = tile('#2A5C52', turned(21, 54, 26, f'<g transform="scale(1.2)">{fusecutter(-1)}</g>') +
-                          turned(43, 54, -26, f'<g transform="scale(1.2)">{fusecutter(1)}</g>') + spark(10.5, 54) + spark(53.5, 54))
+T['u_fusecutters'] = tile('#2A5C52', turned(21, 54, 26, fusecutter(-1), 1.2) + turned(43, 54, -26, fusecutter(1), 1.2) + spark(10.5, 54) + spark(53.5, 54))
 
 # ---- looks: rewards that change how you look, never how hard you hit
 T['c_dye'] = tile('#5C5070', '<circle cx="32" cy="38" r="20" style="fill: #DCFFF0; opacity: 0.25"/>' +

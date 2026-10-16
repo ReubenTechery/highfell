@@ -20,7 +20,7 @@ import { cuckooBeats, cuckooPet, drawCuckoo } from './cuckoo.js';
 /** what each dungeon's walkout leaves beside the chest for each tell (the reveal shows the same): its sprites */
 export const TELL_SPRITES = {
   lantern: { normal: 'lantern_out', kit: 'lantern', unique: 'lantern_gold' },
-  cuckoo: { normal: 'cuckoo_still', kit: 'cuckoo', unique: 'cuckoo_gold' },
+  cuckoo: { normal: 'cuckoo_tell_still', kit: 'cuckoo_tell', unique: 'cuckoo_gold' },
 };
 
 export const WALKOUT_LEN = { normal: 2.6, kit: 3.2, unique: 3.4, pet: 6.4 };

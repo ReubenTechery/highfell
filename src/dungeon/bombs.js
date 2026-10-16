@@ -198,7 +198,10 @@ function goldBlast(m) {
     if (f.isBoss && f.alive && d <= f.r + BESIDE && !m.small && !m.gadget) boss = f;
   }
   if (boss) {
-    exposeMob(boss, EXPOSE, m.batted ? 'Right back at you! Exposed!' : 'Bombed! Exposed!');
+    // two bombs blowing on him together open him up once: one label, not two on top of each other
+    if (boss.bombedAt !== undefined && S.t - boss.bombedAt < 0.5 && boss.exposed > 0) boss.exposed = Math.max(boss.exposed, EXPOSE);
+    else exposeMob(boss, EXPOSE, m.batted ? 'Right back at you! Exposed!' : 'Bombed! Exposed!');
+    boss.bombedAt = S.t;
     if (m.batted) boss.st.stun = Math.max(boss.st.stun, 1.0);
     if (S.bossFight && by.isPlayer) S.bossFight.bombed = (S.bossFight.bombed || 0) + 1;
   }

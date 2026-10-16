@@ -124,7 +124,7 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   loot (and when heroic opens), gear, achievements, what the collection log gives (`logs.ts`), the hearth,
   the party's seats (`party.ts`), and `vale.ts` (seeds, planter beds, harvests, ranks, brewing).
 - `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, its drawing
-  `houseart.ts`, every room in each look, your hero's name tag `nametag.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
+  `houseart.ts`, every room in each look, the Toadstool Workshop's in `houseworkshop.ts`, your hero's name tag `nametag.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
   close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons
   (`dungeonsheet.ts`, its door's picture in `stage.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
   (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`), settings (`settingssheet.ts`), a hero's gear in the armoury

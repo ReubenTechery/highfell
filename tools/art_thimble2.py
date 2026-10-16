@@ -2,11 +2,11 @@
 # The helpers and the colours are art_thimble.py's; art_thimble.build() calls build() here. Same rules: one ink,
 # flat colour, every sprite round its ground point (0, 0).
 import math
-from art_sprites import K, LW, f, s, ln, beam, c, e, halo, m, both, gild, STEEL, STEEL_D, STEEL_L, GOLD, GOLD_D, \
-    RED, RED_D, WOOD, WOOD_D, RUST, FROST, FROST_L, FLAME, FIRE, GRN, GRN_L
+from art_sprites import K, LW, f, s, ln, beam, c, e, halo, STEEL, STEEL_D, STEEL_L, GOLD, GOLD_D, WOOD, WOOD_D, RUST, \
+    FROST, FROST_L, FLAME, FIRE, GRN, GRN_L
 from art_heads import tp
-from art_thimble import BRASS, BRASS_L, BRASS_D, BRASS_DD, COPPER, COPPER_D, CAP, CAP_D, CREAM, GILL, STALK, STALK_D, \
-    MOSS, MOSS_D, MOSS_L, IRON, IRON_L, IRON_D, BOMB, BOMB_L, GLOW, EMBER, PINK, xf, cog, cog_d, rivets, blob, spark
+from art_thimble import BRASS, BRASS_L, BRASS_D, COPPER, COPPER_D, CAP, CREAM, GILL, STALK, STALK_D, MOSS, MOSS_D, \
+    MOSS_L, IRON, BOMB, BOMB_L, GLOW, PINK, xf, cog, cog_d, rivets, spark
 
 # ---------------------------------------------------------------- the cuckoo clock
 # Drawn once round its ground point (the bottom middle of its case) at scale k, ink at full weight. Its face is
@@ -100,13 +100,22 @@ def gold_bird():
     return o
 
 
+def hands(hour, minute):
+    """two hands on the face, in degrees from twelve: for the clocks the reveal shows still (the game draws its own)"""
+    d = ' '.join(f'M0 {FACE} L{f(r * math.sin(math.radians(a)))} {f(FACE - r * math.cos(math.radians(a)))}' for a, r in ((hour, 9), (minute, 14)))
+    return ln(d, K, 3.2) + c(0, FACE, 2.4, K, 0)
+
+
 def cuckoos(sprite):
     vb = (-52, -160, 104, 166)
     sprite('cuckoo', vb, [clock(0, 0)], 'Cuckoo clock')
     sprite('cuckoo_open', vb, [clock(0, 0, door='open')], 'Cuckoo clock, its door open')
     sprite('cuckoo_still', vb, [clock(0, 0, pal=STILL)], 'Cuckoo clock, stopped')
+    # the reveal's three, beside the chest: ten past ten, or stopped at twenty past eight
+    sprite('cuckoo_tell', vb, [clock(0, 0), hands(305, 60)], 'Cuckoo clock, ticking')
+    sprite('cuckoo_tell_still', vb, [clock(0, 0, pal=STILL), hands(250, 120)], 'Cuckoo clock, stopped')
     gb = ''.join(gold_bird())
-    sprite('cuckoo_gold', vb, [halo(0, -60, 50, GOLD, 0.22), clock(0, 0, door='open', gold=True),
+    sprite('cuckoo_gold', vb, [halo(0, -60, 50, GOLD, 0.22), clock(0, 0, door='open', gold=True), hands(305, 60),
                                f'<g transform="translate(0 -96)">{gb}</g>'], 'Cuckoo clock, the gold cuckoo out')
     sprite('cuckoo_bird', (-38, -62, 70, 68), bird(), 'Cuckoo')
     sprite('cuckoo_bird_gold', (-24, -34, 48, 40), gold_bird(), 'Gold cuckoo')
@@ -161,7 +170,7 @@ def bombs(sprite):
 SHROOM, SHROOM_L = '#D9823A', '#EFA25C'   # the giant mushrooms' amber caps (the Waddlecaps keep the red)
 
 
-def mushroom(x, base, top, half, cap=CAP, cap_d=CAP_D, spots=True, w=LW, stalk_w=None):
+def mushroom(x, base, top, half, cap=CAP, spots=True, w=LW, stalk_w=None):
     """a mushroom standing at (x, base): its cap's top at `top`, `half` wide each side of x"""
     sw = stalk_w or half * 0.32
     rim = top + half * 0.72
@@ -191,7 +200,7 @@ def props(sprite):
     # three little mushrooms
     o = []
     o += mushroom(-8, 0, -46, 15, w=3.4, stalk_w=5.6)
-    o += mushroom(14, 2, -28, 12, '#E08A3C', '#B8652A', w=3.2, stalk_w=4.8)
+    o += mushroom(14, 2, -28, 12, '#E08A3C', w=3.2, stalk_w=4.8)
     o += mushroom(-24, 2, -18, 8, '#E9D3A6', spots=False, w=3, stalk_w=3.8)
     sprite('tb_shrooms', (-36, -52, 66, 58), o, 'Mushrooms')
     # a stack of cogs leaning together
@@ -242,7 +251,7 @@ def props(sprite):
 # ---------------------------------------------------------------- the round door (the Dungeons sheet's picture)
 def round_door(sprite):
     o = []
-    # the hill: earth, a cap of moss, roots hanging down, a few little mushrooms on it
+    # the hill: earth with roots in it, under a cap of moss
     o.append(s('M-120 0 C-123 -112 -94 -228 0 -236 C94 -228 123 -112 120 0 Z', '#7A5234'))
     o.append(s('M-112 -140 C-102 -198 -58 -232 0 -236 C58 -232 102 -198 112 -140 C106 -136 100 -144 98 -152 C94 -146 88 -152 88 -160 '
                'C70 -196 38 -212 0 -214 C-38 -212 -70 -196 -88 -160 C-88 -152 -94 -146 -98 -152 C-100 -144 -106 -136 -112 -140 Z', MOSS))

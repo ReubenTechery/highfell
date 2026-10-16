@@ -9,7 +9,7 @@
  */
 import { ACHIEVEMENT_LIST, COLLECTIBLES, DUNGEONS, ITEMS, KITS, TITLES, heroicVersion, itemOf } from '../content';
 import { KIT_RATE } from '../content/kits';
-import { CLASSES, type ClassId } from '../content/folk';
+import { CLASSES, RACES, type ClassId, type RaceId } from '../content/folk';
 import { LOOKS } from '../content/house';
 import { ROLES } from '../content/roles';
 import type { AchievementDef, DungeonInfo, RoleId } from '../content/types';
@@ -92,7 +92,7 @@ function prize(p: Profile, dg: DungeonInfo, flipped: boolean): string {
     `<button type="button" role="radio" aria-checked="${mine}" data-act="entry" data-id="${esc(d.id)}.log"${mine ? '' : ' data-flip="1"'}>${label}</button>`;
   const mode = hero ? `<div class="lb-mode${on ? ' on' : ''}${flipped ? ' flip' : ''}" role="radiogroup" aria-label="Normal or Heroic log">${side(base, 'Normal', !on)}${side(hero, '<span class="gem" aria-hidden="true"><i></i></span>Heroic', on)}</div>
     ${on ? '<p class="lb-mode-note">Heroic drops the Normal loot, plus gilding kits: each turns one piece gold, for good. Same power.</p>' : ''}` : '';
-  const acts = won ? `<div class="lb-acts">${race && main ? `<button type="button" class="btn gold small" data-act="makerace" data-race="${esc(race)}">${GLYPH.plus}Make a ${esc(main.name.replace(/^The /, ''))}</button>` : ''}${look ? '<button type="button" class="btn small" data-act="putlook">Put up the look</button>' : ''}</div>` : '';
+  const acts = won ? `<div class="lb-acts">${race && main ? `<button type="button" class="btn gold small" data-act="makerace" data-race="${esc(race)}">${GLYPH.plus}Make a ${esc(RACES[race as RaceId]?.name || main.name.replace(/^The /, ''))}</button>` : ''}${look ? '<button type="button" class="btn small" data-act="putlook">Put up the look</button>' : ''}</div>` : '';
   return `<section class="lb-prize${won ? ' done' : ''}" aria-label="${esc(dg.name)} log">${mode}
     <div class="lb-plinth">${art ? `<img src="${spriteURL(art)}" alt="${esc(main?.name || '')}">` : ''}<span class="lb-base" aria-hidden="true"></span>${won ? '' : `<span class="lb-lock">${GLYPH.lock}${left} to go</span>`}</div>
     <div class="lb-top"><p class="eyebrow">${esc(dg.name)} log</p><p class="lb-count">${pr.have}<span> / ${pr.need}</span></p></div>

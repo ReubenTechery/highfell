@@ -305,8 +305,8 @@ export function workshop(c: WorkshopLook, k: Kit): Record<string, RoomArt> {
   return {
     loft: {
       wall: () => gablePlanks(k) + skirting(0, W, LW, 3) + floorboards(0, W, FLOORS.loft, STRIP),
-      // the trophy shelves with the gnomes' clutter in the gaps between the trophies' spots (content/house.ts), a
-      // toadstool cushion, lamps by the big book
+      // the trophy shelves with the gnomes' clutter in the gaps between the trophies' spots (content/house.ts), rivets
+      // round the round windows (houseart.ts: WINDOWS) to make portholes, a toadstool cushion, lamps by the big book
       furnish: () => k.shelves(WS.shelf, c.brass)
         + jar(150, -1880, 22, 34, '#9BE15D', c) + spring(350, -1880, 3) + oilCan(450, -1880, c)
         + clock(150, -2010, 15, c) + jar(252, -2010, 20, 30, '#F4B942', c) + spring(450, -2010, 2)

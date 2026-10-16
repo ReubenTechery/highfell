@@ -660,7 +660,11 @@ export function drawDark(ctx) {
   g.fillStyle = '#000';
   const w = S.walkout && !S.walkout.done && S.walkout.tell === 'pet' ? S.walkout : null;
   for (const h of S.heroes) if (h.alive) hole(h.x, h.y - 40, w ? 46 : 120);
-  if (w) { const ly = w.y - 50 - 60 * w.lift; hole(w.x, ly - 26, 96 + Math.sin(S.t * 7) * 4); if (w.pet) hole(w.pet.x, (w.pet.y ?? w.y) - 40, 56); }
+  if (w) {
+    const ly = w.y - 50 - 60 * w.lift; hole(w.x, ly - 26, 96 + Math.sin(S.t * 7) * 4);
+    // the cuckoo carrying the little king down: light the pair of them, not just his feet
+    if (w.pet) { if (w.style === 'cuckoo' && !w.caught) hole(w.pet.x, w.pet.y - 80, 84); else hole(w.pet.x, (w.pet.y ?? w.y) - 40, 56); }
+  }
   for (const m of S.mobs) { if (!m.alive) continue; if (m.M.light && !m.hidden) hole(m.x + m.M.light.dx * (m.flip ? -1 : 1), m.y + m.M.light.dy, m.M.light.r); if (m.M.wisp) hole(m.x, m.y - 40, 60); }
   for (const z of S.hazards) if (!z.noDmg) hole(z.x, z.y, (z.r || 60) * 0.9 + 20);
   for (const z of S.zones) hole(z.x, z.y, z.r);

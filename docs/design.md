@@ -135,10 +135,12 @@ Home is a tall house on the hill, cut open like a doll's house. Built 14 Oct aft
   - **Tavern:** the default. Wood, plaster, lamplight and a crackling fire.
   - **Barrow Hall:** opens when you fill the Barrow's whole collection log, and shows how close you are until then. The Barrow's own brick and flagstones, burial niches with skulls, green lanterns, the Gravekeeper's green fire in the hall, a coffin in the armoury, a gravestone in the brewing room, wisps in the cellar. Put it on the whole house and the beams and outer walls turn to stone and the roof to slate.
   - **Gilded Barrow Hall:** from the heroic Barrow's log. Gold bones, gold frames and lanterns, the green fire burning higher.
+  - **Toadstool Workshop:** from Thimblebriar Hollow's log. Wood planks and moss, brass pipes and cogs, toadstool lamps, a brass hood over the hall's fire, a copper boiler puffing steam in the brewing room, dug earth, roots and glowing spores in the cellar. On the whole house, the frame turns to dark timber with a turf roof and a stone chimney (`src/ui/houseworkshop.ts`).
+  - **Gilded Toadstool Workshop:** from the heroic Hollow's log. Brass and toadstool caps turn gold, every toadstool lit, the lamps and fire warmer.
   - Every dungeon brings a look like this, and a gilded one from its heroic log.
 - **Next:** rooms that come with new dungeons (the cellar's bricked arches become new dungeons' doors).
 - **The plan is data** in `src/content/house.ts`: the rooms (each with an optional `main`, what it opens when tapped from far away), the things you tap, the display spots and the paddock's places. Zoomed out, a tap goes into a room and opens its `main` as the camera lands; zoomed in, a tap uses a thing. Which bed the garden opens is `bedToOpen` in `src/meta/vale.ts`. The house remembers whether what is open over it was opened from the whole house, and goes back out when it closes (`closed()` in `hearth.ts`, called by the sheets, the garden's card and the way back from the cauldron); a run, the hero maker and loading come home to the whole house (`home()`). The hearth's first eight spot ids never change (bar `mount.stall`, gone with the stable); a spot a save has never had takes what isn't on show when the save loads (`settleSpots`); a spot you emptied stays empty; something new goes to the first free spot of its kind (the hall first). Spots hold pets, trophies and banners; mounts have the paddock.
-- **Looks, as built:** every room inside the house has a look (`p.hearth.looks`, room id to look id; a room not in it is the tavern). A look opens with the achievement that gives it (`reward.look`: finishing that dungeon's collection log); one you haven't earned is drawn as the tavern (the testing switch shows it). With every room in the same look, the frame (beams, outer walls, roof) follows it. What a look is lives in `src/content/house.ts` (`LOOKS`); how it's drawn, room by room, in `src/ui/houseart.ts`.
+- **Looks, as built:** every room inside the house has a look (`p.hearth.looks`, room id to look id; a room not in it is the tavern). A look opens with the achievement that gives it (`reward.look`: finishing that dungeon's collection log); one you haven't earned is drawn as the tavern (the testing switch shows it). With every room in the same look, the frame (beams, outer walls, roof) follows it. What a look is lives in `src/content/house.ts` (`LOOKS`); how it's drawn, room by room, in `src/ui/houseart.ts` (the Toadstool Workshop's rooms in `src/ui/houseworkshop.ts`).
 
 ## The Garden & Brews
 
@@ -338,6 +340,8 @@ Filling a dungeon's whole collection log (every drop for every role, so it takes
 | --- | --- | --- | --- |
 | Barrow Crypt | **The Risen**: a new race, skeletons who came back from the Barrow, as any class | Barrow Hall | the Gravewarden |
 | Heroic Barrow Crypt | **Gilded Bones**: your Risen heroes' bones turn to gold | Gilded Barrow Hall | the Undying |
+| Thimblebriar Hollow | **The Gnomes**: a new race, as any class | Toadstool Workshop | the Clockwork Knight |
+| Heroic Thimblebriar Hollow | none yet (the look and the title) | Gilded Toadstool Workshop | the Arch-Tinker |
 
 - When the last slot fills, the chest reveal gives it the whole screen: the prize walks out, then a panel with what the log gave and the way to it (make a hero, put up the look).
 - The Dungeons sheet shows each log's bar with its prize at the end, and what finishing it gives; the collection log puts the prize on its plinth.

@@ -7,7 +7,8 @@
    The first second is the same every time: it drops, pops up off the ground and ticks.
    The clock's sprites: `cuckoo` (lit, door shut), `cuckoo_open` (door open), `cuckoo_still` (stopped and dark),
    `cuckoo_bird` and `cuckoo_bird_gold`. Its face is at (0, FACE) from its ground point and its door at
-   (0, DOOR); the hands and the pendulum are drawn here. */
+   (0, DOOR); the hands and the pendulum are drawn here. The reveal shows the clock still, so its three have
+   hands of their own (`cuckoo_tell`, `cuckoo_tell_still`, `cuckoo_gold`: TELL_SPRITES in walkout.js). */
 import { TAU, clamp } from '../core/math';
 import { S } from './state.js';
 

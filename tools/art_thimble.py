@@ -5,7 +5,7 @@
 # facing right. Built into art/sprites.json by art_sprites.py (python3 tools/art_sprites.py).
 import math, re
 from art_sprites import K, LW, f, s, ln, beam, c, e, halo, m, both, STEEL, STEEL_D, STEEL_L, GOLD, GOLD_D, RED, \
-    RED_D, WOOD, WOOD_D, RUST, FROST, FROST_L, FIRE, FLAME, GRN, GRN_L
+    RED_D, WOOD, RUST, FROST, FIRE, FLAME
 from art_heads import tp, GSKIN, GSKIN_D, GBLUSH
 
 SPR = {}
@@ -14,14 +14,14 @@ TOK = re.compile(r'[A-Za-z]|-?\d*\.?\d+')
 # the Hollow's colours: brass and copper, mushroom red and cream, moss, leather
 BRASS, BRASS_L, BRASS_D, BRASS_DD = GOLD_D, GOLD, '#B8862A', '#8E6A1E'
 COPPER, COPPER_D = '#C87533', '#9A5626'
-CAP, CAP_D, CREAM, GILL = RED, RED_D, '#F6F1E4', '#E6D3AE'
+CAP, CREAM, GILL = RED, '#F6F1E4', '#E6D3AE'
 STALK, STALK_D = '#EFE3C8', '#D6C29E'
 MOSS, MOSS_D, MOSS_L = '#68B85E', '#4C8F45', '#9BD068'
 TAN, TAN_D = RUST, '#86592F'
 BOOT, IRON, IRON_L, IRON_D = '#4A3428', '#5C5768', '#7A7484', '#46424F'
 BOMB, BOMB_L, SOOT = '#3A3440', '#5E5668', '#4A4458'
 GLOW, EMBER = FLAME, FIRE
-GINGER, GINGER_D, MUSTARD, MUSTARD_D = '#E2733A', '#B8552A', '#D89B3C', '#B07A28'
+GINGER, MUSTARD, MUSTARD_D = '#E2733A', '#D89B3C', '#B07A28'
 WHITE_H, WHITE_HD = '#F7F3EA', '#D8D2C6'
 PINK = '#FF7AE6'
 
@@ -397,15 +397,13 @@ def toadstool():
 
 
 # ---------------------------------------------------------------- the Tinker King, the final boss
-KING_COAT, KING_COAT_D = '#6A4BA3', '#4F3780'
+KING_COAT = '#6A4BA3'
 GLASS = '#B5E2F4'
 WIND_KEY = 'M-5 0 L-5 -46 L-17 -50 C-30 -50 -34 -72 -20 -76 C-12 -78 -6 -72 -4 -66 L4 -66 C6 -72 12 -78 20 -76 C34 -72 30 -50 17 -50 L5 -46 L5 0 Z'
 KING_BROW_UP = 'M1 -7.6 C4.5 -10.2 9.5 -10.6 14 -8.2 L13.4 -5.2 C9.4 -7.2 5.2 -7 1.4 -4.6 Z'
 KING_BROW_MAD = 'M-0.4 -2.4 L13.4 -9 L14.2 -12.6 L-0.2 -6.2 Z'
 KING_TASH = ('M-26 1 C-23 -2 -19 -1 -17 3 C-14 8 -6 6 0 8 C6 6 14 8 17 3 C19 -1 23 -2 26 1 C23 0 21 2 21 5 '
              'C18 13 8 14 0 12.4 C-8 14 -18 13 -21 5 C-21 2 -23 0 -26 1 Z')
-COG_CROWN = ('M-13.6 -11 L-14.2 -19 L-11.6 -19 L-11.6 -23.6 L-6.8 -23.6 L-6.8 -19.8 L-2.4 -19.8 L-2.4 -25 L2.4 -25 L2.4 -19.8 '
-             'L6.8 -19.8 L6.8 -23.6 L11.6 -23.6 L11.6 -19 L14.2 -19 L13.6 -11 C5 -13.4 -5 -13.4 -13.6 -11 Z')
 
 
 def half_cog(x, y, r, n, fill=BRASS, w=3.0):
@@ -441,7 +439,8 @@ def king(o, mad=False):
     o.append(c(x, y - 15.8 * k, 3.4 * k, BRASS_D, 2.2) + c(x, y - 15.8 * k, 2.1 * k, PINK, 1.6))
 
 
-def tinker_suit(cracked=False):
+def tinker_suit(clock, cracked=False):
+    """the Tinker King's clockwork suit; `clock` draws the cuckoo clock (art_thimble2.clock)"""
     o = []
     # the wind-up key in its back
     kx, ky, kd = -52, -214, -40
@@ -499,20 +498,19 @@ def tinker_suit(cracked=False):
     o.append(s('M-70 -234 C-70 -238 -66 -240 -62 -240 H62 C66 -240 70 -238 70 -234 V-226 C70 -222 66 -220 62 -220 H-62 C-66 -220 -70 -222 -70 -226 Z', BRASS))
     o.append(rivets([(-56, -230), (-28, -230), (0, -230), (28, -230), (56, -230)], 2.4))
     o.append(c(0, -306, 4, BRASS, 3))
-    # the cuckoo clock bolted on his right shoulder (it falls off when he dies)
-    import art_thimble2
-    o.append(s('M84 -224 L80 -212 H112 L108 -224 Z', IRON, 3.2))
-    o.append(art_thimble2.clock(96, -222, 0.42, tilt=6 if cracked else 0))
+    # the cuckoo clock bolted on his right shoulder, its foot at (96, -222) (it falls off there when he dies)
+    o.append(halo(96, -248, 26, FLAME, 0.24) + s('M84 -224 L80 -212 H112 L108 -224 Z', IRON, 3.2))
+    o.append(clock(96, -222, 0.42, tilt=6 if cracked else 0))
     return o
 
 
-def tinker():
-    sprite('tinker', (-140, -312, 280, 322), tinker_suit(), 'The Tinker King')
-    sprite('tinker_cracked', (-140, -312, 280, 322), tinker_suit(True), 'The Tinker King, his dome cracked')
+def tinker(clock):
+    sprite('tinker', (-140, -312, 280, 322), tinker_suit(clock), 'The Tinker King')
+    sprite('tinker_cracked', (-140, -312, 280, 322), tinker_suit(clock, True), 'The Tinker King, his dome cracked')
 
 
 def build():
     import art_thimble2  # the bombs, props, door, decals and the cuckoo clock (it imports this file's helpers)
-    scrapper(); gn_slinger(); bombwright(); waddlecap(); stomper(); toadstool(); tinker()
+    scrapper(); gn_slinger(); bombwright(); waddlecap(); stomper(); toadstool(); tinker(art_thimble2.clock)
     art_thimble2.build(sprite)
     return SPR

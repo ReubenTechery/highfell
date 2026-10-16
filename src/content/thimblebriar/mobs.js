@@ -19,7 +19,7 @@ export const MOBS = {
   },
   tinker: {
     name: 'The Tinker King', kind: 'melee', hp: 55000, r: 50, speed: 92, dmg: 150, every: 0.56, wind: 0.45, reach: 40, aggro: 0, sp: 'tinker', phaseSprites: { 2: 'tinker_cracked' }, heavy: true, big: true, boss: true, shard: 'shard_cog',
-    ai: tinkerAi, phases: 2, enrage: 210, light: { dx: 96, dy: -120, r: 160 }, acts: { smash: 'Wrench Smash', barrage: 'Bomb Barrage', sticky: 'Sticky Bomb' },
+    ai: tinkerAi, phases: 2, enrage: 210, light: { dx: 96, dy: -246, r: 160 }, acts: { smash: 'Wrench Smash', barrage: 'Bomb Barrage', sticky: 'Sticky Bomb' },
   },
 };
 
