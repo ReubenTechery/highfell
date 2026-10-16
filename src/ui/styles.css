@@ -248,11 +248,11 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
   .dgx > .dgx-logbar .dgx-go, .dgx-lootcol > .dgx-logbar { display: none; }
   /* The left column (the door, the log, the brew) sets the height; the loot column matches it and, on a short
      screen only, scrolls inside itself. It is as tight as it can be and still be read, so on a laptop it fits. */
-  .dgx-lootcol { align-self: stretch; height: 0; min-height: 100%; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: 10px; padding: 12px; border-radius: 18px; background: var(--panel-2); min-width: 0; }
+  .dgx-lootcol { align-self: stretch; height: 0; min-height: 100%; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: 8px; padding: 12px; border-radius: 18px; background: var(--panel-2); min-width: 0; }
   .dgx-lootcol .dgx-rewards { background: var(--panel); padding: 8px 10px; gap: 6px; }
   .dgx-lootcol .dgx-rw-pic { width: 40px; height: 40px; }
   .dgx-lootcol .dgx-rw.main .dgx-rw-pic { width: 44px; height: 44px; }
-  .dgx-lootcol .dgx-rw:not(.main) small { display: none; }
+  .dgx-lootcol .dgx-rw small { display: none; }
   .dgx-lootcol .dgx-rows { gap: 0; }
   .dgx-lootcol .dgx-row { padding: 3px 8px; }
   .dgx-lootcol .dgx-it .tile { width: 38px; height: 38px; }
@@ -289,7 +289,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 @supports (height: 100svh) { .dgx-stage { height: clamp(240px, calc(100svh - 386px - var(--note, 0px)), calc((100vw - 46px) * var(--stage-k))); } }
 /* Heroic's line under the door comes out of the door's height, so a short screen still fits */
 .dgx-door.heroic { --note: 30px; }
-@media (min-width: 820px) { .dgx-stage { height: auto; aspect-ratio: var(--stage-shape); min-height: 280px; max-height: calc(100vh - 426px - var(--note, 0px)); } }
+@media (min-width: 820px) { .dgx-stage { height: auto; aspect-ratio: var(--stage-shape); min-height: 240px; max-height: calc(100vh - 426px - var(--note, 0px)); } }
 .dgx-stage.heroic { box-shadow: 0 0 0 4px var(--gold); }
 .dgx-stage-in { position: relative; height: 100%; max-width: 100%; aspect-ratio: var(--stage-shape); }
 .dgx-stage-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
