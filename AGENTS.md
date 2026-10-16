@@ -31,7 +31,7 @@ Dungeons and their collection logs are the core loop of the whole game: four-min
    dodge, never more: sets and boss weapons change what buttons do, they never add one. Mistakes in beginner gear must be genuinely dangerous (non-tanks facetanking bosses take Crushing Blows; unblocked telegraphs pierce passive armor and 60% of Ward shields), while skilled play opens Boss `Exposed` windows (+35% damage taken).
 2. **Power creep you can feel, collecting that lasts.** Regular gear climbs Common → Uncommon → Rare in eight clears, while
    Epic comes from the dungeon's 3-piece set (1/35 a piece) and boss weapon (1/50, ~1/10 chance per clear at an Epic
-   piece and ~50 clears for a full 4/4 Epic kit). Power climbs steeply (`1.00` Common → `1.24` Uncommon → `1.48` Rare → `1.72` plain Epic → `1.96` full BiS with 3-piece set + Boss Weapon), so a geared party melts the dungeon in roughly half the time. There are no hero levels or skill trees: gear, 2pc/3pc sets, weapon traits,
+   piece; a full 4/4 Epic kit takes ~70 clears for a typical player, ~145 for an unlucky one). Power climbs steeply (`1.00` Common → `1.24` Uncommon → `1.48` Rare → `1.72` plain Epic → `1.96` full BiS with 3-piece set + Boss Weapon), so a geared party melts the dungeon in roughly half the time. There are no hero levels or skill trees: gear, 2pc/3pc sets, weapon traits,
    and dungeon/heroic boss weapons drive all power and ability buffs. Beyond that, progress is sideways: collection logs, Heroic gilded logs, looks, pets, mounts, titles, trophies, achievements.
 3. **Honest OSRS loot.** Every line of a table rolls on its own at a fixed rate. No pity. Kill counts
    everywhere. The walkout tells you what's in the chest before it opens, and it never lies.
@@ -49,7 +49,7 @@ Dungeons and their collection logs are the core loop of the whole game: four-min
 | Decision | Why |
 | --- | --- |
 | 4 gear slots: weapon, helm, shoulders, chest | The weapon chase stays separate from the set chase |
-| Regular gear caps at Rare in 8 clears; Epic comes from sets (1/35 a piece) and boss weapons (1/50) | ~1 in 10 clears gives an Epic piece (~50 runs for the full 4/4 Epic kit) |
+| Regular gear caps at Rare in 8 clears; Epic comes from sets (1/35 a piece) and boss weapons (1/50) | ~1 in 10 clears gives an Epic piece (a full 4/4 Epic kit: ~70 clears typical, ~145 unlucky) |
 | Steep power curve (`1.00` Common → `1.72` plain Epic → `1.96` full BiS) and all 4 Barrow 3-piece set bonuses active (`ready: true`) | Grinding 100+ runs feels awesome when your gear and 3-piece summons melt the dungeon in half the time |
 | No currency: a duplicate counts in the collection log ("Seen 3×"), weapon traits swap free once the regular weapon is Rare; saves still count marks, never shown or spent | Nothing to grind or spend; traits stay active alongside Unique weapons |
 | Heroes: race and class are for keeps, up to 6 alts | Alts, like WoW; the collection and kill counts are shared |
@@ -69,7 +69,7 @@ Dungeons and their collection logs are the core loop of the whole game: four-min
 | The house has one big button, always: Dungeons. The yard holds the 3 garden planter beds | Nobody should mistake a side trip for the main thing |
 | Your other heroes wait by their beds in the house; there is no camp | One place, one less screen |
 | Looks for a room or the whole house: the tavern, and each dungeon's look (and its heroic, gilded one) from finishing that dungeon's collection log. Looks only | The house shows what you've done, and a look can't be faked |
-| Finishing a dungeon's whole collection log (every drop, every role) gives a house look, a title and one big prize, for keeps and never power. The Barrow's big prize is the Risen, a race | The long chase that makes the log mean something |
+| Finishing a dungeon's whole collection log (every drop, every role; the pet is a bonus slot, never needed, 1/2,500) gives a house look, a title and one big prize, for keeps and never power. The Barrow's big prize is the Risen, a race | The long chase that makes the log mean something |
 | Races: dwarf, elf and human from the start; gnome, goblin, the Risen (undead) and orc are earned, each in its own dungeon. Classes: warrior, cleric, mage, rogue | Races are the flex you earn; four classes keep it to four buttons |
 | Not every dungeon opens a race: a log's big prize can be a race, a race and class combo, or something else | There will be a lot of dungeons |
 | Every dungeon gets a Heroic version, open after 10 clears of it and made for full Epic: harder, the same drops gilded at the same power, its own kill counts and log | Something to do after the gear cap, never more power |
@@ -110,7 +110,7 @@ The full systems design (abilities, sets, drop tables, achievements, balance rul
   collection log); a look you haven't earned is drawn as the tavern (the testing switch shows it). Decorate, then Looks, puts one on a room or the whole house. With
   every room in the same look, the frame (beams, outer walls, roof) follows it. What a look is lives in
   `src/content/house.ts` (`LOOKS`); how it's drawn, room by room, in `src/ui/houseart.ts`.
-- **Collection log rewards** (`src/meta/logs.ts`): filling a dungeon's whole log (`logDone`) earns its log
+- **Collection log rewards** (`src/meta/logs.ts`): filling a dungeon's whole log (`logDone`; its `bonus` slots, the pet, don't count) earns its log
   achievement (tier `log`, checked whenever something new arrives). Its reward gives a title and can open a
   house look (`reward.look`), a race (`reward.race`) or a collectible (Gilded Bones). Earned stays earned,
   even if a slot is added to the log later. The Barrow's: Barrow Hall, the Gravewarden, the Risen. Heroic

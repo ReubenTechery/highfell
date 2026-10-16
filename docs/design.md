@@ -18,7 +18,7 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 16 
 | Threat, Difficulty & Boss Mechanics | The tank earns threat (Slam taunts and drags mobs in, Charge grabs one); Bosses and Brutes deal `1.85×` **Crushing Blows** to non-tanks in melee; unblocked telegraphs bypass passive armor and pierce 60% of `Ward` shields; Boss `Exposed` windows (+35% damage taken on Perfect Block, dodged Shield Charge wall-crash, last rally guard kill, Soul Chain cut, and `< 2.0s` Bone Cage break); Gravekeeper Phase 3 **moving green lantern circle** (`S.ring.followBoss`) with `Grave Stride` repositioning and **Lantern Zeal** (`+15%` cooldown recovery, `+10%` crit) inside; Room 4 **Crypt Seals** (10 3-seat rune patterns granting **Crypt Surge**: `+25%` speed, `+20%` damage for 18s); mid-run `MELTED!` and `New Personal Best!` banners |  |
 | Loot | Every line rolls on its own, kill counts, duplicates counted in the collection log, the walkout and the chest reveal |  |
 | Heroic | Heroic Barrow: open after 10 clears, made for full Epic (`hit: 3.2, trashHp: 1.95, bossHp: 1.63`); the same drops gilded at the same rates and power, its own kill counts and log. A group run: at least two real players, a bot in any empty seat, never your Warband; opens only for practice until online play (or with "Everything open") | A heroic version of every new dungeon |
-| Collection log rewards | Each dungeon's whole log (every drop, every role) gives a house look, a title and one big prize: the Barrow's are Barrow Hall, the Gravewarden and the Risen; its heroic log's Gilded Barrow Hall, the Undying and Gilded Bones. The prize waits at the end of the log's bar | One per new dungeon: a race, a race and class combo, or something else |
+| Collection log rewards | Each dungeon's whole log (every drop, every role; the pet is a bonus slot and never needed) gives a house look, a title and one big prize: the Barrow's are Barrow Hall, the Gravewarden and the Risen; its heroic log's Gilded Barrow Hall, the Undying and Gilded Bones. The prize waits at the end of the log's bar | One per new dungeon: a race, a race and class combo, or something else |
 | Achievements | All 12, the meta and the 3 hidden ones, with titles, trophies, looks and the Lantern Ghost |  |
 | Home | The Hearth, a tall house cut open: zoom out to see every room, tap things to use them (the Barrow door, the 3 garden planter beds in the yard, the armour stand, the big book of the collection log, the cauldron, the larder); about 30 spots for pets, mounts, trophies and banners; Decorate; looks for a room or the whole house (the tavern; Barrow Hall from the Barrow's collection log, Gilded Barrow Hall from its heroic one); one big Dungeons button | Rooms that come with new dungeons, inviting people over |
 | Dungeon picker | Dungeons: Act 1 stepped 3-dungeon selector (`ilvl 26 → 34 → 42`), Normal or Heroic, its collection log line with the prize at the end (inside: what finishing it gives and the loot per role; tap a drop to hold it up against what that role wears), then your role, hero and brew, loot or practice; Normal shows your Warband companions & Group option, while Heroic says it needs at least two players (locked outside practice until online play) | Online Party Finder for Heroics and friends in seats, more dungeons |
@@ -200,7 +200,7 @@ Dungeons 2 to 4 are placeholder themes; their names come with the races pass.
 
 ## Loot
 
-Loot runs on OSRS rules: every unique has its own drop rate, rare means properly rare, and a 1-in-5,000 pet is the flex. Each player rolls their own table on every clear, so nobody fights over drops.
+Loot runs on OSRS rules: every unique has its own drop rate, rare means properly rare, and a 1-in-2,500 pet is the flex: a bonus slot in the log, never needed to finish it. Each player rolls their own table on every clear, so nobody fights over drops.
 
 ### Barrow Crypt drop table
 
@@ -214,10 +214,10 @@ Loot runs on OSRS rules: every unique has its own drop rate, rare means properly
 | Gravekeeper's weapon for your role | 1/50 | About 3 hours 20 | The Gravedigger, Lantern of the Long Night, Gravefrost Staff or The Cryptfangs, each with its own effect |
 | Gravehound (mount) | 1/1,000 | About 67 hours | Waits in the Hearth's stall |
 | Ghostly Dye | 1/1,000 | About 67 hours | Your Barrow set goes pale and see-through. Looks only |
-| Pint-sized Gravekeeper (pet) | 1/5,000 | About 333 hours | Sits by the fire at home |
+| Pint-sized Gravekeeper (pet) | 1/2,500 | About 165 hours | Sits by the fire at home |
 
 - Rolls are independent, OSRS style: two uniques in one clear can happen, and so can a 200-clear dry streak (about 1 player in 60).
-- An Epic piece (3 set pieces at 1/35 + 1 weapon at 1/50) drops about once every 10 clears (~10.6% per clear), and completing the full 4/4 Epic kit averages ~50 clears (~3.5 hours).
+- An Epic piece (3 set pieces at 1/35 + 1 weapon at 1/50) drops about once every 10 clears (~10.6% per clear), and completing the full 4/4 Epic kit takes ~70 clears for a typical player (~4 hours) and ~145 for an unlucky one (simulated: the last piece is the dry streak).
 - No pity on uniques. A duplicate counts in the collection log ("Seen 3×").
 - Kill count shows on every loot screen and in the collection log ("Rimebone Chest, KC 42"), so spoons and dry streaks become stories.
 

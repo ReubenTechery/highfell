@@ -72,12 +72,15 @@ function clog(p: Profile, entry: string | undefined, heroicWas: boolean): { html
 function logRewards(p: Profile, dg: DungeonInfo): string {
   const pr = logProgress(p, dg.id), ach = logAchievement(dg.id), done = !!ach && !!p.achievements[ach.id];
   const state = pr.have >= pr.need ? 'done' : pr.have ? 'part' : 'none';
-  const left = dg.collection.filter((id) => !p.collection[id]);
+  const bonus = dg.bonus || [];
+  const left = dg.collection.filter((id) => !p.collection[id] && !bonus.includes(id));
+  const extra = bonus.filter((id) => !p.collection[id]);
   return `<button type="button" class="btn small cl-back" data-act="entry" data-id="">${GLYPH.left}Everything</button>
     <div class="cl-head plain"><div><p class="eyebrow">Collection log</p><h3>${esc(dg.name)}</h3><p class="cl-obt">Obtained: <b class="${state}">${pr.have}/${pr.need}</b></p>
-      <p class="fine">Every drop for every role, so it takes a tank, a healer and a DPS of yours. What it gives is for your whole account, for keeps.</p></div></div>
+      <p class="fine">Every drop for every role (the pet is a bonus), so it takes a tank, a healer and a DPS of yours. What it gives is for your whole account, for keeps.</p></div></div>
     ${ach ? rewards(ach, done) : ''}
-    ${left.length ? `<h3 class="section-title">Still to find</h3><div class="cl-grid">${left.map((id) => `<button type="button" class="cl-it miss" data-act="item" data-id="${id}" title="${esc(nameOf(id))}" style="--rc: ${colourOf(id)}"><span class="tile" aria-hidden="true">${iconOf(id)}</span><span class="n">${esc(nameOf(id))}</span></button>`).join('')}</div>` : ''}`;
+    ${left.length ? `<h3 class="section-title">Still to find</h3><div class="cl-grid">${left.map((id) => `<button type="button" class="cl-it miss" data-act="item" data-id="${id}" title="${esc(nameOf(id))}" style="--rc: ${colourOf(id)}"><span class="tile" aria-hidden="true">${iconOf(id)}</span><span class="n">${esc(nameOf(id))}</span></button>`).join('')}</div>` : ''}
+    ${extra.length ? `<h3 class="section-title">Bonus, not needed to finish</h3><div class="cl-grid">${extra.map((id) => `<button type="button" class="cl-it miss" data-act="item" data-id="${id}" title="${esc(nameOf(id))}" style="--rc: ${colourOf(id)}"><span class="tile" aria-hidden="true">${iconOf(id)}</span><span class="n">${esc(nameOf(id))}</span></button>`).join('')}</div>` : ''}`;
 }
 
 function logPage(p: Profile, e: LogEntry): string {

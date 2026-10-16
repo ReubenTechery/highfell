@@ -157,6 +157,8 @@ export interface DungeonInfo {
   marksName: string;
   /** every slot in this dungeon's collection log, in display order */
   collection: string[];
+  /** bonus slots: shown in the log, never needed to finish it (the pet, the pure flex) */
+  bonus?: string[];
   achievements: string[];
   /** a heroic dungeon: the normal one it is the harder version of. It pays that one's Marks and counts for its achievements. */
   heroicOf?: string;

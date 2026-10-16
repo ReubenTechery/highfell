@@ -2,7 +2,7 @@
 import type { CollectibleDef, TitleDef } from '../types';
 
 export const BARROW_COLLECTIBLES: CollectibleDef[] = [
-  { id: 'pet.pint_gravekeeper', kind: 'pet', name: 'Pint-sized Gravekeeper', desc: 'Shovel, lantern, attitude. Follows you everywhere.', icon: 'c_pet_keeper', sprite: 'pet_keeper', source: 'The Gravekeeper, 1 in 5,000' },
+  { id: 'pet.pint_gravekeeper', kind: 'pet', name: 'Pint-sized Gravekeeper', desc: 'Shovel, lantern, attitude. Follows you everywhere.', icon: 'c_pet_keeper', sprite: 'pet_keeper', source: 'The Gravekeeper, 1 in 2,500' },
   { id: 'pet.lantern_ghost', kind: 'pet', name: 'Lantern Ghost', desc: 'A wisp that decided it liked you.', icon: 'c_pet_ghost', sprite: 'pet_ghost', source: 'Achievement: Master of the Barrow' },
   { id: 'mount.gravehound', kind: 'mount', name: 'Gravehound', desc: 'A bone dog the size of a pony. Good boy.', icon: 'c_mount_hound', sprite: 'mount_hound', source: 'The Gravekeeper, 1 in 1,000', saddle: { x: -4, y: -94, k: 0.9 } },
   { id: 'dye.ghostly', kind: 'cosmetic', name: 'Ghostly Dye', desc: 'Turns your Barrow set pale and see-through.', icon: 'c_dye', source: 'The Gravekeeper, 1 in 1,000' },

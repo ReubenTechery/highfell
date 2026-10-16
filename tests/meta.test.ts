@@ -176,7 +176,7 @@ test('loot: each line rolls at its own rate and role locks hold', () => {
   near('barrowguard.helm', 1 / 35);
   near('gravekeeper.tank', 1 / 50);
   near('mount.gravehound', 1 / 1000);
-  near('pet.pint_gravekeeper', 1 / 5000);
+  near('pet.pint_gravekeeper', 1 / 2500);
   assert.equal(hits['candlewake.helm'] || 0, 0);
   assert.equal(hits['gravekeeper.dps'] || 0, 0);
 });
@@ -404,7 +404,7 @@ test('house: spots a save has never had fill with what is not on show, once; emp
 test('house looks: a room shows the look you put on it once you have earned it, and the tavern is always yours', () => {
   const { p } = withHero('tank');
   assert.equal(lookOf(p, 'hall'), 'tavern');
-  assert.deepEqual(lookProgress(p, 'barrow'), { have: 0, need: 20 });
+  assert.deepEqual(lookProgress(p, 'barrow'), { have: 0, need: 19 });
   assert.equal(setLook(p, 'hall', 'barrow'), false, 'not earned yet');
   assert.equal(setLook(p, 'hall', 'nope'), false);
   p.achievements['barrow.log'] = { at: 1 };
@@ -441,7 +441,8 @@ test('profile: a v5 save gets the tavern in every room, and what is in the house
 test('collection log: filling the Barrow’s whole log opens Barrow Hall, a title and the Risen, for keeps', () => {
   const { p } = withHero('tank');
   const ach = new Achiever(p, { dungeon: 'barrow', role: 'tank', practice: false, testGear: false });
-  assert.deepEqual(logProgress(p, 'barrow'), { have: 0, need: 20 });
+  assert.deepEqual(logProgress(p, 'barrow'), { have: 0, need: 19 }, 'the pet is a bonus slot: shown, never needed');
+  assert.ok(BARROW.collection.includes('pet.pint_gravekeeper'), 'the pet still has its slot in the log');
   assert.equal(lookOpen(p, 'barrow'), false);
   assert.equal(opened(p, 'race', 'risen'), false);
   assert.ok(['dwarf', 'elf', 'human'].every((r) => opened(p, 'race', r)), 'dwarves, elves and humans are open from the start');
@@ -449,11 +450,12 @@ test('collection log: filling the Barrow’s whole log opens Barrow Hall, a titl
   assert.equal(createHero(p, { name: 'Morrow Gravesend', race: 'risen', cls: 'warrior' }), null, 'the Risen are locked');
   // every slot but the last: the log isn't done
   const last = 'barrowguard.helm';
-  for (const id of BARROW.collection.filter((x) => x !== last)) { p.collection[id] = { n: 1, kc: 1, at: 1 }; assert.ok(!ach.collected(id).includes('barrow.log')); }
-  assert.deepEqual(progress(p, ACHIEVEMENTS['barrow.log']), { have: 19, need: 20 });
-  assert.deepEqual(lookProgress(p, 'barrow'), { have: 19, need: 20 });
+  for (const id of BARROW.collection.filter((x) => x !== last && x !== 'pet.pint_gravekeeper')) { p.collection[id] = { n: 1, kc: 1, at: 1 }; assert.ok(!ach.collected(id).includes('barrow.log')); }
+  assert.deepEqual(progress(p, ACHIEVEMENTS['barrow.log']), { have: 18, need: 19 });
+  assert.deepEqual(lookProgress(p, 'barrow'), { have: 18, need: 19 });
   p.collection[last] = { n: 1, kc: 1, at: 1 };
-  assert.deepEqual(ach.collected(last), ['barrow.log']);
+  assert.deepEqual(ach.collected(last), ['barrow.log'], 'done without the pet');
+  assert.equal(p.collection['pet.pint_gravekeeper'], undefined);
   assert.ok(p.titles.includes('title.gravewarden'));
   assert.ok(lookOpen(p, 'barrow'));
   assert.ok(opened(p, 'race', 'risen'));
@@ -466,7 +468,7 @@ test('collection log: filling the Barrow’s whole log opens Barrow Hall, a titl
   assert.ok(opened(p, 'race', 'risen') && lookOpen(p, 'barrow'));
   // a log already full when the save loads counts too
   const q = withHero('dps').p;
-  for (const id of DUNGEONS['barrow-heroic'].collection) q.collection[id] = { n: 1, kc: 1, at: 1 };
+  for (const id of DUNGEONS['barrow-heroic'].collection.filter((x) => !(DUNGEONS['barrow-heroic'].bonus || []).includes(x))) q.collection[id] = { n: 1, kc: 1, at: 1 };
   assert.ok(new Achiever(q, { dungeon: 'barrow', role: 'dps', practice: false, testGear: false }).check().includes('barrow-heroic.log'));
   assert.ok(q.titles.includes('title.undying'));
   assert.ok(q.collection['cosmetic.gilded_bones'], 'gilded bones for your Risen');

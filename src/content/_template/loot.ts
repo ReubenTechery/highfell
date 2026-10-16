@@ -1,7 +1,7 @@
 /**
  * Dungeon Template: OSRS-style independent drop tables.
  * Includes a reusable `buildStandardLoot` helper so any new dungeon can generate its
- * standard drop table (1/35 set pieces, 1/50 boss weapons & mini-boss trophy, 1/1,000 mount & dye, 1/5,000 pet)
+ * standard drop table (1/35 set pieces, 1/50 boss weapons & mini-boss trophy, 1/1,000 mount & dye, 1/2,500 pet)
  * without boilerplate errors.
  */
 import type { BossLootDef, DropDef } from '../types';
@@ -39,7 +39,7 @@ export function buildStandardLoot(cfg: StandardLootConfig): BossLootDef[] {
         ...(cfg.extraDrops || []),
         { id: cfg.dyeId, rate: 1 / 1000 },
         { id: cfg.mountId, rate: 1 / 1000 },
-        { id: cfg.petId, rate: 1 / 5000 },
+        { id: cfg.petId, rate: 1 / 2500 },
       ],
     },
   ];
