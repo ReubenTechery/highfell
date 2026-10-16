@@ -288,11 +288,20 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-hero.none { border-color: transparent; background: var(--panel-2); box-shadow: none; cursor: default; }
 .dgx-hero.new { grid-template-columns: 56px minmax(0, 1fr); border-style: dashed; background: var(--panel-2); }
 .dgx-hero.new .dgx-hfig { border-style: dashed; background: transparent; color: var(--dim); }
-.dgx-main .brewchips { flex-wrap: nowrap; overflow-x: auto; padding: 2px 4px 6px; margin: 0 -4px; scrollbar-width: none; }
-.dgx-main .brewchips::-webkit-scrollbar { display: none; }
-.dgx-main .bc { flex: none; font-size: 17px; }
-.dgx-main .bc small { font-size: 12px; }
-@media (min-width: 820px) { .dgx-main .brewchips { flex-wrap: wrap; overflow: visible; } }
+/* the brew: one button, the bottle in its own colour with what it does in a few words; its page lists them all */
+.dgx-brew, .dgx-bopt { --c: var(--panel-2); display: grid; grid-template-columns: 44px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; min-height: 60px; padding: 6px 8px 6px 7px; border: 3px solid var(--ink); border-radius: 16px; background: color-mix(in srgb, var(--c) 30%, var(--panel)); box-shadow: 0 3px 0 var(--ink); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.dgx-brew:active, .dgx-bopt:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.dgx-brew .tile, .dgx-bopt .tile { width: 44px; height: 44px; box-sizing: border-box; border-radius: 50%; border-width: 2px; box-shadow: none; }
+.tile.dgx-pot { display: grid; place-items: center; background: var(--panel); color: var(--dim); }
+.tile.dgx-pot svg { width: 24px; height: 24px; }
+.dgx-bname { display: grid; gap: 2px; min-width: 0; }
+.dgx-bname b { font-family: var(--f-display); font-weight: 400; font-size: 17px; line-height: 1.15; }
+.dgx-brew .dgx-bname small { font-family: var(--f-mono); font-size: 12px; color: var(--soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dgx-count { font-family: var(--f-mono); font-size: 12px; padding: 1px 8px; border: 2px solid var(--ink); border-radius: 999px; background: var(--panel); }
+.dgx-bopts { display: grid; gap: 10px; }
+.dgx-bopt { grid-template-columns: 44px minmax(0, 1fr); align-items: start; padding: 8px 12px 10px 8px; }
+.dgx-bopt .dgx-bname small { font-family: var(--f-body); font-size: 14px; line-height: 1.4; color: var(--soft); }
+.dgx-bopt[aria-checked="true"] { box-shadow: 0 0 0 4px var(--ink), 0 3px 0 var(--ink); }
 .dgx-log { display: grid; gap: 10px; }
 .dgx-logbar { display: grid; grid-template-columns: auto auto minmax(40px, 1fr) auto auto; align-items: center; gap: 10px; min-height: 52px; padding: 4px 8px 4px 12px; border: 3px solid var(--ink); border-radius: 14px; background: var(--panel-2); box-shadow: 0 3px 0 var(--ink); font-family: var(--f-display); font-size: 17px; color: var(--ink); cursor: pointer; text-align: left; }
 .dgx-logbar b { font-family: var(--f-mono); font-weight: 500; font-size: 12px; }

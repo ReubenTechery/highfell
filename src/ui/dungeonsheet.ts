@@ -9,7 +9,7 @@
  * Normal your own Warband heroes from your bunk room fill the other seats in their own gear (or bots stand
  * in until you make them); tap a hero for Who goes in, to play another or make one. Heroic needs at least
  * two players (party.ts), so its other seats wait for friends and for now it opens only for practice.
- * Then your brew, and loot or practice.
+ * Then your brew (one button; its page has every bottle and what it does), and loot or practice.
  */
 import { COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, TITLES, heroicVersion } from '../content';
 import { MAX_HEROES, RACES, type RaceId } from '../content/folk';
@@ -31,7 +31,7 @@ import { SFX } from './sound';
 import { seatAt, stageShape, stageSvg } from './stage';
 
 /** the sheet's pages: the door (the everyday one) and the ones a tap away, each with a back arrow */
-export type DgPage = 'door' | 'loot' | 'heroes';
+export type DgPage = 'door' | 'loot' | 'heroes' | 'brews';
 
 /** what the sheet remembers while the page is open: which page, the run's options, Normal or Heroic, and
  *  which dungeon */
@@ -219,6 +219,7 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
   const loot = lootPanel(p, dg, role);
   if (pick.page === 'loot') return { head: subHead(`${pick.heroic ? 'Heroic ' : ''}${base.name.split(' ')[0]} loot`), body: `<div class="dgx-lootpage">${loot}</div>`, foot };
   if (pick.page === 'heroes') return { head: subHead('Who goes in'), body: heroesPage(p, pick.heroic), foot };
+  if (pick.page === 'brews') return { head: subHead('Your brew'), body: brewsPage(p), foot };
   const head = `<h2>${esc(base.name)}</h2><p>Tier ${meta.roman}${pick.heroic ? ' · Heroic' : ''} · ${statLine(rec?.clears || 0, keeper?.kc || 0, rec?.pb)}</p>`;
   // on a phone the log line opens the Loot page; on desktop the loot sits in its own column instead
   const body = `${strip}<div class="dgx${pick.heroic ? ' heroic' : ''}">
@@ -226,9 +227,7 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
     ${logLine(p, dg, true)}
     <aside class="dgx-lootcol" aria-label="Loot">${loot}</aside>
     <div class="dgx-you">
-      <section class="dgx-main" aria-label="Your brew">
-        ${brews(p, practice)}
-      </section>
+      ${brewButton(p)}
       <section class="dgx-mode">
         ${seg('mode', pick.mode, [['loot', 'For loot'], ['practice', 'Practice']])}
         ${practice ? `<div class="box">
@@ -301,6 +300,14 @@ export function dungeonActions(d: DungeonHost): Record<string, (el: HTMLElement)
     start: (el) => { d.pick.start = el.dataset.v!; SFX.play('ui'); d.refresh(); },
     tgear: (el) => { const v = el.dataset.v!; d.pick.gear = v === 'mine' ? 'mine' : (+v as 2 | 3); SFX.play('ui'); d.refresh(); },
     seats: () => page('heroes'),
+    brews: () => page('brews'),
+    brewpick: (el) => {
+      const p = d.app.p, id = el.dataset.id || null;
+      p.vale.drink = id && RECIPES[id] ? id : null;
+      d.pick.page = 'door';
+      SFX.play(id ? 'clink' : 'ui');
+      d.app.save();
+    },
     playseat: (el) => {
       const h = heroById(d.app.p, el.dataset.id || null); if (!h) return;
       setActive(d.app.p, h.id); d.pick.page = 'door'; SFX.play('place'); d.app.save();
@@ -411,18 +418,30 @@ function heroRow(p: Profile, x: Hero, role: RoleId, tag: string): string {
     <span class="dgx-hname"><b>${esc(x.name)}</b><small>ilvl ${ilvl(loadoutFor(p, x).score)}</small></span>${tag ? `<span class="dgx-htag${tag === 'You' ? ' you' : ''}">${tag}</span>` : ''}</button>`;
 }
 
-/** which brew you take in: one bottle a run */
-function brews(p: Profile, practice: boolean): string {
-  const have = RECIPE_ORDER.filter((id) => (p.vale.shelf[id] || 0) > 0);
-  if (!have.length) return '';
-  const drink = p.vale.drink && (p.vale.shelf[p.vale.drink] || 0) > 0 ? p.vale.drink : null;
-  const chip = (id: string | null) => {
+/** the brew you'll pour at the door, if you have one: a single button with what it does in a few words,
+ *  and how many bottles you have. It opens the Brews page. */
+const drinkOf = (p: Profile): string | null => (p.vale.drink && (p.vale.shelf[p.vale.drink] || 0) > 0 ? p.vale.drink : null);
+function brewButton(p: Profile): string {
+  if (!RECIPE_ORDER.some((id) => (p.vale.shelf[id] || 0) > 0)) return '';
+  const id = drinkOf(p), r = id ? RECIPES[id] : null;
+  return `<button type="button" class="dgx-brew${r ? '' : ' none'}" data-act="brews" ${r ? `style="--c: ${r.color}"` : ''} aria-label="Brew: ${esc(r ? `${r.name}, ${r.short}` : 'none')}. Change brew">
+    ${r ? `<span class="tile" aria-hidden="true">${tile(r.icon)}</span>` : `<span class="tile dgx-pot" aria-hidden="true">${GLYPH.pot}</span>`}
+    <span class="dgx-bname"><b>${esc(r ? r.name : 'No brew')}</b><small>${esc(r ? r.short : 'Go in as you are')}</small></span>
+    ${r ? `<span class="dgx-count">×${p.vale.shelf[r.id]}</span>` : ''}<span class="dgx-go" aria-hidden="true">${GLYPH.right}</span></button>`;
+}
+
+/** Your brew: every bottle on your shelf, with all it does. One serves the whole party for a run. */
+function brewsPage(p: Profile): string {
+  const drink = drinkOf(p);
+  const opt = (id: string | null): string => {
     const r = id ? RECIPES[id] : null;
-    return `<button type="button" class="bc" role="radio" data-act="drink" data-id="${id || ''}" aria-checked="${drink === id}" ${r ? `style="--c: ${r.color}"` : ''}>
-      ${r ? `<span class="tile" aria-hidden="true">${tile(r.icon)}</span>${esc(r.name)} <small>×${p.vale.shelf[r.id]}</small>` : 'No brew'}</button>`;
+    return `<button type="button" class="dgx-bopt" role="radio" aria-checked="${drink === id}" data-act="brewpick" data-id="${id || ''}" ${r ? `style="--c: ${r.color}"` : ''}>
+      ${r ? `<span class="tile" aria-hidden="true">${tile(r.icon)}</span>` : `<span class="tile dgx-pot" aria-hidden="true">${GLYPH.pot}</span>`}
+      <span class="dgx-bname"><b>${esc(r ? r.name : 'No brew')}${r ? ` <span class="dgx-count">×${p.vale.shelf[r.id]}</span>` : ''}</b><small>${esc(r ? r.desc : 'Go in as you are.')}</small></span></button>`;
   };
-  return `<div class="brewchips" role="radiogroup" aria-label="Brew, one bottle a run">${chip(null)}${have.map(chip).join('')}</div>
-    <p class="fine">${esc(drink ? RECIPES[drink].desc : 'Go in as you are.')}${drink && practice ? ' Practice keeps the bottle.' : ''}</p>`;
+  const have = RECIPE_ORDER.filter((id) => (p.vale.shelf[id] || 0) > 0);
+  return `<div class="dgx-bopts" role="radiogroup" aria-label="Brew, one bottle a run">${opt(null)}${have.map(opt).join('')}</div>
+    <p class="dgx-note">One bottle serves the whole party for a run. Practice keeps the bottle.</p>`;
 }
 
 /** the dungeon's picture: its bosses in the crypt, in the green light of the Gravekeeper's lantern

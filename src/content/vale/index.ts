@@ -18,13 +18,17 @@ export const INGREDIENT_ORDER = ['moonpetal', 'glowcap', 'brambleberry', 'dew'];
 /** One bottle is one dungeon run for the whole party. Effects live in the engine under the recipe id (BREW_FX). */
 export const RECIPES: Record<string, RecipeDef> = {
   glow: { id: 'glow', name: 'Glowcap Draught', icon: 'b_glow', color: '#9BE15D', needs: { glowcap: 10 }, makes: 1, rank: 1,
-    desc: 'The whole party hits 25% harder and moves 15% faster, area hits reach 25% wider, and the tank holds 50% more threat.' },
+    desc: 'The whole party hits 25% harder and moves 15% faster, area hits reach 25% wider, and the tank holds 50% more threat.',
+    short: '+25% damage, +15% speed' },
   elixir: { id: 'elixir', name: 'Starlight Elixir', icon: 'b_elixir', color: '#F2C230', needs: { glowcap: 8, dew: 2 }, makes: 1, rank: 3,
-    desc: 'Everything the Glowcap Draught does, and once a run each hero gets back up on half health from a hit that would knock them down.' },
+    desc: 'Everything the Glowcap Draught does, and once a run each hero gets back up on half health from a hit that would knock them down.',
+    short: "Glowcap's boost, and get up once" },
   tonic: { id: 'tonic', name: 'Moonpetal Tonic', icon: 'b_tonic', color: '#8FD6FF', needs: { moonpetal: 10 }, makes: 1, rank: 1,
-    desc: 'The whole party moves 15% faster, and every dodge heals 10% of your health.' },
+    desc: 'The whole party moves 15% faster, and every dodge heals 10% of your health.',
+    short: '+15% speed, dodges heal 10%' },
   fizz: { id: 'fizz', name: 'Bramble Fizz', icon: 'b_fizz', color: '#D9465A', needs: { brambleberry: 8, moonpetal: 2 }, makes: 1, rank: 1,
-    desc: 'The whole party moves 25% faster, and every cooldown, the dodge too, comes back 20% sooner.' },
+    desc: 'The whole party moves 25% faster, and every cooldown, the dodge too, comes back 20% sooner.',
+    short: '+25% speed, cooldowns 20% sooner' },
 };
 export const RECIPE_ORDER = ['glow', 'elixir', 'tonic', 'fizz'];
 

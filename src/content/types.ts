@@ -100,6 +100,8 @@ export interface RecipeDef {
   rank: number;
   /** what it does on a run */
   desc: string;
+  /** the same, short enough for the Dungeons sheet's brew button on a phone */
+  short: string;
 }
 
 export interface TitleDef { id: string; text: string }
