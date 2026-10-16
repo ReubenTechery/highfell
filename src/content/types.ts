@@ -112,6 +112,8 @@ export interface RecipeDef {
   rank: number;
   /** what it does on a run */
   desc: string;
+  /** the same, short enough for the Dungeons sheet's brew button on a phone */
+  short: string;
 }
 
 export interface TitleDef { id: string; text: string }
@@ -175,4 +177,31 @@ export interface DungeonInfo {
   /** a heroic dungeon: the normal one it is the harder version of. Its kills roll that one's tables first (and
    *  count on its kill counts), then its own: the gilding kits. It pays that one's Marks and counts for its achievements. */
   heroicOf?: string;
+  /** its door, as the Dungeons sheet draws it with your party in front (a heroic dungeon uses its normal one's) */
+  stage?: DungeonStage;
+}
+
+/** A sprite on a dungeon's stage, placed by its ground point; k scales it and flip mirrors it. */
+export interface StagePiece { sprite: string; x: number; y: number; k?: number; flip?: boolean }
+
+/** A dungeon's door, as the Dungeons sheet draws it: its final boss in the doorway and your three heroes
+ *  standing in front, ready to go in. The world is the dungeon banner's (640 wide, y going down, the floor
+ *  near 256); `view` is the part of it the picture shows. Heroic turns the light gold. */
+export interface DungeonStage {
+  /** the part of the world the picture shows: x, y, width and height */
+  view: [number, number, number, number];
+  /** the dark behind everything */
+  bg: string;
+  /** the glow in the doorway: its colour, its middle and how far it reaches */
+  light: { color: string; x: number; y: number; r: number };
+  /** where the floor starts, and its colour */
+  floor: { y: number; color: string };
+  /** the door and what stands behind the boss, back to front */
+  back: StagePiece[];
+  /** the final boss, in the doorway: use the sprite its mob is drawn with (`sp` in mobs.js) */
+  boss: StagePiece;
+  /** what stands in front of the boss but behind the heroes */
+  front: StagePiece[];
+  /** where your three heroes stand (tank, healer, DPS, left to right), on one ground line, and how big */
+  heroes: { x: [number, number, number]; y: number; k: number };
 }

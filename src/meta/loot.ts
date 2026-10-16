@@ -205,7 +205,7 @@ function rollKill(p: Profile, dg: DungeonInfo, boss: string, h: Hero, kc: number
 
 /** A kill counts and rolls its table (and its seed lines after your first clear). A Heroic kill rolls its normal
  *  dungeon's table first, and counts on that boss's kill count too: what drops there is the normal piece, for
- *  the normal log. Then its own table, the gilding kits, on its own kill count. Practice runs never call this. */
+ *  the normal log. Then its own table, the gilding kits, on its own kill count. A run that doesn't count never calls this. */
 export function resolveKill(p: Profile, dg: DungeonInfo, boss: string, h: Hero, time: number | null, rng: Rng, now = Date.now()): KillLoot {
   const br = bossRecord(p, dg.id, boss);
   br.kc++;

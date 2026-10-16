@@ -234,6 +234,13 @@ const brewGame = (brew: string) => {
   return { s, me: s.heroes.find((h: any) => h.isPlayer), all: s.heroes as any[] };
 };
 
+test('brews: each has a short line for the Dungeons sheet that fits a phone and only says what its card says', () => {
+  for (const r of Object.values(RECIPES)) {
+    assert.ok(r.short && r.short.length <= 32, `${r.id}: "${r.short}" is short enough for a phone`);
+    for (const n of r.short.match(/\d+%/g) || []) assert.ok(r.desc.includes(n), `${r.id}: its short line says ${n}, and so does its card`);
+  }
+});
+
 test('brews: one poured brew lands on every hero and does what its card says', () => {
   // Glowcap Draught: everyone hits harder and moves faster, area hits reach wider, the tank holds more threat
   let { s, me, all } = brewGame('glow');

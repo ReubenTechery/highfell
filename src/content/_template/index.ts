@@ -6,6 +6,7 @@
 import type { BossLootDef, DungeonInfo } from '../types';
 import { TEMPLATE_ACHIEVEMENTS } from './achievements';
 import { TEMPLATE_LOOT } from './loot';
+import { TEMPLATE_STAGE } from './stage';
 
 /** Automatically extracts the unique collection log item/collectible IDs from a dungeon's drop tables. */
 export function collectionFromLoot(loot: BossLootDef[]): string[] {
@@ -40,4 +41,5 @@ export const TEMPLATE_DUNGEON: DungeonInfo = {
   // the pet, mount and dye are bonus slots: shown in the log, never needed to finish it
   bonus: collectionFromLoot(TEMPLATE_LOOT).filter((id) => /^(pet|mount|dye)\./.test(id)),
   achievements: TEMPLATE_ACHIEVEMENTS.map((a) => a.id),
+  stage: TEMPLATE_STAGE,
 };

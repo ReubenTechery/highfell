@@ -104,9 +104,10 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
 - `src/core`: math, RNG (a seeded combat stream and separate loot streams), the event bus, the save store.
 - `src/content`: data only. Roles and abilities, gear and traits, `folk.ts` (the races, which are earned, the
   four classes, which race and class combos have art in `HERO_ART`, name lists), one folder per dungeon
-  (`barrow/`: map, mobs, bosses, script, items, loot tables, collectibles, achievements, and `heroic.ts`, its
-  heroic version: its gilding kits and gilded twins), `kits.ts` (gilding kits, Heroic's own drops, built from any
-  dungeon's tables), and `vale/` (ingredients, recipes, ranks, and `garden.ts`).
+  (`barrow/`: map, mobs, bosses, script, items, loot tables, collectibles, achievements, `stage.ts`, its door
+  for the Dungeons sheet, and `heroic.ts`, its heroic version: its gilding kits and gilded twins; `_template/`
+  is the one to copy), `kits.ts` (gilding kits, Heroic's own drops, built from any dungeon's tables), and
+  `vale/` (ingredients, recipes, ranks, and `garden.ts`).
   `house.ts` is the house's plan (each room's `main`, what a tap from far away opens, and the paddock's places). Register new content in `src/content/index.ts`; `checkContent()`
   and the tests catch broken ids.
 - `src/dungeon`: the engine, plain JS with no DOM: state `S`, entities, heroes, mobs, bots, the loop,
@@ -119,7 +120,7 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
 - `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, its drawing
   `houseart.ts`, every room in each look, your hero's name tag `nametag.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
   close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons
-  (`dungeonsheet.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
+  (`dungeonsheet.ts`, its door's picture in `stage.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
   (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`), settings (`settingssheet.ts`), the gear doll, satchel and spot
   picker. Toasts, sound (`sound.ts`: the embedded effects, each with its synthesised fallback) and music
   (`music.ts`: the streamed loops and the victory sting). `styles.css` is inlined by the build.

@@ -2,7 +2,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRng } from '../src/core/rng';
-import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, KITS, SETS, checkContent, heroicVersion, itemOf } from '../src/content';
+import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, ITEMS, KITS, SETS, checkContent, heroicVersion, itemOf } from '../src/content';
+import { TEMPLATE_DUNGEON } from '../src/content/_template';
+import { TEMPLATE_ENGINE } from '../src/content/_template/engine';
 import { BARROW } from '../src/content/barrow';
 import { activeHero, classRuns, countClassRun, countLift, createHero, dungeonRecord, finishCurseTip, finishHearthTour, finishIntroRun, freshProfile, learnGlow, markClassTrial, migrate, nameProblem, needsClassTrial, needsCurseTip, needsHearthTour, needsIntroRun, needsSwipeHint, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, startHearthTour, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
 import { DUPE_MARKS, grantTrialStarter, heroicOpen, heroicProgress, resolveRun, rollTable, trialStarter } from '../src/meta/loot';
@@ -16,7 +18,7 @@ import { HEARTH_SPOTS, MOUNTS, autoPlace, lookOf, lookOpen, lookProgress, paddoc
 import { HOUSE_SPOTS, LOOK_ROOMS, OUTSIDE, PADDOCK, ROOMS, THINGS, paddockSlots } from '../src/content/house';
 import { groupOf, heroesFor, partyProblem, pickRole, seats, seatsFor } from '../src/meta/party';
 import { lootFor } from '../src/meta/loot';
-import type { GameEvent, RunSummary } from '../src/content/types';
+import type { DungeonStage, GameEvent, RunSummary } from '../src/content/types';
 import WARDROBE from '../art/wardrobe.json';
 
 test('content: every id a table, log, set or reward points at exists', () => {
@@ -628,7 +630,6 @@ test('party: Heroic needs at least two real players and a bot takes the third se
   // Heroic on your own: blocked, in plain words; until online play your group is just you
   assert.deepEqual(groupOf(p).map((h) => h.id), [tank.id]);
   assert.equal(partyProblem(groupOf(p), { heroic: true }), 'Heroic needs at least two players. Bring a friend.');
-  assert.equal(partyProblem([tank], { heroic: true, practice: true }), null, 'practice gives nothing, so it is open solo');
   // two players and a bot: allowed, and the empty seat is a bot, never your own DPS
   assert.equal(partyProblem([tank, friendHealer], { heroic: true }), null);
   assert.deepEqual(seatsFor(p, [tank, friendHealer], true).map((s) => s.hero?.id ?? s.bot), [tank.id, friendHealer.id, 'Ivy']);
@@ -737,6 +738,30 @@ test('art: every icon and sprite the content names exists', async () => {
   for (const c of Object.values(COLLECTIBLES)) if (c.kind === 'mount' && !c.saddle) missing.push('saddle for ' + c.id);
   for (const n of ['slam', 'cleave', 'smite', 'icicle', 'shield', 'charge', 'circle', 'ward', 'sunburst', 'blizzard', 'nova', 'comet', 'viper', 'ambush', 'flurry', 'shadowstep', 'dodge', 'mend', 'marks']) if (!tiles[n]) missing.push('icon ' + n);
   assert.deepEqual(missing, []);
+});
+
+test('stages: every dungeon has a door for the Dungeons sheet, its final boss in it and room for three heroes in front', async () => {
+  const fs = await import('node:fs');
+  const read = (f: string) => JSON.parse(fs.readFileSync(new URL('../../art/' + f, import.meta.url), 'utf8'));
+  const sprites = { ...read('sprites.json'), ...read('hearth.json'), ...read('vale.json') };
+  const spriteOf = (mobs: object, id: string): string => (mobs as Record<string, { sp: string }>)[id].sp;
+  const check = (id: string, st: DungeonStage | undefined, finalSprite: string) => {
+    assert.ok(st, `${id} has a stage`);
+    const [x, y, w, h] = st.view;
+    assert.ok(w > 0 && h > 0, `${id}: the picture has a size`);
+    for (const pc of [...st.back, st.boss, ...st.front]) assert.ok(sprites[pc.sprite], `${id}: no sprite ${pc.sprite}`);
+    assert.equal(st.boss.sprite, finalSprite, `${id}: the final boss stands in the doorway`);
+    assert.equal(st.heroes.x.length, 3);
+    assert.ok(st.heroes.x[0] < st.heroes.x[1] && st.heroes.x[1] < st.heroes.x[2], `${id}: tank, healer and DPS from left to right`);
+    for (const hx of st.heroes.x) assert.ok(hx - 60 >= x && hx + 60 <= x + w, `${id}: the hero at ${hx} stands inside the picture`);
+    assert.ok(st.heroes.y > st.boss.y, `${id}: the heroes stand in front of the boss`);
+    assert.ok(st.heroes.y + 40 <= y + h, `${id}: room for the name plates under the heroes' feet`);
+  };
+  for (const d of Object.values(DUNGEONS)) {
+    if (d.heroicOf) { assert.ok(DUNGEONS[d.heroicOf].stage, `${d.id} uses its normal dungeon's stage`); continue; }
+    check(d.id, d.stage, spriteOf(DUNGEON_ENGINES[d.id].mobs, d.finalBoss));
+  }
+  check('template', TEMPLATE_DUNGEON.stage, spriteOf(TEMPLATE_ENGINE.mobs, TEMPLATE_DUNGEON.finalBoss));
 });
 
 test('onboarding: a fresh profile sends its first hero into the Crypt Trial once, existing heroes skip it, and the first hero triggers the hearth tour', () => {

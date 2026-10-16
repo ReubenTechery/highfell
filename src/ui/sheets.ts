@@ -9,11 +9,10 @@ import { COLLECTIBLES, DUNGEONS, ITEMS, SETS, TITLES, thing } from '../content';
 import { AB, ROLES, SLOTS_AB, abKey } from '../content/roles';
 import { ROLE_SLOTS, SLOT_IDS, TRAITS, gearId, gearKey, traitDef } from '../content/gear';
 import { CLASSES, RACES, type ClassId, type RaceId } from '../content/folk';
-import type { AbilitySlot, GearKey, ItemDef, Rar, RoleId, SlotId } from '../content/types';
+import type { AbilitySlot, GearKey, ItemDef, RoleId, SlotId } from '../content/types';
 import { INGREDIENTS, INGREDIENT_ORDER, LORE, PLANTS, RECIPES, RECIPE_ORDER, SEED_ICON, SEED_ORDER, SKILLS } from '../content/vale';
 import { rankProgress, recipeUnlocked } from '../meta/vale';
 import { activeHero, freshProfile, heroById, nameProblem, removeHero, renameHero, roleOf, setActive, type Hero } from '../meta/profile';
-import { pickRole } from '../meta/party';
 import { bestRegular, buyTrait, effectsOf, equip, healthPct, itemShare, loadoutFor, lookId, ownedFor, powerPct, putOn, seenSlot, setGilded, waitingFor, worn, type Waiting, type Worn } from '../meta/gear';
 import type { Tell } from '../meta/loot';
 import { HEARTH_SPOTS, place, setLook, spotById, spotOf } from '../meta/hearth';
@@ -24,7 +23,7 @@ import { MUSIC } from './music';
 import { SFX } from './sound';
 import { ilvl } from './hearth';
 import { heroesSheet, heroSheet, type HeroSheetState } from './herosheet';
-import { dungeonSheet, pickedDungeon, type DungeonPick } from './dungeonsheet';
+import { dungeonActions, dungeonBack, dungeonSheet, type DungeonPick } from './dungeonsheet';
 import { itemSheet, KIND_WORD, ROLE_STAT } from './itemsheet';
 import { LOG_TABS, logActions, logsSheet, mountsSheet, type LogTab } from './logsheet';
 import type { LogView } from './logbook';
@@ -66,7 +65,7 @@ const LEFT_SLOTS: SlotId[] = ['helm', 'shoulders', 'chest'];
 export class Sheets {
   spec: SheetSpec | null = null;
   /** the dungeon picker remembers its choices while the page is open */
-  private pick: DungeonPick = { dungeon: 'barrow', mode: 'loot', start: 'keeper', gear: 'mine', role: null, alts: false, log: false, heroic: false };
+  private pick: DungeonPick = { dungeon: 'barrow', page: 'door', heroic: false };
   private resetArmed = false;
   /** the look picked in the looks sheet, while the page is open */
   private lookPick: string | null = null;
@@ -82,34 +81,9 @@ export class Sheets {
   constructor(private app: App, private root: HTMLElement) {
     actions(root, {
       ...logActions({ app, root, view: this.logView, open: (s) => this.open(s), refresh: () => this.refresh(), close: () => this.close() }),
+      ...dungeonActions({ app, root, pick: this.pick, refresh: () => this.refresh(), close: () => this.close() }),
       close: () => this.close(),
       back: () => { const s = this.spec; if (s && s.kind === 'item' && s.back) this.open(s.back); else this.close(); },
-      dgpick: (el) => {
-        const id = el.dataset.id || 'barrow';
-        this.pick.dungeon = id;
-        this.pick.heroic = false;
-        this.pick.log = false;
-        SFX.play('ui');
-        this.refresh();
-      },
-      mode: (el) => { this.pick.mode = el.dataset.v as 'loot' | 'practice'; SFX.play('ui'); this.refresh(); },
-      start: (el) => { this.pick.start = el.dataset.v!; SFX.play('ui'); this.refresh(); },
-      tgear: (el) => { const v = el.dataset.v!; this.pick.gear = v === 'mine' ? 'mine' : (+v as 2 | 3); SFX.play('ui'); this.refresh(); },
-      role: (el) => {
-        const r = el.dataset.role as RoleId, p = this.app.p, was = p.active;
-        this.pick.role = r; this.pick.alts = false;
-        SFX.play('ui');
-        if (pickRole(p, r) && p.active !== was) this.app.save(); else this.refresh();
-      },
-      alts: () => { this.pick.alts = !this.pick.alts; SFX.play('ui'); this.refresh(); },
-      logx: () => { this.pick.log = !this.pick.log; SFX.play('ui'); this.refresh(); },
-      diff: (el) => { this.pick.heroic = el.dataset.v === 'heroic'; SFX.play('ui'); this.refresh(); },
-      playseat: (el) => {
-        const h = heroById(this.app.p, el.dataset.id || null); if (!h) return;
-        setActive(this.app.p, h.id); this.pick.role = roleOf(h); this.pick.alts = false; SFX.play('place'); this.app.save();
-      },
-      newseat: (el) => { const r = el.dataset.role as RoleId; this.pick.alts = false; SFX.play('ui'); this.close(); this.app.showCreate(r); },
-      go: () => this.go(),
       heroplay: () => {
         const h = this.sheetHero(); if (!h) return;
         SFX.play('ui'); setActive(this.app.p, h.id); this.close(); this.app.save();
@@ -183,7 +157,6 @@ export class Sheets {
       preview: (el) => { this.close(); this.app.reveal.preview(el.dataset.v as Tell | 'log'); },
       intro: () => { SFX.play('ui'); this.close(); this.app.startIntro(); },
       tour: () => { SFX.play('ui'); this.close(); this.app.hearth.startTour(); },
-      walkout: (el) => { this.app.setDev({ walkout: el.dataset.v as 'off' }); SFX.play('ui'); this.refresh(); },
       drink: (el) => { const p = this.app.p, id = el.dataset.id || null; p.vale.drink = id && RECIPES[id] ? id : null; SFX.play(id ? 'clink' : 'ui'); this.app.save(); },
       brewgo: () => { SFX.play('ui'); this.close(); this.app.showBrew(); },
       gardengo: () => { SFX.play('ui'); this.close(); this.app.showHearth('yard'); },
@@ -211,7 +184,12 @@ export class Sheets {
       SFX.play('place');
       this.app.save();
     });
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.spec) { if (this.logView.peek) root.querySelector<HTMLElement>('.pk-x')?.click(); else this.close(); } });
+    window.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' || !this.spec) return;
+      if (this.logView.peek) root.querySelector<HTMLElement>('.pk-x')?.click();
+      else if (this.spec.kind === 'dungeon' && dungeonBack(this.pick)) { this.refresh(); const b = root.querySelector('.sheet-body'); if (b) b.scrollTop = 0; }
+      else this.close();
+    });
     root.addEventListener('input', (e) => { const el = e.target as HTMLInputElement; if (el.dataset.act === 'music') MUSIC.setVolume(+el.value / 100); });
   }
 
@@ -219,7 +197,7 @@ export class Sheets {
     const was = !!this.spec;
     // the dungeon picker starts fresh when it opens, but not when you come back to it from one of its drops
     const inDungeon = (s: SheetSpec | null): boolean => !!s && (s.kind === 'dungeon' || (s.kind === 'item' && s.back?.kind === 'dungeon'));
-    if (spec.kind === 'dungeon' && !inDungeon(this.spec)) { this.pick.role = null; this.pick.alts = false; this.pick.log = false; }
+    if (spec.kind === 'dungeon' && !inDungeon(this.spec)) this.pick.page = 'door';
     if (spec.kind === 'hero' && !(this.spec && this.spec.kind === 'hero' && this.spec.hero === spec.hero)) { clearTimeout(this.heroTimer); this.heroSt = { delArmed: false, renaming: false, err: '' }; }
     if (spec.kind !== 'logs' && spec.kind !== 'item') this.logView.peek = null;
     this.spec = spec;
@@ -309,19 +287,6 @@ export class Sheets {
     };
     el.textContent = ilvl(j.from);
     requestAnimationFrame(tick);
-  }
-
-  /* ---------------------------------------------------------------- the dungeon picker (drawn in dungeonsheet.ts) */
-  private go(): void {
-    const pr = this.pick;
-    const practice = pr.mode === 'practice';
-    const { dg, open } = pickedDungeon(this.app.p, pr, this.app.dev.allOpen);
-    if (!open) { SFX.play('nope'); return; }
-    if (pr.heroic && !practice && !this.app.dev.allOpen) { SFX.play('nope'); return; }
-    const baseId = dg.heroicOf || dg.id;
-    SFX.play('ui');
-    if (practice) this.app.startRun({ dungeon: baseId, start: pr.start, testRar: pr.gear === 'mine' ? null : (pr.gear as Rar), heroic: pr.heroic });
-    else this.app.startRun({ dungeon: baseId, start: 'entrance', testRar: null, heroic: pr.heroic });
   }
 
   /* ---------------------------------------------------------------- gear: the doll, slot-first armoury & weapon buffs */

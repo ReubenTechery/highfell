@@ -2,6 +2,7 @@
 import type { DungeonInfo } from '../types';
 import { BARROW_ACHIEVEMENTS } from './achievements';
 import { BARROW_LOOT } from './loot';
+import { BARROW_STAGE } from './stage';
 
 export const BARROW: DungeonInfo = {
   id: 'barrow',
@@ -29,4 +30,5 @@ export const BARROW: DungeonInfo = {
   ],
   bonus: ['dye.ghostly', 'mount.gravehound', 'pet.pint_gravekeeper'],
   achievements: BARROW_ACHIEVEMENTS.map((a) => a.id),
+  stage: BARROW_STAGE,
 };

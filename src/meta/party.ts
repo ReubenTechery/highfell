@@ -20,11 +20,11 @@ export function groupOf(p: Profile): Hero[] {
 }
 
 /** Why a group can't go in, in plain words, or null when it can. Normal is fine on your own; Heroic
- *  needs at least two real players, each in their own seat. Practice gives nothing, so anyone can. */
-export function partyProblem(players: Hero[], o: { heroic: boolean; practice?: boolean }): string | null {
+ *  needs at least two real players, each in their own seat. */
+export function partyProblem(players: Hero[], o: { heroic: boolean }): string | null {
   if (!players.length) return 'Make a hero first.';
   if (new Set(players.map(roleOf)).size < players.length) return 'Two players can’t take the same seat.';
-  if (o.heroic && !o.practice && players.length < HEROIC_MIN_PLAYERS) return 'Heroic needs at least two players. Bring a friend.';
+  if (o.heroic && players.length < HEROIC_MIN_PLAYERS) return 'Heroic needs at least two players. Bring a friend.';
   return null;
 }
 

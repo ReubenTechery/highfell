@@ -37,9 +37,10 @@ import { IN, aimPoint, bindFrameSwipes, bindInput, mashCage, playerIntent, reset
 import { MUSIC, runMusic } from './music';
 import { SFX } from './sound';
 
-/** A run plays the hero you are playing. `role` is for testing: it picks one of your heroes in that seat,
- *  and if you have none the run is practice in plain gear. `heroic` plays the heroic version: harder, the
- *  same drops plus gilding kits, and its own kill counts. */
+/** A run plays the hero you are playing, from the entrance. `start`, `testRar` and `role` are for the Crypt
+ *  Trial and for testing: a run that starts past the entrance or in test gear doesn't count (no loot, kill
+ *  counts, achievements or bottle), and `role` picks one of your heroes in that seat (plain gear if you have
+ *  none). `heroic` plays the heroic version: harder, the same drops plus gilding kits, and its own kill counts. */
 export interface RunOpts { start: string; testRar: Rar | null; role?: RoleId; heroic?: boolean; dungeon?: string }
 const STEP = 1 / 60;
 const KEY: Record<string, string> = { a1: '1', a2: '2', a3: '3', a4: '4', dodge: 'Space' };
@@ -292,7 +293,7 @@ export class RunScene implements InputUI {
       if (role === 'healer') loadouts.healer = { ...(loadouts.healer as object), unique: 'lantern', bonuses: ['candlewake2'] };
       else if (role === 'dps') loadouts.dps = { ...(loadouts.dps as object), unique: h?.cls === 'rogue' ? 'cryptfangs' : 'spire', bonuses: [h?.cls === 'rogue' ? 'shadeveil2' : 'rimebone2'] };
     }
-    // one bottle poured at the door for the whole party: only the poured one is spent (practice keeps it)
+    // one bottle poured at the door for the whole party: only the poured one is spent (a run that doesn't count keeps it)
     const poured = h && !intro ? pourFor([{ role, leader: true, brew: broughtBrew(p) }]) : null;
     const brew = poured?.brew || null;
     this.brew = brew;
@@ -339,7 +340,7 @@ export class RunScene implements InputUI {
     this.clearTut();
     this.hintsDone = new Set(); this.hintKey = null; $('hint').hidden = true;
     $('ov-msg').hidden = true;
-    $('practice-tag').hidden = !this.practice || intro;
+    $('test-tag').hidden = !this.practice || intro;
     $('intro-tag').hidden = !intro;
     $('intro-skip').hidden = !intro;
     $('heroic-tag').hidden = !o.heroic;
@@ -453,7 +454,7 @@ export class RunScene implements InputUI {
           for (const d of kl.drops) if (d.isNew) this.app.toasts.collected(d.id, kl.kc);
         }
         this.app.store.save();
-      } else if (last && this.app.dev.walkout !== 'off') startWalkout(this.app.dev.walkout, x, y);
+      }
     } else if (e.type === 'run.wipe') {
       if (!this.practice && S.boss) { countBossWipe(p, this.dg, S.boss.type); this.app.store.save(); }
     } else if (e.type === 'run.cleared') {
@@ -489,7 +490,7 @@ export class RunScene implements InputUI {
       return;
     }
     const hero = this.hero();
-    if (this.practice || !hero) { this.showPracticeDone(summary.time); return; }
+    if (this.practice || !hero) { this.showTestDone(summary.time); return; }
     const loot = runLoot(this.app.p, this.dg, hero, this.kills, this.clear);
     this.stop();
     this.app.showReveal(loot, { unlocked: this.unlocked.slice(), hero: hero.id, role: this.role, deaths: summary.deaths, again: this.opts });
@@ -519,8 +520,8 @@ export class RunScene implements InputUI {
       ] });
       return;
     }
-    const leave = this.practice ? 'Leave practice' : 'Leave the run';
-    this.msg({ eyebrow: this.practice ? 'Practice' : this.dg.name, title: 'Paused', text: `${fmtT(S.t - S.startedAt)} in.${this.practice ? '' : ' Kill counts and drops you already have are kept if you leave.'}`, buttons: [
+    const leave = this.practice ? 'Leave the test run' : 'Leave the run';
+    this.msg({ eyebrow: this.practice ? 'Test run' : this.dg.name, title: 'Paused', text: `${fmtT(S.t - S.startedAt)} in.${this.practice ? '' : ' Kill counts and drops you already have are kept if you leave.'}`, buttons: [
       ['Keep going', () => this.pause()],
       [SFX.on ? 'Sound off' : 'Sound on', () => { const p = this.app.p; p.settings.sound = !p.settings.sound; SFX.on = p.settings.sound; this.app.store.save(); S.paused = false; this.pause(); }],
       ['Restart', () => { if (this.opts) this.start(this.opts); }],
@@ -534,9 +535,10 @@ export class RunScene implements InputUI {
       ['Back to the hearth', () => this.app.home()],
     ] });
   }
-  private showPracticeDone(time: number): void {
-    this.msg({ eyebrow: 'Practice', title: 'Down he goes', text: `${fmtT(time)}. Practice gives no loot. When you are ready, run it from the entrance.`, buttons: [
-      ['Practice again', () => { if (this.opts) this.start(this.opts); }],
+  /** the end of a run that doesn't count (one started for testing) */
+  private showTestDone(time: number): void {
+    this.msg({ eyebrow: 'Test run', title: 'Down he goes', text: `${fmtT(time)}. A test run gives no loot.`, buttons: [
+      ['Run it again', () => { if (this.opts) this.start(this.opts); }],
       ['Back to the hearth', () => this.app.home()],
     ] });
   }
