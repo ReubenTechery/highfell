@@ -63,7 +63,7 @@ export const TRAITS: Record<GearKey, TraitDef[]> = {
   tank: [
     { id: 'wide', name: 'Wide Swings', desc: 'Your swings hit everything in front of you at full damage.' },
     { id: 'ringing', name: 'Ringing Blow', desc: 'Charge hits twice, and everything it hits turns on you.' },
-    { id: 'headsman', name: 'Headsman', desc: 'Hits on stunned mobs always crit.' },
+    { id: 'headsman', name: 'Headsman', desc: 'Hits on stunned mobs, or a Staggered boss, always crit.' },
   ],
   healer: [
     { id: 'sunflare', name: 'Sunflare', desc: 'Mend also heals the next most hurt ally for half.' },
@@ -71,7 +71,7 @@ export const TRAITS: Record<GearKey, TraitDef[]> = {
     { id: 'kindle', name: 'Kindle', desc: 'A Ward that breaks heals its target for 80.' },
   ],
   dps: [
-    { id: 'shatterlance', name: 'Shatterlance', desc: 'Comet on a frozen target hits three times as hard.' },
+    { id: 'shatterlance', name: 'Shatterlance', desc: 'Comet on a frozen target hits three times as hard, and on a Chilled boss twice as hard.' },
     { id: 'splinter', name: 'Splinter', desc: 'Frostbolts split to a second enemy.' },
     { id: 'quickfrost', name: 'Quickfrost', desc: 'Comet casts twice as fast.' },
   ],

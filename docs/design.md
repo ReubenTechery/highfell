@@ -57,6 +57,12 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 16 
 - Killing Sir Rattlebones's Phase 2 rallied guards lashes him for 4% max HP each, and killing the last guard cracks his rally armour and exposes him for `3.0s`.
 - Cutting the Gravekeeper's `Soul Chain` exposes him for `3.0s`, and breaking `Bone Cage` in `< 2.0s` exposes him for `2.5s` while resetting the Tank's `Charge`.
 
+**Combos on bosses** (`chillBoss`, `staggerBoss`, `stunned` and `shatterable` in `src/dungeon/entities.js`): a boss never freezes, never gets stunned by a knock and never gets dragged, but the combos still land on him.
+- `Rime burst` leaves a boss **Chilled** for `4s` (a light frost tint and a `Chilled` callout) and slows him a little. `Icicle` and `Comet` shatter a Chilled boss for `1.5×` (frozen trash takes `3×` and `2×`), with the same `Shatter` text, flash and sound. With **Shatterlance**, Comet hits a Chilled boss `2×`; **Rimebone 2pc** gives back half of Comet's cooldown on a Chilled boss too; the **Gravefrost Staff**'s Comet Chills a boss for `2s`.
+- `Charge` and the **Gravedigger**'s tremor leave a boss **Staggered** for `1s` (stars over his head and a `Staggered` callout). It is not a stun: he keeps swinging and his telegraphs stay. It counts as a stun for `Cleave`'s Crush (bosses are heavy, so Cleave crushes them anyway) and for **Headsman** (every hit crits).
+- `Slam` taunts a boss and spins its whirlwind through him, with no drag. A perfect block still stuns a boss for `1.6s`. Blizzard and frostbolts hit a boss but never slow him.
+- A bot mage steps into Rime burst's reach at a calm moment (the boss is on the tank, between moves, and nobody is caged), Chills him, then steps back out (`chillTarget` in `src/dungeon/bots.js`).
+
 **The Gravekeeper on Normal: two phases, about 80 seconds** (`keeperTick` in `src/content/barrow/bosses.js`; 65% of his written health):
 - **Phase 1** (down to half health): Shovel Smash (the tank blocks, everyone else stays out of the circle), the dirt toss, and Grasping Hands under everyone, after which he moves to a new spot.
 - **Phase 2** (half health to the end): lights out. Wisps (the healer swipes them), Soul Chain (the healer cuts it), Bone Cage on the tank (he mashes out), Shovel Smash, the dirt toss, and the pale green `Grave cold` ring that sweeps the party every 9s (the healer heals through it).
@@ -73,17 +79,17 @@ What [Highfell](https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd) has as of 16 
 
 | Role / Class | 1 | 2 | 3 | 4 |
 | --- | --- | --- | --- | --- |
-| Tank (Warrior) | Cleave: fast front sweep, Crush bonus on heavy/stunned/clumped foes, 2.2s | Charge: dash, hit, taunt and stun nearby foes, readies Cleave, 6.5s | Slam: drag nearby foes in, taunt for 4s, spin a 360° whirlwind, 6s | Shield (hold): a perfect block stuns, counter-strikes, exposes the attacker and resets Cleave |
+| Tank (Warrior) | Cleave: fast front sweep, Crush bonus on heavy/stunned/clumped foes, 2.2s | Charge: dash, hit, taunt and stun nearby foes (a boss Staggers), readies Cleave, 6.5s | Slam: drag nearby foes in (never a boss), taunt for 4s, spin a 360° whirlwind, 6s | Shield (hold): a perfect block stuns, counter-strikes, exposes the attacker and resets Cleave |
 | Healer (Cleric) | Prayer circle, 5s | Ward, 3.8s | Sunburst: heals everyone in reach, clears roots and lifts curses, 13s | Smite: heals your most hurt ally for the damage dealt, pulses Prayer circles and gives mana back, 2.4s |
-| DPS (Mage) | Blizzard, 7.8s | Rime burst, 11.5s | Comet: 0.9s cast, 5.6s | Icicle: instant, triple damage on frozen mobs, 2.6s |
+| DPS (Mage) | Blizzard, 7.8s | Rime burst: freezes nearby mobs (a boss is Chilled), 11.5s | Comet: 0.9s cast, double damage on frozen mobs, 1.5× on a Chilled boss, 5.6s | Icicle: instant, triple damage on frozen mobs, 1.5× on a Chilled boss, 2.6s |
 | DPS (Rogue) | Viper Blades: single-target twin-dagger slash + 5.5s Viper Venom, 2.3s | Shadowstrike: single-target execution thrust, guaranteed crit + 35% bonus damage on poisoned targets, 3.4s | Fan of Blades: modest 360° throwing-knife spin + enemy cast interrupt + refreshes active venom, 6.0s | Shadowstep: blink through shadow behind target, interrupt casts, +35% attack speed for 3.8s, shaves 2s off Shadowstrike, 5.5s |
 
 ## Talents (retired in favor of Gear, Set & Boss Weapon Ability Buffs)
 
 Skill trees and hero levels are omitted so that **Gear alone drives damage, healing, health, and ability fantasy**. Every class's 4 buttons are balanced out of the box, and Dungeon / Heroic Boss Weapons and 3-piece sets transform and buff how those 4 buttons work:
-- **The Gravedigger** (Tank): Every fifth swing digs in with a stunning tremor, and `Charge` resets `Cleave`’s cooldown.
+- **The Gravedigger** (Tank): Every fifth swing digs in with a stunning tremor (a boss Staggers), and `Charge` resets `Cleave`’s cooldown.
 - **Lantern of the Long Night** (Healer): `Mend` wards its target for 60, and `Sunburst` sears nearby foes for 90 holy damage and wards the party for 75.
-- **Gravefrost Staff** (Mage): `Comet` freezes everything it hits for 2 seconds, and `Rime burst` resets `Icicle` and leaves a 3s frost storm.
+- **Gravefrost Staff** (Mage): `Comet` freezes everything it hits for 2 seconds (a boss is Chilled), and `Rime burst` resets `Icicle` and leaves a 3s frost storm.
 - **The Cryptfangs** (Rogue): Every fourth twin-dagger slash strikes twice and refreshes Viper Venom, and `Shadowstep` resets `Shadowstrike`.
 
 ## Heroes, Warband and Alts
@@ -180,9 +186,9 @@ The weapon is the upgrade you feel; Helm, Shoulders and Chest are the set. Power
 
 | Role / Class | Trait | Trait | Trait |
 | --- | --- | --- | --- |
-| Tank (Warrior) | **Wide Swings**: swings hit everything in front at full damage | **Ringing Blow**: Charge hits twice and everything it hits turns on you | **Headsman**: hits on stunned mobs always crit |
+| Tank (Warrior) | **Wide Swings**: swings hit everything in front at full damage | **Ringing Blow**: Charge hits twice and everything it hits turns on you | **Headsman**: hits on stunned mobs, or a Staggered boss, always crit |
 | Healer (Cleric) | **Sunflare**: Mend splashes half to the next hurt ally | **Quick Hands**: Mend recasts faster | **Kindle**: a Ward that breaks heals for 80 |
-| DPS (Mage) | **Shatterlance**: Comet on frozen mobs hits 3× | **Splinter**: frostbolts split to a second mob | **Quickfrost**: Comet casts twice as fast |
+| DPS (Mage) | **Shatterlance**: Comet on frozen mobs hits 3×, on a Chilled boss 2× | **Splinter**: frostbolts split to a second mob | **Quickfrost**: Comet casts twice as fast |
 | DPS (Rogue) | **Twin Venom**: twin-dagger auto-attacks extend Viper Venom by 1.5s | **Venomrush**: Shadowstrike on a poisoned foe refunds 1.2s of its cooldown | **Nightstalker**: Shadowstep makes your next Shadowstrike deal +30% damage |
 
 ### How sets work
@@ -199,7 +205,7 @@ The weapon is the upgrade you feel; Helm, Shoulders and Chest are the set. Power
 | --- | --- | --- | --- |
 | **Barrowguard** (tank) | Bone-white plate, skull shoulders, coffin-lid shield | Perfect blocks give you a 150 bone shield | `Slam` raises 2 skeleton thralls for 8s that slash nearby foes for 28 damage and soak 25% of hits on the tank |
 | **Candlewake** (healer) | Black robes, candle crown, a lantern | Mend leaves a candle that heals 40 more over 4s | Once per fight per ally, fatal damage turns them into a fighting ghost at 35% HP (+25% damage) for 6s; `Prayer circle` also sears enemies inside for 32 holy damage per tick |
-| **Rimebone** (Mage DPS) | Frosted bone crown, icicle shoulders | Comet on a frozen mob refunds half its cooldown | `Blizzard` rains bone shards (+30% damage) and raises a frost skeleton (on boss casts or mob kills inside) that slashes for 32 frost damage and slows for 6s |
+| **Rimebone** (Mage DPS) | Frosted bone crown, icicle shoulders | Comet on a frozen mob or a Chilled boss refunds half its cooldown | `Blizzard` rains bone shards (+30% damage) and raises a frost skeleton (on boss casts or mob kills inside) that slashes for 32 frost damage and slows for 6s |
 | **Shadeveil** (Rogue DPS) | Shadow-stitched mask, bone-bladed spaulders, silent leather jerkin | Critical hits with Shadowstrike or Viper Blades erupt in shadow for 55 damage | `Shadowstep` leaves a shadow twin for 6s that slashes your target with twin daggers (34 damage every 0.55s) and refreshes Viper Venom |
 
 ### Sets by dungeon
@@ -321,7 +327,7 @@ Hidden: **Bravely Stupid** (go in solo as DPS and die to the first pack), **Last
 
 ## Making it fair
 
-Today's baseline (`tests/balance.test.ts`): bots clear Barrow Crypt in about 3:30 on Common gear with no wipes (the Gravekeeper about 80 seconds of it), full Epic in about 2:10, and a full BiS party (`power: 1.96` with 3-piece sets and Boss Weapons) melts the dungeon in well under half the time (`~1:30`). A healer who does nothing (no heals, no lifts) wipes the party by Sir Rattlebones, and the player as tank in Common gear with a bot healer clears with no wipes. Heroic in full Epic clears in about 3:45 with no wipes. The repo's `npm run sim` prints the full table.
+Today's baseline (`tests/balance.test.ts`): bots clear Barrow Crypt in about 3:25 on Common gear with no wipes (the Gravekeeper about 80 seconds of it), full Epic in about 2:05, and a full BiS party (`power: 1.96` with 3-piece sets and Boss Weapons) melts the dungeon in well under half the time (`~1:30`). A healer who does nothing (no heals, no lifts) wipes the party by Sir Rattlebones, and the player as tank in Common gear with a bot healer clears with no wipes. Heroic in full Epic clears in about 3:35 with no wipes. The repo's `npm run sim` prints the full table.
 
 - **The bands `tests/balance.test.ts` keeps:** a Common bot clear in about 3:30 with no wipes (3:05 to 3:55), with the Gravekeeper about 80 seconds of it (70 to 95); full Epic clearly faster; full BiS melting the dungeon in roughly half the time (under 62% of the Common clear time); and a DPS alone dies before Sir Rattlebones. A healer who does nothing (no heals, no lifts) wipes the party by Sir Rattlebones, and you as tank in Common gear with a bot healer clear with no wipes. Heroic: full Epic clears in about four minutes with no wipes, and Common gets buried.
 

@@ -32,6 +32,7 @@ export function mobTick(m, dt) {
   }
   const st = m.st;
   st.stun = Math.max(0, st.stun - dt); st.freeze = Math.max(0, st.freeze - dt);
+  st.chill = Math.max(0, (st.chill || 0) - dt); st.stagger = Math.max(0, (st.stagger || 0) - dt);
   if (st.slowT > 0) { st.slowT -= dt; if (st.slowT <= 0) st.slow = 0; }
   if (m.forcedT > 0) m.forcedT -= dt;
   if (st.kx || st.ky) { moveEnt(m, st.kx * dt, st.ky * dt); const k = Math.pow(0.01, dt); st.kx *= k; st.ky *= k; if (Math.abs(st.kx) + Math.abs(st.ky) < 6) st.kx = st.ky = 0; }

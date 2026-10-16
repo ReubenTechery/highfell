@@ -73,6 +73,8 @@ export const SOUNDS: Record<string, Play> = {
   smite: (t, v) => { T(t, 1180, 0.16, 'triangle', 0.13 * v, 1760); N(t, 0.12, 0.12 * v, 5200, 'highpass'); },
   bolt: (t, v) => T(t, 1500, 0.08, 'sine', 0.07 * v, 2400),
   icicle: (t, v) => { T(t, 2600, 0.1, 'triangle', 0.1 * v, 1700); N(t, 0.1, 0.18 * v, 6500, 'highpass'); },
+  // ice cracking: three bright ticks falling, over a hiss
+  shatter: (t, v) => { for (let i = 0; i < 3; i++) T(t, 3400 - i * 600, 0.09, 'triangle', 0.1 * v, 1500 - i * 250, i * 0.035); N(t, 0.22, 0.3 * v, 5200, 'highpass', 0.8, 2200); },
   holy: (t, v) => T(t, 990, 0.08, 'triangle', 0.06 * v, 1320),
   blizzard: (t, v) => N(t, 1.2, 0.22 * v, 3000, 'bandpass', 0.6, 900),
   nova: (t, v) => { N(t, 0.4, 0.4 * v, 5000, 'highpass'); T(t, 2200, 0.3, 'triangle', 0.1 * v, 600); },
