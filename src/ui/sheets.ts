@@ -21,10 +21,10 @@ import { actions, cap, esc, fmtN, fmtRate, GLYPH } from './dom';
 import { heroImg, heroSprite, iconOf, nameOf, rarLook, tile } from './art';
 import { SFX } from './sound';
 import { ilvl } from './hearth';
-import { heroSheet, type HeroSheetState } from './herosheet';
+import { heroesSheet, heroSheet, type HeroSheetState } from './herosheet';
 import { dungeonSheet, pickedDungeon, type DungeonPick } from './dungeonsheet';
 import { itemSheet, KIND_WORD, ROLE_STAT } from './itemsheet';
-import { LOG_TABS, logsSheet, type LogTab } from './logsheet';
+import { LOG_TABS, logsSheet, mountsSheet, type LogTab } from './logsheet';
 import { looksSheet, pickedLook } from './lookssheet';
 import { settingsSheet } from './settingssheet';
 
@@ -37,14 +37,15 @@ export type SheetSpec =
   | { kind: 'settings' }
   | { kind: 'picker'; spot: string }
   | { kind: 'item'; id: string; back?: SheetSpec }
-  | { kind: 'looks' };
+  | { kind: 'looks' }
+  | { kind: 'heroes' } | { kind: 'mounts' };
 
 /** A panel carried over from an older version of the page might not make sense any more. */
 export function normSpec(x: unknown): SheetSpec | null {
   const s = x as Record<string, any> | null;
   if (!s || typeof s !== 'object') return null;
   switch (s.kind) {
-    case 'dungeon': case 'settings': case 'satchel': case 'looks': return { kind: s.kind };
+    case 'dungeon': case 'settings': case 'satchel': case 'looks': case 'heroes': case 'mounts': return { kind: s.kind };
     case 'hero': return typeof s.hero === 'string' ? { kind: 'hero', hero: s.hero } : null;
     case 'gear': return typeof s.hero === 'string' ? { kind: 'gear', hero: s.hero, ...(SLOT_IDS.includes(s.slot) ? { slot: s.slot } : {}) } : null;
     case 'logs': return { kind: 'logs', tab: LOG_TABS.includes(s.tab) ? s.tab : 'collection', ...(typeof s.entry === 'string' ? { entry: s.entry } : {}) };
@@ -111,6 +112,8 @@ export class Sheets {
         this.app.showHearth('hall');
       },
       herogear: () => { const h = this.sheetHero(); if (h) { SFX.play('ui'); this.open({ kind: 'gear', hero: h.id }); } },
+      heroat: (el) => { const h = heroById(this.app.p, el.dataset.id || null); if (h) { SFX.play('ui'); this.open({ kind: 'hero', hero: h.id }); } },
+      newhero: () => { SFX.play('ui'); this.close(); this.app.showCreate(); },
       herorename: () => { this.heroSt = { ...this.heroSt, renaming: true, err: '' }; SFX.play('ui'); this.refresh(); this.root.querySelector<HTMLInputElement>('#cp-name')?.select(); },
       herocancel: () => { this.heroSt = { ...this.heroSt, renaming: false }; this.refresh(); },
       herodel: () => {
@@ -223,6 +226,7 @@ export class Sheets {
     if (!this.spec) return;
     this.spec = null; this.logTry = false;
     this.root.innerHTML = '';
+    this.app.hearth.closed();
   }
   refresh(): void { if (this.spec) this.render(false); }
 
@@ -275,6 +279,8 @@ export class Sheets {
       case 'picker': ({ head, body } = this.picker(s.spot)); break;
       case 'item': ({ head, body } = itemSheet(this.app.p, s.id, !!s.back)); break;
       case 'looks': ({ head, body } = looksSheet(this.app.p, this.lookPick, this.app.dev.allOpen)); break;
+      case 'heroes': ({ head, body, foot } = heroesSheet(this.app.p)); break;
+      case 'mounts': ({ head, body } = mountsSheet(this.app.p)); break;
     }
     this.root.innerHTML = `<div class="sheet-wrap"><section class="sheet ${wide ? 'wide' : ''} k-${s.kind}" role="dialog" aria-modal="true" aria-label="${esc(head.replace(/<[^>]+>/g, ' ').trim().split('  ')[0] || 'Panel')}">
       <header class="sheet-head"><div>${head}</div><button type="button" class="icon-btn" data-act="close" aria-label="Close">${GLYPH.close}</button></header>

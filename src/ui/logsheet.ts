@@ -1,16 +1,19 @@
 /**
  * The Logs sheet: the collection log (logbook.ts: each dungeon's log as a wardrobe, the garden, the other
  * rewards), the achievements, Bramblewick's story (if you found any of it) and the stats. The sheets wire up
- * its buttons and mark what you've seen.
+ * its buttons and mark what you've seen. And the paddock's page: every mount in the game, which the paddock
+ * opens when you tap it from far away.
  */
-import { ACHIEVEMENT_LIST, DUNGEONS } from '../content';
+import { ACHIEVEMENT_LIST, COLLECTIBLES, DUNGEONS } from '../content';
 import { ROLES } from '../content/roles';
 import type { Tier } from '../content/types';
 import { LORE } from '../content/vale';
 import { maxPoints, points, progress } from '../meta/achievements';
+import { paddock } from '../meta/hearth';
 import type { Profile } from '../meta/profile';
 import { skillRank } from '../meta/vale';
 import { esc, fmtDate, fmtN, fmtT } from './dom';
+import { colourOf, iconOf, nameOf } from './art';
 import { collectionLog, type LogView } from './logbook';
 
 export type LogTab = 'collection' | 'achievements' | 'lore' | 'stats';
@@ -28,6 +31,19 @@ export function logsSheet(p: Profile, tab: LogTab, entry: string | undefined, he
   if (tab === 'collection') ({ html: body, heroic: h } = collectionLog(p, entry, heroic, view));
   else body = tab === 'stats' ? stats(p) : tab === 'lore' ? lore(p) : achievements(p);
   return { head: '<h2>Logs</h2>', tabs, body, heroic: h };
+}
+
+/** Every mount in the game, in the paddock's order: yours lit up with when you got it, the rest dark with
+ *  where they come from. Tap one for its card. */
+export function mountsSheet(p: Profile): { head: string; body: string } {
+  const ms = paddock(p), have = ms.filter((m) => m.owned).length;
+  const grid = ms.map(({ id }) => {
+    const c = p.collection[id];
+    const cap = c ? (c.kc ? `KC ${fmtN(c.kc)}` : 'Owned') : COLLECTIBLES[id]?.source || '';
+    return `<button type="button" class="cl-it ${c ? 'got' : 'miss'}" data-act="item" data-id="${id}" title="${esc(nameOf(id))}" aria-label="${esc(nameOf(id))}${c ? ', in your paddock' : ', not yet'}" style="--rc: ${colourOf(id)}">
+      <span class="tile" aria-hidden="true">${iconOf(id)}</span><span class="n">${esc(nameOf(id))}</span><span class="m">${esc(cap)}</span></button>`;
+  }).join('');
+  return { head: `<h2>Mounts</h2><p>${have} of ${ms.length} in your paddock</p>`, body: `<div class="cl-grid">${grid}</div><p class="fine">Every mount in the game has a place in the paddock. Tap one for where it comes from.</p>` };
 }
 
 function stats(p: Profile): string {

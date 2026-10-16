@@ -1,10 +1,11 @@
 /**
  * A hero's sheet, opened by tapping them by their bed in the house: who they are, play as them, look at
  * their gear, rename a hero the game named for you (once), or let one go. Race and class never change;
- * that is what more heroes are for. The sheets wire up its buttons; this draws it.
+ * that is what more heroes are for. And your heroes, all of them, which the bunk room opens when you tap
+ * it from far away. The sheets wire up their buttons; this draws them.
  */
 import { TITLES } from '../content';
-import { CLASSES, RACES, type ClassId, type RaceId } from '../content/folk';
+import { CLASSES, MAX_HEROES, RACES, type ClassId, type RaceId } from '../content/folk';
 import { ROLES } from '../content/roles';
 import { loadoutFor, waiting } from '../meta/gear';
 import { roleOf, type Hero, type Profile } from '../meta/profile';
@@ -40,4 +41,25 @@ export function heroSheet(p: Profile, h: Hero, st: HeroSheetState): { head: stri
     </div>
     <p class="fine">Your heroes share the collection, kill counts and the house. Each keeps their own gear, title and clears.</p>`;
   return { head: `<h2>${esc(h.name)}</h2><p>${playing ? 'By the fire' : 'In the bunk room'}</p>`, body };
+}
+
+/** Your heroes: a row each, the one you play first, with what waits to be put on. Tap one for their sheet. */
+export function heroesSheet(p: Profile): { head: string; body: string; foot: string } {
+  const list = [...p.roster].sort((a, b) => +(b.id === p.active) - +(a.id === p.active));
+  const rows = list.map((h) => {
+    const role = roleOf(h), race = RACES[h.race as RaceId], cls = CLASSES[h.cls as ClassId];
+    const title = h.title && TITLES[h.title] ? TITLES[h.title].text : '';
+    const up = waiting(p, h).length, me = h.id === p.active;
+    return `<button type="button" class="wb-row${me ? ' me' : ''}" data-act="heroat" data-id="${esc(h.id)}" style="--light: ${race?.light || '#F4B942'}" aria-label="${esc(h.name)}, ${esc(race?.name || h.race)} ${esc(cls?.name || h.cls)}${me ? ', playing now' : ''}${up ? `, ${up} new to put on` : ''}">
+      <span class="hc-fig" aria-hidden="true">${heroImg(heroSprite(h, role, p), { cls: 'hc-img' })}</span>
+      <span class="hc-tx"><b>${esc(h.name)}</b>${title ? `<span class="hc-title">${esc(title)}</span>` : ''}
+        <span><i class="rdot ${role}"></i>${esc(race?.name || h.race)} ${esc(cls?.name || h.cls)}${me ? ' · playing now' : ''}</span>
+        <span>Item level ${ilvl(loadoutFor(p, h).score)} · ${fmtN(h.clears)} clear${h.clears === 1 ? '' : 's'}</span></span>
+      ${up ? `<i class="badge" aria-hidden="true">${up}</i>` : ''}</button>`;
+  }).join('');
+  return {
+    head: `<h2>Your heroes</h2><p>${p.roster.length} of ${MAX_HEROES}</p>`,
+    body: `<div class="wb-list">${rows}</div>`,
+    foot: p.roster.length < MAX_HEROES ? `<button type="button" class="btn" data-act="newhero">${GLYPH.plus}New hero</button>` : '',
+  };
 }

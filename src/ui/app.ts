@@ -122,11 +122,14 @@ export class App {
       if (!this.raf) { this.last = 0; this.raf = requestAnimationFrame((t) => this.frame(t)); }
     }
   }
-  /** home: the house, opening on the hall (or a room you name, like the bunk room). With no heroes yet, the hero maker instead. */
+  /** home: the whole house (or a room you name, like the bunk room); back from the cauldron, the house as
+   *  you left it. With no heroes yet, the hero maker instead. */
   showHearth(room?: string): void {
     if (!activeHero(this.p)) { this.showCreate(); return; }
     this.sheets.close();
     if (room) this.hearth.aim(room);
+    else if (this.scene === 'brew') this.hearth.closed();
+    else this.hearth.home();
     this.show('hearth');
   }
   /** the cauldron at home */
