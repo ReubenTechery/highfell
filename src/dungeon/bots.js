@@ -118,16 +118,37 @@ export function leaderHero() {
   if (t && t.alive && !t.isPlayer) return t;
   return p;
 }
-export function partyReady(h) {
+/* how close the party gathers before the leader walks on */
+export const KEEP_UP = 340;
+/* skip: mates the leader has stopped waiting for (see stuckMates) */
+export function partyReady(h, skip) {
   for (const a of S.heroes) {
-    if (a === h) continue;
+    if (a === h || (skip && skip.has(a))) continue;
     if (!a.alive) return false;
-    if (dist(a, h) > 340) return false;
+    if (dist(a, h) > KEEP_UP) return false;
   }
   if (S.healerUp && S.heroes.some((a) => a.alive && a.hp < a.maxHp * 0.8)) return false;
   const hl = heroBy('healer');
   if (hl && hl.alive && hl.mana < 60) return false;
   return true;
+}
+/* the leader's safety net: a bot mate out of reach who hasn't closed the gap for about four seconds (caught on
+   a wall, say) stops holding the party up, and the next pull brings them along. A player is always waited for. */
+export const GIVE_UP = 4;
+export function stuckMates(h) {
+  const B = h.bot;
+  if (!B.mates) B.mates = new Map();
+  const out = new Set();
+  for (const a of S.heroes) {
+    if (a === h || !a.alive || !a.botDriven) continue;
+    const d = dist(a, h);
+    let w = B.mates.get(a);
+    // start the clock again when they're in reach, come closer, or the leader hasn't been waiting (a fight)
+    if (d <= KEEP_UP || !w || S.t - w.seen > 0.5 || d < w.d - 24) { w = { d, t: S.t, seen: S.t }; B.mates.set(a, w); }
+    w.seen = S.t;
+    if (S.t - w.t >= GIVE_UP) out.add(a);
+  }
+  return out;
 }
 export function nextObjective() {
   for (const p of S.packs) {
@@ -152,7 +173,7 @@ export function idleGoal(h) {
   }
   const L = leaderHero();
   if (h === L) {
-    if (!partyReady(h)) { h.bot.waiting = true; return null; }
+    if (!partyReady(h, stuckMates(h))) { h.bot.waiting = true; return null; }
     h.bot.waiting = false;
     const o = nextObjective();
     return o ? { x: o.x, y: o.y, tol: 18 } : null;

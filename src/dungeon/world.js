@@ -82,8 +82,11 @@ export function navPoint(e, tx, ty) {
   const M = S.dg.map;
   const a = areaOf(e.x, e.y), b = areaOf(tx, ty);
   if (a === b) return { x: tx, y: ty };
+  // straight there only from inside a box you fit in: beside a corridor's mouth you are in its box but too
+  // wide for it, and a straight line walks you into the corner
+  const r = e.r || 0;
   for (const w of M.walk) {
-    if (e.x >= w.x0 && e.x <= w.x1 && e.y >= w.y0 && e.y <= w.y1 && tx >= w.x0 && tx <= w.x1 && ty >= w.y0 && ty <= w.y1) return { x: tx, y: ty };
+    if (e.x >= w.x0 + r && e.x <= w.x1 - r && e.y >= w.y0 + r && e.y <= w.y1 - r && tx >= w.x0 && tx <= w.x1 && ty >= w.y0 && ty <= w.y1) return { x: tx, y: ty };
   }
   const cur = M.chain[a];
   if (b > a) return { x: M.CX, y: cur.y0 - 24 };

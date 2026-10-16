@@ -1,7 +1,7 @@
 /// <reference types="node" />
 /**
  * The engine's rules for a fight: threat, the tank's tools, cages, what floats over heads, the dungeon's tuning,
- * and where each hero's weapon and head are.
+ * where each hero's weapon and head are, and how the bots keep the party together.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,6 +10,8 @@ import { S } from '../src/dungeon/state.js';
 import { exposeMob, hurtHero, hurtMob, pickTarget } from '../src/dungeon/entities.js';
 import { abCd, onPerfectBlock, useAbility } from '../src/dungeon/heroes.js';
 import { breakCage, cutChain, makeCage, makeChain, mashCage, spawnMob } from '../src/dungeon/mobs.js';
+import { GIVE_UP, KEEP_UP } from '../src/dungeon/bots.js';
+import { navPoint } from '../src/dungeon/world.js';
 import { HERO_FIT, heroFit } from '../src/dungeon/render.js';
 import { BARROW_ENGINE } from '../src/content/barrow/engine';
 import { TEMPLATE_ENGINE } from '../src/content/_template/engine';
@@ -413,6 +415,40 @@ test('dungeon template: starter _template dungeon builds map, packs, seal, theme
   assert.ok(s.seal && s.seal.pads.length === 3);
   step(2.0);
   assert.ok(s.heroes.every((h: any) => h.alive), 'template dungeon ticks cleanly with bots');
+});
+
+test('bots: a mate beside the yard corridor walks in, not into the corner, and the leader stops waiting for a mate who can’t move', () => {
+  // where the party once got stuck: the tank in the yard gate, the DPS just east of the corridor's mouth
+  const spots = (g: ReturnType<typeof game>, dy: number) => {
+    g.tank.x = 500; g.tank.y = 1101; g.healer.x = 452; g.healer.y = 1242; g.dps.x = 570; g.dps.y = 1436 + dy;
+  };
+  const a = game('tank', 'keeper');
+  spots(a, 0);
+  const p = navPoint(a.dps, 562, 1211);
+  assert.equal(p.x, 500, 'too wide for the corridor where it stands: heads for its middle first');
+  // and it gets in, even when its unstick nudge turns it away from the corridor
+  a.dps.bot.side = 1;
+  a.s.auto = true;
+  let t = 0;
+  while (t < 3 && Math.hypot(a.dps.x - a.tank.x, a.dps.y - a.tank.y) > KEEP_UP) { update(1 / 60); t += 1 / 60; }
+  assert.ok(t < 2, `the DPS caught up in ${t.toFixed(1)}s (at ${a.dps.x.toFixed(0)}, ${a.dps.y.toFixed(0)})`);
+
+  // a bot mate who can't move holds the leader up for about four seconds, then the pull brings them along
+  const b = game('tank', 'keeper');
+  spots(b, 80);
+  b.dps.st.root = 99;
+  b.s.auto = true;
+  step(GIVE_UP - 0.5);
+  assert.ok(!b.s.boss && b.tank.y > 1090, 'still waiting');
+  step(3);
+  assert.ok(b.s.boss, 'went on and pulled the Gravekeeper');
+  assert.ok(b.dps.y < 1180, 'the pull brought the stuck DPS into the yard');
+
+  // a player is always waited for
+  const c = game('dps', 'keeper');
+  spots(c, 80);
+  step(GIVE_UP + 3);
+  assert.ok(!c.s.boss, 'the tank still waits for the player');
 });
 
 test('Sir Rattlebones: the lash from his last guard dying can finish him, and the run goes on', () => {
