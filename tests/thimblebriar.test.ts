@@ -30,6 +30,9 @@ import { loadoutOf, newHero, plainLoadout } from '../src/meta/gear';
 import { heroSprite } from '../src/ui/art';
 import { simRun } from '../src/sim/run';
 import type { RoleId } from '../src/content/types';
+import { WARBAND_KEY } from '../src/meta/warband';
+/** a save whose Warband is open: these tests are about other rules and make more than one hero (warband.ts) */
+const openProfile = (...a: Parameters<typeof freshProfile>) => { const p = freshProfile(...a); p.counters[WARBAND_KEY] = 1; return p; };
 
 const gear = (rar: 0 | 1 | 2 | 3) => Object.fromEntries((['tank', 'healer', 'dps'] as RoleId[]).map((r) => [r, plainLoadout(r, rar)]));
 const start = (role: RoleId, seed: number, o: Record<string, unknown> = {}) => { newGame(THIMBLEBRIAR_ENGINE, { role, seed, start: 'entrance', quiet: true, noEvents: true, loadouts: gear(3), ...o }); return S as any; };
@@ -65,7 +68,7 @@ test('thimblebriar: Heroic follows the kit rule (Normal loot, then a gilding kit
 });
 
 test('thimblebriar: Heroic’s log gives Gilded Gnomes as its big prize, and it draws your Gnomes, only them, in gold', () => {
-  const p = freshProfile();
+  const p = openProfile();
   const gnome = newHero(p, { name: 'Wren Gearpatch', race: 'gnome', cls: 'warrior', free: true })!;
   const dwarf = newHero(p, { name: 'Brask Ironhew', race: 'dwarf', cls: 'warrior' })!;
   setActive(p, gnome.id);
@@ -296,7 +299,7 @@ test('thimblebriar: the gadgets: a Clockguard perfect block drops a bomb of your
 });
 
 test('thimblebriar: achievements count its bombs, Sticky Bombs and Waddlecaps', () => {
-  const p = freshProfile();
+  const p = openProfile();
   const a = new Achiever(p, { dungeon: 'thimblebriar', role: 'healer', practice: false, testGear: false });
   for (let i = 0; i < 100; i++) a.event({ type: 'bomb.knocked', player: true });
   assert.ok(p.achievements['thimblebriar.bombs']);

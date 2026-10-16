@@ -8,6 +8,7 @@ import { BUNK_SLOTS, HERO_AT, THINGS } from '../content/house';
 import type { Profile } from '../meta/profile';
 import type { HouseTip } from '../meta/tips';
 import { bedPhase } from '../meta/vale';
+import { warbandOpen } from '../meta/warband';
 
 /** a step of a guided tour of the house: its room, what it points at (a thing's id, 'me' for your hero by
  *  the fire, 'newhero' for the empty bed), where its pin stands and, if not over the pin, where the camera looks */
@@ -85,7 +86,11 @@ const GARDEN_TIPS: Record<Exclude<HouseTip, 'tour'>, TourStep> = {
 
 /** A tip's steps for this save: the ready tip points at the bed that is ready. */
 export function tipSteps(tip: HouseTip, p: Profile): TourStep[] {
-  if (tip === 'tour') return TOUR_STEPS;
+  // the welcome tour shows the bunk room's beds only once your Warband is open (warband.ts)
+  if (tip === 'tour') {
+    const steps = warbandOpen(p) ? TOUR_STEPS : TOUR_STEPS.filter((s) => s.thing !== 'newhero');
+    return steps.map((s, i) => ({ ...s, step: `${i + 1} / ${steps.length}` }));
+  }
   const step = GARDEN_TIPS[tip];
   if (tip !== 'ready') return [step];
   const bed = THINGS.find((t) => t.action === 'garden' && t.bed !== undefined && !!p.vale.beds[t.bed] && bedPhase(p.vale.beds[t.bed]) === 'ready');

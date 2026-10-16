@@ -9,6 +9,7 @@
 import { RECIPE_ORDER } from '../content/vale';
 import { finishHearthTour, finishSeedTour, needsHearthTour, needsSeedTour, type Profile } from './profile';
 import { canBrew, readyBeds } from './vale';
+import { warbandOpen } from './warband';
 
 /** the house's tips: the welcome tour, then the garden's in the order they come */
 export type HouseTip = 'tour' | 'seed' | 'ready' | 'herbs';
@@ -33,7 +34,8 @@ export function houseTip(p: Profile): HouseTip | null {
  *  seats, never your heroes), then your first bottle once you have one. */
 export function doorTip(p: Profile, heroic: boolean): DoorTip | null {
   if (!p.roster.length) return null;
-  if (!heroic && !seen(p, 'warband')) return 'warband';
+  // the Warband tip waits for the Warband to open (warband.ts): then it's the moment to make more heroes
+  if (!heroic && !seen(p, 'warband') && warbandOpen(p)) return 'warband';
   if (!seen(p, 'brew') && RECIPE_ORDER.some((id) => (p.vale.shelf[id] || 0) > 0)) return 'brew';
   return null;
 }

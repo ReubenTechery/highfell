@@ -83,6 +83,12 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .house .plus { fill: none; stroke: #FFF8EC; stroke-width: 5; stroke-linecap: round; }
 .house .newhero .ring { fill: rgba(255, 248, 236, 0.72); stroke: var(--ink); stroke-width: 4; stroke-dasharray: 12 9; }
 .house .newhero .plus { stroke: var(--ink); }
+.house .newhero.shut .ring { fill: rgba(255, 248, 236, 0.4); }
+.house .newhero .padlock path { fill: none; stroke: var(--ink); stroke-width: 6; }
+.house .newhero .padlock rect { fill: #B9B2A6; stroke: var(--ink); stroke-width: 4; }
+.dgx-note svg { width: 16px; height: 16px; flex: none; vertical-align: -3px; margin-right: 6px; }
+.wb-shut { display: flex; align-items: center; gap: 8px; margin: 0; text-align: left; }
+.wb-shut svg { width: 18px; height: 18px; flex: none; }
 .house .sign { font-family: var(--f-display); font-size: 30px; fill: var(--ink); text-anchor: middle; pointer-events: none; }
 .house .a-dungeons .lbl { font-size: 30px; fill: #D8FFB8; }
 .bit.pip circle { fill: var(--red); stroke: var(--ink); stroke-width: 4; }

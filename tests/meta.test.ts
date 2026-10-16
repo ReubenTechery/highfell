@@ -20,6 +20,9 @@ import { groupOf, heroesFor, partyProblem, pickRole, seats, seatsFor } from '../
 import { lootFor } from '../src/meta/loot';
 import type { DungeonStage, GameEvent, RunSummary } from '../src/content/types';
 import WARDROBE from '../art/wardrobe.json';
+import { WARBAND_KEY } from '../src/meta/warband';
+/** a save whose Warband is open: these tests are about other rules and make more than one hero (warband.ts) */
+const openProfile = (...a: Parameters<typeof freshProfile>) => { const p = freshProfile(...a); p.counters[WARBAND_KEY] = 1; return p; };
 
 test('content: every id a table, log, set or reward points at exists', () => {
   assert.deepEqual(checkContent(), []);
@@ -32,7 +35,7 @@ test('content: every id a table, log, set or reward points at exists', () => {
 test('profile: garbage starts fresh, saves round-trip, missing fields are filled', () => {
   assert.equal(migrate(null).v, PROFILE_VERSION);
   assert.equal(migrate('nope').rev, 0);
-  const p = freshProfile(1000);
+  const p = openProfile(1000);
   p.rev = 7; p.collection['pet.pint_gravekeeper'] = { n: 1, kc: 4123, at: 5 };
   const back = migrate(JSON.parse(JSON.stringify(p)));
   assert.equal(back.rev, 7);
@@ -118,7 +121,7 @@ test('heroes: race and class are fixed, male or female look is saved, names are 
   assert.equal(cleanName('  Wren   Copperkettle '), 'Wren Copperkettle');
   assert.equal(cleanName('x'), null);
   assert.equal(cleanName('<b>Bob</b>'), null);
-  const p = freshProfile();
+  const p = openProfile();
   const a = newHero(p, { name: 'Gruna Coalbeard', race: 'dwarf', cls: 'warrior', sex: 'f' }, 10)!;
   assert.ok(a);
   assert.equal(a.sex, 'f');
@@ -151,7 +154,7 @@ test('heroes: race and class are fixed, male or female look is saved, names are 
 });
 
 test('heroes: a new hero starts in shared gear, and the uniques the roster owns wait to be put on', () => {
-  const p = freshProfile();
+  const p = openProfile();
   p.warband.healer.helm = { rar: 2 };
   p.collection['candlewake.chest'] = { n: 1, kc: 3, at: 1 };
   p.collection['barrowguard.helm'] = { n: 1, kc: 3, at: 1 };
@@ -186,7 +189,7 @@ test('loot: each line rolls at its own rate and role locks hold', () => {
 
 const HERO = { tank: { race: 'dwarf', cls: 'warrior' }, healer: { race: 'human', cls: 'cleric' }, dps: { race: 'elf', cls: 'mage' } } as const;
 /** a fresh profile with one hero of a role, which is the one you play */
-function withHero(role: 'tank' | 'healer' | 'dps' = 'tank', p: Profile = freshProfile()): { p: Profile; h: Hero } {
+function withHero(role: 'tank' | 'healer' | 'dps' = 'tank', p: Profile = openProfile()): { p: Profile; h: Hero } {
   const h = newHero(p, { name: 'Test ' + role, ...HERO[role] })!;
   setActive(p, h.id);
   return { p, h };
@@ -411,7 +414,7 @@ test('gear: power runs 1.00 at Common to 1.72 at Epic, sets add bonuses', () => 
 });
 
 test('achievements: counters, live checks, run checks, rewards and the meta', () => {
-  const p = freshProfile();
+  const p = openProfile();
   const a = new Achiever(p, { dungeon: 'barrow', role: 'dps', practice: false, testGear: false }, () => 1);
   const kill: GameEvent = { type: 'mob.killed', mob: 'rattler', boss: false, undead: true, byPlayer: false };
   for (let i = 0; i < 499; i++) a.event(kill);
@@ -424,7 +427,7 @@ test('achievements: counters, live checks, run checks, rewards and the meta', ()
   assert.deepEqual(tankOnly.event({ type: 'boss.killed', boss: 'keeper', time: 1, armorUp: false, onlyPlayerAlive: false, smashes: 5, smashPerfect: 5, playerIsTank: true }), []);
   const sum: RunSummary = { dungeon: 'barrow', role: 'dps', practice: false, testGear: false, time: 165, deaths: 0, wipes: 0, handHits: 0, ringHits: 0, saves: 0, bombHits: 0, lifts: 0, bursts: 0, playerDeaths: 0, kicks: 0, perfectBlocks: 0 };
   // Gravedigger's Sprint is a clear under 2:50
-  assert.ok(!new Achiever(freshProfile(), { dungeon: 'barrow', role: 'dps', practice: false, testGear: false }).cleared({ ...sum, time: 175 }).includes('barrow.sprint'));
+  assert.ok(!new Achiever(openProfile(), { dungeon: 'barrow', role: 'dps', practice: false, testGear: false }).cleared({ ...sum, time: 175 }).includes('barrow.sprint'));
   const got = a.cleared(sum);
   for (const id of ['barrow.into', 'barrow.nobody', 'barrow.sprint', 'barrow.flawless']) assert.ok(got.includes(id), id);
   assert.ok(p.collection['trophy.barrow_key']);
@@ -439,7 +442,7 @@ test('achievements: counters, live checks, run checks, rewards and the meta', ()
 });
 
 test('hearth: spots only take their own kind, and only what you own', () => {
-  const p = freshProfile();
+  const p = openProfile();
   assert.equal(place(p, 'pet.fire', 'pet.pint_gravekeeper'), false);
   p.collection['pet.pint_gravekeeper'] = { n: 1, kc: 1, at: 1 };
   assert.equal(place(p, 'mantel.1', 'pet.pint_gravekeeper'), false);
@@ -465,7 +468,7 @@ test('paddock: one place for every mount in the game; yours stand there, the res
   assert.deepEqual(MOUNTS, mounts);
   assert.ok(mounts.includes('mount.goat') && mounts.includes('mount.gravehound'));
   assert.ok(!HEARTH_SPOTS.some((s) => s.kind === 'mount'), 'no mount is on show anywhere else, so none is in two places');
-  const p = freshProfile();
+  const p = openProfile();
   assert.ok(paddock(p).every((m) => !m.owned), 'a new save has a paddock of shadows');
   p.collection['mount.gravehound'] = { n: 1, kc: 612, at: 1 };
   assert.deepEqual(paddock(p).filter((m) => m.owned).map((m) => m.id), ['mount.gravehound']);
@@ -485,7 +488,7 @@ test('paddock: one place for every mount in the game; yours stand there, the res
 });
 
 test('paddock: a mount in the old stall or the garden moves to the paddock, and nothing is lost', () => {
-  const p = freshProfile();
+  const p = openProfile();
   p.v = 8;
   p.collection['mount.goat'] = { n: 1, kc: 1, at: 1 };
   p.collection['mount.gravehound'] = { n: 2, kc: 612, at: 2 };
@@ -522,7 +525,7 @@ test('house: from far away a room with one clear job opens it, and the hall, wit
 });
 
 test('house: spots a save has never had fill with what is not on show, once; emptied spots stay empty', () => {
-  const p = freshProfile();
+  const p = openProfile();
   const trophies = Object.values(COLLECTIBLES).filter((c) => c.kind === 'trophy').map((c) => c.id);
   for (const id of trophies) p.collection[id] = { n: 1, kc: 0, at: 1 };
   // an older save: only the mantel was ever used, and its far right was emptied on purpose
@@ -534,7 +537,7 @@ test('house: spots a save has never had fill with what is not on show, once; emp
   assert.equal(shown.length, trophies.length, 'every trophy you own is on show');
   assert.equal(new Set(shown).size, shown.length, 'nothing is in two places');
   assert.deepEqual(migrate(JSON.parse(JSON.stringify(q))).hearth.spots, q.hearth.spots, 'loading again changes nothing');
-  const fresh = migrate(JSON.parse(JSON.stringify(freshProfile())));
+  const fresh = migrate(JSON.parse(JSON.stringify(openProfile())));
   assert.ok(Object.values(fresh.hearth.spots).every((v) => v === null), 'a new save has an empty house');
 });
 
@@ -607,7 +610,7 @@ test('house looks: a room shows the look you put on it once you have earned it, 
 });
 
 test('profile: a v5 save gets the tavern in every room, and what is in the house stays', () => {
-  const v5: any = JSON.parse(JSON.stringify(freshProfile(1000)));
+  const v5: any = JSON.parse(JSON.stringify(openProfile(1000)));
   v5.v = 5; v5.hearth = { spots: { 'mantel.1': 'trophy.barrow_key', 'pet.rug': null } };
   const p = migrate(v5);
   assert.equal(p.v, PROFILE_VERSION);
@@ -668,7 +671,7 @@ test('heroic: opens after ten clears of its normal dungeon (its loot is in heroi
 });
 
 test('party: you take your hero’s seat, your Warband heroes take the others on Normal (disabled on Heroic), and bots stand in for empty seats', () => {
-  const p = freshProfile();
+  const p = openProfile();
   assert.deepEqual(seats(p).map((s) => s.bot), ['Brannoc', 'Maren', 'Ivy'], 'no hero yet: three bots');
   const tank = newHero(p, { name: 'Hollis Emberhand', race: 'dwarf', cls: 'warrior' })!;
   setActive(p, tank.id, 1);
@@ -696,14 +699,14 @@ test('party: you take your hero’s seat, your Warband heroes take the others on
 
 test('party: Heroic needs at least two real players and a bot takes the third seat, never your Warband; Normal is fine solo', () => {
   // you play a tank, with your own healer and DPS waiting in the bunk room
-  const p = freshProfile();
+  const p = openProfile();
   const tank = newHero(p, { name: 'Hollis Emberhand', race: 'dwarf', cls: 'warrior' })!;
   const myHealer = newHero(p, { name: 'Wren Ashby', race: 'human', cls: 'cleric' })!;
   const myDps = newHero(p, { name: 'Ivo Larkspur', race: 'elf', cls: 'mage' })!;
   setActive(p, tank.id, 1);
   // friends bring their own heroes, from their own saves
-  const friendHealer = newHero(freshProfile(), { name: 'Tam Hollow', race: 'human', cls: 'cleric' })!;
-  const friendDps = newHero(freshProfile(), { name: 'Sel Moonwhisper', race: 'elf', cls: 'mage' })!;
+  const friendHealer = newHero(openProfile(), { name: 'Tam Hollow', race: 'human', cls: 'cleric' })!;
+  const friendDps = newHero(openProfile(), { name: 'Sel Moonwhisper', race: 'elf', cls: 'mage' })!;
   // Normal on your own: allowed, and your Warband fills the other two seats
   assert.equal(partyProblem([tank], { heroic: false }), null);
   assert.deepEqual(seatsFor(p, [tank], false).map((s) => s.hero?.id), [tank.id, myHealer.id, myDps.id]);
@@ -717,12 +720,12 @@ test('party: Heroic needs at least two real players and a bot takes the third se
   assert.equal(partyProblem([tank, friendHealer, friendDps], { heroic: true }), null);
   assert.deepEqual(seatsFor(p, [tank, friendHealer, friendDps], true).map((s) => s.hero?.id), [tank.id, friendHealer.id, friendDps.id]);
   // two players can't take one seat
-  const friendTank = newHero(freshProfile(), { name: 'Brakka Stoutmantle', race: 'dwarf', cls: 'warrior' })!;
+  const friendTank = newHero(openProfile(), { name: 'Brakka Stoutmantle', race: 'dwarf', cls: 'warrior' })!;
   assert.ok(partyProblem([tank, friendTank], { heroic: true }));
 });
 
 test('party: picking a role switches to your hero of that role you played last, or changes nothing', () => {
-  const p = freshProfile();
+  const p = openProfile();
   const tank = newHero(p, { name: 'Hollis Emberhand', race: 'dwarf', cls: 'warrior' })!;
   const healer = newHero(p, { name: 'Wren Ashby', race: 'human', cls: 'cleric' })!;
   setActive(p, tank.id, 1);
@@ -845,14 +848,14 @@ test('stages: every dungeon has a door for the Dungeons sheet, its final boss in
 });
 
 test('onboarding: a fresh profile sends its first hero into the Crypt Trial once, existing heroes skip it, and the first hero triggers the hearth tour', () => {
-  const p = freshProfile();
+  const p = openProfile();
   assert.equal(needsIntroRun(p), true, 'the first hero made goes into the trial');
   assert.equal(needsHearthTour(p), false);
   assert.equal(finishIntroRun(p), true, 'the first time through');
   assert.equal(needsIntroRun(p), false, 'finishing or skipping the trial marks it done');
   assert.equal(finishIntroRun(p), false, 'a replay is not the first time');
   // an existing save that already has a hero never needs the intro run or tour unless asked
-  const existing = freshProfile();
+  const existing = openProfile();
   newHero(existing, { name: 'Brannoc', race: 'dwarf', cls: 'warrior' });
   assert.equal(needsIntroRun(existing), false);
   assert.equal(needsHearthTour(existing), false);
@@ -865,7 +868,7 @@ test('onboarding: a fresh profile sends its first hero into the Crypt Trial once
 });
 
 test('onboarding: the first curse a healer sees brings its tip once a save, with no change to the save\'s shape', () => {
-  const p = freshProfile();
+  const p = openProfile();
   assert.equal(needsCurseTip(p), true);
   finishCurseTip(p);
   assert.equal(needsCurseTip(p), false);
@@ -891,7 +894,7 @@ test('onboarding: the Crypt Trial gives the first hero an Uncommon weapon and an
   grantTrialStarter(t.p, t.h);
   assert.equal(t.p.warband.healer.helm.rar, 1);
   assert.equal(t.p.warband.tank.helm.rar, 0);
-  const r = freshProfile();
+  const r = openProfile();
   const rogue = newHero(r, { name: 'Test Rogue', race: 'elf', cls: 'rogue' })!;
   assert.equal(trialStarter(rogue)[0].id, gearId('rogue', 'weapon', 1));
 });
@@ -929,7 +932,7 @@ test('gnomes and goblins: every class, sex, ladder armour tier, and Barrow Epic 
   for (const race of ['gnome', 'goblin'] as const) {
     for (const cls of ['warrior', 'cleric', 'mage', 'rogue'] as const) {
       for (const sex of ['m', 'f'] as const) {
-        const p = freshProfile();
+        const p = openProfile();
         const h = newHero(p, { name: `${race} ${cls} ${sex}`, race, cls, sex, free: true })!;
         assert.ok(h, `created ${race} ${cls} (${sex})`);
         // Tier 0: Common rags (score 10)
@@ -1000,7 +1003,7 @@ test('learning a class: the first run on a class that isn\'t your first hero\'s 
 });
 
 test('curses: the swipe arrow over a cursed mate shows until you have lifted three', () => {
-  const p = freshProfile();
+  const p = openProfile();
   for (let i = 0; i < 3; i++) { assert.equal(needsSwipeHint(p), true, `after ${i} lifts`); countLift(p); }
   assert.equal(needsSwipeHint(p), false);
 });

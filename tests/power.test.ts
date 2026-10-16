@@ -15,9 +15,12 @@ import { underPowered } from '../src/meta/party';
 import { freshProfile, setActive, type Hero, type Profile } from '../src/meta/profile';
 import { ACT1_DUNGEONS, dungeonActions, dungeonSheet, type DungeonPick } from '../src/ui/dungeonsheet';
 import type { App } from '../src/ui/app';
+import { WARBAND_KEY } from '../src/meta/warband';
+/** a save whose Warband is open: these tests are about other rules and make more than one hero (warband.ts) */
+const openProfile = (...a: Parameters<typeof freshProfile>) => { const p = freshProfile(...a); p.counters[WARBAND_KEY] = 1; return p; };
 
 /** a profile whose hero you play is a tank in regular gear of one rarity in every slot (0 Common to 3 Epic) */
-function tankIn(rar: Rar, p: Profile = freshProfile()): { p: Profile; h: Hero } {
+function tankIn(rar: Rar, p: Profile = openProfile()): { p: Profile; h: Hero } {
   const h = newHero(p, { name: 'Hollis Emberhand', race: 'dwarf', cls: 'warrior' })!;
   setActive(p, h.id);
   for (const s of SLOT_IDS) h.regular[s] = { rar };

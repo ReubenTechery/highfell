@@ -11,6 +11,7 @@ import { freshProfile, migrate, startHearthTour, type Profile } from '../src/met
 import { newHero } from '../src/meta/gear';
 import { beginHarvest, brew, endHarvest, growBeds, plant, rollSeeds } from '../src/meta/vale';
 import { doorTip, finishTip, houseTip } from '../src/meta/tips';
+import { WARBAND_KEY } from '../src/meta/warband';
 
 const T0 = Date.UTC(2026, 9, 16, 2);
 const BARROW = DUNGEONS.barrow;
@@ -74,10 +75,12 @@ test('tips: doing the thing is the tip done, and a save that already did it neve
   assert.equal(houseTip(r), 'tour');
 });
 
-test('tips: the Dungeons door shows your Warband first (on Normal only), then your first bottle, each once', () => {
+test('tips: once the Warband opens, the Dungeons door shows it first (on Normal only), then your first bottle, each once', () => {
   const p = freshProfile(T0);
   assert.equal(doorTip(p, false), null, 'no hero yet');
   newHero(p, { name: 'Edda Brightwater', race: 'human', cls: 'cleric' });
+  assert.equal(doorTip(p, false), null, 'the Warband is still shut');
+  p.counters[WARBAND_KEY] = 1;
   assert.equal(doorTip(p, false), 'warband');
   assert.equal(doorTip(p, true), null, 'Heroic seats friends, never your Warband');
   finishTip(p, 'warband');

@@ -37,6 +37,7 @@ import { heroImg, heroSprite, nameOf, spriteURL, tile } from './art';
 import { IN, aimPoint, bindFrameSwipes, bindInput, mashCage, playerIntent, resetInput, type InputUI } from './input';
 import { MUSIC, runMusic } from './music';
 import { SFX } from './sound';
+import { openWarband } from '../meta/warband';
 
 /** A run plays the hero you are playing, from the entrance. `start`, `testRar` and `role` are for the Crypt
  *  Trial and for testing: a run that starts past the entrance or in test gear doesn't count (no loot, kill
@@ -462,6 +463,8 @@ export class RunScene implements InputUI {
         for (const d of kl.drops) if (d.isNew && this.ach) for (const id of this.ach.collected(d.id)) this.unlockedNow(id);
         if (last) {
           this.clear = resolveClear(p, this.dg, hero, S.t - S.startedAt, this.lootRng);
+          // the last of your first clears opens your Warband: say so (the Dungeons door explains it next time)
+          if (openWarband(p)) this.app.toasts.text('Your Warband is open', 'Make more heroes in the bunk room: they fill your other seats.', 'Unlocked');
           startWalkout(tellOf(kl.drops), x, y, gildOf(kl.drops));
         } else if (kl.drops.length) {
           lootGlint(x, y, nameOf(kl.drops[0].id));

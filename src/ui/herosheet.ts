@@ -12,6 +12,7 @@ import { roleOf, type Hero, type Profile } from '../meta/profile';
 import { esc, fmtDate, fmtN, GLYPH } from './dom';
 import { heroImg, heroSprite } from './art';
 import { ilvl } from './hearth';
+import { warbandOpen, warbandWhy } from '../meta/warband';
 
 /** what the sheet remembers while it is open */
 export interface HeroSheetState { delArmed: boolean; renaming: boolean; err: string }
@@ -57,9 +58,12 @@ export function heroesSheet(p: Profile): { head: string; body: string; foot: str
         <span>Power ${ilvl(loadoutFor(p, h).score)} · ${fmtN(h.clears)} clear${h.clears === 1 ? '' : 's'}</span></span>
       ${up ? `<i class="badge" aria-hidden="true">${up}</i>` : ''}</button>`;
   }).join('');
+  const shut = !warbandOpen(p);
   return {
-    head: `<h2>Your heroes</h2><p>${p.roster.length} of ${MAX_HEROES}</p>`,
+    head: `<h2>Your heroes</h2><p>${shut ? 'Your Warband opens later' : `${p.roster.length} of ${MAX_HEROES}`}</p>`,
     body: `<div class="wb-list">${rows}</div>`,
-    foot: p.roster.length < MAX_HEROES ? `<button type="button" class="btn" data-act="newhero">${GLYPH.plus}New hero</button>` : '',
+    foot: shut ? `<p class="fine wb-shut">${GLYPH.lock}${esc(warbandWhy(p))}</p>`
+      : p.roster.length < MAX_HEROES ? `<button type="button" class="btn" data-act="newhero">${GLYPH.plus}New hero</button>` : '',
   };
 }
+

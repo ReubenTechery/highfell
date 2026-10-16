@@ -10,6 +10,7 @@ import { ORDER, ROLES } from '../content/roles';
 import type { DungeonInfo, RoleId } from '../content/types';
 import { loadoutFor, wholeIlvl } from './gear';
 import { activeHero, roleOf, setActive, type Hero, type Profile } from './profile';
+import { warbandOpen } from './warband';
 
 export interface Seat { role: RoleId; hero: Hero | null; bot: string | null }
 
@@ -47,14 +48,14 @@ export function underPowered(p: Profile, h: Hero, dg: DungeonInfo): PowerGap | n
   return have < want ? { have, want, short: want - have, likely: want - have >= RARITY_STEP } : null;
 }
 
-/** The three seats, tank first, for a group of real players: each sits in their own role's seat. On Normal
+/** The three seats, tank first, for a group of real players: each sits in their own role's seat. On Normal, once your Warband is open (warband.ts),
  *  the empty seats take your own Warband heroes of those roles (the one you played last), or a stand-in
  *  bot where you have none. On Heroic the empty seats always take bots, never your Warband. */
 export function seatsFor(p: Profile, players: Hero[], heroic: boolean): Seat[] {
   return ORDER.map((role) => {
     const player = players.find((h) => roleOf(h) === role);
     if (player) return { role, hero: player, bot: null };
-    const mate = heroic ? null : heroesFor(p, role)[0] || null;
+    const mate = heroic || !warbandOpen(p) ? null : heroesFor(p, role)[0] || null;
     return mate ? { role, hero: mate, bot: null } : { role, hero: null, bot: ROLES[role].name };
   });
 }

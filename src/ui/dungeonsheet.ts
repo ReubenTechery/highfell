@@ -34,6 +34,7 @@ import { ilvl } from './hearth';
 import { SWATCH } from './lookssheet';
 import { SFX } from './sound';
 import { seatAt, stageShape, stageSvg } from './stage';
+import { warbandOpen, warbandWhy } from '../meta/warband';
 
 /** the sheet's pages: the door (the everyday one) and the ones a tap away, each with a back arrow */
 export type DgPage = 'door' | 'loot' | 'heroes' | 'brews' | 'list';
@@ -189,7 +190,7 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
   else foot = powerLine(p, h, dg) + `<button type="button" class="btn gold big dgx-enter${pick.heroic ? ' heroic' : ''}" data-act="go">${pick.heroic ? 'Enter Heroic' : `Enter the ${esc(base.name.split(' ')[0])}`}</button>`;
   const loot = lootPanel(p, dg, role);
   if (pick.page === 'loot') return { head: subHead(`${pick.heroic ? 'Heroic ' : ''}${base.name.split(' ')[0]} loot`), body: `<div class="dgx-lootpage">${loot}</div>`, foot };
-  if (pick.page === 'heroes') return { head: subHead('Who goes in'), body: heroesPage(p, pick.heroic), foot };
+  if (pick.page === 'heroes') return { head: subHead('Who goes in'), body: heroesPage(p, pick.heroic, allOpen || warbandOpen(p)), foot };
   if (pick.page === 'brews') return { head: subHead('Your brew'), body: brewsPage(p), foot };
   const head = `<h2><button type="button" class="dgx-namebtn" data-act="dglist" aria-label="${esc(base.name)}. All dungeons">${esc(base.name)}${GLYPH.down}</button></h2><p>${seasonTag(base.season)}Tier ${meta.roman}${pick.heroic ? ' · Heroic' : ''} · ${statLine(rec?.clears || 0, keeper?.kc || 0, rec?.pb)}</p>`;
   // on a phone the log line opens the Loot page; on desktop the loot sits in its own column instead
@@ -484,8 +485,9 @@ const brewTip = (): string => `<div class="dgx-tip one" role="note">
 
 /** Who goes in: every hero by role, who you're playing and who comes along with you. Tap one to play them;
  *  for each other seat the hero of that role you played last comes along (a bot where you have none). */
-function heroesPage(p: Profile, heroic: boolean): string {
-  const h = activeHero(p), room = MAX_HEROES - p.roster.length;
+function heroesPage(p: Profile, heroic: boolean, open: boolean): string {
+  // until your Warband opens (warband.ts), bots take the other seats and no more heroes can be made
+  const h = activeHero(p), room = open ? MAX_HEROES - p.roster.length : 0;
   const groups = ORDER.map((r) => {
     const list = heroesFor(p, r), along = !heroic && h && roleOf(h) !== r ? list[0] : null;
     const rows = list.map((x) => heroRow(p, x, r, x.id === h?.id ? 'You' : x.id === along?.id ? 'Comes along' : ''));
@@ -498,7 +500,8 @@ function heroesPage(p: Profile, heroic: boolean): string {
   const more = room && ORDER.every((r) => heroesFor(p, r).length)
     ? `<button type="button" class="dgx-hero new" data-act="newhero"><span class="dgx-hfig" aria-hidden="true">${GLYPH.plus}</span><span class="dgx-hname"><b>New hero</b><small>${room} bed${room === 1 ? '' : 's'} free</small></span></button>`
     : '';
-  return `${groups}${more}<p class="dgx-note">${heroic ? 'On Heroic your other heroes stay home: friends take the seats.' : 'Tap a hero to play them. The others come along.'}</p>`;
+  const note = heroic ? 'On Heroic your other heroes stay home: friends take the seats.' : open ? 'Tap a hero to play them. The others come along.' : warbandWhy(p);
+  return `${groups}${more}<p class="dgx-note">${open || heroic ? '' : GLYPH.lock}${esc(note)}</p>`;
 }
 
 /** one of your heroes on Who goes in: their picture, name and Power, and whether they're you or coming along */

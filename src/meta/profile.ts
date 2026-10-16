@@ -21,6 +21,7 @@ import { DUNGEONS, KITS } from '../content';
 import { BEDS } from '../content/vale';
 import { settleSpots } from './hearth';
 import { opened } from './logs';
+import { warbandOpen } from './warband';
 
 export const PROFILE_VERSION = 9;
 /** Shared gear climbs to Rare. Epic is earned on the hero. */
@@ -337,9 +338,10 @@ export function nameProblem(p: Profile, raw: string, except?: string): string | 
 }
 
 /** Make a new hero. It starts wearing your shared gear for its role. Race and class can't change later.
- *  A race you earn (the Risen) can be made once you've earned it (`free` is the testing switch). */
+ *  A race you earn (the Risen) can be made once you've earned it (`free` is the testing switch). Past your first
+ *  hero, only once your Warband is open (warband.ts). */
 export function createHero(p: Profile, o: { name: string; race: RaceId; cls: ClassId; sex?: SexId; free?: boolean }, now = Date.now(), id?: string): Hero | null {
-  if (p.roster.length >= MAX_HEROES || !canMake(o.race, o.cls) || !(o.free || opened(p, 'race', o.race)) || nameProblem(p, o.name)) return null;
+  if (p.roster.length >= MAX_HEROES || (p.roster.length && !(o.free || warbandOpen(p))) || !canMake(o.race, o.cls) || !(o.free || opened(p, 'race', o.race)) || nameProblem(p, o.name)) return null;
   o = { ...o, name: cleanName(o.name)! };
   const role = CLASSES[o.cls].role;
   const sex: SexId = o.sex === 'm' || o.sex === 'f' ? o.sex : defaultSex(o.race, o.cls);

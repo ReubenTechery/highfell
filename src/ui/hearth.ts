@@ -29,6 +29,7 @@ import { HousePaint } from './housepaint';
 import { bedLook } from './garden';
 import { NameTag } from './nametag';
 import { TOUR_STEPS, tipSteps, type TourStep } from './tours';
+import { warbandOpen, warbandWhy } from '../meta/warband';
 
 /** how big each kind of thing is drawn in a spot, its tap area, and how it moves */
 const SPOT_LOOK: Record<string, { k: number; w: number; h: number; anim: string }> = {
@@ -265,6 +266,8 @@ export class Hearth {
     const c = this.cam, w = c.w / c.z, h = c.h / c.z;
     this.paint.rest([c.cx - w / 2, c.cy - h / 2, w, h], c.z * pxPerUnit());
   }
+  /** your Warband is open (or the testing switch opens everything) */
+  private warband(): boolean { return warbandOpen(this.app.p) || this.app.dev.allOpen; }
   /** The house is off screen: its pictures let go of their memory. */
   sleep(): void { this.paint.sleep(); }
 
@@ -388,7 +391,10 @@ export class Hearth {
     else if (d.spot) this.app.sheets.open({ kind: 'picker', spot: d.spot });
     else if (d.mount) this.app.sheets.open({ kind: 'item', id: d.mount });
     else if (d.hero) { if (d.hero === this.app.p.active) this.act('gear'); else this.app.sheets.open({ kind: 'hero', hero: d.hero }); }
-    else if (d.new !== undefined) this.app.showCreate();
+    else if (d.new !== undefined) {
+      if (this.warband()) this.app.showCreate();
+      else this.app.toasts.text('Your Warband opens later', warbandWhy(this.app.p));
+    }
   }
   /** a tap on something ends the tour showing: it doesn't come back */
   private dropTour(): void {
@@ -528,10 +534,10 @@ export class Hearth {
         <rect class="hl" x="${bx - 48}" y="${by - 200}" width="96" height="210" rx="16"/></g>` });
     });
     if (p.roster.length < MAX_HEROES) {
-      const [bx, by] = BUNK_SLOTS[others.length];
-      out.push({ y: by, svg: `<g class="newhero${this.step?.thing === 'newhero' ? ' tour-hl' : ''}" data-new="1" data-x="${bx}" data-y="${by}" tabindex="0" role="button" aria-label="Make a new hero (${p.roster.length} of ${MAX_HEROES})">
-        <rect x="${bx - 40}" y="${by - 176}" width="80" height="172" rx="34" class="ring"/>${plus(bx, by - 92)}
-        <text class="lbl small" x="${bx}" y="${FLOORS.upper + 26}">New hero</text>
+      const [bx, by] = BUNK_SLOTS[others.length], shut = !this.warband();
+      out.push({ y: by, svg: `<g class="newhero${shut ? ' shut' : ''}${this.step?.thing === 'newhero' ? ' tour-hl' : ''}" data-new="1" data-x="${bx}" data-y="${by}" tabindex="0" role="button" aria-label="${shut ? 'Your Warband opens later' : `Make a new hero (${p.roster.length} of ${MAX_HEROES})`}">
+        <rect x="${bx - 40}" y="${by - 176}" width="80" height="172" rx="34" class="ring"/>${shut ? padlock(bx, by - 92) : plus(bx, by - 92)}
+        <text class="lbl small" x="${bx}" y="${FLOORS.upper + 26}">${shut ? 'Warband' : 'New hero'}</text>
         <rect class="hl" x="${bx - 48}" y="${by - 150}" width="96" height="160" rx="16"/></g>` });
     }
     return out;
@@ -581,6 +587,8 @@ export class Hearth {
 
 /** Item level, shown as Power: the weighted gear score, where the weapon counts twice, as a whole number. */
 export const ilvl = (score: number): string => String(wholeIlvl(score));
+/** a padlock, for the bed your Warband will fill */
+const padlock = (x: number, y: number): string => `<g class="padlock"><path d="M${x - 11} ${y - 4} V${y - 14} A11 11 0 0 1 ${x + 11} ${y - 14} V${y - 4}"/><rect x="${x - 17}" y="${y - 5}" width="34" height="26" rx="5"/></g>`;
 const plus = (x: number, y: number): string => `<path class="plus" d="M${x - 10} ${y} H${x + 10} M${x} ${y - 10} V${y + 10}"/>`;
 /** a little red count, like the one on a button, bobbing over what it counts */
 const pip = (x: number, y: number, t: string): Bit => ({ box: [x - 27, y - 27, 54, 54], body: `<circle cx="${x}" cy="${y}" r="24"/><text x="${x}" y="${y + 9}">${esc(t)}</text>`, cls: 'pip' });
