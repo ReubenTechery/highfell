@@ -5,6 +5,7 @@
 import type { AchievementDef, CollectibleDef, DungeonInfo, ItemDef, SetDef, TitleDef } from './types';
 import { regularItems } from './gear';
 import { BARROW } from './barrow';
+import { BARROW_ENGINE } from './barrow/engine';
 import { BARROW_ITEMS, BARROW_SETS } from './barrow/items';
 import { BARROW_COLLECTIBLES, BARROW_TITLES } from './barrow/collectibles';
 import { BARROW_ACHIEVEMENTS } from './barrow/achievements';
@@ -25,6 +26,8 @@ const byId = <T extends { id: string }>(list: T[]): Record<string, T> => {
 
 /** every dungeon, the heroic ones too (a heroic one names the dungeon it is the harder version of) */
 export const DUNGEONS: Record<string, DungeonInfo> = byId([BARROW, BARROW_HEROIC]);
+/** every base dungeon's playable engine definition */
+export const DUNGEON_ENGINES: Record<string, typeof BARROW_ENGINE> = { barrow: BARROW_ENGINE };
 export const ITEMS: Record<string, ItemDef> = byId([...regularItems(), ...BARROW_ITEMS, ...HEROIC_ITEMS]);
 export const SETS: Record<string, SetDef> = byId([...BARROW_SETS]);
 export const COLLECTIBLES: Record<string, CollectibleDef> = byId([...BARROW_COLLECTIBLES, ...HEROIC_COLLECTIBLES, ...GARDEN_COLLECTIBLES]);

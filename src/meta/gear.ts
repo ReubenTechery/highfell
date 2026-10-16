@@ -40,8 +40,8 @@ export function worn(p: Profile, h: Hero): Record<SlotId, Worn> {
   return out;
 }
 
-/** True Epic drops (dungeon set pieces & boss weapons) sit a tier above regular ladder gear in item level and power. */
-export const itemScore = (def: ItemDef): number => RARITY[def.rar].score + (def.kind !== 'gear' ? 4 : 0);
+/** True Epic drops (dungeon set pieces & boss weapons) sit a tier above regular ladder gear and step up +8 ilvl per dungeon tier (Tier 1: 26, Tier 2: 34, Tier 3: 42). */
+export const itemScore = (def: ItemDef): number => RARITY[def.rar].score + (def.kind !== 'gear' ? 4 + ((def.tier || 1) - 1) * 8 : 0);
 
 export function loadoutOf(items: Worn[]): Loadout {
   const scores = {} as Record<SlotId, number>;
@@ -179,8 +179,10 @@ export function bagIt(h: Hero, slot: SlotId, piece: RegularSlot): boolean {
 export type Waiting = { kind: 'regular'; slot: SlotId; piece: RegularSlot; id: string } | { kind: 'unique'; slot: SlotId; id: string };
 export function waitingFor(p: Profile, h: Hero, slot: SlotId): Waiting | null {
   const gKey = gearKey({ role: roleOf(h), cls: h.cls });
-  const u = h.fresh.find((id) => ITEMS[id] && ITEMS[id].slot === slot && fitsHero(ITEMS[id], h) && p.collection[id] && h.equip[slot] !== id);
-  if (u) return { kind: 'unique', slot, id: u };
+  const freshMatching = h.fresh
+    .filter((id) => ITEMS[id] && ITEMS[id].slot === slot && fitsHero(ITEMS[id], h) && p.collection[id] && h.equip[slot] !== id)
+    .sort((a, b) => itemScore(ITEMS[b]) - itemScore(ITEMS[a]));
+  if (freshMatching.length) return { kind: 'unique', slot, id: freshMatching[0] };
   const b = h.bag[slot];
   if (b && !h.equip[slot] && b.rar > h.regular[slot].rar) return { kind: 'regular', slot, piece: b, id: gearId(gKey, slot, b.rar) };
   return null;
@@ -211,9 +213,12 @@ export function freshForRole(p: Profile, id: string): void {
   for (const h of p.roster) if (fitsHero(it, h) && h.equip[it.slot] !== id && !h.fresh.includes(id)) h.fresh.push(id);
 }
 
-/** Uniques the roster owns that this hero could wear in a slot. */
+/** Uniques the roster owns that this hero could wear in a slot, sorted highest item level first. */
 export function ownedFor(p: Profile, h: Hero, slot: SlotId): ItemDef[] {
-  return Object.keys(p.collection).map((id) => ITEMS[id]).filter((d): d is ItemDef => !!d && d.kind !== 'gear' && fitsHero(d, h) && d.slot === slot);
+  return Object.keys(p.collection)
+    .map((id) => ITEMS[id])
+    .filter((d): d is ItemDef => !!d && d.kind !== 'gear' && fitsHero(d, h) && d.slot === slot)
+    .sort((a, b) => itemScore(b) - itemScore(a));
 }
 
 /** Make a hero: it starts wearing the shared gear for its role, and the uniques the roster owns for
@@ -224,14 +229,14 @@ export function newHero(p: Profile, o: { name: string; race: RaceId; cls: ClassI
   return h;
 }
 
-export const REROLL_COST = 5;
-/** Spend marks to set the trait on a Rare+ regular weapon to the one you pick (the one in the bag, if that is the best one). */
+export const REROLL_COST = 0;
+/** Set the trait on a Rare+ regular weapon to the one you pick (the one in the bag, if that is the best one). Free once unlocked at Rare. */
 export function buyTrait(p: Profile, h: Hero, dungeon: string, trait: string): boolean {
   const gKey = gearKey({ role: roleOf(h), cls: h.cls });
   const reg = bestRegular(h, 'weapon');
   const rec = p.dungeons[dungeon];
-  if (reg.rar < 2 || !rec || rec.marks < REROLL_COST || reg.trait === trait || !TRAITS[gKey].some((t) => t.id === trait)) return false;
-  rec.marks -= REROLL_COST;
+  if (reg.rar < 2 || reg.trait === trait || !TRAITS[gKey].some((t) => t.id === trait)) return false;
+  if (rec && rec.marks >= REROLL_COST) rec.marks -= REROLL_COST;
   reg.trait = trait;
   return true;
 }

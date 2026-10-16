@@ -3,7 +3,7 @@ import { vrand } from '../core/rng';
 import { AB, ROLES, abKey } from '../content/roles';
 import { RARITY } from '../content/gear';
 import { S } from './state.js';
-import { BAKE_S, PAT, bakeAll, drawSpr, mkCanvas } from './art.js';
+import { BAKE_S, PAT, bakeAll, drawSpr, makePatterns, mkCanvas } from './art.js';
 import { PERFECT_WINDOW, dots } from './entities.js';
 import { drawWalkout, walkoutFocus } from './walkout.js';
 import { chainEnds } from './mobs.js';
@@ -57,8 +57,9 @@ export function toScreen(wx, wy) { return { x: VIEW.fx + (wx - VIEW.cam.x) * VIE
 
 export function render() {
   const ctx = VIEW.ctx, cv = VIEW.cv;
+  if (S && S.dg && S.dg.theme && PAT.themeId !== S.dg.theme.id && BAKE_S > 0) makePatterns(BAKE_S, S.dg.theme);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = '#17121F';
+  ctx.fillStyle = PAT.voidCol || '#17121F';
   ctx.fillRect(0, 0, cv.width, cv.height);
   if (!S) return;
   const sh = S.shake > 0.2 ? S.shake : 0;
@@ -93,7 +94,7 @@ export function drawMap(ctx, v) {
     ctx.fillRect(c.x0, c.y0, c.x1 - c.x0, c.y1 - c.y0);
   }
   for (const d of S.dg.decals) { if (d.y < v.y0 || d.y > v.y1 + 100) continue; drawSpr(ctx, d.sp, d.x, d.y, { sx: d.sc, sy: d.sc, rot: d.rot * 0.25 }); }
-  const CAP = '#2E2638', T = 30;
+  const CAP = PAT.wallCapCol || '#2E2638', T = 30;
   for (let i = 0; i < S.dg.map.rooms.length; i++) {
     const r = S.dg.map.rooms[i];
     if (r.y1 + 40 < v.y0 || r.y0 - r.wall - 60 > v.y1) continue;

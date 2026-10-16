@@ -25,8 +25,8 @@ export function settingsSheet(p: Profile, st: SyncState, dev: Dev, resetArmed: b
       <div class="seg"><button type="button" class="sg" role="switch" data-act="vfree" aria-checked="${dev.valeFree}">Instant growth</button><button type="button" class="sg" role="switch" data-act="vluck" aria-checked="${dev.valeLuck}">Lucky ×50</button></div>
       <p class="fine">Collection log rewards and Heroic: try the house looks, the Risen and Heroic before you earn them. A look you haven't earned shows only while this is on; a hero you make stays.</p>
       <div class="seg"><button type="button" class="sg" role="switch" data-act="allopen" aria-checked="${dev.allOpen}">Everything open</button></div>
-      <p class="fine">Onboarding: replay the opening tank prologue or the guided tour of your house.</p>
-      <div class="actions"><button type="button" class="btn small" data-act="intro">Play the prologue</button><button type="button" class="btn small" data-act="tour">Hearth tour</button></div></div>
+      <p class="fine">Onboarding: replay the Crypt Trial as your hero, or the guided tour of your house.</p>
+      <div class="actions"><button type="button" class="btn small" data-act="intro">Play the trial</button><button type="button" class="btn small" data-act="tour">Hearth tour</button></div></div>
     <div class="box"><h3 class="section-title">Start over</h3><p class="fine">Wipes every hero, their gear, kill counts, the collection log, achievements and the house.</p>
       <div class="actions"><button type="button" class="btn small" data-act="reset" style="${resetArmed ? 'background: var(--red); color: #FFFFFF' : ''}">${resetArmed ? 'Tap again to wipe everything' : 'Start over'}</button></div></div>
     <p class="fine">Build ${esc(BUILD)}</p>`;

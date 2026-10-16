@@ -22,7 +22,10 @@ export function knightTick(m, dt) {
   if (!ab.init) { ab.init = true; ab.t = 0; ab.sweep = intro ? 5.2 : 3.5; ab.charge = intro ? 1.5 : 7; }
   ab.t += dt;
   if (!ab.enraged && ab.t > m.M.enrage) { ab.enraged = true; m.dmgMul = 2.5; m.speed *= 1.3; banner('Sir Rattlebones has had enough of you!', 'warn', 2.4); sfx('roar'); }
-  if (intro && m.phase === 1 && (!S.hints.dodge || !S.hints.block || !S.hints.stagger) && m.hp < m.maxHp * 0.52) m.hp = Math.ceil(m.maxHp * 0.52);
+  // the trial holds him above half until its lessons are shown; punishing his stagger is the tank's own lesson
+  // (the others get it from the heavy swing's card), so only a tank waits for it here
+  const taught = S.hints.dodge && S.hints.block && (S.hints.stagger || S.player.role !== 'tank');
+  if (intro && m.phase === 1 && !taught && m.hp < m.maxHp * 0.52) m.hp = Math.ceil(m.maxHp * 0.52);
   if (m.phase === 1 && m.hp < m.maxHp * 0.5) {
     m.phase = 2; m.act = { k: 'rally', t: 0 }; m.wind = 0;
     banner('Phase 2: he calls up his guard. Grab them, then hit him!', 'warn', 2.6); sfx('roar'); shake(6);
@@ -45,14 +48,14 @@ export function knightTick(m, dt) {
       return true;
     }
   }
-  if (ab.sweep <= 0 && (!intro || (S.hints.dodge && dist(m, m.target) <= 155))) {
+  if (ab.sweep <= 0 && (!intro || S.hints.dodge)) {
     ab.sweep = m.phase === 2 ? 6.2 : 7.5;
     const a = angTo(m, m.target);
     m.act = { k: 'sweep', t: 0, dur: 1.55 };
     m.face = a; m.flip = Math.cos(a) < 0; m.pose = 'wind';
     S.hazards.push({ shape: 'cone', x: m.x, y: m.y, a, r: 210, arc: 2.27, warn: 1.4, t: 0, dmg: 295, heavy: true, block: true, src: m, tankBuster: true,
       onFire: () => { sfx('sweep'); shake(5); m.pose = null; m.lunge = 0.2; m.lungeA = a; fx({ type: 'slash', x: m.x, y: m.y - 60, a, r: 150, dur: 0.22, col: '#FFFFFF', wide: true }); } });
-    if (intro) call('Heavy swing! Block it', 'alarm', 1.2);
+    if (intro) call('Heavy swing! Counter it', 'alarm', 1.2);
     return true;
   }
   return false;

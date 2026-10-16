@@ -38,6 +38,6 @@ export function heroSheet(p: Profile, h: Hero, st: HeroSheetState): { head: stri
       ${!h.named && !st.renaming ? `<button type="button" class="btn" data-act="herorename">${GLYPH.pen}Rename</button>` : ''}
       ${p.roster.length > 1 ? `<button type="button" class="btn ${st.delArmed ? 'danger' : 'icon-only'}" data-act="herodel" aria-label="${st.delArmed ? `Tap again to let ${esc(h.name)} go for good` : `Let ${esc(h.name)} go`}">${GLYPH.trash}${st.delArmed ? `Let ${esc(first)} go for good?` : ''}</button>` : ''}
     </div>
-    <p class="fine">Your heroes share the collection, kill counts, Marks and the house. Each keeps their own gear, title and clears.</p>`;
+    <p class="fine">Your heroes share the collection, kill counts and the house. Each keeps their own gear, title and clears.</p>`;
   return { head: `<h2>${esc(h.name)}</h2><p>${playing ? 'By the fire' : 'In the bunk room'}</p>`, body };
 }

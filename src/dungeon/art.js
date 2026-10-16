@@ -74,7 +74,16 @@ export function patternFrom(wu, hu, S, draw) {
   try { p.setTransform(new DOMMatrix().scale(wu / c.width, hu / c.height)); } catch (e) { /* older engines draw it a touch soft */ }
   return p;
 }
-export function makePatterns(S) {
+export function makePatterns(S, theme) {
+  const th = theme || {};
+  const stone = th.stone || ['#4A4060', '#3A3150', '#43395A'];
+  const tomb = th.tomb || ['#4F4468', '#3C3354', '#463C5E'];
+  const corr = th.corr || ['#453B5A', '#352D4A', '#3E3554'];
+  const brick = th.brick || ['#5C5070', '#463C5A'];
+  const yard = th.yard || { base: '#463A48', tuftFill: '#5E7A4A', tuftStroke: '#3B4A32', pebbleFill: '#5C5070', pebbleStroke: '#3A3150' };
+  PAT.themeId = th.id || 'barrow';
+  PAT.voidCol = th.voidCol || '#17121F';
+  PAT.wallCapCol = th.wallCapCol || '#2E2638';
   const line = (g, col, w, pts) => { g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'round'; g.beginPath(); g.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]); g.stroke(); };
   const slabs = (base, seam, chip) => (g) => {
     g.fillStyle = base; g.fillRect(0, 0, 160, 120);
@@ -88,19 +97,19 @@ export function makePatterns(S) {
     line(g, chip, 2.5, [104, 86, 112, 92]);
     line(g, chip, 2.5, [140, 20, 146, 30]);
   };
-  PAT.stone = patternFrom(160, 120, S, slabs('#4A4060', '#3A3150', '#43395A'));
-  PAT.tomb = patternFrom(160, 120, S, slabs('#4F4468', '#3C3354', '#463C5E'));
-  PAT.corr = patternFrom(160, 120, S, slabs('#453B5A', '#352D4A', '#3E3554'));
+  PAT.stone = patternFrom(160, 120, S, slabs(stone[0], stone[1], stone[2]));
+  PAT.tomb = patternFrom(160, 120, S, slabs(tomb[0], tomb[1], tomb[2]));
+  PAT.corr = patternFrom(160, 120, S, slabs(corr[0], corr[1], corr[2]));
   PAT.yard = patternFrom(200, 200, S, (g) => {
-    g.fillStyle = '#463A48'; g.fillRect(0, 0, 200, 200);
-    const tuft = (x, y) => { g.fillStyle = '#5E7A4A'; g.strokeStyle = '#3B4A32'; g.lineWidth = 2; g.beginPath(); g.moveTo(x - 9, y); g.lineTo(x - 5, y - 9); g.lineTo(x - 1, y - 2); g.lineTo(x + 3, y - 11); g.lineTo(x + 6, y - 2); g.lineTo(x + 10, y - 7); g.lineTo(x + 11, y); g.closePath(); g.fill(); g.stroke(); };
+    g.fillStyle = yard.base; g.fillRect(0, 0, 200, 200);
+    const tuft = (x, y) => { g.fillStyle = yard.tuftFill; g.strokeStyle = yard.tuftStroke; g.lineWidth = 2; g.beginPath(); g.moveTo(x - 9, y); g.lineTo(x - 5, y - 9); g.lineTo(x - 1, y - 2); g.lineTo(x + 3, y - 11); g.lineTo(x + 6, y - 2); g.lineTo(x + 10, y - 7); g.lineTo(x + 11, y); g.closePath(); g.fill(); g.stroke(); };
     tuft(40, 50); tuft(150, 120); tuft(80, 170); tuft(170, 30);
-    g.fillStyle = '#5C5070'; g.strokeStyle = '#3A3150'; g.lineWidth = 2;
+    g.fillStyle = yard.pebbleFill; g.strokeStyle = yard.pebbleStroke; g.lineWidth = 2;
     for (const [x, y, r] of [[110, 60, 5], [30, 140, 4], [130, 180, 6], [190, 90, 3.5]]) { g.beginPath(); g.ellipse(x, y, r * 1.3, r, 0, 0, TAU); g.fill(); g.stroke(); }
   });
   PAT.brick = patternFrom(128, 64, S, (g) => {
-    g.fillStyle = '#5C5070'; g.fillRect(0, 0, 128, 64);
-    g.strokeStyle = '#463C5A'; g.lineWidth = 3;
+    g.fillStyle = brick[0]; g.fillRect(0, 0, 128, 64);
+    g.strokeStyle = brick[1]; g.lineWidth = 3;
     g.beginPath();
     g.moveTo(0, 1.5); g.lineTo(128, 1.5); g.moveTo(0, 33.5); g.lineTo(128, 33.5);
     g.moveTo(1.5, 0); g.lineTo(1.5, 32); g.moveTo(65.5, 0); g.lineTo(65.5, 32);

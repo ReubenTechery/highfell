@@ -122,9 +122,8 @@ function stats(p: Profile): string {
   let out = '';
   for (const dg of Object.values(DUNGEONS)) {
     const rec = p.dungeons[dg.id];
-    // a heroic dungeon pays the normal one's Marks, so they show there
     out += `<h3 class="section-title">${esc(dg.name)}</h3>
-      <div class="stats"><span class="chip">Runs <b>${rec ? rec.runs : 0}</b></span><span class="chip">Clears <b>${rec ? rec.clears : 0}</b></span><span class="chip">Best <b>${fmtT(rec?.pb)}</b></span>${dg.heroicOf ? '' : `<span class="chip">${esc(dg.marksName)} <b>${rec ? rec.marks : 0}</b></span>`}</div>`;
+      <div class="stats"><span class="chip">Runs <b>${rec ? rec.runs : 0}</b></span><span class="chip">Clears <b>${rec ? rec.clears : 0}</b></span><span class="chip">Best <b>${fmtT(rec?.pb)}</b></span></div>`;
     for (const b of dg.bosses) {
       const r = p.bosses[`${dg.id}.${b.id}`];
       out += `<div class="stats"><span class="chip">${esc(b.name)} <b>KC ${r ? fmtN(r.kc) : 0}</b></span><span class="chip">Fastest <b>${fmtT(r?.pb)}</b></span><span class="chip">Wipes <b>${r ? r.wipes : 0}</b></span></div>`;

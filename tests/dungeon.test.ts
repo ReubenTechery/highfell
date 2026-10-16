@@ -12,6 +12,10 @@ import { abCd, onPerfectBlock, useAbility } from '../src/dungeon/heroes.js';
 import { breakCage, cutChain, makeCage, makeChain, mashCage, spawnMob } from '../src/dungeon/mobs.js';
 import { HERO_FIT, heroFit } from '../src/dungeon/render.js';
 import { BARROW_ENGINE } from '../src/content/barrow/engine';
+import { TEMPLATE_ENGINE } from '../src/content/_template/engine';
+import { TEMPLATE_DUNGEON } from '../src/content/_template';
+import { TEMPLATE_HEROIC } from '../src/content/_template/heroic';
+import { DUNGEON_THEMES } from '../src/dungeon/template.js';
 import { allHeroArt } from '../src/content/folk';
 import { heroSprite } from '../src/ui/art';
 import SPRITES from '../art/sprites.json';
@@ -155,6 +159,20 @@ test('intro: starts in the Ossuary, protects the party from dying, and spawns th
   assert.ok(s.walkout && s.walkout.tell === 'unique', 'the unique lantern walkout played');
   assert.ok(s.chest && s.chest.open, 'the chest spawned in the tomb and opened');
   assert.equal(s.over, 'victory');
+});
+
+test('intro: the Crypt Trial plays as any class, and every one of them gets Sir Rattlebones down to the chest', () => {
+  for (const [role, cls] of [['healer', 'cleric'], ['dps', 'mage'], ['dps', 'rogue']] as const) {
+    newGame(BARROW_ENGINE, { role, seed: 99, start: 'intro', auto: false, quiet: true, noEvents: true, loadouts: { [role]: { cls } } });
+    const s = S as any;
+    assert.equal(s.player.role, role);
+    for (const h of s.heroes) h.power = 1.45;
+    s.auto = true;
+    for (let i = 0; i < 60 * 90 && s.over !== 'victory'; i++) update(1 / 60);
+    assert.ok(s.hints.dodge && s.hints.block, `${cls}: the dodge and the heavy swing were both shown`);
+    assert.equal(s.over, 'victory', `${cls}: the trial ends at the chest, not stuck on a lesson only a tank can do`);
+    assert.ok(s.chest && s.chest.open);
+  }
 });
 
 test('combat & gear look: heroes start in visual _rags, step to _iron and heroic armour, Cleave is a1 (2.2s cd), Perfect Block resets Cleave, and Boss Weapons buff core abilities', () => {
@@ -381,3 +399,19 @@ test('barrow revamp: Crushing Blows on non-tanks, hazard Ward bleed-through, Exp
   assert.equal(s.seal.cleared, true, 'Standing on all 3 role rune pads shatters the Crypt Seal');
   assert.ok(tank.st.surge > 10, 'Crypt Seal grants Crypt Surge to the party');
 });
+
+test('dungeon template: starter _template dungeon builds map, packs, seal, themes, heroic gilded log, and runs in engine', () => {
+  assert.ok(DUNGEON_THEMES.barrow && DUNGEON_THEMES.thimblebriar && DUNGEON_THEMES.moonmere);
+  assert.equal(TEMPLATE_DUNGEON.collection.length, 20);
+  assert.equal(TEMPLATE_HEROIC.collection.length, 20);
+  assert.ok(TEMPLATE_HEROIC.collection.every((id: string) => id.endsWith('.gilded')));
+  newGame(TEMPLATE_ENGINE, { role: 'tank', seed: 123, start: 'entrance', auto: true, quiet: true, noEvents: true, loadouts: {} });
+  const s = S as any;
+  assert.equal(s.dg.id, 'template');
+  assert.equal(s.dg.theme.id, 'thimblebriar');
+  assert.equal(s.packs.length, 7);
+  assert.ok(s.seal && s.seal.pads.length === 3);
+  step(2.0);
+  assert.ok(s.heroes.every((h: any) => h.alive), 'template dungeon ticks cleanly with bots');
+});
+

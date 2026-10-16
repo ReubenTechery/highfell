@@ -14,7 +14,7 @@ import { CLASSES, MAX_HEROES, RACES, type ClassId, type RaceId } from '../conten
 import { BUNK_SLOTS, FLOORS, HOUSE_SPOTS, LOOK_ROOMS, ROOMS, THINGS, roomAt, type HouseAction, type HouseSpot, type ThingDef } from '../content/house';
 import { lookOf, ownedOfKind } from '../meta/hearth';
 import { loadoutFor, waiting } from '../meta/gear';
-import { activeHero, finishHearthTour, needsHearthTour, roleOf, type Hero } from '../meta/profile';
+import { activeHero, finishHearthTour, finishSeedTour, needsHearthTour, needsSeedTour, roleOf, type Hero } from '../meta/profile';
 import type { App } from './app';
 import { actions, esc, GLYPH } from './dom';
 import { ART, bitsHtml, heroSprite, placeSprite, spriteBit, tile, type Bit } from './art';
@@ -39,25 +39,31 @@ const [X0, Y0] = HOUSE_BOUNDS;
 /** what a scene draws besides the layer you tap: the bits that move (y-sorted like the layer) and the pips */
 interface Extras { bits: { y: number; bit: Bit }[]; pips: Bit[] }
 
+/** a step of a guided tour of the house: its room, what it points at (a thing's id, 'me' for your hero by
+ *  the fire, 'newhero' for the empty bed), where its pin stands and, if not over the pin, where the camera looks */
+interface TourStep { room: string; thing?: string; at: [number, number]; cam?: number; callout: string; step: string; title: string; sub: string; next: string }
 /** the 3-step guided tour shown after making your first hero: points directly at the object in each room */
-const TOUR_STEPS: { room: string; thing?: string; at: [number, number]; callout: string; step: string; title: string; sub: string; next: string }[] = [
+const TOUR_STEPS: TourStep[] = [
   {
     room: 'hall',
+    thing: 'me',
     at: [HERO_AT.x, HERO_AT.y - 310],
-    callout: 'Tap Hero · Gear & Build',
+    cam: HERO_AT.x + 70,
+    callout: 'Tap Your Hero · Gear',
     step: '1 / 3',
-    title: 'Your Hearth',
-    sub: 'Gear up by the fire & decorate rooms.',
+    title: 'Your Hero',
+    sub: 'New gear waits here. You put it on.',
     next: 'Next →',
   },
   {
-    room: 'yard',
-    thing: 'bed.1',
-    at: [-400, -150],
-    callout: 'Tap a Bed · Plant Seeds',
+    room: 'bunks',
+    thing: 'newhero',
+    at: [BUNK_SLOTS[0][0], BUNK_SLOTS[0][1] - 190],
+    cam: 270,
+    callout: 'Tap a Bed · New Hero',
     step: '2 / 3',
-    title: 'The Garden',
-    sub: 'Dungeons drop seeds. Grow them, brew a party buff.',
+    title: 'Your Warband',
+    sub: 'A hero for each role fills your party seats.',
     next: 'Next →',
   },
   {
@@ -69,6 +75,19 @@ const TOUR_STEPS: { room: string; thing?: string; at: [number, number]; callout:
     title: 'Dungeons',
     sub: '4-minute runs for rare loot & pets.',
     next: 'Dungeons',
+  },
+];
+/** the one-step tip back home after your first seed drops: the planter beds in the yard */
+const SEED_STEPS: TourStep[] = [
+  {
+    room: 'yard',
+    thing: 'bed.1',
+    at: [-400, -150],
+    callout: 'Tap a Bed · Plant It',
+    step: 'New',
+    title: 'Your First Seed',
+    sub: 'Plant it here. It grows over 3 dungeon clears.',
+    next: 'Got it',
   },
 ];
 
@@ -89,6 +108,8 @@ export class Hearth {
   private top: HTMLElement;
   private bottom: HTMLElement;
   private decorating = false;
+  /** the tour showing (the welcome tour or the garden tip) and its step, or null */
+  private tour: TourStep[] = TOUR_STEPS;
   private tourStep: number | null = null;
   private placed = false;
   private want: string | null = null;
@@ -151,40 +172,57 @@ export class Hearth {
 
   /** Start (or replay) the 3-step Hearth tour. */
   startTour(): void {
-    this.decorating = false;
-    this.tourStep = 0;
-    this.want = TOUR_STEPS[0].room;
+    this.beginTour(TOUR_STEPS);
     this.app.showHearth(TOUR_STEPS[0].room);
+  }
+
+  private beginTour(steps: TourStep[]): void {
+    this.tour = steps;
+    this.tourStep = 0;
+    this.decorating = false;
+    this.want = steps[0].room;
+  }
+  private get step(): TourStep | null { return this.tourStep !== null ? this.tour[this.tourStep] || null : null; }
+  /** where a step's pin stands: the empty bed moves along as the bunk room fills */
+  private tourAt(step: TourStep): [number, number] {
+    if (step.thing !== 'newhero') return step.at;
+    const [bx, by] = BUNK_SLOTS[Math.min(this.app.p.roster.length - 1, BUNK_SLOTS.length - 1)] || BUNK_SLOTS[0];
+    return [bx, by - 190];
   }
 
   private nextTour(): void {
     if (this.tourStep === null) return;
-    if (this.tourStep < TOUR_STEPS.length - 1) {
+    if (this.tourStep < this.tour.length - 1) {
       this.tourStep++;
-      const step = TOUR_STEPS[this.tourStep];
+      const step = this.tour[this.tourStep];
       this.render();
       this.goRoom(step.room);
     } else {
-      this.endTour(true);
+      this.endTour(this.tour === TOUR_STEPS);
     }
   }
 
-  private endTour(openDungeons = false): void {
+  /** the tour is over (finished, skipped or tapped through): it doesn't come back */
+  private closeTour(): void {
+    if (this.tourStep === null) return;
     this.tourStep = null;
-    finishHearthTour(this.app.p);
+    if (this.tour === SEED_STEPS) finishSeedTour(this.app.p);
+    else finishHearthTour(this.app.p);
+  }
+
+  private endTour(openDungeons = false): void {
+    // the welcome tour ends in the hall; the garden tip leaves you by the beds
+    if (this.tour === TOUR_STEPS) this.goRoom(HOME_ROOM);
+    this.closeTour();
     this.app.save();
-    this.goRoom(HOME_ROOM);
     if (openDungeons) this.app.sheets.open({ kind: 'dungeon' });
   }
 
   render(): void {
     const p = this.app.p, h = activeHero(p);
     if (!h) return;
-    if (this.tourStep === null && needsHearthTour(p)) {
-      this.tourStep = 0;
-      this.decorating = false;
-      this.want = TOUR_STEPS[0].room;
-    }
+    if (this.tourStep === null && needsHearthTour(p)) this.beginTour(TOUR_STEPS);
+    else if (this.tourStep === null && needsSeedTour(p)) this.beginTour(SEED_STEPS);
     const look = (room: string): string => lookOf(p, room, this.app.dev.allOpen);
     const looks = LOOK_ROOMS.map(look).join(' ');
     if (looks !== this.looks) {
@@ -244,8 +282,8 @@ export class Hearth {
   private far(): boolean { return this.cam.z < this.roomZ * 0.75; }
   private goRoom(id: string, jump = false): void {
     const r = ROOMS.find((x) => x.id === id) || ROOMS.find((x) => x.id === HOME_ROOM)!;
-    const step = this.tourStep !== null && TOUR_STEPS[this.tourStep]?.room === id ? TOUR_STEPS[this.tourStep] : null;
-    const fx = step ? step.at[0] + (id === 'hall' ? 70 : 0) : r.focus[0];
+    const step = this.step?.room === id ? this.step : null;
+    const fx = step ? step.cam ?? this.tourAt(step)[0] : r.focus[0];
     const fy = r.focus[1];
     if (jump) this.cam.set(fx, fy, this.roomZ);
     else this.cam.flyTo(fx, fy, this.roomZ);
@@ -270,8 +308,8 @@ export class Hearth {
       }
     }
     const pin = this.signs.querySelector<HTMLElement>('.h-tour-pin');
-    if (pin && this.tourStep !== null) {
-      const [ax, ay] = TOUR_STEPS[this.tourStep].at;
+    if (pin && this.step) {
+      const [ax, ay] = this.tourAt(this.step);
       const [sx0, sy] = this.cam.toScreen(ax, ay);
       const sx = Math.max(125, Math.min(this.cam.w - 125, sx0));
       pin.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px) translate(-50%, -100%)`;
@@ -309,8 +347,7 @@ export class Hearth {
     const d = (el as SVGElement).dataset;
     SFX.play('ui');
     if (this.tourStep !== null) {
-      this.tourStep = null;
-      finishHearthTour(this.app.p);
+      this.closeTour();
       this.app.store.save();
       const h = activeHero(this.app.p);
       if (h) this.hud(h);
@@ -367,7 +404,7 @@ export class Hearth {
     else if (t.action === 'brew') label = `<text class="lbl small" x="${t.x}" y="${t.y + 26}">Brew</text>`;
     else if (t.action === 'satchel') label = `<text class="lbl small" x="${t.x}" y="${t.y + 26}">Satchel</text>`;
     if (t.action === 'gear') { const up = waiting(this.app.p, h).length; if (up) extra.pips.push(pip(t.x + 60, top + 20, String(up))); }
-    const hl = this.tourStep !== null && TOUR_STEPS[this.tourStep]?.thing === t.id ? ' tour-hl' : '';
+    const hl = this.step?.thing === t.id ? ' tour-hl' : '';
     return `<g class="thing a-${t.action}${hl}" data-thing="${t.id}" data-x="${t.x}" data-y="${t.y}" tabindex="0" role="button" aria-label="${esc(t.label)}">
       ${placeSprite(sprite, t.x, t.y, { k })}${bed?.plant ? placeSprite(bed.plant, t.x, t.y - 36 * k, { k: 0.9 * k }) : ''}${label}<rect class="hl" x="${(t.x + vx * k).toFixed(1)}" y="${top.toFixed(1)}" width="${(w * k).toFixed(1)}" height="${(hh * k).toFixed(1)}" rx="16"/></g>`;
   }
@@ -403,7 +440,7 @@ export class Hearth {
   private heroes(h: Hero, extra: Extras): { y: number; svg: string }[] {
     const p = this.app.p, out: { y: number; svg: string }[] = [];
     const { x, y, k } = HERO_AT;
-    const hl = this.tourStep === 0 ? ' tour-hl' : '';
+    const hl = this.step?.thing === 'me' ? ' tour-hl' : '';
     const me = spriteBit(heroSprite(h, roleOf(h), p) + '_f', x, y, { k, cls: 'breathe' });
     if (me) extra.bits.push({ y, bit: me });
     out.push({ y, svg: `<g class="hero me${hl}" data-hero="${esc(h.id)}" data-x="${x}" data-y="${y}" tabindex="0" role="button" aria-label="${esc(h.name)}: gear">
@@ -423,7 +460,7 @@ export class Hearth {
     });
     if (p.roster.length < MAX_HEROES) {
       const [bx, by] = BUNK_SLOTS[others.length];
-      out.push({ y: by, svg: `<g class="newhero" data-new="1" data-x="${bx}" data-y="${by}" tabindex="0" role="button" aria-label="Make a new hero (${p.roster.length} of ${MAX_HEROES})">
+      out.push({ y: by, svg: `<g class="newhero${this.step?.thing === 'newhero' ? ' tour-hl' : ''}" data-new="1" data-x="${bx}" data-y="${by}" tabindex="0" role="button" aria-label="Make a new hero (${p.roster.length} of ${MAX_HEROES})">
         <rect x="${bx - 40}" y="${by - 176}" width="80" height="172" rx="34" class="ring"/>${plus(bx, by - 92)}
         <text class="lbl small" x="${bx}" y="${FLOORS.upper + 26}">New hero</text>
         <rect class="hl" x="${bx - 48}" y="${by - 150}" width="96" height="160" rx="16"/></g>` });
@@ -448,16 +485,16 @@ export class Hearth {
         <button type="button" class="icon-btn" data-act="deco" aria-pressed="${this.decorating}" aria-label="Decorate" title="Decorate">${GLYPH.pen}</button>
         <button type="button" class="icon-btn" data-act="settings" aria-label="Settings" title="Settings">${GLYPH.gear}</button>
       </div>`;
-    const step = this.tourStep !== null ? TOUR_STEPS[this.tourStep] : null;
+    const step = this.step, tip = this.tour === SEED_STEPS;
     this.bottom.innerHTML = step
-      ? `<div class="h-tour" role="region" aria-label="Welcome tour">
+      ? `<div class="h-tour" role="region" aria-label="${tip ? 'Garden tip' : 'Welcome tour'}">
           <div class="h-tour-tx">
             <b><span class="h-tour-step">${esc(step.step)}</span>${esc(step.title)}</b>
             <p>${esc(step.sub)}</p>
           </div>
           <div class="h-tour-acts">
-            <button type="button" class="btn small" data-act="tourskip">Skip</button>
-            <button type="button" class="btn small gold" data-act="tournext">${this.tourStep === TOUR_STEPS.length - 1 ? GLYPH.door : ''}${esc(step.next)}</button>
+            ${tip ? '' : '<button type="button" class="btn small" data-act="tourskip">Skip</button>'}
+            <button type="button" class="btn small gold" data-act="tournext">${!tip && this.tourStep === TOUR_STEPS.length - 1 ? GLYPH.door : ''}${esc(step.next)}</button>
           </div>
         </div>`
       : this.decorating

@@ -5,8 +5,8 @@ import { makeRng } from '../src/core/rng';
 import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, SETS, checkContent, heroicVersion } from '../src/content';
 import { BARROW } from '../src/content/barrow';
 import { activeHero, createHero, dungeonRecord, finishHearthTour, finishIntroRun, freshProfile, migrate, nameProblem, needsHearthTour, needsIntroRun, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, startHearthTour, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
-import { DUPE_MARKS, heroicOpen, heroicProgress, resolveRun, rollTable } from '../src/meta/loot';
-import { bestRegular, buyTrait, compareFor, compareOn, effectsOf, equip, floorWorn, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, wearerOf, worn } from '../src/meta/gear';
+import { DUPE_MARKS, grantTrialStarter, heroicOpen, heroicProgress, resolveRun, rollTable, trialStarter } from '../src/meta/loot';
+import { bestRegular, buyTrait, compareFor, compareOn, effectsOf, equip, floorWorn, itemScore, loadoutFor, newHero, plainLoadout, putOn, seenSlot, waiting, waitingFor, wearerOf, worn } from '../src/meta/gear';
 import { CLASSES, FOUNDERS, HERO_ART, MAX_HEROES, RACES, allHeroArt, canMake, cleanName, defaultSex, heroArt } from '../src/content/folk';
 import { SLOT_IDS, gearId } from '../src/content/gear';
 import { INGREDIENTS, RECIPES } from '../src/content/vale';
@@ -626,12 +626,13 @@ test('art: every icon and sprite the content names exists', async () => {
   assert.deepEqual(missing, []);
 });
 
-test('onboarding: a fresh profile plays the intro run once, existing heroes skip it, and the first hero triggers the hearth tour', () => {
+test('onboarding: a fresh profile sends its first hero into the Crypt Trial once, existing heroes skip it, and the first hero triggers the hearth tour', () => {
   const p = freshProfile();
-  assert.equal(needsIntroRun(p), true, 'a fresh save starts on the intro run');
+  assert.equal(needsIntroRun(p), true, 'the first hero made goes into the trial');
   assert.equal(needsHearthTour(p), false);
-  finishIntroRun(p);
-  assert.equal(needsIntroRun(p), false, 'finishing or skipping the intro marks it done');
+  assert.equal(finishIntroRun(p), true, 'the first time through');
+  assert.equal(needsIntroRun(p), false, 'finishing or skipping the trial marks it done');
+  assert.equal(finishIntroRun(p), false, 'a replay is not the first time');
   // an existing save that already has a hero never needs the intro run or tour unless asked
   const existing = freshProfile();
   newHero(existing, { name: 'Brannoc', race: 'dwarf', cls: 'warrior' });
@@ -643,6 +644,30 @@ test('onboarding: a fresh profile plays the intro run once, existing heroes skip
   assert.equal(needsHearthTour(p), true);
   finishHearthTour(p);
   assert.equal(needsHearthTour(p), false);
+});
+
+test('onboarding: the Crypt Trial gives the first hero an Uncommon weapon and another role an Uncommon helm, once a save', () => {
+  const { p, h } = withHero('healer');
+  assert.equal(grantTrialStarter(p, h), true);
+  assert.equal(h.bag.weapon?.rar, 1, 'the weapon waits in the bag');
+  assert.equal(h.regular.weapon.rar, 0, 'nothing goes on by itself');
+  assert.equal(p.warband.healer.weapon.rar, 1, 'like a ladder piece, it lifts the healer floor');
+  assert.equal(p.warband.tank.helm.rar, 1, 'the shared piece: a helm for the tanks');
+  assert.equal(grantTrialStarter(p, h), false, 'once a save');
+  assert.equal(p.warband.tank.helm.rar, 1);
+  // the chest shows exactly what was given
+  const [w, s] = trialStarter(h);
+  assert.deepEqual([w.id, w.source, w.rar, w.prevRar], [gearId('healer', 'weapon', 1), 'regular', 1, 0]);
+  assert.deepEqual([s.id, s.source, s.role, s.slot, s.rar], [gearId('tank', 'helm', 1), 'spare', 'tank', 'helm', 1]);
+  assert.ok(ITEMS[w.id] && ITEMS[s.id]);
+  // a tank's shared piece goes to the healers; a rogue gets a rogue's weapon
+  const t = withHero('tank');
+  grantTrialStarter(t.p, t.h);
+  assert.equal(t.p.warband.healer.helm.rar, 1);
+  assert.equal(t.p.warband.tank.helm.rar, 0);
+  const r = freshProfile();
+  const rogue = newHero(r, { name: 'Test Rogue', race: 'elf', cls: 'rogue' })!;
+  assert.equal(trialStarter(rogue)[0].id, gearId('rogue', 'weapon', 1));
 });
 
 test('gear-driven power & boss weapons: power comes strictly from worn gear and Boss Weapons grant signature ability buffs', () => {
@@ -706,3 +731,16 @@ test('gnomes and goblins: every class, sex, ladder armour tier, and Barrow Epic 
     }
   }
 });
+
+test('stepped dungeon tiers: Tier 1 is ilvl 26, Tier 2 is ilvl 34, and Tier 3 is ilvl 42', () => {
+  // Tier 1 Barrow Epic set piece & boss weapon -> ilvl 26
+  assert.equal(itemScore(ITEMS['barrowguard.helm']), 26);
+  assert.equal(itemScore(ITEMS['gravekeeper.tank']), 26);
+  // Tier 2 dungeon Epic -> ilvl 34
+  const tier2Helm = { ...ITEMS['barrowguard.helm'], id: 'thimble.helm', tier: 2 as const };
+  assert.equal(itemScore(tier2Helm), 34);
+  // Tier 3 dungeon Epic -> ilvl 42
+  const tier3Weapon = { ...ITEMS['gravekeeper.tank'], id: 'moonmere.tank', tier: 3 as const };
+  assert.equal(itemScore(tier3Weapon), 42);
+});
+

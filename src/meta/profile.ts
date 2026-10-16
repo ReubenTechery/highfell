@@ -120,8 +120,7 @@ export function freshProfile(now = Date.now()): Profile {
     hearth: { spots: {}, looks: {} },
     settings: { sound: true, looksOff: [] },
     seen: {},
-    // one Glowcap seed to start, so the garden can be tried before the Barrow drops one
-    vale: { ...freshVale(), seeds: { glowcap: 1 } },
+    vale: freshVale(),
   };
 }
 export const emptyBed = (): BedState => ({ seed: null, grown: 0, shimmer: false });
@@ -347,11 +346,15 @@ export function setActive(p: Profile, id: string, now = Date.now()): boolean {
 }
 
 /* ---------------------------------------------------------------- onboarding */
-/** A fresh profile with no heroes plays the prologue run first, once. */
+/** A fresh profile makes its first hero, then plays the 60-second Crypt Trial as them, once. */
 export const needsIntroRun = (p: Profile): boolean => p.roster.length === 0 && !p.counters['intro.run'];
-export const finishIntroRun = (p: Profile): void => { p.counters['intro.run'] = 1; };
-/** After making your first hero, the hearth gives a quick tour of the rooms, riding out and dungeons. */
+/** Marks the trial played (or skipped); true when this was the first time. */
+export const finishIntroRun = (p: Profile): boolean => { const first = !p.counters['intro.run']; p.counters['intro.run'] = 1; return first; };
+/** After making your first hero, the hearth gives a quick 3-step tour: your hero's gear, the bunk room, the dungeons. */
 export const startHearthTour = (p: Profile): void => { p.counters['intro.tour'] = 1; };
 export const needsHearthTour = (p: Profile): boolean => p.roster.length > 0 && p.counters['intro.tour'] === 1;
 export const finishHearthTour = (p: Profile): void => { p.counters['intro.tour'] = 2; };
-
+/** Your first seed from a dungeon boss brings a one-step tip on the yard's beds, once (not if you have planted before). */
+export const startSeedTour = (p: Profile): void => { if (!p.counters['intro.seed'] && !p.counters['vale.planted']) p.counters['intro.seed'] = 1; };
+export const needsSeedTour = (p: Profile): boolean => p.roster.length > 0 && p.counters['intro.seed'] === 1;
+export const finishSeedTour = (p: Profile): void => { p.counters['intro.seed'] = 2; };

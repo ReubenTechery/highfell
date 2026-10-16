@@ -10,8 +10,9 @@ import { CLASSES, CLASS_ORDER, MAX_HEROES, RACES, RACE_ORDER, canMake, defaultSe
 import { AB, abKey } from '../content/roles';
 import type { RoleId } from '../content/types';
 import { newHero } from '../meta/gear';
+import { grantTrialStarter } from '../meta/loot';
 import { openProgress, opened, unlockOf } from '../meta/logs';
-import { finishIntroRun, nameProblem, setActive, startHearthTour } from '../meta/profile';
+import { finishIntroRun, nameProblem, needsIntroRun, setActive, startHearthTour } from '../meta/profile';
 import type { App } from './app';
 import { actions, esc, GLYPH } from './dom';
 import { heroImg, heroSprite, tile } from './art';
@@ -136,15 +137,22 @@ export class Creator {
     const why = this.why();
     if (why) { this.err = why; SFX.play('nope'); this.syncGo(); return; }
     const first = p.roster.length === 0;
+    const runTrial = first && needsIntroRun(p);
     const h = newHero(p, { name: this.name, race: this.race, cls: this.cls, sex: this.sex, free: this.app.dev.allOpen });
     if (!h) { this.err = 'That hero could not be made'; SFX.play('nope'); this.syncGo(); return; }
     setActive(p, h.id);
-    finishIntroRun(p);
-    if (first) startHearthTour(p);
+    // the first hero gets the Crypt Trial's chest now, so quitting or skipping the trial loses nothing
+    if (first) { grantTrialStarter(p, h); startHearthTour(p); }
     // saving redraws the maker, so note now where to go after
     const toDungeons = this.forSeat;
     this.typed = false; this.name = ''; this.forSeat = false;
     SFX.play('place');
+    if (runTrial) {
+      this.app.save();
+      this.app.startIntro();
+      return;
+    }
+    finishIntroRun(p);
     this.app.save();
     this.app.toasts.text(`${h.name} is ready`, `${RACES[this.race].name} ${CLASSES[this.cls].name} · ${CLASSES[this.cls].roleName}. Race and class are for keeps.`);
     this.app.showHearth();
