@@ -1,7 +1,8 @@
 /**
  * The armoury: a hero's gear, in three tabs. Gear: the hero, their four slots in a row, every piece they have
  * for the picked slot with the uniques still to find dimmed at the end, the card that says what putting the
- * picked piece on would change (armourycard.ts), and one Put it on at the bottom. Abilities: the four buttons
+ * picked piece on would change (armourycard.ts), and one Put it on at the bottom (a second tap on the picked
+ * piece does the same, and only your next tap moves: a new piece's Put it on glows). Abilities: the four buttons
  * and what the gear does to them. Looks: the title and the looks. Your other heroes are a tap away in the
  * corner. Its buttons (armouryActions), the moment a piece goes on (the burst, the item level counting up)
  * and looking clearing New (leftSlot) live here too; the sheets open and close it.
@@ -58,32 +59,35 @@ export function leftSlot(p: Profile, from: SheetSpec | null, next: SheetSpec | n
   return !!h && seenSlot(h, from.slot);
 }
 
-/** the armoury's buttons: its tabs, a slot, a piece, another hero, Put it on (with its moment), the weapon
- *  trait, playing as this hero, a title, a look on or off, and the way in from a drop's sheet */
+/** the armoury's buttons: its tabs, a slot, a piece (a second tap puts it on), another hero, Put it on (with
+ *  its moment), the weapon trait, playing as this hero, a title, a look on or off, and the way in from a
+ *  drop's sheet */
 export function armouryActions(x: ArmouryHost): Record<string, (el: HTMLElement) => void> {
   const cur = (): GearSpec | null => { const s = x.spec(); return s && s.kind === 'gear' ? s : null; };
   const gearHero = (): Hero | null => { const s = cur(); return s ? heroById(x.app.p, s.hero) : null; };
   const go = (patch: Partial<GearSpec>): void => { const s = cur(); if (!s) return; SFX.play('ui'); x.open({ ...s, ...patch }); };
+  const wearPicked = (): void => {
+    const s = cur(), h = gearHero(), p = x.app.p, def = s?.pick ? ITEMS[s.pick] : undefined;
+    if (!h || !def) return;
+    const from = +ilvl(loadoutFor(p, h).score);
+    if (!wear(p, h, def)) { SFX.play('nope'); return; }
+    const v = x.view;
+    v.justOn = { hero: h.id, slot: def.slot, from, to: +ilvl(loadoutFor(p, h).score), at: performance.now() };
+    SFX.play('equip');
+    x.app.save();
+    // the moment happens up top (the slot bursts, the item level climbs), so scroll back up to it
+    const b = x.root.querySelector<HTMLElement>('.sheet-body');
+    if (b && b.scrollTop > 0) b.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    setTimeout(() => { if (v.justOn && performance.now() - v.justOn.at > 1500) v.justOn = null; }, 1600);
+  };
   return {
     artab: (el) => go({ tab: el.dataset.tab as ArmouryTab }),
     arslot: (el) => go({ slot: el.dataset.slot as SlotId, pick: undefined, tab: 'gear' }),
-    arpick: (el) => go({ pick: el.dataset.id }),
+    // only the picked piece, when it can go on, carries data-wear (pieceTile)
+    arpick: (el) => (el.dataset.wear ? wearPicked() : go({ pick: el.dataset.id })),
     arhero: (el) => { const s = cur(); if (!s || !el.dataset.id) return; SFX.play('ui'); x.open({ kind: 'gear', hero: el.dataset.id, tab: s.tab }); },
     arheroes: () => { SFX.play('ui'); x.open({ kind: 'heroes' }); },
-    arwear: () => {
-      const s = cur(), h = gearHero(), p = x.app.p, def = s?.pick ? ITEMS[s.pick] : undefined;
-      if (!h || !def) return;
-      const from = +ilvl(loadoutFor(p, h).score);
-      if (!wear(p, h, def)) { SFX.play('nope'); return; }
-      const v = x.view;
-      v.justOn = { hero: h.id, slot: def.slot, from, to: +ilvl(loadoutFor(p, h).score), at: performance.now() };
-      SFX.play('equip');
-      x.app.save();
-      // the moment happens up top (the slot bursts, the item level climbs), so scroll back up to it
-      const b = x.root.querySelector<HTMLElement>('.sheet-body');
-      if (b && b.scrollTop > 0) b.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-      setTimeout(() => { if (v.justOn && performance.now() - v.justOn.at > 1500) v.justOn = null; }, 1600);
-    },
+    arwear: wearPicked,
     trait: (el) => { const h = gearHero(); if (!h) return; if (buyTrait(x.app.p, h, 'barrow', el.dataset.trait!)) { SFX.play('coin'); x.app.save(); } else SFX.play('nope'); },
     playas: () => { const h = gearHero(); if (!h) return; setActive(x.app.p, h.id); SFX.play('ui'); x.app.save(); },
     look: (el) => { const p = x.app.p, id = el.dataset.id!; const off = new Set(p.settings.looksOff); if (off.has(id)) off.delete(id); else off.add(id); p.settings.looksOff = [...off]; SFX.play('ui'); x.app.save(); },
@@ -172,24 +176,24 @@ function slotTile(p: Profile, h: Hero, it: Worn, sets: Record<string, number>, o
 }
 
 /** one piece in a slot's row as it looks (gilded, once its kit is yours): worn (a tick), new, picked, or not
- *  found yet (dimmed, with its drop rate) */
+ *  found yet (dimmed, with its drop rate). Tapped again once it's picked, a piece you have goes on. */
 function pieceTile(p: Profile, x: ShelfPiece, on: boolean): string {
-  const d = x.def, look = rarLook(d.id), shown = x.found ? lookId(p, d.id) : d.id;
+  const d = x.def, look = rarLook(d.id), shown = x.found ? lookId(p, d.id) : d.id, wears = on && x.found && !x.worn;
   const chip = x.worn ? `<i class="ar-on" title="Wearing">${GLYPH.check}</i>` : `<i class="ar-lv">${x.found ? itemScore(d) : fmtRate(dropSource(p, d.id)?.rate) || '?'}</i>`;
-  return `<button type="button" class="ar-pc${x.found ? '' : ' ghost'}" data-act="arpick" data-id="${esc(d.id)}" aria-pressed="${on}" style="--rc: ${look.color}; --rk: ${look.ink}" aria-label="${esc(nameOf(shown))}${x.worn ? ', wearing' : x.isNew ? ', new' : x.found ? '' : ', not found yet'}">
+  return `<button type="button" class="ar-pc${x.found ? '' : ' ghost'}" data-act="arpick" data-id="${esc(d.id)}"${wears ? ' data-wear="1"' : ''} aria-pressed="${on}" style="--rc: ${look.color}; --rk: ${look.ink}" aria-label="${esc(nameOf(shown))}${x.worn ? ', wearing' : x.isNew ? ', new' : x.found ? '' : ', not found yet'}${wears ? '. Tap again to put it on' : ''}">
     <span class="ar-pt"><span class="tile">${iconOf(shown)}</span>${x.found ? '' : '<span class="ar-q" aria-hidden="true">?</span>'}${x.isNew ? '<i class="ar-new">New</i>' : ''}${chip}</span>
     <b>${esc(nameOf(shown))}</b></button>`;
 }
 
-/** the bottom: Put it on (gold unless it's a downgrade), or what's worn or not found yet, and the next slot
- *  with something new */
+/** the bottom: Put it on (gold unless it's a downgrade, and glowing for a new piece: it's your next tap), or
+ *  what's worn or not found yet, and the next slot with something new */
 function foot(p: Profile, h: Hero, slot: SlotId, x: ShelfPiece, j: ArmouryView['justOn']): string {
   const next = SLOT_IDS.find((sl) => sl !== slot && waitingFor(p, h, sl));
   const nextBtn = next ? `<button type="button" class="btn small ar-next" data-act="arslot" data-slot="${next}"><span>Next new: ${esc(ROLE_SLOTS[gearKey(h)][next].name)}</span>${GLYPH.right}</button>` : '';
   if (!x.found) return `<p class="ar-note"><i class="ar-qi" aria-hidden="true">?</i><span>Not found yet</span></p>${nextBtn}`;
   if (x.worn) return `<p class="ar-note on">${GLYPH.check}<span>Wearing it<small>${j ? `Power ${ilvl(j.to)}` : 'Tap another piece to compare'}</small></span></p>${nextBtn}`;
   const worse = compareOn(worn(p, h), gearKey(h), x.def).verdict === 'worse';
-  return `<button type="button" class="btn big ar-wear${worse ? '' : ' gold'}" data-act="arwear">${GLYPH.shield}Put it on</button>`;
+  return `<button type="button" class="btn big ar-wear${worse ? '' : ' gold'}${x.isNew && !worse ? ' now' : ''}" data-act="arwear">${GLYPH.shield}Put it on</button>`;
 }
 
 /** the Abilities tab: the four buttons with what the gear does to each, then what is always on */
