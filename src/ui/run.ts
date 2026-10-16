@@ -24,7 +24,7 @@ import { dropVariants } from '../dungeon/art.js';
 import { roomIndexOf } from '../dungeon/world.js';
 import { lootGlint, startWalkout } from '../dungeon/walkout.js';
 import { Achiever } from '../meta/achievements';
-import { gildedOn, loadoutFor, partyRar, plainLoadout, worn } from '../meta/gear';
+import { gildedOn, loadoutFor, partyRar, plainLoadout, trialWeapon, worn } from '../meta/gear';
 import { countBossWipe, countRunStart, gildOf, resolveClear, resolveKill, runLoot, tellOf, type ClearLoot, type KillLoot } from '../meta/loot';
 import { pourFor, seatsFor } from '../meta/party';
 import { activeHero, countClassRun, countLift, finishCurseTip, finishIntroRun, heroById, learnGlow, markClassTrial, needsClassTrial, needsCurseTip, needsSwipeHint, roleOf, type Hero } from '../meta/profile';
@@ -300,9 +300,10 @@ export class RunScene implements InputUI {
       }
     }
     if (intro) {
-      loadouts.tank = { ...(loadouts.tank as object), unique: 'gravedigger', bonuses: ['barrowguard2'], name: 'Brannoc', sprite: 'tank' };
-      if (role === 'healer') loadouts.healer = { ...(loadouts.healer as object), unique: 'lantern', bonuses: ['candlewake2'] };
-      else if (role === 'dps') loadouts.dps = { ...(loadouts.dps as object), unique: h?.cls === 'rogue' ? 'cryptfangs' : 'spire', bonuses: [h?.cls === 'rogue' ? 'shadeveil2' : 'rimebone2'] };
+      // each seat gets the Barrow's own boss weapon for it (gear.ts's trialWeapon), so the trial shows the real power
+      loadouts.tank = { ...(loadouts.tank as object), unique: trialWeapon('tank', 'warrior'), bonuses: ['barrowguard2'], name: 'Brannoc', sprite: 'tank' };
+      if (role === 'healer') loadouts.healer = { ...(loadouts.healer as object), unique: trialWeapon('healer', h?.cls), bonuses: ['candlewake2'] };
+      else if (role === 'dps') loadouts.dps = { ...(loadouts.dps as object), unique: trialWeapon('dps', h?.cls), bonuses: [h?.cls === 'rogue' ? 'shadeveil2' : 'rimebone2'] };
     }
     // one bottle poured at the door for the whole party: only the poured one is spent (a run that doesn't count keeps it)
     const poured = h && !intro ? pourFor([{ role, leader: true, brew: broughtBrew(p) }]) : null;

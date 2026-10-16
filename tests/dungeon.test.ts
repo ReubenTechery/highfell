@@ -644,3 +644,18 @@ test('flawless: a hand, a burrow ring or a bomb that lands is counted, and one t
   assert.equal(r.bombHits, 1);
   assert.equal(r.ringHits, 1);
 });
+
+test('boss weapons: every boss weapon’s power is one the engine knows, and the Crypt Trial lends each class the Barrow’s own', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { ITEMS } = await import('../src/content');
+  const { TEMPLATE_ITEMS } = await import('../src/content/_template/items');
+  const { trialWeapon } = await import('../src/meta/gear');
+  const engine = ['heroes.js', 'gadgets.js', 'bombs.js'].map((f) => readFileSync(`src/dungeon/${f}`, 'utf8')).join('\n');
+  for (const it of [...Object.values(ITEMS), ...TEMPLATE_ITEMS].filter((i) => i.kind === 'unique' && i.slot === 'weapon')) {
+    assert.ok(it.effect && engine.includes(`'${it.effect}'`), `${it.id}: its power "${it.effect}" does nothing in the engine`);
+  }
+  assert.equal(trialWeapon('tank', 'warrior'), 'gravedigger');
+  assert.equal(trialWeapon('healer', 'cleric'), 'longnight');
+  assert.equal(trialWeapon('dps', 'mage'), 'gravefrost');
+  assert.equal(trialWeapon('dps', 'rogue'), 'cryptfangs');
+});

@@ -55,7 +55,7 @@ export const TEMPLATE_ITEMS: ItemDef[] = [
   { id: 'gearshade.chest', name: 'Gearshade Jerkin', slot: 'chest', role: 'dps', cls: 'rogue', rar: EPIC, tier: 2, kind: 'set', setId: 'gearshade', icon: 's_rogue_chest', effect: 'gearshade.chest', effectDesc: 'Shadowstrike deals +20% critical strike damage.' },
   // Boss Weapons (1/50 from Final Boss)
   { id: 'sovereign.tank', name: 'The Brass Bastion', slot: 'weapon', role: 'tank', rar: EPIC, tier: 2, kind: 'unique', icon: 'u_gravedigger', effect: 'gravedigger', effectDesc: 'Every fifth swing triggers a stunning tremor, and Charge resets Cleave.' },
-  { id: 'sovereign.healer', name: 'Censer of the Glowcap', slot: 'weapon', role: 'healer', rar: EPIC, tier: 2, kind: 'unique', icon: 'u_lantern', effect: 'lantern', effectDesc: 'Mend wards its target for 60, and Sunburst sears nearby foes and wards the party.' },
+  { id: 'sovereign.healer', name: 'Censer of the Glowcap', slot: 'weapon', role: 'healer', rar: EPIC, tier: 2, kind: 'unique', icon: 'u_lantern', effect: 'longnight', effectDesc: 'Mend wards its target for 60, and Sunburst sears nearby foes and wards the party.' },
   { id: 'sovereign.dps', name: 'Spire of Living Sparks', slot: 'weapon', role: 'dps', rar: EPIC, tier: 2, kind: 'unique', icon: 'u_gravefrost', effect: 'gravefrost', effectDesc: 'Comet freezes everything it hits for 2s, and Rime burst resets Icicle.' },
   { id: 'sovereign.rogue', name: 'The Mainspring Razors', slot: 'weapon', role: 'dps', cls: 'rogue', rar: EPIC, tier: 2, kind: 'unique', icon: 'u_cryptfangs', effect: 'cryptfangs', effectDesc: 'Every fourth slash strikes twice and refreshes Viper Venom, and Shadowstep resets Shadowstrike.' },
 ];
