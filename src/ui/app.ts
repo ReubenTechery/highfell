@@ -32,7 +32,7 @@ export interface Carry { sheet?: unknown; scene?: SceneId }
 
 /** Testing switches that live on this device only, never in the save. */
 /** testing switches, kept on this device: allOpen opens the log rewards (looks, the Risen) and Heroic before they're earned */
-export interface Dev { walkout: 'off' | 'normal' | 'unique' | 'pet'; valeFree: boolean; valeLuck: boolean; allOpen: boolean }
+export interface Dev { valeFree: boolean; valeLuck: boolean; allOpen: boolean }
 const DEV_KEY = 'highfell.dev';
 
 export class App {
@@ -47,7 +47,7 @@ export class App {
   readonly brew: Brewing;
   scene: SceneId = 'hearth';
   touch = false;
-  dev: Dev = { walkout: 'off', valeFree: false, valeLuck: false, allOpen: false };
+  dev: Dev = { valeFree: false, valeLuck: false, allOpen: false };
   private last = 0;
   /** the frame loop, which only runs while a run is showing */
   private raf = 0;
@@ -211,7 +211,7 @@ const SHELL = `
         <div class="bb-sub" id="bb-sub"></div>
       </div>
     </div>
-    <div class="run-tags"><span class="chip dark heroic-tag" id="intro-tag" hidden>Crypt Trial · Full Epic</span><span class="chip dark heroic-tag" id="heroic-tag" hidden>Heroic</span><span class="chip dark practice-tag" id="practice-tag" hidden>Practice: no loot</span><span class="chip dark brew-tag" id="brew-tag" hidden></span></div>
+    <div class="run-tags"><span class="chip dark heroic-tag" id="intro-tag" hidden>Crypt Trial · Full Epic</span><span class="chip dark heroic-tag" id="heroic-tag" hidden>Heroic</span><span class="chip dark test-tag" id="test-tag" hidden>Test run: no loot</span><span class="chip dark brew-tag" id="brew-tag" hidden></span></div>
     <div class="banner" id="banner"></div>
     <div class="call" id="call"></div>
     <div class="hint glass" id="hint" hidden></div>

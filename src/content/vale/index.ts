@@ -44,7 +44,7 @@ export const SEED_ICON: Record<string, string> = { glowcap: 'g_seed_glowcap', mo
 
 /** Planter beds in the yard. */
 export const BEDS = 3;
-/** Dungeon clears a planted seed takes to be ready (any dungeon, Normal or Heroic; practice doesn't count). */
+/** Dungeon clears a planted seed takes to be ready (any dungeon, Normal or Heroic; the Crypt Trial doesn't count). */
 export const GROW_CLEARS = 3;
 /** The chance a bed shimmers when it's planted (its harvest drops Starlight Dew). You see it while it grows. */
 export const SHIMMER = 1 / 7;

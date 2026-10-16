@@ -188,7 +188,7 @@ export function grantTrialStarter(p: Profile, h: Hero): boolean {
   return true;
 }
 
-/** A kill counts and rolls its table (and its seed lines after your first clear). Practice runs never call this. */
+/** A kill counts and rolls its table (and its seed lines after your first clear). A run that doesn't count never calls this. */
 export function resolveKill(p: Profile, dg: DungeonInfo, boss: string, h: Hero, time: number | null, rng: Rng, now = Date.now()): KillLoot {
   const role = roleOf(h);
   const br = bossRecord(p, dg.id, boss);

@@ -200,20 +200,22 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-lootcol { grid-area: loot; display: none; }
 .dgx-you { display: grid; gap: 14px; align-content: start; min-width: 0; }
 @media (min-width: 820px) {
-  .dgx { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto 1fr; grid-template-areas: "pic loot" "log loot" "you loot"; gap: 14px 22px; align-items: start; }
+  .dgx { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto auto; grid-template-areas: "pic loot" "log loot" "you loot"; gap: 14px 22px; align-items: start; }
   /* the log's line stays under the picture, as a line rather than a way in: the loot is right beside it */
   .dgx > .dgx-logbar { border-color: transparent; background: var(--panel-2); box-shadow: none; pointer-events: none; }
   .dgx > .dgx-logbar .dgx-go, .dgx-lootcol > .dgx-logbar { display: none; }
-  /* the loot column is as tight as it can be and still be read, so the whole door fits a laptop screen */
-  .dgx-lootcol { display: grid; gap: 10px; padding: 12px; border-radius: 18px; background: var(--panel-2); min-width: 0; }
-  .dgx-lootcol .dgx-rewards { background: var(--panel); padding: 10px; }
-  .dgx-lootcol .dgx-rw-pic { width: 46px; height: 46px; }
-  .dgx-lootcol .dgx-rw.main .dgx-rw-pic { width: 52px; height: 52px; }
-  .dgx-lootcol .dgx-rows { gap: 2px; }
-  .dgx-lootcol .dgx-row { padding: 6px 8px; }
-  .dgx-lootcol .dgx-it .tile { width: 44px; height: 44px; }
-  .dgx-lootcol .dgx-row.yours .dgx-it .tile { width: 50px; height: 50px; }
-  .dgx-lootcol .dgx-lbl { padding-top: 10px; }
+  /* The left column (the door, the log, the brew) sets the height; the loot column matches it and, on a short
+     screen only, scrolls inside itself. It is as tight as it can be and still be read, so on a laptop it fits. */
+  .dgx-lootcol { align-self: stretch; height: 0; min-height: 100%; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: 10px; padding: 12px; border-radius: 18px; background: var(--panel-2); min-width: 0; }
+  .dgx-lootcol .dgx-rewards { background: var(--panel); padding: 8px 10px; gap: 6px; }
+  .dgx-lootcol .dgx-rw-pic { width: 40px; height: 40px; }
+  .dgx-lootcol .dgx-rw.main .dgx-rw-pic { width: 44px; height: 44px; }
+  .dgx-lootcol .dgx-rw:not(.main) small { display: none; }
+  .dgx-lootcol .dgx-rows { gap: 0; }
+  .dgx-lootcol .dgx-row { padding: 3px 8px; }
+  .dgx-lootcol .dgx-it .tile { width: 38px; height: 38px; }
+  .dgx-lootcol .dgx-row.yours .dgx-it .tile { width: 44px; height: 44px; }
+  .dgx-lootcol .dgx-lbl { padding-top: 8px; }
 }
 /* an inner page: back to the door, and the page's name */
 .dgx-sub { display: flex; align-items: center; gap: 12px; }
@@ -235,16 +237,17 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-main .fine { margin: 0; }
 .k-dungeon .fine { font-size: 14px; }
 .k-dungeon .btn.small { min-height: 44px; font-size: 17px; }
-.k-dungeon .sg { min-height: 44px; font-size: 17px; }
 .dgx-seat, .dgx-hero, .dgx-group, .dgx-row { --rc: #5B8BD9; }
 .r-healer { --rc: #6FBF4A; } .r-dps { --rc: #E04A3F; }
 .k-dungeon .sheet-head p b { color: var(--ink); font-weight: 500; }
 /* The door: your party at the dungeon's door. The inner box keeps the picture's shape, so each name plate
    sits under its hero at any size; a short phone gets a shorter door rather than a scroll. */
 .dgx-door { display: grid; gap: 10px; min-width: 0; }
-.dgx-stage { position: relative; display: flex; justify-content: center; align-items: flex-end; height: clamp(240px, calc(100vh - 330px), calc((100vw - 46px) * var(--stage-k))); border: 3px solid var(--ink); border-radius: 18px; overflow: hidden; background: var(--stage-bg, #241C33); }
-@supports (height: 100svh) { .dgx-stage { height: clamp(240px, calc(100svh - 330px), calc((100vw - 46px) * var(--stage-k))); } }
-@media (min-width: 820px) { .dgx-stage { height: auto; aspect-ratio: var(--stage-shape); } }
+.dgx-stage { position: relative; display: flex; justify-content: center; align-items: flex-end; height: clamp(240px, calc(100vh - 386px - var(--note, 0px)), calc((100vw - 46px) * var(--stage-k))); border: 3px solid var(--ink); border-radius: 18px; overflow: hidden; background: var(--stage-bg, #241C33); }
+@supports (height: 100svh) { .dgx-stage { height: clamp(240px, calc(100svh - 386px - var(--note, 0px)), calc((100vw - 46px) * var(--stage-k))); } }
+/* Heroic's line under the door comes out of the door's height, so a short screen still fits */
+.dgx-door.heroic { --note: 30px; }
+@media (min-width: 820px) { .dgx-stage { height: auto; aspect-ratio: var(--stage-shape); min-height: 280px; max-height: calc(100vh - 426px - var(--note, 0px)); } }
 .dgx-stage.heroic { box-shadow: 0 0 0 4px var(--gold); }
 .dgx-stage-in { position: relative; height: 100%; max-width: 100%; aspect-ratio: var(--stage-shape); }
 .dgx-stage-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -263,13 +266,8 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-ghost { position: absolute; left: 50%; top: 2%; bottom: 46px; width: 62%; translate: -50% 0; display: grid; place-items: center; border: 3px dashed rgba(255, 248, 236, 0.55); border-radius: 28px 28px 10px 10px; color: rgba(255, 248, 236, 0.7); }
 .dgx-ghost svg { width: 28px; height: 28px; }
 .dgx-note { margin: 0; font-family: var(--f-body); font-size: 14px; color: var(--soft); text-align: center; }
-/* the foot: Practice beside the gold button, which always says where you're going */
-.dgx-foot { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; }
-.dgx-foot .btn.big { width: 100%; padding: 0 12px; white-space: nowrap; font-size: clamp(20px, 5.9vw, 23px); }
-.dgx-prac { min-height: 58px; padding: 0 14px; gap: 6px; border-radius: 16px; font-size: 17px; }
-.dgx-prac svg { width: 20px; height: 20px; }
-@media (min-width: 820px) { .dgx-foot { width: auto; grid-template-columns: auto 340px; } }
-.k-dungeon .seg { gap: 8px; }
+/* the foot: one gold button, as wide as a thumb could want, that always says where you're going */
+.btn.big.dgx-enter { width: min(100%, 420px); white-space: nowrap; }
 /* Who goes in: your heroes by role */
 .dgx-group { display: grid; gap: 8px; }
 .dgx-gh { margin: 0; display: flex; align-items: center; gap: 8px; font-family: var(--f-display); font-size: 17px; }

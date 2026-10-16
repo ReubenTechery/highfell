@@ -644,7 +644,6 @@ test('party: Heroic needs at least two real players and a bot takes the third se
   // Heroic on your own: blocked, in plain words; until online play your group is just you
   assert.deepEqual(groupOf(p).map((h) => h.id), [tank.id]);
   assert.equal(partyProblem(groupOf(p), { heroic: true }), 'Heroic needs at least two players. Bring a friend.');
-  assert.equal(partyProblem([tank], { heroic: true, practice: true }), null, 'practice gives nothing, so it is open solo');
   // two players and a bot: allowed, and the empty seat is a bot, never your own DPS
   assert.equal(partyProblem([tank, friendHealer], { heroic: true }), null);
   assert.deepEqual(seatsFor(p, [tank, friendHealer], true).map((s) => s.hero?.id ?? s.bot), [tank.id, friendHealer.id, 'Ivy']);

@@ -9,15 +9,14 @@
  * door: your party standing in front of the dungeon's door with its final boss behind them (stage.ts). On
  * Normal your own Warband heroes from your bunk room fill the other seats in their own gear (or bots stand
  * in until you make them); tap a hero for Who goes in, to play another or make one. Heroic needs at least
- * two players (party.ts), so its other seats wait for friends and for now it opens only for practice.
- * Then your brew (one button; its page has every bottle and what it does). The gold button goes in for loot;
- * Practice beside it has its own page: where to start and which gear to try.
+ * two players (party.ts), so its other seats wait for friends and the gold button stays locked until online
+ * play. Then your brew (one button; its page has every bottle and what it does), and the gold button.
  */
-import { COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, TITLES, heroicVersion } from '../content';
+import { COLLECTIBLES, DUNGEONS, TITLES, heroicVersion } from '../content';
 import { MAX_HEROES, RACES, type RaceId } from '../content/folk';
 import { LOOKS } from '../content/house';
 import { ORDER, ROLES } from '../content/roles';
-import type { AchievementDef, DropDef, DungeonInfo, Rar, RoleId } from '../content/types';
+import type { AchievementDef, DropDef, DungeonInfo, RoleId } from '../content/types';
 import { RECIPES, RECIPE_ORDER } from '../content/vale';
 import { loadoutFor } from '../meta/gear';
 import { HEROIC_AFTER, heroicOpen, heroicProgress, lootFor } from '../meta/loot';
@@ -33,15 +32,12 @@ import { SFX } from './sound';
 import { seatAt, stageShape, stageSvg } from './stage';
 
 /** the sheet's pages: the door (the everyday one) and the ones a tap away, each with a back arrow */
-export type DgPage = 'door' | 'loot' | 'heroes' | 'brews' | 'practice' | 'list';
+export type DgPage = 'door' | 'loot' | 'heroes' | 'brews' | 'list';
 
-/** what the sheet remembers while the page is open: which page, practice's options, Normal or Heroic, and
- *  which dungeon */
+/** what the sheet remembers while the page is open: which page, Normal or Heroic, and which dungeon */
 export interface DungeonPick {
   dungeon?: string;
   page: DgPage;
-  start: string;
-  gear: 'mine' | 2 | 3;
   heroic: boolean;
 }
 
@@ -130,8 +126,6 @@ const RACE_ICON: Partial<Record<RaceId, string>> = {
   human: 'c_human',
 };
 const word = (r: RoleId): string => (r === 'dps' ? 'DPS' : ROLES[r].title.toLowerCase());
-const seg = (act: string, cur: string, opts: [string, string][]): string =>
-  `<div class="seg" role="radiogroup">${opts.map(([v, t]) => `<button type="button" class="sg" role="radio" data-act="${act}" data-v="${v}" aria-checked="${cur === v}">${esc(t)}</button>`).join('')}</div>`;
 
 /** The dungeon version the sheet shows, and whether you can go in (Heroic opens after ten clears;
  *  `allOpen` is the testing switch). */
@@ -158,29 +152,24 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
 
   const { dg, open } = pickedDungeon(p, pick, allOpen);
   const rec = p.dungeons[dg.id], keeper = p.bosses[`${dg.id}.${dg.finalBoss}`];
-  const practice = pick.page === 'practice';
   // who may go in is party.ts's rule; the "Everything open" testing switch lets you in anyway
-  const blocked = allOpen ? null : partyProblem(groupOf(p), { heroic: pick.heroic, practice });
+  const blocked = allOpen ? null : partyProblem(groupOf(p), { heroic: pick.heroic });
   const hp = heroicProgress(p, base.id);
   const hOpen = allOpen || heroicOpen(p, base.id);
   const diff = `<div class="dgx-diff" role="radiogroup" aria-label="Normal or Heroic">
       <button type="button" class="dgx-d" role="radio" data-act="diff" data-v="normal" aria-checked="${!pick.heroic}">Normal</button>
       <button type="button" class="dgx-d h" role="radio" data-act="diff" data-v="heroic" aria-checked="${pick.heroic}">${hOpen ? '' : GLYPH.lock}Heroic${hOpen ? '' : ` <small>${hp.have}/${hp.need}</small>`}</button></div>`;
-  const starts = (DUNGEON_ENGINES[base.id]?.starts || []).filter((s: { id: string; name: string }) => s.id !== 'intro');
-  // the gold button goes in; Practice waits beside it (on its own page the gold button starts the practice)
-  const prac = `<button type="button" class="btn dgx-prac" data-act="practice">${GLYPH.target}Practice</button>`;
+  // the one gold button: it always says where you're going (Heroic's two-player rule is on the door itself)
   let foot: string;
   if (!open) foot = `<p class="fine dgx-shut">${GLYPH.lock}Heroic opens after ${HEROIC_AFTER} clears of the ${esc(base.name.split(' ')[0])}. You have ${hp.have}.</p>`;
-  else if (!h) foot = `<button type="button" class="btn gold big" data-act="newhero">${GLYPH.plus}Make a hero</button>`;
-  else if (blocked && !practice && pick.heroic) foot = `<div class="dgx-foot">${prac}<button type="button" class="btn gold big heroic" disabled>${GLYPH.lock}Enter Heroic</button></div>`;
+  else if (!h) foot = `<button type="button" class="btn gold big dgx-enter" data-act="newhero">${GLYPH.plus}Make a hero</button>`;
+  else if (blocked && pick.heroic) foot = `<button type="button" class="btn gold big dgx-enter heroic" disabled>${GLYPH.lock}Enter Heroic</button>`;
   else if (blocked) foot = `<p class="fine dgx-shut">${GLYPH.lock}${esc(blocked)}</p>`;
-  else if (practice) foot = `<button type="button" class="btn gold big${pick.heroic ? ' heroic' : ''}" data-act="go">Start practice</button>`;
-  else foot = `<div class="dgx-foot">${prac}<button type="button" class="btn gold big${pick.heroic ? ' heroic' : ''}" data-act="go">${pick.heroic ? 'Enter Heroic' : `Enter the ${esc(base.name.split(' ')[0])}`}</button></div>`;
+  else foot = `<button type="button" class="btn gold big dgx-enter${pick.heroic ? ' heroic' : ''}" data-act="go">${pick.heroic ? 'Enter Heroic' : `Enter the ${esc(base.name.split(' ')[0])}`}</button>`;
   const loot = lootPanel(p, dg, role);
   if (pick.page === 'loot') return { head: subHead(`${pick.heroic ? 'Heroic ' : ''}${base.name.split(' ')[0]} loot`), body: `<div class="dgx-lootpage">${loot}</div>`, foot };
   if (pick.page === 'heroes') return { head: subHead('Who goes in'), body: heroesPage(p, pick.heroic), foot };
   if (pick.page === 'brews') return { head: subHead('Your brew'), body: brewsPage(p), foot };
-  if (practice) return { head: subHead(pick.heroic ? 'Heroic practice' : 'Practice'), body: practicePage(pick, starts), foot };
   const head = `<h2><button type="button" class="dgx-namebtn" data-act="dglist" aria-label="${esc(base.name)}. All dungeons">${esc(base.name)}${GLYPH.down}</button></h2><p>Tier ${meta.roman}${pick.heroic ? ' · Heroic' : ''} · ${statLine(rec?.clears || 0, keeper?.kc || 0, rec?.pb)}</p>`;
   // on a phone the log line opens the Loot page; on desktop the loot sits in its own column instead
   const body = `<div class="dgx${pick.heroic ? ' heroic' : ''}">
@@ -190,14 +179,6 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
     <div class="dgx-you">${brewButton(p)}</div>
   </div>`;
   return { head, body, foot };
-}
-
-/** Practice: where to start and which gear to try. It gives nothing, and your brew works without using up
- *  its bottle. */
-function practicePage(pick: DungeonPick, starts: { id: string; name: string }[]): string {
-  return `<section class="dgx-group"><p class="dgx-gh">Start at</p>${seg('start', pick.start, starts.map((s) => [s.id, s.name] as [string, string]))}</section>
-    <section class="dgx-group"><p class="dgx-gh">Gear</p>${seg('tgear', String(pick.gear), [['mine', 'Mine'], ['2', 'Try Rare'], ['3', 'Try Epic']])}</section>
-    <p class="dgx-note">No loot, kill counts or achievements. Your brew works, and the bottle stays.</p>`;
 }
 
 /** All dungeons, act by act: each one's picture, its log and how close its Heroic is (tap one to go to its
@@ -265,7 +246,7 @@ function lootPanel(p: Profile, dg: DungeonInfo, role: RoleId): string {
 /** what the Dungeons sheet needs from the sheets around it */
 export interface DungeonHost { app: App; root: HTMLElement; pick: DungeonPick; refresh(): void; close(): void }
 
-/** the Dungeons sheet's buttons: its pages, the dungeon and its version, who goes in, practice, and going in */
+/** the Dungeons sheet's buttons: its pages, the dungeon and its version, who goes in, your brew, and going in */
 export function dungeonActions(d: DungeonHost): Record<string, (el: HTMLElement) => void> {
   const page = (to: DgPage): void => {
     d.pick.page = to;
@@ -280,9 +261,6 @@ export function dungeonActions(d: DungeonHost): Record<string, (el: HTMLElement)
     dgback: () => page('door'),
     dgpick: (el) => { d.pick.dungeon = el.dataset.id || 'barrow'; d.pick.heroic = false; d.pick.page = 'door'; SFX.play('ui'); d.refresh(); },
     diff: (el) => { d.pick.heroic = el.dataset.v === 'heroic'; SFX.play('ui'); d.refresh(); },
-    practice: () => page('practice'),
-    start: (el) => { d.pick.start = el.dataset.v!; SFX.play('ui'); d.refresh(); },
-    tgear: (el) => { const v = el.dataset.v!; d.pick.gear = v === 'mine' ? 'mine' : (+v as 2 | 3); SFX.play('ui'); d.refresh(); },
     seats: () => page('heroes'),
     brews: () => page('brews'),
     brewpick: (el) => {
@@ -308,17 +286,13 @@ export function dungeonBack(pick: DungeonPick): boolean {
   return true;
 }
 
-/** into the dungeon: Normal for loot, Heroic when your group may, or practice */
+/** into the dungeon from the entrance: Normal, or Heroic when your group may */
 function goIn(d: DungeonHost): void {
   const pr = d.pick, app = d.app;
-  const practice = pr.page === 'practice';
   const { dg, open } = pickedDungeon(app.p, pr, app.dev.allOpen);
-  if (!open) { SFX.play('nope'); return; }
-  if (pr.heroic && !practice && !app.dev.allOpen) { SFX.play('nope'); return; }
-  const baseId = dg.heroicOf || dg.id;
+  if (!open || (pr.heroic && partyProblem(groupOf(app.p), { heroic: true }) && !app.dev.allOpen)) { SFX.play('nope'); return; }
   SFX.play('ui');
-  if (practice) app.startRun({ dungeon: baseId, start: pr.start, testRar: pr.gear === 'mine' ? null : (pr.gear as Rar), heroic: pr.heroic });
-  else app.startRun({ dungeon: baseId, start: 'entrance', testRar: null, heroic: pr.heroic });
+  app.startRun({ dungeon: dg.heroicOf || dg.id, start: 'entrance', testRar: null, heroic: pr.heroic });
 }
 
 /** the big one a log gives, for the end of its bar: a new kind of hero, or else what it gives your heroes */
@@ -372,7 +346,7 @@ function door(p: Profile, base: DungeonInfo, heroic: boolean, diff: string): str
     if (!c.sprite) return `<span class="dgx-seat open r-${c.role}" style="${style}"><span class="dgx-ghost" aria-hidden="true">${GLYPH.plus}</span><span class="dgx-plate">${esc(c.name)}</span></span>`;
     return `<button type="button" class="dgx-seat r-${c.role}${c.tag === 'You' ? ' me' : ''}" style="${style}" data-act="seats" aria-label="${esc(c.label)}. Change who goes in">${c.tag ? `<span class="dgx-tag${c.tag === 'Bot' ? ' bot' : ''}">${c.tag}</span>` : ''}<span class="dgx-plate">${esc(c.name)}</span></button>`;
   }).join('');
-  return `<div class="dgx-door"><div class="dgx-stage${heroic ? ' heroic' : ''}" style="--stage-bg: ${st.bg}; --stage-shape: ${stageShape(st)}; --stage-k: ${(st.view[3] / st.view[2]).toFixed(4)}"><div class="dgx-stage-in">${stageSvg(base.id, st, heroic, cast.map((c) => c.sprite))}${plates}</div>${diff}</div>
+  return `<div class="dgx-door${heroic ? ' heroic' : ''}"><div class="dgx-stage${heroic ? ' heroic' : ''}" style="--stage-bg: ${st.bg}; --stage-shape: ${stageShape(st)}; --stage-k: ${(st.view[3] / st.view[2]).toFixed(4)}"><div class="dgx-stage-in">${stageSvg(base.id, st, heroic, cast.map((c) => c.sprite))}${plates}</div>${diff}</div>
     ${heroic ? '<p class="dgx-note">Heroic needs 2 players. A bot fills the last seat.</p>' : ''}</div>`;
 }
 
@@ -425,7 +399,7 @@ function brewsPage(p: Profile): string {
   };
   const have = RECIPE_ORDER.filter((id) => (p.vale.shelf[id] || 0) > 0);
   return `<div class="dgx-bopts" role="radiogroup" aria-label="Brew, one bottle a run">${opt(null)}${have.map(opt).join('')}</div>
-    <p class="dgx-note">One bottle serves the whole party for a run. Practice keeps the bottle.</p>`;
+    <p class="dgx-note">One bottle serves the whole party for a run.</p>`;
 }
 
 /** the dungeon's picture: its bosses in the crypt, in the green light of the Gravekeeper's lantern

@@ -137,7 +137,7 @@ export class Garden {
     const now = this.app.dev.valeFree ? `<button type="button" class="btn gold" data-act="gharvest" data-bed="${bed}">${esc(node.verb)} now<small>testing</small></button>` : '';
     return `<div class="vc-gain"><span class="tile" aria-hidden="true">${tile(SEED_ICON[b.seed])}</span><div><b>${esc(node.name)}</b><span>${left} more dungeon clear${left === 1 ? '' : 's'} and it’s ready</span></div><span class="toy-pips" aria-hidden="true">${pips}</span></div>
       ${b.shimmer ? `<div class="vc-line"><span class="tile" aria-hidden="true">${tile('g_dew')}</span><span>It’s shimmering <em>Starlight Dew when you harvest it</em></span></div>` : ''}
-      <p class="fine">Any dungeon clear counts, Normal or Heroic. Practice runs don’t.</p>
+      <p class="fine">Any dungeon clear counts, Normal or Heroic.</p>
       <div class="vc-act">${now}<button type="button" class="btn ${now ? '' : 'gold'}" data-act="gclose">Done</button></div>`;
   }
 

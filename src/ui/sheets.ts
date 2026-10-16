@@ -63,7 +63,7 @@ const LEFT_SLOTS: SlotId[] = ['helm', 'shoulders', 'chest'];
 export class Sheets {
   spec: SheetSpec | null = null;
   /** the dungeon picker remembers its choices while the page is open */
-  private pick: DungeonPick = { dungeon: 'barrow', page: 'door', start: 'keeper', gear: 'mine', heroic: false };
+  private pick: DungeonPick = { dungeon: 'barrow', page: 'door', heroic: false };
   private resetArmed = false;
   /** the look picked in the looks sheet, while the page is open */
   private lookPick: string | null = null;
@@ -154,7 +154,6 @@ export class Sheets {
       preview: (el) => { this.close(); this.app.reveal.preview(el.dataset.v as 'normal' | 'unique' | 'pet' | 'log'); },
       intro: () => { SFX.play('ui'); this.close(); this.app.startIntro(); },
       tour: () => { SFX.play('ui'); this.close(); this.app.hearth.startTour(); },
-      walkout: (el) => { this.app.setDev({ walkout: el.dataset.v as 'off' }); SFX.play('ui'); this.refresh(); },
       drink: (el) => { const p = this.app.p, id = el.dataset.id || null; p.vale.drink = id && RECIPES[id] ? id : null; SFX.play(id ? 'clink' : 'ui'); this.app.save(); },
       brewgo: () => { SFX.play('ui'); this.close(); this.app.showBrew(); },
       gardengo: () => { SFX.play('ui'); this.close(); this.app.showHearth('yard'); },
