@@ -426,7 +426,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .banner { position: absolute; left: 50%; top: 24%; transform: translateX(-50%); width: max-content; max-width: 88%; text-align: center; font-family: var(--f-display); font-size: clamp(16px, 2.2vw, 26px); line-height: 1.2; color: var(--panel); text-shadow: 0 3px 0 var(--ink), 2px 0 0 var(--ink), -2px 0 0 var(--ink), 0 -2px 0 var(--ink); opacity: 0; transition: opacity 0.2s; }
 .banner.show { opacity: 1; }
 .banner.warn { color: #FF9A6B; } .banner.good { color: #9BE15D; } .banner.boss { color: var(--gold); font-size: clamp(24px, 4vw, 44px); } .banner.room { color: #D9C9F5; }
-.call { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); font-family: var(--f-display); font-size: clamp(34px, 7vw, 76px); line-height: 1; color: var(--panel); text-shadow: 0 5px 0 var(--ink), 3px 0 0 var(--ink), -3px 0 0 var(--ink), 0 -3px 0 var(--ink); white-space: nowrap; text-align: center; opacity: 0; }
+.call { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); width: max-content; max-width: calc(100% - 24px); font-family: var(--f-display); font-size: clamp(34px, 7vw, 76px); line-height: 1; color: var(--panel); text-shadow: 0 5px 0 var(--ink), 3px 0 0 var(--ink), -3px 0 0 var(--ink), 0 -3px 0 var(--ink); text-align: center; opacity: 0; }
 .call.show { opacity: 1; }
 .call.alarm { color: var(--hurt); }
 .call.pop { animation: callpop 0.25s ease-out; }
