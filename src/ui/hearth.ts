@@ -13,10 +13,11 @@
  */
 import { COLLECTIBLES } from '../content';
 import { CLASSES, MAX_HEROES, RACES, type ClassId, type RaceId } from '../content/folk';
-import { BUNK_SLOTS, FLOORS, HOUSE_SPOTS, LOOK_ROOMS, PADDOCK, ROOMS, THINGS, paddockSlots, roomAt, type HouseAction, type HouseSpot, type ThingDef } from '../content/house';
+import { BUNK_SLOTS, FLOORS, HERO_AT, HOUSE_SPOTS, LOOK_ROOMS, PADDOCK, ROOMS, THINGS, paddockSlots, roomAt, type HouseAction, type HouseSpot, type ThingDef } from '../content/house';
 import { lookOf, ownedOfKind, paddock } from '../meta/hearth';
 import { loadoutFor, waiting, wholeIlvl } from '../meta/gear';
-import { activeHero, finishHearthTour, finishSeedTour, needsHearthTour, needsSeedTour, roleOf, type Hero } from '../meta/profile';
+import { activeHero, roleOf, type Hero } from '../meta/profile';
+import { finishTip, houseTip, type HouseTip } from '../meta/tips';
 import { bedToOpen } from '../meta/vale';
 import type { App } from './app';
 import { actions, esc, GLYPH } from './dom';
@@ -26,6 +27,7 @@ import { Camera } from './camera';
 import { HOUSE_BOUNDS, HOUSE_FIT, houseBack, houseBits, houseDefs, houseFront } from './houseart';
 import { bedLook } from './garden';
 import { NameTag } from './nametag';
+import { TOUR_STEPS, tipSteps, type TourStep } from './tours';
 
 /** how big each kind of thing is drawn in a spot, its tap area, and how it moves */
 const SPOT_LOOK: Record<string, { k: number; w: number; h: number; anim: string }> = {
@@ -33,8 +35,6 @@ const SPOT_LOOK: Record<string, { k: number; w: number; h: number; anim: string 
   trophy: { k: 1, w: 66, h: 84, anim: '' },
   banner: { k: 1, w: 112, h: 146, anim: 'sway' },
 };
-/** where your hero stands in the hall, and how big */
-const HERO_AT = { x: 360, y: FLOORS.hall - 20, k: 2.2 };
 /** the room the zoom button goes into from the whole house */
 const HOME_ROOM = 'hall';
 /** what the house is told to show next for the whole house, in place of a room */
@@ -43,58 +43,6 @@ const WHOLE = 'house';
 const [X0, Y0] = HOUSE_BOUNDS;
 /** what a scene draws besides the layer you tap: the bits that move (y-sorted like the layer) and the pips */
 interface Extras { bits: { y: number; bit: Bit }[]; pips: Bit[] }
-
-/** a step of a guided tour of the house: its room, what it points at (a thing's id, 'me' for your hero by
- *  the fire, 'newhero' for the empty bed), where its pin stands and, if not over the pin, where the camera looks */
-interface TourStep { room: string; thing?: string; at: [number, number]; cam?: number; callout: string; step: string; title: string; sub: string; next: string }
-/** the 3-step guided tour shown after making your first hero: points directly at the object in each room */
-const TOUR_STEPS: TourStep[] = [
-  {
-    room: 'hall',
-    thing: 'me',
-    at: [HERO_AT.x, HERO_AT.y - 310],
-    cam: HERO_AT.x + 70,
-    callout: 'Tap Your Hero · Gear',
-    step: '1 / 3',
-    title: 'Your Hero',
-    sub: 'New gear waits here. You put it on.',
-    next: 'Next →',
-  },
-  {
-    room: 'bunks',
-    thing: 'newhero',
-    at: [BUNK_SLOTS[0][0], BUNK_SLOTS[0][1] - 190],
-    cam: 270,
-    callout: 'Tap a Bed · New Hero',
-    step: '2 / 3',
-    title: 'Your Warband',
-    sub: 'A hero for each role fills your party seats.',
-    next: 'Next →',
-  },
-  {
-    room: 'cellar',
-    thing: 'barrow',
-    at: [300, 140],
-    callout: 'Tap Door · Enter Dungeon',
-    step: '3 / 3',
-    title: 'Dungeons',
-    sub: '4-minute runs for rare loot & pets.',
-    next: 'Dungeons',
-  },
-];
-/** the one-step tip back home after your first seed drops: the planter beds in the yard */
-const SEED_STEPS: TourStep[] = [
-  {
-    room: 'yard',
-    thing: 'bed.1',
-    at: [-400, -150],
-    callout: 'Tap a Bed · Plant It',
-    step: 'New',
-    title: 'Your First Seed',
-    sub: 'Plant it here. It grows over 3 dungeon clears.',
-    next: 'Got it',
-  },
-];
 
 export class Hearth {
   /** collectibles that just arrived: they pop in the first time you see them */
@@ -113,7 +61,8 @@ export class Hearth {
   private top: HTMLElement;
   private bottom: HTMLElement;
   private decorating = false;
-  /** the tour showing (the welcome tour or the garden tip) and its step, or null */
+  /** the tip showing (the welcome tour or one of the garden's), its steps for this save, and its step, or null */
+  private tip: HouseTip = 'tour';
   private tour: TourStep[] = TOUR_STEPS;
   private tourStep: number | null = null;
   private placed = false;
@@ -155,6 +104,7 @@ export class Hearth {
       zoom: () => { SFX.play('ui'); if (this.far()) this.goRoom(HOME_ROOM); else this.overview(); },
       room: (el) => { SFX.play('ui'); this.enter(el.dataset.room!); },
       tournext: () => { SFX.play('ui'); this.nextTour(); },
+      tourpin: () => { SFX.play('ui'); this.pinTap(); },
       tourskip: () => { SFX.play('ui'); this.endTour(false); },
     });
     // taps anywhere in the scene, past the house's edges too; the buttons over it look after themselves
@@ -187,6 +137,9 @@ export class Hearth {
   /** What was open over the house has closed (a sheet, a garden bed's card, the cauldron): if it was
    *  opened from the whole house, go back out to it. */
   closed(): void {
+    // a tip that waited for what was open to close (your first herbs, after the harvest's card) goes there
+    // instead, once it's clear the house is staying on screen (closing for a run or the hero maker, it waits)
+    if (this.tourStep === null && houseTip(this.app.p)) { this.out = false; setTimeout(() => this.tipNow(), 0); return; }
     if (!this.out) return;
     this.out = false;
     if (this.root.offsetParent) this.overview(); else this.want = WHOLE;
@@ -194,15 +147,22 @@ export class Hearth {
 
   /** Start (or replay) the 3-step Hearth tour. */
   startTour(): void {
-    this.beginTour(TOUR_STEPS);
+    this.beginTour('tour');
     this.app.showHearth(TOUR_STEPS[0].room);
   }
 
-  private beginTour(steps: TourStep[]): void {
-    this.tour = steps;
+  private beginTour(tip: HouseTip): void {
+    this.tip = tip;
+    this.tour = tipSteps(tip, this.app.p);
     this.tourStep = 0;
     this.decorating = false;
-    this.want = steps[0].room;
+    this.want = this.tour[0].room;
+  }
+  /** something is open over the house (a sheet, a garden bed's card or a harvest): a tip waits for it to close */
+  private covered(): boolean { return !!this.app.sheets.spec || this.app.garden.showing; }
+  /** a waiting tip begins, if the house is on screen with nothing over it */
+  private tipNow(): void {
+    if (this.tourStep === null && this.root.offsetParent && !this.covered() && houseTip(this.app.p)) this.render();
   }
   private get step(): TourStep | null { return this.tourStep !== null ? this.tour[this.tourStep] || null : null; }
   /** where a step's pin stands: the empty bed moves along as the bunk room fills */
@@ -220,21 +180,28 @@ export class Hearth {
       this.render();
       this.goRoom(step.room);
     } else {
-      this.endTour(this.tour === TOUR_STEPS);
+      this.endTour(this.tip === 'tour');
     }
+  }
+
+  /** the pin over what a step points at: on the welcome tour it's Next; on a garden tip it does what it says */
+  private pinTap(): void {
+    const t = this.tip !== 'tour' ? THINGS.find((x) => x.id === this.step?.thing) : undefined;
+    if (!t) { this.nextTour(); return; }
+    this.dropTour();
+    this.act(t.action, t.bed);
   }
 
   /** the tour is over (finished, skipped or tapped through): it doesn't come back */
   private closeTour(): void {
     if (this.tourStep === null) return;
     this.tourStep = null;
-    if (this.tour === SEED_STEPS) finishSeedTour(this.app.p);
-    else finishHearthTour(this.app.p);
+    finishTip(this.app.p, this.tip);
   }
 
   private endTour(openDungeons = false): void {
-    // the welcome tour ends on the whole house, home; the garden tip leaves you by the beds
-    if (this.tour === TOUR_STEPS) this.overview();
+    // the welcome tour ends on the whole house, home; a garden tip leaves you where it was
+    if (this.tip === 'tour') this.overview();
     this.closeTour();
     this.app.save();
     if (openDungeons) this.app.sheets.open({ kind: 'dungeon' });
@@ -243,8 +210,8 @@ export class Hearth {
   render(): void {
     const p = this.app.p, h = activeHero(p);
     if (!h) return;
-    if (this.tourStep === null && needsHearthTour(p)) this.beginTour(TOUR_STEPS);
-    else if (this.tourStep === null && needsSeedTour(p)) this.beginTour(SEED_STEPS);
+    // a tip whose moment has come begins once nothing is open over the house
+    if (this.tourStep === null && !this.covered()) { const t = houseTip(p); if (t) this.beginTour(t); }
     const look = (room: string): string => lookOf(p, room, this.app.dev.allOpen);
     const looks = LOOK_ROOMS.map(look).join(' ');
     if (looks !== this.looks) {
@@ -557,7 +524,7 @@ export class Hearth {
         <button type="button" class="icon-btn" data-act="deco" aria-pressed="${this.decorating}" aria-label="Decorate" title="Decorate">${GLYPH.pen}</button>
         <button type="button" class="icon-btn" data-act="settings" aria-label="Settings" title="Settings">${GLYPH.gear}</button>
       </div>`);
-    const step = this.step, tip = this.tour === SEED_STEPS;
+    const step = this.step, tip = this.tip !== 'tour';
     const bottom = this.draw(this.bottom, step
       ? `<div class="h-tour" role="region" aria-label="${tip ? 'Garden tip' : 'Welcome tour'}">
           <div class="h-tour-tx">
@@ -575,7 +542,7 @@ export class Hearth {
           <button type="button" class="icon-btn h-zoom" data-act="zoom" aria-label="See the whole house" title="See the whole house">${HOUSE_GLYPH}</button>
           <button type="button" class="btn gold big h-go" data-act="dungeon">${GLYPH.door}Dungeons</button>
         </div>`);
-    const pinHtml = step ? `<button type="button" class="h-tour-pin" data-act="tournext"><b>${esc(step.callout)}</b><i aria-hidden="true">▼</i></button>` : '';
+    const pinHtml = step ? `<button type="button" class="h-tour-pin" data-act="tourpin"><b>${esc(step.callout)}</b><i aria-hidden="true">▼</i></button>` : '';
     const signs = this.draw(this.signs, this.tag.html(h, race?.light || '#F4B942') + ROOMS.map((r) => `<button type="button" class="h-sign" data-act="room" data-room="${r.id}" tabindex="-1">${esc(r.name)}</button>`).join('') + pinHtml);
     if (top || bottom || signs) this.tag.measure();
     this.onView();

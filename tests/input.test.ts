@@ -93,3 +93,22 @@ test('a healer swipe across a cursed mate\'s party frame lifts it, even one that
   fh.pointerup(at(300, 720));
   assert.equal(dps.st.curse, null, 'swiping from your own frame down across theirs lifts it');
 });
+
+test('while a Crypt Trial lesson waits on its button, a swipe or a tap on the dungeon does nothing', () => {
+  const { s } = phoneRun('tank');
+  // a second stand-in layer, for a screen with a lesson showing: it asks the lesson about every key it gets
+  const tut: Record<string, Handler> = {};
+  const asked: string[] = [];
+  bindInput({ addEventListener: (type: string, fn: Handler) => { tut[type] = fn; }, setPointerCapture: () => {} } as unknown as HTMLElement,
+    { active: () => true, stick: () => {}, hintDone: () => {}, holdBtn: () => {}, pause: () => {}, onTutInput: (slot) => { asked.push(slot); return false; } });
+  const fire = (type: string, x: number, y: number) => tut[type]({ pointerId: 9, pointerType: 'touch', clientX: x, clientY: y, preventDefault: () => {} });
+  s.paused = true;
+  s.player.cd.dodge = 0;
+  // a quick flick across the right half (a dodge in a run), then a tap
+  fire('pointerdown', 260, 300); fire('pointermove', 300, 300); fire('pointermove', 340, 300); fire('pointerup', 340, 300);
+  fire('pointerdown', 250, 400); fire('pointerup', 250, 400);
+  assert.equal(s.player.dodgeT > 0, false, 'no dodge');
+  assert.deepEqual(asked, [], 'the lesson is never told a touch on the dungeon was its button');
+  assert.equal(IN.gest.size, 0, 'nothing is left half-read for when the run carries on');
+  assert.equal(IN.stick, null);
+});

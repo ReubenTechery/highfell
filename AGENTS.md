@@ -122,10 +122,10 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   and `emit`.
 - `src/meta`: TypeScript rules for everything that lasts: the profile and its migrations (heroes live here),
   loot (and when heroic opens), gear, achievements, what the collection log gives (`logs.ts`), the hearth,
-  the party's seats and the under-powered warning (`party.ts`), and `vale.ts` (seeds, planter beds, harvests,
-  ranks, brewing).
+  the party's seats and the under-powered warning (`party.ts`), `vale.ts` (seeds, planter beds, harvests,
+  ranks, brewing) and `tips.ts` (which first-time tip the house and the Dungeons door show).
 - `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, its drawing
-  `houseart.ts`, every room in each look, the Toadstool Workshop's in `houseworkshop.ts`, your hero's name tag `nametag.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
+  `houseart.ts`, every room in each look, the Toadstool Workshop's in `houseworkshop.ts`, your hero's name tag `nametag.ts`, its tour and tips as data `tours.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
   close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons
   (`dungeonsheet.ts`, its door's picture in `stage.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
   (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`), settings (`settingssheet.ts`), a hero's gear in the armoury
@@ -142,7 +142,7 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   curses, numbers, tuning, where each hero's weapon and head are), `coach.test.ts` (which button the coach
   names), `combos.test.ts` (the combos on bosses), `input.test.ts` (the touch controls and party-frame swipes,
   driven without a browser), `meta.test.ts`, `power.test.ts` (seasons, Power and the under-powered warning),
-  `vale.test.ts`.
+  `vale.test.ts`, `tips.test.ts` (which first-time tip shows when).
 
 ## Commands
 
