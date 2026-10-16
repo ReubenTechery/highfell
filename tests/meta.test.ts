@@ -11,7 +11,7 @@ import { CLASSES, FOUNDERS, HERO_ART, MAX_HEROES, RACES, allHeroArt, canMake, cl
 import { SLOT_IDS, gearId } from '../src/content/gear';
 import { INGREDIENTS, RECIPES } from '../src/content/vale';
 import { Achiever, progress } from '../src/meta/achievements';
-import { logProgress, opened } from '../src/meta/logs';
+import { logProgress, opened, shelfOf, standPieces, standsOf } from '../src/meta/logs';
 import { HEARTH_SPOTS, MOUNTS, autoPlace, lookOf, lookOpen, lookProgress, paddock, place, setLook, spotOf } from '../src/meta/hearth';
 import { HOUSE_SPOTS, LOOK_ROOMS, OUTSIDE, PADDOCK, ROOMS, THINGS, paddockSlots } from '../src/content/house';
 import { groupOf, heroesFor, partyProblem, pickRole, seats, seatsFor } from '../src/meta/party';
@@ -441,6 +441,21 @@ test('house: spots a save has never had fill with what is not on show, once; emp
   assert.deepEqual(migrate(JSON.parse(JSON.stringify(q))).hearth.spots, q.hearth.spots, 'loading again changes nothing');
   const fresh = migrate(JSON.parse(JSON.stringify(freshProfile())));
   assert.ok(Object.values(fresh.hearth.spots).every((v) => v === null), 'a new save has an empty house');
+});
+
+test('the log as a wardrobe: each set on a stand with its role’s boss weapon, the rest on the shelf, every slot once', () => {
+  const stands = standsOf('barrow');
+  assert.deepEqual(stands.map((s) => s.set.id), ['barrowguard', 'candlewake', 'rimebone', 'shadeveil']);
+  assert.deepEqual(stands.map((s) => s.weapon), ['gravekeeper.tank', 'gravekeeper.healer', 'gravekeeper.dps', 'gravekeeper.rogue'], 'the Mage’s staff and the Rogue’s fangs go to their own sets');
+  assert.ok(stands.every((s) => s.pieces.length === 3 && standPieces(s).length === 4));
+  assert.deepEqual(shelfOf('barrow'), ['trophy.rattlebones_plume', 'dye.ghostly', 'mount.gravehound', 'pet.pint_gravekeeper'], 'the plume counts, so it comes first');
+  for (const id of ['barrow', 'barrow-heroic']) {
+    const shown = [...standsOf(id).flatMap(standPieces), ...shelfOf(id)];
+    assert.equal(new Set(shown).size, shown.length, `${id}: nothing twice`);
+    assert.deepEqual([...shown].sort(), [...DUNGEONS[id].collection].sort(), `${id}: every slot of the log, on a stand or the shelf`);
+  }
+  assert.ok(standsOf('barrow-heroic').flatMap(standPieces).every((id) => id.endsWith('.gilded')), 'heroic stands hold the gilded pieces');
+  assert.deepEqual(standsOf('nope'), []);
 });
 
 test('the wardrobe: every set piece and boss weapon, plain and gilded, has its piece for the stands', () => {

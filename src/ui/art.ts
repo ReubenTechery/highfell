@@ -6,6 +6,7 @@ import HEARTH from '../../art/hearth.json';
 import PORTRAITS from '../../art/portraits.json';
 import VALE from '../../art/vale.json';
 import VALE_ICONS from '../../art/vale_icons.json';
+import WARDROBE from '../../art/wardrobe.json';
 import { COLLECTIBLES, ITEMS } from '../content';
 import { RARITY, ROLE_SLOTS, gearKey } from '../content/gear';
 import { heroArt } from '../content/folk';
@@ -48,6 +49,22 @@ export function colourOf(id: string): string {
 }
 export const nameOf = (id: string): string => ITEMS[id]?.name || COLLECTIBLES[id]?.name || id;
 
+/** A set on its armour stand (art/wardrobe.json): the pieces `on` says you have are put on, the rest are
+ *  dashed ghosts (styles.css draws a piece with the class `ghost` as its silhouette only), and `drop` is the
+ *  piece that has just arrived. The weapon leans behind the stand; the chest, shoulders and helm go on top. */
+const WD: { vb: number[]; stand: string; pieces: Record<string, string> } = WARDROBE;
+const LAYERS = ['weapon', 'stand', 'chest', 'shoulders', 'helm'];
+export function standSvg(pieces: string[], on: (id: string) => boolean, o: { drop?: string; cls?: string } = {}): string {
+  const [x, y, w, h] = WD.vb;
+  const layer = (slot: string): string => {
+    if (slot === 'stand') return WD.stand;
+    const id = pieces.find((pid) => ITEMS[pid]?.slot === slot), g = id && WD.pieces[id];
+    if (!id || !g) return '';
+    const cls = `${on(id) ? '' : ' ghost'}${id === o.drop ? ' drop' : ''}`;
+    return cls ? g.replace('class="pc ', `class="pc${cls} `) : g;
+  };
+  return `<svg class="stand ${o.cls || ''}" viewBox="${x} ${y} ${w} ${h}" aria-hidden="true">${LAYERS.map(layer).join('')}</svg>`;
+}
 /** A sprite as an <img> source. Cached. */
 const urls: Record<string, string> = {};
 export function spriteURL(name: string): string {

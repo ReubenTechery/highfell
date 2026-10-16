@@ -65,8 +65,9 @@ export class Sheets {
   private resetArmed = false;
   /** the look picked in the looks sheet, while the page is open */
   private lookPick: string | null = null;
-  /** the collection log shows the heroic dungeons' pages instead of the normal ones */
+  /** the collection log shows the heroic dungeons' pages instead of the normal ones; Try it on, on a set's page */
   private logHeroic = false;
+  private logTry = false;
   /** a hero's sheet: letting them go takes two taps, and renaming has its own little form */
   private heroSt: HeroSheetState = { delArmed: false, renaming: false, err: '' };
   private heroTimer = 0;
@@ -152,8 +153,10 @@ export class Sheets {
       playas: () => { const h = this.gearHero(); if (!h) return; setActive(this.app.p, h.id); SFX.play('ui'); this.app.save(); },
       look: (el) => { const p = this.app.p, id = el.dataset.id!; const off = new Set(p.settings.looksOff); if (off.has(id)) off.delete(id); else off.add(id); p.settings.looksOff = [...off]; SFX.play('ui'); this.app.save(); },
       tab: (el) => { SFX.play('ui'); this.open({ kind: 'logs', tab: el.dataset.tab as LogTab }); },
-      logdiff: (el) => { this.logHeroic = el.dataset.v === 'heroic'; SFX.play('ui'); this.open({ kind: 'logs', tab: 'collection' }); },
-      entry: (el) => { SFX.play('ui'); this.open({ kind: 'logs', tab: 'collection', ...(el.dataset.id ? { entry: el.dataset.id } : {}) }); },
+      entry: (el) => { this.logTry = false; SFX.play('ui'); this.open({ kind: 'logs', tab: 'collection', ...(el.dataset.id ? { entry: el.dataset.id } : {}) }); },
+      tryon: () => { this.logTry = !this.logTry; SFX.play('ui'); this.refresh(); },
+      makerace: (el) => { SFX.play('ui'); this.close(); this.app.showCreate(undefined, el.dataset.race as RaceId); },
+      putlook: () => { SFX.play('ui'); this.open({ kind: 'looks' }); },
       item: (el) => { SFX.play('ui'); this.open({ kind: 'item', id: el.dataset.id!, back: this.spec || undefined }); },
       gearat: (el) => {
         const h = heroById(this.app.p, el.dataset.hero || null);
@@ -218,7 +221,7 @@ export class Sheets {
   }
   close(): void {
     if (!this.spec) return;
-    this.spec = null;
+    this.spec = null; this.logTry = false;
     this.root.innerHTML = '';
   }
   refresh(): void { if (this.spec) this.render(false); }
@@ -263,8 +266,8 @@ export class Sheets {
         break;
       }
       case 'logs': {
-        const r = logsSheet(this.app.p, s.tab, s.entry, this.logHeroic);
-        ({ head, tabs, body } = r); this.logHeroic = r.heroic; wide = s.tab === 'collection';
+        const r = logsSheet(this.app.p, s.tab, s.entry, this.logHeroic, { tryOn: this.logTry });
+        ({ head, tabs, body } = r); this.logHeroic = r.heroic;
         break;
       }
       case 'settings': ({ head, body } = settingsSheet(this.app.p, this.app.store.state, this.app.dev, this.resetArmed)); break;

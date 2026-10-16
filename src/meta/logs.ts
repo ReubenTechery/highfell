@@ -4,9 +4,9 @@
  * and a new kind of hero (a race). Until it's earned they stay locked and the log's progress bar says
  * how close you are. Earned is for keeps, even if a later update adds a slot to the log.
  */
-import { ACHIEVEMENT_LIST, DUNGEONS } from '../content';
+import { ACHIEVEMENT_LIST, DUNGEONS, ITEMS, SETS } from '../content';
 import { RACES, type RaceId } from '../content/folk';
-import type { AchievementDef } from '../content/types';
+import type { AchievementDef, SetDef } from '../content/types';
 import type { Profile } from './profile';
 
 /** The slots that count towards finishing a dungeon's log: all of them but the bonus ones (the pet). */
@@ -46,4 +46,32 @@ export function openProgress(p: Profile, kind: 'look' | 'race', id: string): { h
   if (!a) return { have: 0, need: 0 };
   const pr = a.log ? logProgress(p, a.log) : { have: 0, need: 1 };
   return p.achievements[a.id] ? { have: pr.need, need: pr.need } : pr;
+}
+
+/** A set on its armour stand in the log: its three pieces and the boss weapon of its role, gilded on a
+ *  heroic dungeon's stands. */
+export interface Stand { set: SetDef; pieces: string[]; weapon: string | null }
+
+/** Every set of a dungeon on its stand, in the order the sets are listed. A heroic dungeon's stands hold the
+ *  gilded pieces. */
+export function standsOf(dungeon: string): Stand[] {
+  const dg = DUNGEONS[dungeon];
+  if (!dg) return [];
+  const base = dg.heroicOf || dg.id, gild = (id: string): string => (dg.heroicOf ? `${id}.gilded` : id);
+  return Object.values(SETS).filter((s) => s.dungeon === base).map((set) => {
+    const weapon = Object.values(ITEMS).find((d) => d.kind === 'unique' && d.dungeon === base && !d.id.endsWith('.gilded') && d.role === set.role && (d.cls || null) === (set.cls || null));
+    return { set, pieces: set.pieces.map(gild), weapon: weapon ? gild(weapon.id) : null };
+  });
+}
+
+/** The pieces of a stand, weapon last. */
+export const standPieces = (s: Stand): string[] => (s.weapon ? [...s.pieces, s.weapon] : s.pieces);
+
+/** The log's shelf: the dungeon's drops nobody wears (its trophy, and its pet, mount and dye), the slots
+ *  that count first, then the bonus ones. */
+export function shelfOf(dungeon: string): string[] {
+  const dg = DUNGEONS[dungeon];
+  if (!dg) return [];
+  const bonus = dg.bonus || [], loose = dg.collection.filter((id) => !ITEMS[id]);
+  return [...loose.filter((id) => !bonus.includes(id)), ...loose.filter((id) => bonus.includes(id))];
 }
