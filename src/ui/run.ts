@@ -625,7 +625,7 @@ export class RunScene implements InputUI {
       setW($('bb-trail'), this.trail);
       $('bb-pct').textContent = Math.ceil(k * 100) + '%';
       const M = B.M;
-      $('bb-phase').textContent = `Phase ${B.phase} of ${M.phases || 1}`;
+      $('bb-phase').textContent = `Phase ${B.phase} of ${(S.opts.heroic && M.heroicPhases) || M.phases || 1}`;
       const enr = M.enrage || 0;
       const left = enr - ((B.ab && B.ab.t) || 0);
       const act = B.act && M.acts && M.acts[B.act.k];

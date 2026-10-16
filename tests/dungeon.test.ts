@@ -22,8 +22,8 @@ import { allHeroArt } from '../src/content/folk';
 import { heroSprite } from '../src/ui/art';
 import SPRITES from '../art/sprites.json';
 
-const game = (role: string, start = 'entrance') => {
-  newGame(BARROW_ENGINE, { role, seed: 99, start, auto: false, quiet: true, noEvents: true, loadouts: {} });
+const game = (role: string, start = 'entrance', heroic = false) => {
+  newGame(BARROW_ENGINE, { role, seed: 99, start, heroic, auto: false, quiet: true, noEvents: true, loadouts: {} });
   const s = S as any;
   const by = (r: string) => s.heroes.find((h: any) => h.role === r);
   return { s, tank: by('tank'), healer: by('healer'), dps: by('dps') };
@@ -73,8 +73,8 @@ test('cages: only the tank, nothing can target him inside, and he has to win the
   assert.ok(boss, 'the boss is pulled');
   step(4);
   boss.hp = boss.maxHp = 1e7;
-  // the third phase's cage goes on the tank, whoever else is up
-  boss.phase = 3; boss.act = null; boss.wind = 0;
+  // Normal's second phase has the cage, and it goes on the tank, whoever else is up
+  boss.phase = 2; boss.act = null; boss.wind = 0;
   Object.assign(boss.ab, { cage: 0, smash: 99, burrow: 99, pulse: 99 });
   for (let i = 0; i < 60 && !tank.st.caged; i++) update(1 / 60);
   assert.ok(tank.st.caged, 'the tank is caged');
@@ -310,7 +310,7 @@ test('rogue: +10% movement speed always, glass cannon stats, twin-dagger autos, 
   assert.ok(m.bleed.left >= 4.9, 'Fan of Blades refreshes Viper Blades duration');
 });
 
-test('barrow revamp: Crushing Blows on non-tanks, hazard Ward bleed-through, Exposed windows, 3-piece sets, moving Phase 3 ring, and Crypt Seals', () => {
+test('barrow revamp: Crushing Blows on non-tanks, hazard Ward bleed-through, Exposed windows, 3-piece sets, moving Phase 3 ring, and Heroic Crypt Seals', () => {
   const { s, tank, healer, dps } = game('tank');
 
   // 1. Avoidable hazards pierce 60% of Ward shields (only 40% absorbed)
@@ -572,6 +572,51 @@ test('crypt seals: only on heroic Barrow; normal Barrow has none', () => {
   assert.equal((S as any).seal, null, 'normal Barrow has no Crypt Seal');
   newGame(BARROW_ENGINE, { role: 'tank', seed: 99, start: 'entrance', heroic: true, auto: false, quiet: true, noEvents: true, loadouts: {} });
   assert.ok((S as any).seal && (S as any).seal.pads.length === 3, 'heroic Barrow has one');
+});
+
+test('the Gravekeeper: two phases on Normal at 65% of his health, all three on Heroic at his full health', () => {
+  // pull him with a party that won't fall over: this is about what he does, not whether they live
+  const pull = (heroic: boolean) => {
+    const g = game('tank', 'keeper', heroic);
+    g.s.auto = true;
+    for (const h of g.s.heroes) h.hp = h.maxHp = 1e6;
+    for (let i = 0; i < 60 * 30 && !g.s.boss; i++) update(1 / 60);
+    assert.ok(g.s.boss, 'pulled');
+    return { ...g, boss: g.s.boss };
+  };
+  // what he does over a while, with his health parked at a share of a pool too big to finish
+  const watch = (g: ReturnType<typeof pull>, share: number, secs: number) => {
+    g.boss.maxHp = 1e7; g.boss.hp = 1e7 * share;
+    const seen = new Set<string>();
+    for (let i = 0; i < Math.round(secs * 60); i++) {
+      update(1 / 60);
+      if (g.boss.act) seen.add(g.boss.act.k);
+      if (g.s.heroes.some((h: any) => h.st.caged)) seen.add('caged');
+      if (g.s.chains.length) seen.add('chained');
+      if (g.s.mobs.some((m: any) => m.alive && m.M.wisp)) seen.add('wisps');
+      if (g.s.ring) seen.add('ring');
+    }
+    return seen;
+  };
+
+  const n = pull(false);
+  assert.equal(n.boss.maxHp, Math.round(BARROW_ENGINE.mobs.keeper.hp * 0.65));
+  const n1 = watch(n, 0.49, 3);
+  assert.equal(n.boss.phase, 2, 'lights out at half health');
+  assert.equal(n.s.darkTarget, 1);
+  const n2 = watch(n, 0.1, 30);
+  assert.equal(n.boss.phase, 2, 'and that is the last phase');
+  for (const k of ['caged', 'chained', 'wisps', 'smash']) assert.ok(n2.has(k), `Normal's second phase has ${k}`);
+  for (const k of ['leap', 'bury', 'stride', 'burrow', 'ring']) assert.ok(!n1.has(k) && !n2.has(k), `no ${k} on Normal`);
+
+  const h = pull(true);
+  assert.equal(h.boss.maxHp, Math.round(BARROW_ENGINE.mobs.keeper.hp * 1.63));
+  const h1 = watch(h, 0.6, 3);
+  assert.equal(h.boss.phase, 2);
+  assert.ok(h1.has('leap'), 'Heroic leaps in for the dark');
+  const h2 = watch(h, 0.3, 30);
+  assert.equal(h.boss.phase, 3, 'Heroic has a third phase');
+  for (const k of ['bury', 'stride', 'burrow', 'ring', 'caged']) assert.ok(h2.has(k), `Heroic's third phase has ${k}`);
 });
 
 test('the Gravekeeper: a banished wisp’s bolt can finish him, and the run goes on', () => {
