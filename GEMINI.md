@@ -20,5 +20,6 @@ you are. Only Claude on claude.ai, on the account that owns the live game, publi
   ask.
 - **Art:** follow `docs/art.md` to the letter. Draw with the helpers already in `tools/*.py`, then look at
   `tools/art_sheet.py` output next to existing sprites before calling it done. Never use an image generator.
-- **Keep the docs true.** If you change how a system works, update `docs/design.md` in the same pull request.
-  New ideas go in `docs/ideas.md`, not into the game.
+- **Keep the docs true.** If you change how a system works, update `docs/design.md` in the same pull request
+  (and `docs/combat.md`, the combat plan, for a combat change). New ideas go in `docs/ideas.md`, not into the
+  game.

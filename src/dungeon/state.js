@@ -12,6 +12,7 @@ export function setS(v) { S = v; }
 export const HOOKS = {
   nope(_slot) {},          // a button press that could not fire
   fired(_slot) {},         // a button that just fired
+  early(_slot) {},         // a press too early to keep: the button's ring pulses (no buzz)
   hint(_key) {},           // show a one-time tip
   pulseFrame(_role) {},    // flash a party frame (a heal landed)
   onWipe() {},             // everyone is down

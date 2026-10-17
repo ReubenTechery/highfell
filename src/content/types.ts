@@ -20,6 +20,8 @@ export interface RoleDef {
 export interface AbilityDef {
   key: string; name: string; desc: string;
   cd: number; mana?: number; hold?: boolean; aim?: boolean; range?: number; cast?: number;
+  /** never waits for the beat and never starts it: Charge and Shadowstep (they move you), and for now the healer's */
+  offBeat?: boolean;
   combo?: string;
 }
 

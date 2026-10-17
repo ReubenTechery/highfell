@@ -74,6 +74,8 @@ looks at the same power, in a log of their own. Teamwork between roles is the he
 | Beginner gear is meant to struggle: dungeons hit hard, telegraphs pierce shields | Tanking, healing, dodging and blocking matter |
 | Only the tank is caged; inside, the boss turns on someone else | The party feels the tank's absence |
 | You see only your own numbers; mates' spell effects stay | Less noise, your numbers mean more |
+| The four buttons share a beat (0.8 s, a second once every class has a filler to press on it); a press made up to 0.4 s early waits and fires on time, and nothing buzzes for being early | Mashing is never wrong, as in WoW (the combat plan, `docs/combat.md`) |
+| On the phone a held button repeats; on a computer each class's buttons sit on E, Q, F and R beside WASD, and a held key fires once | The thumb can rest, and your fingers never leave WASD |
 | The first garden harvest gives the Hill Goat | Earned, and it stands in the paddock |
 | Every mount in the game has a place in the paddock beside the house; one you lack is a shadow with a "?" | Like the collection log, you see what's left to chase |
 | No trading or selling between players, ever | The collection log has to mean "I did this" |
@@ -112,13 +114,15 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   `thimblebriar/`, dungeon 2, the same shape plus `signature.js`, its bombs), `_template/`
   (a small working dungeon to copy for a new one; its `README.md` has the rules for every new dungeon),
   `kits.ts` (gilding kits, Heroic's own drops, built from any dungeon's tables), `act1.ts` (the dungeons in the order
-  you meet them, built or still to come), and `vale/` (ingredients, recipes, ranks, and `garden.ts`).
+  you meet them, built or still to come), `keys.ts` (each class's keys on a computer), and `vale/` (ingredients,
+  recipes, ranks, and `garden.ts`).
   `house.ts` is the house's plan (each room's `main`, what a tap from far away opens, the paddock's places and the
   cellar's Hall of Doors). Register new content in `src/content/index.ts`; `checkContent()`
   and the tests catch broken ids.
 - `src/dungeon`: the engine, plain JS with no DOM: state `S`, entities, heroes, mobs, bots, the loop,
   rendering to a canvas, `walkout.js` (the lantern tells; `cuckoo.js`, Thimblebriar's clock) and `coach.js`
-  (which button's moment has come, for a class's first runs). `bombs.js` is Thimblebriar's bombs as a shared
+  (which button's moment has come, for a class's first runs). `press.js` is the beat and the press queue: every
+  press of yours goes through it, and bots ask its `ready()` before they press. `bombs.js` is Thimblebriar's bombs as a shared
   part (any hit knocks one back, a perfect block bats one back, the Sticky Bomb) and `gadgets.js` its sets'
   bonuses and boss weapons. A dungeon's layout is data built by `layout.js` (rooms and the doors between them,
   any shape) and drawn by `mapdraw.js`; its bosses are built from the shared moves in `moves.js`; its run
@@ -147,8 +151,8 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   trimmed, levelled and compressed; needs ffmpeg).
 - `tests/`: `balance.test.ts` (bot clears must stay in their bands), `dungeon.test.ts` (threat, cages,
   curses, numbers, tuning, where each hero's weapon and head are), `coach.test.ts` (which button the coach
-  names), `combos.test.ts` (the combos on bosses), `input.test.ts` (the touch controls and party-frame swipes,
-  driven without a browser), `meta.test.ts`, `achievements.test.ts` (each says what to do, what it gives and
+  names), `combos.test.ts` (the combos on bosses), `input.test.ts` (the touch controls, party-frame swipes, the
+  keys and the press queue, driven without a browser), `meta.test.ts`, `achievements.test.ts` (each says what to do, what it gives and
   where it went; every title's source; the kill count it came at), `brag.test.ts` (what a run had to show off),
   `power.test.ts` (seasons, Power and the under-powered warning), `vale.test.ts`, `tips.test.ts` (which first-time
   tip shows when), `warband.test.ts` (when the Warband opens), `housemotion.test.ts` (how the house's bits move).
@@ -247,6 +251,7 @@ helpers in the existing tools, and look at a contact sheet of what you drew befo
 | --- | --- |
 | The live game (published from `main` by Claude) | https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd |
 | The systems design | `docs/design.md` (a copy of the Dungeon Systems doc on claude.ai) |
+| The combat plan (WoW-style combat in six stages, the calls the owner made, the targets) | `docs/combat.md` (a copy of the Combat Overhaul doc on claude.ai) |
 | The art bible | `docs/art.md` |
 | Parked ideas and proposals | `docs/ideas.md` |
 | The code | https://github.com/ReubenTechery/highfell |

@@ -20,15 +20,16 @@ export const ROLES: Record<RoleId, RoleDef> = {
 export const AB: Record<GearKey, Record<AbilitySlot, AbilityDef>> = {
   tank: {
     a1: { key: 'cleave', name: 'Cleave', cd: 2.2, desc: 'Fast, wide axe sweep through foes in front of you. Crushes heavy foes, stunned targets, or clumped packs for bonus damage.', combo: '② Spammable finisher: Crush! bonus damage on heavy foes, stunned targets, or 2+ packs. Bosses are heavy, so Cleave always crushes them' },
-    a2: { key: 'charge', name: 'Charge', cd: 6.5, desc: 'Rush a mob and shoulder-slam it. Stuns nearby foes (a boss staggers) and shaves 1.2s off Cleave.', combo: '① Charge stuns pack & readies Cleave ➔ ② Cleave crushes. On a boss: a 1s Stagger, not a stun (he keeps attacking), and it counts as a stun for Cleave and Headsman' },
+    a2: { key: 'charge', name: 'Charge', cd: 6.5, offBeat: true, desc: 'Rush a mob and shoulder-slam it. Stuns nearby foes (a boss staggers) and shaves 1.2s off Cleave.', combo: '① Charge stuns pack & readies Cleave ➔ ② Cleave crushes. On a boss: a 1s Stagger, not a stun (he keeps attacking), and it counts as a stun for Cleave and Headsman' },
     a3: { key: 'slam', name: 'Slam', cd: 6.0, desc: 'Drag every nearby foe in, force them onto you, and spin a 360° whirlwind through the pack.', combo: '① Drag pack in + Whirlwind ➔ ② Cleave crushes the clump. On a boss: taunt + Whirlwind, no drag' },
     a4: { key: 'shield', name: 'Shield', cd: 0, hold: true, desc: 'Hold to block from the front. Block right before a big hit to stun it, counter-strike, and reset Cleave.', combo: '① Perfect block stuns & resets Cleave ➔ ② Cleave crushes. Works on bosses too: a perfect block stuns and exposes them' },
   },
+  // the healer stays off the beat until its rework, when Mend and these four join it together (combat plan, stage 3)
   healer: {
-    a1: { key: 'circle', name: 'Prayer circle', cd: 5, mana: 14, aim: true, range: 520, desc: 'Allies standing in it heal fast.', combo: '① Drop Circle ➔ ② Smite pulses bonus healing inside it' },
-    a2: { key: 'ward', name: 'Ward', cd: 3.8, mana: 10, desc: 'Shield the ally who needs it most.', combo: '① Pre-shield tank before big boss swings' },
-    a3: { key: 'sunburst', name: 'Sunburst', cd: 13, mana: 22, desc: 'Heal everyone and clear nasty effects.', combo: '② Emergency: full-party heal + cleanses roots & curses' },
-    a4: { key: 'smite', name: 'Smite', cd: 2.4, desc: 'Throw light at the tank’s target. Heals your most hurt ally, restores mana, and pulses active Prayer circles.', combo: '② Payoff: restores mana + pulses active Prayer circle' },
+    a1: { key: 'circle', name: 'Prayer circle', cd: 5, mana: 14, aim: true, range: 520, offBeat: true, desc: 'Allies standing in it heal fast.', combo: '① Drop Circle ➔ ② Smite pulses bonus healing inside it' },
+    a2: { key: 'ward', name: 'Ward', cd: 3.8, mana: 10, offBeat: true, desc: 'Shield the ally who needs it most.', combo: '① Pre-shield tank before big boss swings' },
+    a3: { key: 'sunburst', name: 'Sunburst', cd: 13, mana: 22, offBeat: true, desc: 'Heal everyone and clear nasty effects.', combo: '② Emergency: full-party heal + cleanses roots & curses' },
+    a4: { key: 'smite', name: 'Smite', cd: 2.4, offBeat: true, desc: 'Throw light at the tank’s target. Heals your most hurt ally, restores mana, and pulses active Prayer circles.', combo: '② Payoff: restores mana + pulses active Prayer circle' },
   },
   dps: {
     a1: { key: 'blizzard', name: 'Blizzard', cd: 7.8, aim: true, range: 520, desc: 'Ice storm on the ground. Hits and slows everything in it.', combo: '① Slow pack in Blizzard ➔ ② Rime burst to freeze all. On a boss: it hits, but no slow' },
@@ -38,11 +39,18 @@ export const AB: Record<GearKey, Record<AbilitySlot, AbilityDef>> = {
   },
   rogue: {
     a1: { key: 'viper', name: 'Viper Blades', cd: 2.3, desc: 'Slash a single foe with twin venom-coated daggers and poison them with Viper Venom for 5.5 seconds.', combo: '① Poison boss with Viper Venom ➔ ② Shadowstrike always crits!' },
-    a2: { key: 'ambush', name: 'Shadowstrike', cd: 3.4, desc: 'Strike a single target from the shadows with both daggers. Always crits and deals 60% bonus damage on poisoned targets.', combo: '② Finisher: guaranteed crit + 1.6× damage on poisoned foes, bosses too' },
+    a2: { key: 'ambush', name: 'Shadowstrike', cd: 3.4, desc: 'Strike a single target from the shadows with both daggers. On a poisoned target it always crits and hits 35% harder.', combo: '② Finisher: guaranteed crit + 1.35× damage on poisoned foes, bosses too' },
     a3: { key: 'flurry', name: 'Fan of Blades', cd: 6.0, desc: 'Whirl and fling throwing knives in a circle around you, interrupting enemy casts, slicing nearby foes, and refreshing active venom.', combo: '① Interrupt enemy casts & refresh venom (modest AoE). On a boss: refreshes venom; bosses don’t cast' },
-    a4: { key: 'shadowstep', name: 'Shadowstep', cd: 5.5, desc: 'Blink through shadow behind your target, strike it, interrupt casts, gain +35% attack speed for 3.8s, and shave 2s off Shadowstrike.', combo: '① Blink behind boss + shaves 2.0s off Shadowstrike ➔ ② Shadowstrike' },
+    a4: { key: 'shadowstep', name: 'Shadowstep', cd: 5.5, offBeat: true, desc: 'Blink through shadow behind your target, strike it, interrupt casts, gain +35% attack speed for 3.8s, and shave 2s off Shadowstrike.', combo: '① Blink behind boss + shaves 2.0s off Shadowstrike ➔ ② Shadowstrike' },
   },
 };
 
 export const MEND = { heal: 138, mana: 6, gcd: 0.56, range: 560 };
+
+/** The beat the four buttons share (see src/dungeon/press.js): firing one starts it, and the rest wait for it to
+ *  end. A press up to `queue` seconds early is kept and fires the moment it can; a kept press lapses after
+ *  `wait`, which is long enough to wait out a dodge, a Charge, a cast or the shield. Mend keeps its own pause.
+ *  The beat is 0.8 s while every button still has its own cooldown, which keeps the run times where they were;
+ *  the combat plan's stage 3 gives each class a filler and sets the beat with the new numbers (1.0 s planned). */
+export const BEAT = { len: 0.8, queue: 0.4, wait: 1.0 };
 

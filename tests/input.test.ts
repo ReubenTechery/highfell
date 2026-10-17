@@ -5,17 +5,23 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newGame } from '../src/dungeon/game.js';
-import { S } from '../src/dungeon/state.js';
+import { newGame, update } from '../src/dungeon/game.js';
+import { S, setHooks } from '../src/dungeon/state.js';
 import { curseHero, makeChain } from '../src/dungeon/mobs.js';
 import { VIEW, toScreen } from '../src/dungeon/render.js';
 import { BARROW_ENGINE } from '../src/content/barrow/engine';
-import { IN, bindFrameSwipes, bindInput, resetInput } from '../src/ui/input';
+import { IN, bindFrameSwipes, bindInput, playerIntent, resetInput } from '../src/ui/input';
+import { slotForKey } from '../src/content/keys';
+import { BEAT } from '../src/content/roles';
 
 type Handler = (e: unknown) => void;
 const on: Record<string, Handler> = {};
 const layer = { addEventListener: (type: string, fn: Handler) => { on[type] = fn; }, setPointerCapture: () => {} } as unknown as HTMLElement;
-(globalThis as unknown as { window: unknown }).window = { addEventListener: () => {} };
+// the keyboard: the first bindInput's window listeners, so a test can press keys
+const win: Record<string, Handler> = {};
+(globalThis as unknown as { window: unknown }).window = { addEventListener: (type: string, fn: Handler) => { if (!win[type]) win[type] = fn; } };
+const key = (type: 'keydown' | 'keyup', code: string, repeat = false) => win[type]({ code, repeat, target: null, preventDefault: () => {} });
+const step = (secs: number) => { for (let i = 0; i < Math.round(secs * 60); i++) update(1 / 60); };
 VIEW.cv = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 390, height: 844 }) } as unknown as typeof VIEW.cv;
 bindInput(layer, { active: () => true, stick: () => {}, hintDone: () => {}, holdBtn: () => {}, pause: () => {} });
 const touch = (type: string, x: number, y: number) => on[type]({ pointerId: 7, pointerType: 'touch', clientX: x, clientY: y, preventDefault: () => {} });
@@ -111,4 +117,94 @@ test('while a Crypt Trial lesson waits on its button, a swipe or a tap on the du
   assert.deepEqual(asked, [], 'the lesson is never told a touch on the dungeon was its button');
   assert.equal(IN.gest.size, 0, 'nothing is left half-read for when the run carries on');
   assert.equal(IN.stick, null);
+});
+
+/* ---------- the beat and the press queue (combat plan, stage 1) ---------- */
+
+/** a run as `role` with the hooks the run screen sets: what buzzed, what pulsed, what fired */
+function keyRun(role: string, cls?: string) {
+  newGame(BARROW_ENGINE, { role, seed: 99, start: 'entrance', auto: false, quiet: true, noEvents: true, loadouts: cls ? { [role]: { cls } } : {} });
+  resetInput();
+  const s = S as any;
+  const log = { nope: [] as string[], early: [] as string[], fired: [] as string[] };
+  setHooks({ nope: (x: string) => log.nope.push(x), early: (x: string) => log.early.push(x), fired: (x: string) => log.fired.push(x), playerIntent });
+  return { s, me: s.player, mob: s.packs[0].mobs[0], log };
+}
+
+test('each class\'s buttons sit on E, Q, F and R, with the main button on E, and 1 to 4 still work', () => {
+  assert.equal(slotForKey('tank', 'KeyE'), 'a1', 'Cleave');
+  assert.equal(slotForKey('tank', 'KeyQ'), 'a4', 'the shield');
+  assert.equal(slotForKey('tank', 'KeyF'), 'a2', 'Charge');
+  assert.equal(slotForKey('healer', 'KeyE'), 'a4', 'Smite');
+  assert.equal(slotForKey('dps', 'KeyE'), 'a4', 'Icicle');
+  assert.equal(slotForKey('rogue', 'KeyE'), 'a1', 'Viper Blades');
+  assert.equal(slotForKey('rogue', 'Digit3'), 'a3');
+  assert.equal(slotForKey('tank', 'KeyW'), null, 'WASD still walks');
+});
+
+test('a press a little early waits and fires on time; one far too early is let go with a pulse, not a buzz', () => {
+  const { me, log } = keyRun('tank');
+  me.cd.a1 = 0.3;
+  key('keydown', 'KeyE'); key('keyup', 'KeyE');
+  assert.equal(me.next?.slot, 'a1', 'the press waits');
+  step(0.2);
+  assert.ok(me.next, 'still waiting');
+  step(0.15);
+  assert.equal(me.next, null);
+  assert.deepEqual(log.fired, ['a1'], 'Cleave went off on time');
+  me.cd.a1 = 0.6; me.beat = 0;
+  key('keydown', 'KeyE'); key('keyup', 'KeyE');
+  assert.equal(me.next, null, 'too early to keep');
+  assert.deepEqual(log.early, ['a1'], 'the button pulses');
+  assert.deepEqual(log.nope, [], 'nothing buzzed');
+});
+
+test('the four buttons share the beat; Charge never waits for it', () => {
+  const { me, mob, log } = keyRun('tank');
+  mob.x = me.x; mob.y = me.y - 300; me.picked = mob;
+  key('keydown', 'KeyR'); key('keyup', 'KeyR');
+  assert.deepEqual(log.fired, ['a3'], 'Slam');
+  assert.ok(me.beat > 0, 'the beat runs');
+  key('keydown', 'KeyF'); key('keyup', 'KeyF');
+  assert.deepEqual(log.fired, ['a3', 'a2'], 'Charge goes at once, beat or no beat');
+  // Cleave pressed during the Charge waits, then lands as the Charge does
+  key('keydown', 'KeyE'); key('keyup', 'KeyE');
+  assert.equal(log.fired.length, 2);
+  for (let i = 0; i < 120 && log.fired.length < 3; i++) update(1 / 60);
+  assert.deepEqual(log.fired, ['a3', 'a2', 'a1'], 'Cleave fired after the Charge, once the beat was up');
+  assert.equal(me.dash, null, 'the Charge had landed');
+  assert.ok(me.cd.a3 > 6 - BEAT.len - 0.6, 'and not before the beat was over');
+});
+
+test('a held key fires once, as in WoW; a held touch button presses again whenever it can', () => {
+  const { me, log } = keyRun('tank');
+  key('keydown', 'KeyE');
+  for (let i = 0; i < 180; i++) { if (i % 3 === 0) key('keydown', 'KeyE', true); update(1 / 60); }
+  key('keyup', 'KeyE');
+  assert.deepEqual(log.fired, ['a1'], 'one Cleave for one press, however long the key is held');
+  log.fired.length = 0; me.cd.a1 = 0; me.beat = 0;
+  IN.held.add('a1');
+  step(3);
+  IN.held.delete('a1');
+  assert.deepEqual(log.fired, ['a1', 'a1'], 'held for 3 s, Cleave (2.2 s) fires twice');
+  assert.deepEqual(log.nope, [], 'and nothing buzzed while it waited');
+});
+
+test('holding the shield and Cleave together never opens a free perfect block', () => {
+  const { me, log } = keyRun('tank');
+  key('keydown', 'KeyQ');
+  step(0.1);
+  assert.ok(me.blocking, 'the shield is up');
+  for (let i = 0; i < 20; i++) { key('keydown', 'KeyE'); key('keyup', 'KeyE'); step(0.1); }
+  assert.deepEqual(log.fired, [], 'Cleave waits while the shield is up');
+  assert.ok(me.blocking && me.blockT > 1.5, 'the shield never dropped, so its perfect window never reopened');
+  // a Crypt Trial lesson lets the shield down after a moment; the held key's repeats put it back up
+  IN.block = false;
+  key('keydown', 'KeyQ', true);
+  assert.ok(IN.block, 'the held shield key raises the shield again');
+  key('keyup', 'KeyQ');
+  step(0.1);
+  key('keydown', 'KeyE'); key('keyup', 'KeyE');
+  step(0.05);
+  assert.deepEqual(log.fired, ['a1'], 'shield down: Cleave goes');
 });

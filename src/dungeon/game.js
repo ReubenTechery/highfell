@@ -6,6 +6,7 @@ import { HOOKS, S, emit, setS } from './state.js';
 import { aggro, banner, bits, brewFx, dots, fx, fxText, healHero, hurtHero, hurtMob, makeHero, makeMob, sfx, shake } from './entities.js';
 import { botTick, inHaz } from './bots.js';
 import { applyBleed, heroBy, heroTick, isFoe, later, projHit } from './heroes.js';
+import { tickPress } from './press.js';
 import { chainTick, curseTick, mobTick, nearestHeroTo, spawnMob } from './mobs.js';
 import { canStand, inWalk, moveEnt, roomIndexOf, walkTo } from './world.js';
 import { tickWalkout } from './walkout.js';
@@ -117,7 +118,7 @@ export function respawn() {
   const cp = cps[Math.min(room, cps.length - 1)];
   S.hazards = []; S.zones = []; S.thralls = []; S.projs = []; S.rings = []; S.chains = []; S.timers = []; S.ring = null; S.dark = 0; S.darkTarget = 0;
   for (const h of S.heroes) {
-    Object.assign(h, { alive: true, hp: h.maxHp, mana: h.maxMana, absorb: 0, absorbT: 0, dodgeT: 0, dash: null, cast: null, blocking: false, target: null, picked: null, holdFire: false, hots: [], ghostSaved: false });
+    Object.assign(h, { alive: true, hp: h.maxHp, mana: h.maxMana, absorb: 0, absorbT: 0, dodgeT: 0, dash: null, cast: null, blocking: false, target: null, picked: null, holdFire: false, hots: [], ghostSaved: false, beat: 0, next: null });
     h.st = { stun: 0, root: 0, haunt: 0, air: 0, ghost: 0, surge: 0, zeal: 0, kx: 0, ky: 0, chained: null, caged: null, curse: null };
     for (const k in h.cd) h.cd[k] = 0;
     h.bot.ignore = new Set(); h.bot.seen = new Set();
@@ -170,7 +171,7 @@ export function update(dt) {
   S.healerUp = S.heroes.some((x) => x.role === 'healer' && x.alive);
   if (!S.auto) HOOKS.playerIntent(S.player);
   for (const h of S.heroes) { h.botDriven = !h.isPlayer || S.auto; if (h.botDriven) botTick(h, dt); }
-  for (const h of S.heroes) heroTick(h, dt);
+  for (const h of S.heroes) { heroTick(h, dt); if (h.next) tickPress(h, dt); }
   for (const m of S.mobs) mobTick(m, dt);
   tickThralls(dt);
   tickProjs(dt); tickHazards(dt); tickZones(dt); tickRings(dt);

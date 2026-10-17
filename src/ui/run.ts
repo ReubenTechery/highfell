@@ -10,12 +10,14 @@ import { COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, SETS, heroicVersion } from '..
 import { BARROW } from '../content/barrow';
 import type { DungeonInfo } from '../content/types';
 import { BARROW_ENGINE } from '../content/barrow/engine';
-import { AB, MEND, ROLES, abKey } from '../content/roles';
+import { AB, BEAT, MEND, ROLES, abKey } from '../content/roles';
+import { keyLabel } from '../content/keys';
 import type { Rar, RoleId } from '../content/types';
 import { newGame, respawn, update } from '../dungeon/game.js';
 import { S, setHooks } from '../dungeon/state.js';
 import { banner, exposeMob, stunned } from '../dungeon/entities.js';
 import { abCd, abMana, bestCluster, doDodge, heroBy, isFoe, mend, useAbility } from '../dungeon/heroes.js';
+import { press } from '../dungeon/press.js';
 import { momentFor } from '../dungeon/coach.js';
 import { CURSE_TIME } from '../dungeon/mobs.js';
 import { inHaz } from '../dungeon/bots.js';
@@ -47,7 +49,6 @@ import { RunGuard } from './runguard';
  *  none). `heroic` plays the heroic version: harder, the same drops plus gilding kits, and its own kill counts. */
 export interface RunOpts { start: string; testRar: Rar | null; role?: RoleId; heroic?: boolean; dungeon?: string }
 const STEP = 1 / 60;
-const KEY: Record<string, string> = { a1: '1', a2: '2', a3: '3', a4: '4', dodge: 'Space' };
 const ROLE_ICON: Record<string, string> = { tank: 'shield', healer: 'mend', dps: 'blizzard' };
 const HINTS: Record<string, [string, string, string, number?]> = {
   introMove: ['Drag on the left to walk up into the skeletons.', 'Use WASD or the arrow keys to walk up into the skeletons.', 'Walk into the pack', 12],
@@ -58,32 +59,32 @@ const HINTS: Record<string, [string, string, string, number?]> = {
 interface TutStep { slot: string; icon: string; step: string; title: string; badge: string; text: string }
 const TUT_BY_CLASS: Record<ClassId, Record<string, TutStep>> = {
   warrior: {
-    introAb: { slot: 'a1', icon: 'cleave', step: '1 / 5', title: '1 · Cleave', badge: 'Wide front sweep', text: 'Smash the whole pack in front of you!' },
-    slam: { slot: 'a3', icon: 'slam', step: '2 / 5', title: '3 · Slam (Taunt)', badge: 'Ivy has aggro! ➔ Pull pack in', text: 'Yank the mobs back onto you.' },
+    introAb: { slot: 'a1', icon: 'cleave', step: '1 / 5', title: 'Cleave', badge: 'Wide front sweep', text: 'Smash the whole pack in front of you!' },
+    slam: { slot: 'a3', icon: 'slam', step: '2 / 5', title: 'Slam (Taunt)', badge: 'Ivy has aggro! ➔ Pull pack in', text: 'Yank the mobs back onto you.' },
     dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Roll out of his charge!' },
-    block: { slot: 'a4', icon: 'shield', step: '4 / 5', title: '4 · Block Gold Hits', badge: 'Gold cone ➔ Block right before hit', text: 'Parry the heavy swing!' },
-    stagger: { slot: 'a2', icon: 'charge', step: '5 / 5', title: '2 · Boss Exposed!', badge: 'Perfect Block = Stun + +35% DMG!', text: 'Rush in and punish him!' },
+    block: { slot: 'a4', icon: 'shield', step: '4 / 5', title: 'Block Gold Hits', badge: 'Gold cone ➔ Block right before hit', text: 'Parry the heavy swing!' },
+    stagger: { slot: 'a2', icon: 'charge', step: '5 / 5', title: 'Boss Exposed!', badge: 'Perfect Block = Stun + +35% DMG!', text: 'Rush in and punish him!' },
   },
   cleric: {
-    introAb: { slot: 'a1', icon: 'circle', step: '1 / 5', title: '1 · Prayer Circle', badge: 'Ground healing zone', text: 'Drop a glowing Prayer Circle under your party!' },
-    slam: { slot: 'a4', icon: 'smite', step: '2 / 5', title: '4 · Smite (Pulse & Mana)', badge: 'Hit foes + pulse your Circle', text: 'Cast Smite to blast foes, restore mana, and pulse your Circle!' },
+    introAb: { slot: 'a1', icon: 'circle', step: '1 / 5', title: 'Prayer Circle', badge: 'Ground healing zone', text: 'Drop a glowing Prayer Circle under your party!' },
+    slam: { slot: 'a4', icon: 'smite', step: '2 / 5', title: 'Smite (Pulse & Mana)', badge: 'Hit foes + pulse your Circle', text: 'Cast Smite to blast foes, restore mana, and pulse your Circle!' },
     dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Roll out of Sir Rattlebones’s charge!' },
-    block: { slot: 'a2', icon: 'ward', step: '4 / 5', title: '2 · Ward the Tank', badge: 'Heavy boss swing incoming!', text: 'Shield your Tank before the heavy swing lands!' },
-    stagger: { slot: 'a3', icon: 'sunburst', step: '5 / 5', title: '3 · Boss Exposed!', badge: 'Boss staggered (+35% DMG taken)!', text: 'Unleash Sunburst to top up the party and sear the boss!' },
+    block: { slot: 'a2', icon: 'ward', step: '4 / 5', title: 'Ward the Tank', badge: 'Heavy boss swing incoming!', text: 'Shield your Tank before the heavy swing lands!' },
+    stagger: { slot: 'a3', icon: 'sunburst', step: '5 / 5', title: 'Boss Exposed!', badge: 'Boss staggered (+35% DMG taken)!', text: 'Unleash Sunburst to top up the party and sear the boss!' },
   },
   mage: {
-    introAb: { slot: 'a1', icon: 'blizzard', step: '1 / 5', title: '1 · Blizzard', badge: 'Chilling ice storm', text: 'Call down Blizzard to slow and melt the pack!' },
-    slam: { slot: 'a2', icon: 'nova', step: '2 / 5', title: '2 · Rime Burst (Freeze)', badge: 'Freeze pack ➔ Shatter combo!', text: 'Freeze nearby foes solid so your ice spells Shatter!' },
+    introAb: { slot: 'a1', icon: 'blizzard', step: '1 / 5', title: 'Blizzard', badge: 'Chilling ice storm', text: 'Call down Blizzard to slow and melt the pack!' },
+    slam: { slot: 'a2', icon: 'nova', step: '2 / 5', title: 'Rime Burst (Freeze)', badge: 'Freeze pack ➔ Shatter combo!', text: 'Freeze nearby foes solid so your ice spells Shatter!' },
     dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Roll out of Sir Rattlebones’s charge!' },
-    block: { slot: 'a4', icon: 'icicle', step: '4 / 5', title: '4 · Instant Icicle', badge: 'Fast instant-cast shard', text: 'Fire Icicle while the Tank blocks the heavy swing!' },
-    stagger: { slot: 'a3', icon: 'comet', step: '5 / 5', title: '3 · Boss Exposed!', badge: 'Boss staggered (+35% DMG taken)!', text: 'Drop a massive Comet during the Exposed window!' },
+    block: { slot: 'a4', icon: 'icicle', step: '4 / 5', title: 'Instant Icicle', badge: 'Fast instant-cast shard', text: 'Fire Icicle while the Tank blocks the heavy swing!' },
+    stagger: { slot: 'a3', icon: 'comet', step: '5 / 5', title: 'Boss Exposed!', badge: 'Boss staggered (+35% DMG taken)!', text: 'Drop a massive Comet during the Exposed window!' },
   },
   rogue: {
-    introAb: { slot: 'a1', icon: 'viper', step: '1 / 5', title: '1 · Viper Blades', badge: 'Apply Viper Venom', text: 'Slash with Viper Blades to poison your target!' },
-    slam: { slot: 'a3', icon: 'flurry', step: '2 / 5', title: '3 · Fan of Blades', badge: 'AoE knives + refresh venom', text: 'Spin Fan of Blades to slice the pack and spread venom!' },
+    introAb: { slot: 'a1', icon: 'viper', step: '1 / 5', title: 'Viper Blades', badge: 'Apply Viper Venom', text: 'Slash with Viper Blades to poison your target!' },
+    slam: { slot: 'a3', icon: 'flurry', step: '2 / 5', title: 'Fan of Blades', badge: 'AoE knives + refresh venom', text: 'Spin Fan of Blades to slice the pack and spread venom!' },
     dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Roll out of Sir Rattlebones’s charge!' },
-    block: { slot: 'a4', icon: 'shadowstep', step: '4 / 5', title: '4 · Shadowstep Behind', badge: 'Gold cone ➔ Blink behind boss', text: 'Shadowstep behind him while the Tank parries his swing!' },
-    stagger: { slot: 'a2', icon: 'ambush', step: '5 / 5', title: '2 · Boss Exposed!', badge: 'Poisoned + Exposed (+35% DMG)!', text: 'Strike with Shadowstrike for a guaranteed massive crit!' },
+    block: { slot: 'a4', icon: 'shadowstep', step: '4 / 5', title: 'Shadowstep Behind', badge: 'Gold cone ➔ Blink behind boss', text: 'Shadowstep behind him while the Tank parries his swing!' },
+    stagger: { slot: 'a2', icon: 'ambush', step: '5 / 5', title: 'Boss Exposed!', badge: 'Poisoned + Exposed (+35% DMG)!', text: 'Strike with Shadowstrike for a guaranteed massive crit!' },
   },
 };
 
@@ -156,7 +157,7 @@ export class RunScene implements InputUI {
   private tutHow(slot: string): string {
     const def = slot === 'dodge' ? null : AB[abKey(S.player)][slot as 'a1'];
     const name = esc(slot === 'dodge' ? 'Roll' : def?.hold ? 'Block' : def?.name || '');
-    return this.app.touch ? `Tap the glowing <b>${name}</b> button` : `Click the glowing <b>${name}</b> button <i>or press <kbd>${esc(KEY[slot])}</kbd></i>`;
+    return this.app.touch ? `Tap the glowing <b>${name}</b> button` : `Click the glowing <b>${name}</b> button <i>or press <kbd>${esc(keyLabel(abKey(S.player), slot))}</kbd></i>`;
   }
 
   /** freeze the game in the Crypt Trial to explain a mechanic and highlight the button to press */
@@ -169,7 +170,7 @@ export class RunScene implements InputUI {
     const p = S.player;
     if (step.slot === 'dodge') p.cd.dodge = 0;
     else p.cd[step.slot] = 0;
-    p.gcd = 0;
+    p.gcd = 0; p.beat = 0; p.next = null;
     this.root.classList.add('tut-pause');
     this.root.querySelectorAll('.tut-spot').forEach((el) => el.classList.remove('tut-spot'));
     this.root.querySelector(`.ab[data-slot="${step.slot}"]`)?.classList.add('tut-spot');
@@ -231,11 +232,13 @@ export class RunScene implements InputUI {
       if (S.boss && S.boss.act && S.boss.act.k === 'sweep') S.boss.act.t = Math.max(S.boss.act.t, 1.28);
       setTimeout(() => { IN.block = false; p.intent.block = false; this.holdBtn('a4', false); }, 550);
     } else {
+      // the lesson's button fires now, even if the shield was still up (buttons on the beat wait for it to drop)
       IN.block = false;
       p.intent.block = false;
+      p.blocking = false;
       this.holdBtn('a4', false);
       p.cd[step.slot] = 0;
-      p.gcd = 0;
+      p.gcd = 0; p.beat = 0; p.next = null;
       useAbility(p, step.slot, (key === 'stagger' || key === 'block') && S.boss ? S.boss : null);
       if (key === 'block' && p.role !== 'tank' && S.boss && S.boss.alive) {
         S.boss.st.stun = Math.max(S.boss.st.stun || 0, 3.2);
@@ -350,6 +353,7 @@ export class RunScene implements InputUI {
     setHooks({
       nope: (slot: string) => { flash(this.root.querySelector(`.ab[data-slot="${slot}"]`), 'nope', 260); SFX.play('nope'); },
       fired: (slot: string) => { flash(this.root.querySelector(`.ab[data-slot="${slot}"]`), 'fired', 300); },
+      early: (slot: string) => { flash(this.root.querySelector(`.ab[data-slot="${slot}"]`), 'early', 260); },
       hint: (key: string) => this.hint(key),
       pulseFrame: (role: string) => this.root.querySelectorAll(`[data-heal="${role}"]`).forEach((el) => flash(el, 'fired', 260)),
       onWipe: () => this.showWipe(),
@@ -618,6 +622,7 @@ export class RunScene implements InputUI {
   /* ---------------------------------------------------------------- HUD */
   private buildHud(): void {
     const p = S.player, A = AB[abKey(p)];
+    const keyOf = (slot: string) => keyLabel(abKey(p), slot);
     $('frames').innerHTML = S.heroes.map((h: any) => `<li class="fr${h.isPlayer ? ' me' : ''}" data-heal="${h.role}" data-role="${h.role}">
       <span class="fr-top"><span class="fi">${tile(h.cls === 'rogue' ? 'viper' : ROLE_ICON[h.role])}</span><span class="fr-n">${h.isPlayer ? 'You' : h.name}</span><i class="ag" aria-hidden="true"></i></span>
       <span class="fb"><i class="hpf"></i><i class="abf"></i></span>${h.role === 'healer' ? '<span class="fb mp"><i class="mpf"></i></span>' : ''}${CURSE_MARK()}</li>`).join('');
@@ -628,8 +633,8 @@ export class RunScene implements InputUI {
       const tip = def.combo ? `${def.name}: ${def.desc} (${def.combo})` : `${def.name}: ${def.desc}`;
       const tag = slot === 'dodge' ? 'Roll' : def.hold ? 'Block' : '';
       const kind = slot === 'dodge' ? ' roll' : def.hold ? ' hold' : slot === 'a1' && (p.role === 'tank' || p.cls === 'rogue') ? ' main' : '';
-      return `<button type="button" class="ab${kind}" data-slot="${slot}" aria-label="${esc(def.name)}" title="${esc(tip)} (${KEY[slot]})">
-        <span class="face">${tile(def.key)}</span><span class="sweep"></span><span class="cdn"></span><kbd>${KEY[slot]}</kbd>${mana ? `<span class="cost">${mana}</span>` : ''}${tag ? `<span class="ab-tag">${tag}</span>` : ''}<span class="c-tag" aria-hidden="true"></span><span class="glow"></span></button>`;
+      return `<button type="button" class="ab${kind}" data-slot="${slot}" aria-label="${esc(def.name)}" title="${esc(tip)} (${esc(keyOf(slot))})">
+        <span class="face">${tile(def.key)}</span><span class="sweep"></span><span class="cdn"></span><kbd>${esc(keyOf(slot))}</kbd>${mana ? `<span class="cost">${mana}</span>` : ''}${tag ? `<span class="ab-tag">${tag}</span>` : ''}<span class="c-tag" aria-hidden="true"></span><span class="glow"></span></button>`;
     };
     $('abar').innerHTML = ['a1', 'a2', 'a3', 'a4', 'dodge'].map(btn).join('');
     $('abar').querySelectorAll<HTMLElement>('.ab').forEach((b) => this.bindAbility(b, b.dataset.slot!));
@@ -670,12 +675,17 @@ export class RunScene implements InputUI {
           const a = IN.aim; IN.aim = null;
           if (!a || ev.type === 'pointercancel') return;
           const moved = Math.hypot(a.cx - a.sx, a.cy - a.sy) >= 14;
-          useAbility(S.player, slot, moved ? aimPoint(a) : null);
+          press(S.player, slot, moved ? aimPoint(a) : null);
         };
         b.addEventListener('pointermove', move); b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up);
         return;
       }
-      useAbility(p, slot, p.picked && isFoe(p.picked) ? p.picked : null);
+      press(p, slot, p.picked && isFoe(p.picked) ? p.picked : null);
+      // held down, it presses again whenever it can (input.ts playerIntent)
+      IN.held.add(slot);
+      try { b.setPointerCapture(e.pointerId); } catch { /* fine */ }
+      const up = () => { IN.held.delete(slot); b.removeEventListener('pointerup', up); b.removeEventListener('pointercancel', up); };
+      b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up);
     });
   }
   private hudTick(dt: number): void {
@@ -740,7 +750,10 @@ export class RunScene implements InputUI {
       let cd = 0, max = 1, usable = p.alive && !p.st.stun && !p.st.caged;
       if (slot === 'dodge') { cd = p.cd.dodge; max = 1.6; }
       else { const def = A[slot as 'a1'], mana = abMana(p, slot); cd = p.cd[slot]; max = abCd(p, slot) || 1; if (def.key === 'comet' && p.cast) cd = 0; if (mana && p.mana < mana) usable = false; }
-      const pr = cd > 0 ? cd / max : 0;
+      // the beat sweeps every button on it, as WoW's does, when it outlasts the button's own cooldown
+      const def = slot === 'dodge' ? null : A[slot as 'a1'];
+      const beatK = def && !def.offBeat && !def.hold ? p.beat / BEAT.len : 0;
+      const pr = Math.max(cd > 0 ? cd / max : 0, beatK);
       const sw = b.querySelector<HTMLElement>('.sweep')!; const v = pr.toFixed(3); if (sw.dataset.p !== v) { sw.style.setProperty('--p', v); sw.dataset.p = v; }
       const cdn = b.querySelector('.cdn')!; const txt = cd > 0.95 ? String(Math.ceil(cd)) : ''; if (cdn.textContent !== txt) cdn.textContent = txt;
       // a class's first runs: only the coach's button glows; after that, every button's own combo prompt
@@ -748,6 +761,8 @@ export class RunScene implements InputUI {
       const ctag = lesson ? (lesson === slot ? (this.app.touch ? 'TAP!' : 'CLICK!') : '') : teach ? coach.tag : usable && cd <= 0 && !this.learn ? comboFor(p, slot) : '';
       const tagEl = b.querySelector('.c-tag'); if (tagEl && tagEl.textContent !== ctag) tagEl.textContent = ctag;
       b.classList.toggle('dim', !usable);
+      b.classList.toggle('queued', !!p.next && p.next.slot === slot);
+      b.classList.toggle('held', IN.held.has(slot) || (!!def?.hold && IN.block));
       b.classList.toggle('teach', teach);
       b.classList.toggle('proc', !!ctag);
     });

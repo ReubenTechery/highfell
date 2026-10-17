@@ -3,8 +3,10 @@
  * an aimed button to place it, tap a name to heal, swipe through wisps and chains, tap cages. A touch
  * that lands on a cage, a chain or a wisp is never taken as the move stick, wherever it is, and a healer's
  * swipe that starts as the move stick still cuts what it crosses.
- * Keyboard: WASD or arrows, Space dodges, 1 to 4 for the buttons (hold 2 to block as the tank),
- * Z X C heal the tank, you and the DPS, Esc pauses. Chains and wisps are cut with a mouse drag.
+ * Keyboard: WASD or arrows, Space dodges, each class's buttons on E, Q, F and R (src/content/keys.ts; the
+ * tank holds Q to block) and 1 to 4 as well, Z X C heal the tank, you and the DPS, Esc pauses. Chains and wisps
+ * are cut with a mouse drag. Every press goes through press.js: an early one waits and fires on time instead
+ * of being thrown away. A held touch button repeats; a held key fires once, as in WoW.
  * A Crypt Trial lesson pauses the run until you press its own button (or its key): a touch, a swipe or
  * a click on the dungeon does nothing while it waits.
  */
@@ -12,9 +14,11 @@ import { dist, distXY } from '../core/math';
 import { AB, abKey } from '../content/roles';
 import { S, emit } from '../dungeon/state.js';
 import { fx, killMob } from '../dungeon/entities.js';
-import { autoTarget, bestCluster, clampRange, doDodge, heroBy, isFoe, mend, useAbility } from '../dungeon/heroes.js';
+import { autoTarget, bestCluster, clampRange, doDodge, heroBy, isFoe, mend } from '../dungeon/heroes.js';
 import { chainEnds, cutChain, liftCurse, mashCage as mashEngine } from '../dungeon/mobs.js';
 import { AIM, VIEW, toWorld } from '../dungeon/render.js';
+import { press } from '../dungeon/press.js';
+import { slotForKey } from '../content/keys';
 import { segPointDist, segsCross } from '../dungeon/world.js';
 
 type Pt = { x: number; y: number; t: number };
@@ -26,8 +30,10 @@ export const IN = {
   aim: null as Aim | null,
   block: false,
   mouse: null as null | { x: number; y: number },
+  /** touch buttons held down: each presses again whenever it can (press.js) */
+  held: new Set<string>(),
 };
-export function resetInput(): void { IN.keys = {}; IN.stick = null; IN.gest.clear(); IN.aim = null; IN.block = false; }
+export function resetInput(): void { IN.keys = {}; IN.stick = null; IN.gest.clear(); IN.aim = null; IN.block = false; IN.held.clear(); }
 
 /** what the screen layer does with input it does not own */
 export interface InputUI {
@@ -57,6 +63,7 @@ export function playerIntent(h: any): void {
   h.intent.block = IN.block;
   h.holdFire = false;
   if (h.queued && h.gcd <= 0) { const q = h.queued; h.queued = null; mend(h, q); }
+  for (const slot of IN.held) press(h, slot, h.picked && isFoe(h.picked) ? h.picked : null, true);
 }
 
 /** where an aimed button lands: dragged, under the mouse, or picked for you on a quick tap */
@@ -156,38 +163,42 @@ export function bindInput(layer: HTMLElement, ui: InputUI): void {
     const c = e.code;
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(c) && !S.over) e.preventDefault();
     if (c === 'Escape' || c === 'KeyP') { ui.pause(); return; }
+    const h = S.player;
+    // a browser shortcut (Ctrl+F, Cmd+R) is never a button
+    const slot = e.ctrlKey || e.metaKey || e.altKey ? null : slotForKey(abKey(h), c);
     // a lesson's own key is its button on a keyboard; nothing else carries it on
     if (S.paused && ui.onTutInput) {
       if (c === 'Space' || c === 'ShiftLeft' || c === 'ShiftRight') { if (ui.onTutInput('dodge')) return; }
-      if (c === 'Digit1' || c === 'Digit2' || c === 'Digit3' || c === 'Digit4') { if (ui.onTutInput('a' + c.slice(5))) return; }
+      if (slot && ui.onTutInput(slot)) return;
     }
     if (S.paused || S.over) return;
-    if (e.repeat && c !== 'Digit4') return;
+    // a held key fires once, as in WoW: every press counts. The shield's key is the exception: held, it blocks,
+    // so its repeats keep the shield up if something let it down (a Crypt Trial lesson does)
+    if (e.repeat) {
+      if (slot && AB[abKey(h)][slot].hold && !h.st.caged) { IN.block = true; ui.holdBtn(slot, true); }
+      return;
+    }
     IN.keys[c] = true;
     if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(c)) ui.hintDone('introMove');
-    const h = S.player;
     if (h.st.caged && (c === 'Space' || c.startsWith('Digit') || c.startsWith('Key'))) { mashCage(h, ui); return; }
     if (c === 'Space' || c === 'ShiftLeft' || c === 'ShiftRight') { doDodge(h, h.intent.mx, h.intent.my); return; }
-    if (c === 'Digit1' || c === 'Digit2' || c === 'Digit3' || c === 'Digit4') {
-      const slot = 'a' + c.slice(5);
-      const def = AB[abKey(h)][slot as 'a1'];
+    if (slot) {
+      const def = AB[abKey(h)][slot];
       if (def.hold) { IN.block = true; ui.holdBtn(slot, true); return; }
       let aim: unknown = null;
       if (def.aim && IN.mouse) aim = toWorld(IN.mouse.x, IN.mouse.y);
       else if (!def.aim && h.picked && isFoe(h.picked)) aim = h.picked;
-      useAbility(h, slot, aim);
+      press(h, slot, aim);
       return;
     }
     if (h.role === 'healer' && (c === 'KeyZ' || c === 'KeyX' || c === 'KeyC')) { const r = ({ KeyZ: 'tank', KeyX: 'healer', KeyC: 'dps' } as Record<string, string>)[c]; const t = heroBy(r); if (t) mend(h, t); return; }
   });
   window.addEventListener('keyup', (e) => {
     IN.keys[e.code] = false;
-    if (S && (e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3' || e.code === 'Digit4') && S.player) {
-      const slot = 'a' + e.code.slice(5);
-      if (AB[abKey(S.player)][slot as 'a1']?.hold) { IN.block = false; ui.holdBtn(slot, false); }
-    }
+    const slot = S && S.player ? slotForKey(abKey(S.player), e.code) : null;
+    if (slot && AB[abKey(S.player)][slot]?.hold) { IN.block = false; ui.holdBtn(slot, false); }
   });
-  window.addEventListener('blur', () => { IN.keys = {}; IN.block = false; IN.stick = null; ui.stick(null); });
+  window.addEventListener('blur', () => { IN.keys = {}; IN.block = false; IN.stick = null; IN.held.clear(); ui.stick(null); });
 }
 
 /** does the segment a→b touch the box? (screen points; the box as getBoundingClientRect gives it) */

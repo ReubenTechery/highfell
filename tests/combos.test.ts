@@ -44,7 +44,7 @@ test('combos: Rime burst Chills a boss for 4s instead of freezing him, and Icicl
   const sounds: string[] = [];
   setHooks({ sound: (n: string) => { sounds.push(n); } });
   s.quiet = false;
-  me.cd.a4 = 0;
+  me.cd.a4 = 0; me.beat = 0;
   assert.ok(useAbility(me, 'a4', boss));
   for (let i = 0; i < 40 && !s.texts.some((t: any) => t.str === 'Shatter'); i++) update(1 / 60);
   setHooks({ sound: () => {} });
@@ -109,7 +109,7 @@ test('combos: the Gravedigger’s tremor Staggers a boss; Slam taunts him and sp
   assert.equal(boss.st.stun, 0, 'not stunned');
 
   boss.y = me.y - 150;
-  boss.st.kx = boss.st.ky = 0;
+  boss.st.kx = boss.st.ky = 0; me.beat = 0;
   assert.ok(useAbility(me, 'a3', null));
   assert.equal(boss.forced, me, 'taunted');
   assert.ok(me.whirlT > 0, 'the whirlwind spins');

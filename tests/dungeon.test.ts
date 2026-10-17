@@ -255,7 +255,7 @@ test('rogue: +10% movement speed always, glass cannon stats, twin-dagger autos, 
   assert.ok(useAbility(rogue, 'a2', m));
   const dryHit = hp0 - m.hp;
   assert.ok(dryHit > 0);
-  rogue.cd.a2 = 0; rogue.gcd = 0;
+  rogue.cd.a2 = 0; rogue.gcd = 0; rogue.beat = 0;
 
   // Apply Viper Blades (a1): immediate twin-dagger hit + 5s Viper Venom DoT
   assert.ok(useAbility(rogue, 'a1', m));
@@ -265,14 +265,14 @@ test('rogue: +10% movement speed always, glass cannon stats, twin-dagger autos, 
   assert.ok(m.hp < hpAfterViper, 'Viper Blades DoT ticks every 0.5s');
 
   // Shadowstrike (a2) on poisoned target: guaranteed 100% crit + +25% crit damage
-  rogue.cd.a2 = 0; rogue.gcd = 0;
+  rogue.cd.a2 = 0; rogue.gcd = 0; rogue.beat = 0;
   const hpBeforeCrit = m.hp;
   assert.ok(useAbility(rogue, 'a2', m));
   const bleedCritHit = hpBeforeCrit - m.hp;
   assert.ok(bleedCritHit > dryHit * 1.8, `Shadowstrike on poisoned target (${bleedCritHit}) hits much harder than unpoisoned (${dryHit})`);
 
   // 2. Shadowstep (a4): teleports behind target, grants Shadow Frenzy, shaves 2s off Shadowstrike cd (or resets it with The Cryptfangs)
-  rogue.cd.a2 = 5.0; rogue.gcd = 0;
+  rogue.cd.a2 = 5.0; rogue.gcd = 0; rogue.beat = 0;
   rogue.x = m.x; rogue.y = m.y + 220;
   assert.ok(useAbility(rogue, 'a4', m));
   assert.ok(Math.hypot(rogue.x - m.x, rogue.y - m.y) < 80, 'Shadowstep blinks into melee behind target');
@@ -280,14 +280,14 @@ test('rogue: +10% movement speed always, glass cannon stats, twin-dagger autos, 
   assert.ok(rogue.cd.a2 <= 3.05, 'Shadowstep shaves 2s off Shadowstrike cooldown');
 
   rogue.unique = 'cryptfangs';
-  rogue.cd.a2 = 5.0; rogue.cd.a4 = 0; rogue.gcd = 0;
+  rogue.cd.a2 = 5.0; rogue.cd.a4 = 0; rogue.gcd = 0; rogue.beat = 0;
   assert.ok(useAbility(rogue, 'a4', m));
   assert.equal(rogue.cd.a2, 0, 'The Cryptfangs makes Shadowstep completely reset Shadowstrike cooldown');
 
   // 3. Fan of Blades (a3): modest AoE + interrupts kickable casts + refreshes Viper Venom duration
   m.bleed.left = 1.2;
   m.cast = { k: 'volley', t: 0.5, dur: 1.5, kick: true, fn: () => {} };
-  rogue.cd.a3 = 0; rogue.gcd = 0;
+  rogue.cd.a3 = 0; rogue.gcd = 0; rogue.beat = 0;
   assert.ok(useAbility(rogue, 'a3', null));
   assert.equal(m.cast, null, 'Fan of Blades interrupts enemy cast');
   assert.ok(m.bleed.left >= 4.9, 'Fan of Blades refreshes Viper Blades duration');

@@ -46,6 +46,8 @@ export function makeHero(role, isPlayer, loadout) {
     // the party's brew, poured at the door (see BREW_FX)
     brew: L.brew || null, brewCol: L.brewCol || null, brewUsed: false,
     mana: 100, maxMana: 100, cd: { a1: 0, a2: 0, a3: 0, a4: 0, dodge: 0 }, gcd: 0, atkT: 0.4,
+    // the beat the four buttons share, and the one press waiting for it (press.js)
+    beat: 0, next: null,
     frenzyT: 0, nightstalkerT: 0, ghostSaved: false,
     target: null, picked: null, stillT: 1, dodgeT: 0, dodgeX: 0, dodgeY: -1, iframe: 0,
     blocking: false, blockT: 9, dash: null, cast: null,

@@ -1,7 +1,7 @@
 /* ---------- heroes: moving, auto attacks, abilities, dodge, block ---------- */
 import { angDiff, angTo, dist, distXY, norm } from '../core/math';
 import { rng } from '../core/rng';
-import { AB, MEND, abKey } from '../content/roles';
+import { AB, BEAT, MEND, abKey } from '../content/roles';
 import { HOOKS, S, emit } from './state.js';
 import { CHILL, SHATTERLANCE_CHILL, STAGGER, addThreat, aggro, banner, bits, brewFx, chillBoss, dots, fx, fxText, healHero, hitstop, hurtMob, say, sfx, shake, shatterable, staggerBoss, stunned, taunt } from './entities.js';
 import { interruptCast, liftCurse } from './mobs.js';
@@ -101,9 +101,10 @@ export function autoTarget(h, noBomb) {
 
 export function heroTick(h, dt) {
   const st = h.st;
-  // Bramble Fizz and Lantern Zeal: every cooldown, the dodge's too, comes back sooner
+  // Bramble Fizz and Lantern Zeal: every cooldown (the dodge's and the beat too) comes back sooner
   const cdRate = (st && st.zeal > 0 ? 1.15 : 1) * (brewFx(h.brew).cd || 1);
   for (const k in h.cd) if (h.cd[k] > 0) h.cd[k] = Math.max(0, h.cd[k] - dt * cdRate);
+  if (h.beat > 0) h.beat = Math.max(0, h.beat - dt * cdRate);
   h.gcd -= dt; h.iframe -= dt; h.flash -= dt; h.hurtT -= dt; h.lunge -= dt; h.sayT -= dt; h.moving -= dt;
   if (h.frenzyT > 0) h.frenzyT = Math.max(0, h.frenzyT - dt);
   if (h.nightstalkerT > 0) h.nightstalkerT = Math.max(0, h.nightstalkerT - dt);
@@ -279,14 +280,26 @@ export function mostHurt(h, except) {
 }
 
 /* ---------- abilities ---------- */
-export function useAbility(h, slot, aim) {
+/** a held button pressing again stays quiet when it can't fire (see press.js), so nothing repeats "No target" */
+let quietPress = false;
+const loud = (h) => h.isPlayer && !quietPress;
+/** Fire a button now, or return false. Players press through press.js, which waits out the beat, the cooldown,
+ *  a dodge or the shield, so a press is never thrown away; bots check ready() first. `quiet` hushes a failure. */
+export function useAbility(h, slot, aim, quiet = false) {
   const def = AB[abKey(h)][slot];
   if (!def || !h.alive || S.over || def.hold) return false;
   if (h.st.stun > 0 || h.st.caged || h.st.air > 0 || h.dodgeT > 0 || h.dash) return false;
-  if (h.cd[slot] > 0) { if (h.isPlayer) HOOKS.nope(slot); return false; }
+  const beat = !def.offBeat;
+  // the beat, or the shield is up: buttons on the beat wait (press.js keeps the press)
+  if (beat && (h.beat > 0 || h.blocking)) return false;
+  if (h.cd[slot] > 0) { if (h.isPlayer && !quiet) HOOKS.nope(slot); return false; }
   const mCost = abMana(h, slot);
-  if (mCost && h.mana < mCost) { if (h.isPlayer) { HOOKS.nope(slot); banner('Not enough mana', 'warn', 0.9); } return false; }
+  if (mCost && h.mana < mCost) { if (h.isPlayer && !quiet) { HOOKS.nope(slot); banner('Not enough mana', 'warn', 0.9); } return false; }
   if (h.cast) return false;
+  quietPress = quiet;
+  try { return fire(h, slot, aim, def, beat, mCost, quiet); } finally { quietPress = false; }
+}
+function fire(h, slot, aim, def, beat, mCost, quiet) {
   let ok = false;
   switch (def.key) {
     case 'slam': ok = abSlam(h); break;
@@ -299,7 +312,7 @@ export function useAbility(h, slot, aim) {
     case 'blizzard': ok = abBlizzard(h, aim); break;
     case 'nova': ok = abNova(h); break;
     case 'icicle': ok = abShot(h, aim, 'icicle'); break;
-    case 'comet': ok = abComet(h, aim); return ok;
+    case 'comet': ok = abComet(h, aim); if (ok) h.beat = BEAT.len; return ok;
     case 'viper': ok = abViper(h, aim); break;
     case 'ambush': ok = abAmbush(h, aim); break;
     case 'flurry': ok = abFlurry(h); break;
@@ -307,9 +320,10 @@ export function useAbility(h, slot, aim) {
   }
   if (ok) {
     h.cd[slot] = abCd(h, slot);
+    if (beat) h.beat = BEAT.len;
     if (mCost) h.mana -= mCost;
     if (h.isPlayer) HOOKS.fired(slot);
-  } else if (h.isPlayer) HOOKS.nope(slot);
+  } else if (h.isPlayer && !quiet) HOOKS.nope(slot);
   return ok;
 }
 
@@ -532,7 +546,7 @@ function abSunburst(h) {
 function abShot(h, aim, kind) {
   let t = aim && aim.kind === 'mob' && isFoe(aim) ? aim : null;
   if (!t) t = kind === 'smite' ? smiteTarget(h) : autoTarget(h);
-  if (!t || t.cage || dist(h, t) > 520) { if (h.isPlayer) fxText(h.x, h.y - 100, 'No target', '#DDF3FF', 16); return false; }
+  if (!t || t.cage || dist(h, t) > 520) { if (loud(h)) fxText(h.x, h.y - 100, 'No target', '#DDF3FF', 16); return false; }
   h.face = angTo(h, t); h.lunge = 0.12; h.lungeA = h.face;
   S.projs.push({ team: 'hero', kind, x: h.x + Math.cos(h.face) * 18, y: h.y + Math.sin(h.face) * 8, z: 56, sp: kind === 'smite' ? 'orb_holy' : 'bolt_frost', src: h, tgt: t, speed: kind === 'smite' ? 900 : 1100, life: 1.5, big: true });
   sfx(kind === 'smite' ? 'smite' : 'icicle');
@@ -569,7 +583,7 @@ function abBlizzard(h, aim) {
   let p = null;
   if (aim && aim.x !== undefined && !aim.kind) p = clampRange(h, aim.x, aim.y, 520);
   else { const c = bestCluster(h, 120, 560); if (c) p = { x: c.x, y: c.y }; else { const t = autoTarget(h); if (t) p = { x: t.x, y: t.y }; } }
-  if (!p) { if (h.isPlayer) fxText(h.x, h.y - 100, 'Nothing to freeze', '#DDF3FF', 16); return false; }
+  if (!p) { if (loud(h)) fxText(h.x, h.y - 100, 'Nothing to freeze', '#DDF3FF', 16); return false; }
   p = clampRange(h, p.x, p.y, 520);
   const chestMul = h.bonuses.has('rb_chest') ? 1.25 : 1;
   const rb3Mul = h.bonuses.has('rimebone3') ? 1.3 : 1;
@@ -605,7 +619,7 @@ function abNova(h) {
 function abComet(h, aim) {
   let t = aim && aim.kind === 'mob' && isFoe(aim) && !aim.M.thing ? aim : null;
   if (!t) t = autoTarget(h, true);
-  if (!t || dist(h, t) > 540) { if (h.isPlayer) { fxText(h.x, h.y - 100, 'No target', '#DDF3FF', 16); HOOKS.nope('a3'); } return false; }
+  if (!t || dist(h, t) > 540) { if (loud(h)) { fxText(h.x, h.y - 100, 'No target', '#DDF3FF', 16); HOOKS.nope('a3'); } return false; }
   h.cast = { key: 'comet', t: 0, dur: AB.dps.a3.cast * (h.traits.has('quickfrost') ? 0.5 : 1), target: t };
   sfx('castup');
   return true;
@@ -647,7 +661,7 @@ function rogueMeleeTarget(h, aim, maxRange) {
 /* Viper Blades (a1): fast twin-dagger slash on a single foe that applies Viper Venom */
 function abViper(h, aim) {
   const t = rogueMeleeTarget(h, aim, 78);
-  if (!t) { if (h.isPlayer) fxText(h.x, h.y - 100, 'Too far', '#7CF06A', 16); return false; }
+  if (!t) { if (loud(h)) fxText(h.x, h.y - 100, 'Too far', '#7CF06A', 16); return false; }
   h.face = angTo(h, t); h.lunge = 0.18; h.lungeA = h.face; h.swingT = 0.2;
   const base = 48;
   const dmg = hurtMob(t, base, h, { crit: 0.22, col: '#7CF06A' });
@@ -666,7 +680,7 @@ function abViper(h, aim) {
 /* Shadowstrike (a2): single-target execution thrust; guaranteed crit + bonus damage on poisoned targets */
 function abAmbush(h, aim) {
   const t = rogueMeleeTarget(h, aim, 84);
-  if (!t) { if (h.isPlayer) fxText(h.x, h.y - 100, 'Too far', '#FF6B6B', 16); return false; }
+  if (!t) { if (loud(h)) fxText(h.x, h.y - 100, 'Too far', '#FF6B6B', 16); return false; }
   const bleeding = !!(t.bleed && t.bleed.left > 0);
   h.face = angTo(h, t); h.lunge = 0.22; h.lungeA = h.face; h.swingT = 0.24;
   const helmMul = (h.bonuses.has('sv_helm') ? 1.25 : 1) * gearMul(h, 'ambush');
@@ -711,7 +725,7 @@ function abFlurry(h) {
 function abShadowstep(h, aim) {
   let t = aim && aim.kind === 'mob' && isFoe(aim) ? aim : autoTarget(h);
   if (!t || dist(h, t) > 380) t = nearestFoe(h, 380, false);
-  if (!t || dist(h, t) > 380) { if (h.isPlayer) fxText(h.x, h.y - 100, 'No target', '#B79CFF', 16); return false; }
+  if (!t || dist(h, t) > 380) { if (loud(h)) fxText(h.x, h.y - 100, 'No target', '#B79CFF', 16); return false; }
   const ox = h.x, oy = h.y;
   const backA = (t.face || 0) + Math.PI;
   const reach = t.r + h.r + 8;
@@ -747,7 +761,7 @@ export function doDodge(h, dx, dy) {
   let v = norm(dx, dy);
   if (!dx && !dy) v = { x: Math.cos(h.face), y: Math.sin(h.face) };
   // Moonpetal Tonic: every dodge heals (Bramble Fizz brings it back sooner, see heroTick)
-  h.dodgeT = 0.3; h.iframe = 0.38; h.dodgeX = v.x; h.dodgeY = v.y; h.cd.dodge = 1.6; h.cast = null; h.blocking = false;
+  h.dodgeT = 0.3; h.iframe = 0.38; h.dodgeX = v.x; h.dodgeY = v.y; h.cd.dodge = 1.6; h.cast = null; h.blocking = false; h.next = null;
   if (Math.abs(v.x) > 0.2) h.flip = v.x < 0;
   dots(h.x, h.y, '#C9B79A', 6, 90, { size: 6 });
   const heal = brewFx(h.brew).dodgeHeal;
