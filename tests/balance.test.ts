@@ -6,8 +6,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { simRun, type SimResult } from '../src/sim/run';
-import { plainLoadout } from '../src/meta/gear';
+import { newHero, plainLoadout } from '../src/meta/gear';
 import type { Rar, RoleId } from '../src/content/types';
+import { SPECS } from '../src/content/talents';
+import { xpForLevel } from '../src/content/xp';
+import { freshProfile } from '../src/meta/profile';
+import { addPoint, pickSpec, talentLoadout, type TalentLoadout } from '../src/meta/talents';
 
 const gear = (rar: Rar) => Object.fromEntries((['tank', 'healer', 'dps'] as RoleId[]).map((r) => [r, plainLoadout(r, rar)]));
 
@@ -115,10 +119,10 @@ test('balance: every trait, set bonus and unique effect runs in a real clear', (
 });
 
 test('balance: heroic in full Epic clears in about four minutes without wiping', () => {
-  // about one heroic run in thirty still wipes (a bot tank missing its block on the Shovel Smash with the healer
-  // out of mana); these three seeds don't. (The beat changed which seeds those are; over 60 runs it wiped less
-  // often, not more.)
-  for (const [role, seed] of [['tank', 717], ['healer', 808], ['dps', 910]] as [RoleId, number][]) {
+  // about one heroic run in four still wipes once in full plain Epic (a bot tank missing its block on the Shovel
+  // Smash with the healer out of mana); these three seeds don't. Which seeds those are moves whenever the fight's
+  // rolls change (the beat did, and talents and Fire did: 23 of 90 wiped once after, 26 of 90 before).
+  for (const [role, seed] of [['tank', 902], ['healer', 808], ['dps', 910]] as [RoleId, number][]) {
     const r = simRun({ role, seed, heroic: true, loadouts: gear(3) });
     assert.equal(r.over, 'victory', `${role} seed ${seed} did not clear`);
     assert.equal(r.wipes, 0, `${role} seed ${seed} wiped`);
@@ -171,4 +175,41 @@ test('balance: rogue melts single-target bosses faster than mage and tank, clear
   const kitRun = simRun({ role: 'dps', seed: 606, loadouts: rogueKit });
   assert.equal(kitRun.over, 'victory');
   assert.equal(kitRun.wipes, 0);
+});
+
+/** a hero's talents at a level, as a run gets them: its spec, and every point spent down the tree in order
+ *  (the first of each pair) */
+function tree(spec: string, level = 30): TalentLoadout {
+  const s = SPECS[spec], p = freshProfile(1);
+  const h = newHero(p, { name: 'Sim Hero', race: s.cls === 'warrior' ? 'dwarf' : s.cls === 'mage' ? 'elf' : 'human', cls: s.cls as 'mage' })!;
+  p.xp = xpForLevel(level);
+  pickSpec(h, spec);
+  for (let pass = 0; pass < 6; pass++) for (const t of s.talents) {
+    if (t.choice && s.talents.find((x) => x.choice === t.choice) !== t) continue;
+    while (addPoint(p, h, spec, t.id));
+  }
+  return talentLoadout(p, h);
+}
+/** a Common party with one seat's class and talents, and its clear time on two runs */
+const SEAT: Record<string, RoleId> = { warrior: 'tank', cleric: 'healer', mage: 'dps', rogue: 'dps' };
+function talentClear(cls: string, tal: Partial<TalentLoadout> | null): number {
+  const L: Record<string, object> = gear(0), seat = SEAT[cls];
+  L[seat] = { ...plainLoadout(seat, 0), cls, ...(tal || {}) };
+  const runs = [['dps', 7921], ['tank', 15842]].map(([role, seed]) => simRun({ role: role as RoleId, seed: seed as number, loadouts: L }));
+  for (const r of runs) assert.equal(r.over, 'victory', `${cls} ${tal?.spec || 'no spec'} did not clear`);
+  return runs.reduce((a, r) => a + r.clear!, 0) / runs.length;
+}
+
+test('balance: a full talent tree (level 30) clears Common 7 to 28% faster for a damage spec; Fire and Frost, and rogue and mage, stay within 8% of each other', () => {
+  const mage = talentClear('mage', null), rogue = talentClear('rogue', null);
+  const near = (a: number, b: number, what: string): void => assert.ok(Math.abs(a / b - 1) < 0.08, `${what}: ${a.toFixed(0)}s against ${b.toFixed(0)}s`);
+  near(rogue, mage, 'a rogue and a mage, no talents');
+  near(talentClear('mage', { spec: 'fire', tal: [], ts: {} }), mage, 'Fire with no points, and Frost');
+  const full: Record<string, number> = {};
+  for (const [spec, cls, base] of [['frost', 'mage', mage], ['fire', 'mage', mage], ['venom', 'rogue', rogue], ['blades', 'rogue', rogue], ['axe', 'warrior', mage]] as [string, string, number][]) {
+    full[spec] = talentClear(cls, tree(spec));
+    const k = full[spec] / base;
+    assert.ok(k > 0.72 && k < 0.93, `${spec}'s full tree: ${full[spec].toFixed(0)}s against ${base.toFixed(0)}s (${Math.round((1 - k) * 100)}% faster)`);
+  }
+  near(full.fire, full.frost, 'Fire and Frost, full trees');
 });

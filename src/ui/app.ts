@@ -14,7 +14,8 @@ import type { RunLoot } from '../meta/loot';
 import { activeHero, roleOf } from '../meta/profile';
 import type { RoleId } from '../content/types';
 import type { RaceId } from '../content/folk';
-import { $, GLYPH } from './dom';
+import { $, fmtN, GLYPH } from './dom';
+import { levelOf } from '../content/xp';
 import { MUSIC } from './music';
 import { SFX } from './sound';
 import { Toasts } from './toasts';
@@ -97,7 +98,7 @@ export class App {
     window.addEventListener('keydown', kick, { capture: true });
     document.addEventListener('visibilitychange', () => { const c = SFX.ctx; if (c) void (document.hidden ? c.suspend() : c.resume()).catch(() => {}); });
     this.store.onChange((why) => {
-      if (why === 'remote') { SFX.on = this.p.settings.sound; this.refresh(); }
+      if (why === 'remote') { SFX.on = this.p.settings.sound; this.refresh(); this.welcomeBack(); }
       else this.hearth.syncState();
     });
     if (carry.scene === 'brew' && activeHero(this.p)) this.showBrew();
@@ -105,7 +106,18 @@ export class App {
     const sheet = normSpec(carry.sheet);
     if (sheet && this.p.roster.length) this.sheets.open(sheet);
     $('loading').hidden = true;
+    this.welcomeBack();
     void this.store.connect();
+  }
+
+  /** a save from before levels came: once, what its past runs paid in XP and the level they made */
+  private welcomeBack(): void {
+    const p = this.p, xp = p.counters['xp.retro'] || 0;
+    if (xp <= 0 || p.counters['xp.retro.told'] || !p.roster.length) return;
+    p.counters['xp.retro.told'] = 1;
+    this.toasts.text(`Level ${levelOf(p.xp)}`, `Your past runs paid ${fmtN(xp)} XP. Spend your talent points in your hero’s Talents.`, 'Levels are here');
+    SFX.play('levelup');
+    this.store.save();
   }
 
   private onResize(): void {

@@ -9,6 +9,7 @@ import { ACHIEVEMENTS, ACHIEVEMENT_LIST, COLLECTIBLES, DUNGEONS, TITLES, heroicV
 import { LOOKS } from '../content/house';
 import { RACES, type RaceId } from '../content/folk';
 import { GARDEN_PLACE } from '../content/vale/garden';
+import { LEVEL_PLACE } from '../content/levels';
 import { autoPlace, lookOpen, spotById, spotOf } from './hearth';
 import { logDone, logProgress } from './logs';
 import { count, type Hero, type Profile } from './profile';
@@ -101,6 +102,8 @@ export class Achiever {
 /** The achievements of home: the garden and the cauldron are one place, so brewing and harvesting both count for
  *  the garden's achievements the moment they're earned. */
 export const homeAchiever = (p: Profile, role: RoleId): Achiever => new Achiever(p, { dungeon: GARDEN_PLACE.id, role, practice: false, testGear: false });
+/** The achievements of your level: checked whenever XP comes in (meta/xp.ts keeps your best level in a counter). */
+export const levelAchiever = (p: Profile, role: RoleId): Achiever => new Achiever(p, { dungeon: LEVEL_PLACE.id, role, practice: false, testGear: false });
 
 /** Progress toward a counter achievement, a collection log or a meta achievement, for the log. */
 export function progress(p: Profile, a: AchievementDef): { have: number; need: number } | null {

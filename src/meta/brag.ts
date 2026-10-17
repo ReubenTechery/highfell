@@ -1,7 +1,7 @@
 /**
  * Brags: what a run gave that's worth showing off, for the Share card. A run can have several, best first:
- * the pet, a whole collection log, a finished set, a new unique (the rarest first), a new best time, then an
- * achievement. A pet or a mount counts every time it drops (the chest gives each its own moment); anything
+ * the pet, a whole collection log, a finished set, a new unique (the rarest first), a Grand Tome, a new best
+ * time, then an achievement. A pet or a mount counts every time it drops (the chest gives each its own moment); anything
  * else in the log counts when it's new. Nothing is saved: it reads the run's loot, the achievements it
  * unlocked and the collection.
  */
@@ -10,9 +10,9 @@ import type { RunLoot } from './loot';
 import { standsOf } from './logs';
 import type { Profile } from './profile';
 
-export type BragKind = 'pet' | 'log' | 'set' | 'unique' | 'pb' | 'ach';
+export type BragKind = 'pet' | 'log' | 'set' | 'unique' | 'tome' | 'pb' | 'ach';
 /** best first */
-export const BRAG_ORDER: BragKind[] = ['pet', 'log', 'set', 'unique', 'pb', 'ach'];
+export const BRAG_ORDER: BragKind[] = ['pet', 'log', 'set', 'unique', 'tome', 'pb', 'ach'];
 
 export interface Brag {
   kind: BragKind;
@@ -27,9 +27,11 @@ export interface Brag {
   boss?: string;
   /** a set finished in gilding kits, Heroic's log */
   gilded?: boolean;
-  /** a best time, in seconds, and the clears so far */
+  /** a best time, in seconds, and the clears so far (a Grand Tome: the clear it came on) */
   time?: number;
   clears?: number;
+  /** a Grand Tome's XP */
+  xp?: number;
 }
 
 /** What one run had to show off, best first. `unlocked` is the achievements it earned. */
@@ -49,6 +51,8 @@ export function bragsOf(p: Profile, loot: RunLoot, unlocked: string[]): Brag[] {
     const last = table.filter((d) => d.isNew && s.pieces.includes(d.id)).pop();
     if (last && s.pieces.every(has)) out.push({ kind: 'set', dungeon: where, id: s.set.id, gilded: !!DUNGEONS[log]?.heroicOf, kc: last.kc, boss: last.boss });
   }
+  // a Grand Tome: 1 in 500, the rarest XP there is
+  for (const d of loot.drops) if (d.source === 'xp' && d.id === 'xp.grand') out.push({ kind: 'tome', dungeon: where, id: d.id, rate: d.rate, xp: d.xp, clears: loot.clears });
   if (loot.newPb) out.push({ kind: 'pb', dungeon: where, id: '', time: loot.time, clears: loot.clears });
   for (const id of unlocked) if (ACHIEVEMENTS[id]) out.push(achBrag(id, where));
   return out.sort((a, b) => BRAG_ORDER.indexOf(a.kind) - BRAG_ORDER.indexOf(b.kind) || (a.rate ?? 1) - (b.rate ?? 1));

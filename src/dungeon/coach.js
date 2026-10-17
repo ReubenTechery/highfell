@@ -9,6 +9,8 @@ import { S } from './state.js';
 import { abMana, bestCluster, heroBy, isFoe } from './heroes.js';
 import { MAX_POINTS, burnable, crushes, icicleShatter } from './buttons.js';
 import { inHaz } from './bots.js';
+import { burnOf } from './fire.js';
+import { BURN } from '../content/talents';
 
 /* ready as far as its own cooldown and mana go (the beat doesn't count: a press waits for it, so the glow holds) */
 const ready = (h, slot) => (slot === 'dodge' ? h.cd.dodge <= 0 : h.cd[slot] <= 0 && h.mana >= abMana(h, slot));
@@ -72,6 +74,7 @@ function tankMoment(h) {
 function mageMoment(h) {
   const foes = foesInFight();
   const t = h.picked || h.target;
+  if (h.spec === 'fire') return fireMoment(h, foes, t);
   return first(h, [
     ['a2', 'KICK!', () => kickIn(h, 150)],
     ['a2', 'FREEZE!', () => foes.filter((m) => !m.isBoss && dist(m, h) < 150 + m.r).length >= 2],
@@ -80,6 +83,17 @@ function mageMoment(h) {
     ['a4', 'SHATTER!', () => foes.some((m) => dist(m, h) < 500 && icicleShatter(h, m).k > 1)],
     ['a1', 'STORM!', () => { const c = bestCluster(h, 120, 520); return !!c && c.score >= 3; }],
     ['a3', 'COMET!', () => isFoe(t) && !t.cage && (t.st.freeze > 0.6 || t.isBoss || !!t.M.big) && dist(t, h) < 520],
+  ]);
+}
+
+/* Fire: kick, blast what's on top of you, Flare when primed, storm a pack, Combust what's burning */
+function fireMoment(h, foes, t) {
+  return first(h, [
+    ['a2', 'KICK!', () => kickIn(h, 150)],
+    ['a2', 'BURST!', () => foes.filter((m) => !m.isBoss && dist(m, h) < 150 + m.r).length >= 2],
+    ['a4', 'FLARE!', () => foes.some((m) => dist(m, h) < 500 && icicleShatter(h, m).k > 1)],
+    ['a1', 'STORM!', () => { const c = bestCluster(h, 120, 520); return !!c && c.score >= 3; }],
+    ['a3', 'COMBUST!', () => isFoe(t) && !t.cage && (burnOf(t) >= BURN.combust || t.exposed > 0.6) && dist(t, h) < 520],
   ]);
 }
 

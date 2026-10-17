@@ -27,7 +27,7 @@ function tankIn(rar: Rar, p: Profile = openProfile()): { p: Profile; h: Hero } {
   for (const s of SLOT_IDS) h.regular[s] = { rar };
   return { p, h };
 }
-/** the same tank, holding the Barrow's boss weapon (Power 26) */
+/** the same tank, holding the Barrow's boss weapon (Power 30) */
 function withBarrowWeapon(p: Profile, h: Hero): void {
   p.collection['gravekeeper.tank'] = { n: 1, kc: 50, at: 0 };
   assert.ok(equip(p, h, 'weapon', 'gravekeeper.tank'));
@@ -51,12 +51,12 @@ test('power: the game shows Power as a whole number, the weighted item level rou
   assert.equal(wholeIlvl(21.6), 22);
   const fresh = tankIn(0);
   assert.equal(wholeIlvl(loadoutFor(fresh.p, fresh.h).score), 10, 'a fresh hero is Power 10');
-  // Rare everywhere is 18; a Barrow boss weapon on top is 26 × 0.4 + 18 × 0.6 = 21.2, shown as 21
+  // Rare everywhere is 14; a Barrow boss weapon on top is 30 × 0.4 + 14 × 0.6 = 20.4, shown as 20
   const rare = tankIn(2);
-  assert.equal(wholeIlvl(loadoutFor(rare.p, rare.h).score), 18);
+  assert.equal(wholeIlvl(loadoutFor(rare.p, rare.h).score), 14);
   withBarrowWeapon(rare.p, rare.h);
-  assert.equal(loadoutFor(rare.p, rare.h).score.toFixed(1), '21.2');
-  assert.equal(wholeIlvl(loadoutFor(rare.p, rare.h).score), 21);
+  assert.equal(loadoutFor(rare.p, rare.h).score.toFixed(1), '20.4');
+  assert.equal(wholeIlvl(loadoutFor(rare.p, rare.h).score), 20);
 });
 
 test('power: a hero short of a dungeon’s recommended Power is warned, by how much; never on the Barrow in fresh gear', () => {
@@ -66,12 +66,12 @@ test('power: a hero short of a dungeon’s recommended Power is warned, by how m
   const fresh = tankIn(0);
   assert.equal(underPowered(fresh.p, fresh.h, barrow), null, 'no warning for the Barrow on a fresh hero');
   assert.deepEqual(underPowered(fresh.p, fresh.h, hollow), { have: 10, want: 22, short: 12, likely: true });
-  // Rare is a whole rarity short: the bots in Rare wipe there in most runs
+  // Rare is the whole ladder short: the bots in Rare wipe there in most runs
   const rare = tankIn(2);
-  assert.deepEqual(underPowered(rare.p, rare.h, hollow), { have: 18, want: 22, short: 4, likely: true });
-  // a Barrow weapon gets it to 21: still short, but a wipe is no longer very likely
+  assert.deepEqual(underPowered(rare.p, rare.h, hollow), { have: 14, want: 22, short: 8, likely: true });
+  // a Barrow weapon gets it to 20: still short, but a wipe is no longer very likely
   withBarrowWeapon(rare.p, rare.h);
-  assert.deepEqual(underPowered(rare.p, rare.h, hollow), { have: 21, want: 22, short: 1, likely: false });
+  assert.deepEqual(underPowered(rare.p, rare.h, hollow), { have: 20, want: 22, short: 2, likely: false });
   // plain Epic everywhere meets it
   const epic = tankIn(3);
   assert.equal(underPowered(epic.p, epic.h, hollow), null);
@@ -128,7 +128,7 @@ test('dungeons sheet: no warning on the Barrow for a fresh hero, a gentler one w
   const t = sheet(rare.p, 'thimblebriar');
   t.tap('go');
   assert.equal(t.runs.length, 0);
-  assert.match(t.foot(), /You’re Power 21\. Thimblebriar wants Power 22\. You might be wiped\./);
+  assert.match(t.foot(), /You’re Power 20\. Thimblebriar wants Power 22\. You might be wiped\./);
   // moving to another page puts the warning away
   t.tap('dglist');
   t.tap('dgback');
@@ -152,5 +152,5 @@ test('dungeons sheet: All dungeons is grouped by season, and the door wears a Se
     assert.doesNotMatch(seen(door.head + door.body + door.foot), /ilvl|item level/i, dungeon);
   }
   const loot = dungeonSheet(p, { dungeon: 'barrow', page: 'loot', heroic: false }, false).body;
-  assert.match(loot, /Drops up to <b>Power 26<\/b>/);
+  assert.match(loot, /Drops up to <b>Power 30<\/b>/);
 });

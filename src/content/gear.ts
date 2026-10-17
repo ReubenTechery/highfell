@@ -1,6 +1,8 @@
 /**
  * Gear. Power climbs Common to Epic and stops there. The weapon carries 40% of it, so a new weapon
- * is the upgrade you feel. After Epic, gear goes sideways: weapon traits, set bonuses and looks.
+ * is the upgrade you feel. The regular ladder is a short climb (Common 10 to Rare 14 in eight clears); the
+ * long chase is where the power is: a set piece is 12 more than Rare, a boss weapon 16 (the owner's call, 17
+ * Oct: forty-odd runs for a set has to feel like it). After that, gear goes sideways: traits, set bonuses, looks.
  */
 import type { GearKey, RarityDef, RoleId, RoleSlotDef, SlotDef, SlotId, TraitDef, ItemDef, Rar } from './types';
 import { CLASSES, type ClassId } from './folk';
@@ -10,8 +12,8 @@ export const gearKey = (h: RoleId | GearKey | { role?: RoleId; cls?: string }): 
 
 export const RARITY: RarityDef[] = [
   { key: 'common', name: 'Common', score: 10, color: '#8E8A84', ink: '#5E5A55' },
-  { key: 'uncommon', name: 'Uncommon', score: 14, color: '#4E9A4A', ink: '#2E6B2A' },
-  { key: 'rare', name: 'Rare', score: 18, color: '#3D7FC1', ink: '#2F5F99' },
+  { key: 'uncommon', name: 'Uncommon', score: 12, color: '#4E9A4A', ink: '#2E6B2A' },
+  { key: 'rare', name: 'Rare', score: 14, color: '#3D7FC1', ink: '#2F5F99' },
   { key: 'epic', name: 'Epic', score: 22, color: '#8A63D2', ink: '#5E3FA3' },
 ];
 export const EPIC: Rar = 3;
@@ -101,11 +103,12 @@ export function regularItems(): ItemDef[] {
   return out;
 }
 
-/** Weighted item score, 10 (all Common) to 22 (all Epic). */
+/** Weighted item score: 10 all Common, 14 all Rare, 22 all plain Epic (only bots and test gear wear that). */
 export function weightedScore(scores: Record<SlotId, number>): number {
   return SLOTS.reduce((a, s) => a + s.weight * scores[s.id], 0);
 }
-/** Damage and healing multiplier: 1.00 at all Common (10), 1.48 at Rare (18), 1.72 at plain Epic (22), and 1.96 at full Dungeon BiS (26). */
+/** Damage and healing multiplier: 1.00 at all Common (10), 1.24 at Rare (14), 1.72 at plain Epic (22), and 2.06 in
+ *  the Barrow's full kit (27.6: three set pieces at 26 and its boss weapon at 30). */
 export const powerFromScore = (w: number): number => 1 + (0.72 * (w - 10)) / 12;
 /** Health grows a little slower than power. */
 export const hpMultiplier = (power: number): number => 1 + (power - 1) * 0.5;

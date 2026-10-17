@@ -116,6 +116,16 @@ export const LAYERS: Record<string, [string, number, number?, number?][]> = {
   healcrit: [['heal', 0.7, 1.35], ['coin', 0.3, 1.2, 0.03]],
   tap: [['hit', 0.45, 1.5]],
   exposed: [['flare', 0.55, 1.3]],
+  // Fire's buttons: a flame's whoosh every beat, a crackling hit, a Combust's boom, burning ground, the ember blast
+  firebolt: [['fire', 0.3, 2.0], ['whoosh', 0.28, 1.5]],
+  firehit: [['hit', 0.55, 0.85], ['fire', 0.16, 2.4]],
+  combust: [['erupt', 0.55, 1.35], ['flare', 0.45, 1.2, 0.03]],
+  firestorm: [['fire', 0.55, 1.0]],
+  emberburst: [['erupt', 0.45, 1.6], ['fire', 0.3, 1.7]],
+  // a level: a gold flare and a harp's sparkle; a talent point: a click and two bells; a capstone: the flare
+  levelup: [['flare', 0.8, 1.0], ['revive', 0.6, 1.15, 0.1]],
+  talent: [['place', 0.55, 1.25], ['lift', 0.4, 1.35, 0.03]],
+  capstone: [['flare', 0.75, 1.05], ['lift', 0.5, 1.0, 0.08]],
 };
 
 export const SFX = new Synth();
@@ -236,6 +246,16 @@ export const SOUNDS: Record<string, Play> = {
   splash: (t, v) => { N(t, 0.5, 0.3 * v, 1800, 'lowpass', 0.8, 400); for (let i = 0; i < 4; i++) T(t, 900 + i * 230, 0.08, 'sine', 0.05 * v, 500, 0.05 + i * 0.05); },
   xp: (t, v) => { T(t, 1320, 0.09, 'sine', 0.07 * v, 1760); T(t, 1976, 0.12, 'sine', 0.05 * v, null, 0.05); },
   rankup: (t, v) => { [523, 659, 784, 1046, 1318].forEach((f, i) => T(t, f, 0.45, 'triangle', 0.12 * v, null, i * 0.07)); N(t, 0.7, 0.07 * v, 7000, 'highpass', 0.7, null, 0.25); },
+  // your level (the recorded layers above once they're decoded): a climbing bell run over a warm swell
+  levelup: (t, v) => { [392, 523, 659, 784, 1046, 1318, 1568].forEach((f, i) => T(t, f, 0.55, 'triangle', 0.12 * v, null, i * 0.06)); T(t, 196, 0.6, 'sine', 0.2 * v, 392); N(t, 0.9, 0.08 * v, 7000, 'highpass', 0.7, null, 0.3); },
+  talent: (t, v) => { T(t, 784, 0.12, 'triangle', 0.1 * v); T(t, 1175, 0.2, 'triangle', 0.09 * v, null, 0.06); N(t, 0.15, 0.05 * v, 6000, 'highpass', 0.7, null, 0.05); },
+  capstone: (t, v) => { [523, 784, 1046, 1568].forEach((f, i) => T(t, f, 0.5, 'triangle', 0.12 * v, null, i * 0.06)); N(t, 0.6, 0.08 * v, 7000, 'highpass', 0.7, null, 0.2); },
+  // Fire, synthesised until its layers are decoded
+  firebolt: (t, v) => { N(t, 0.22, 0.25 * v, 600, 'bandpass', 0.9, 2400); T(t, 180, 0.12, 'sawtooth', 0.04 * v, 90); },
+  firehit: (t, v) => { N(t, 0.12, 0.3 * v, 1200, 'lowpass', 0.8); for (let i = 0; i < 3; i++) N(t, 0.03, 0.12 * v, 3500, 'bandpass', 3, null, 0.03 + i * 0.04); },
+  combust: (t, v) => { T(t, 70, 0.6, 'sine', 0.55 * v, 30); N(t, 0.6, 0.45 * v, 1600, 'lowpass', 0.7, 200); for (let i = 0; i < 5; i++) N(t, 0.03, 0.14 * v, 3800, 'bandpass', 3, null, 0.08 + i * 0.05); },
+  firestorm: (t, v) => { N(t, 1.2, 0.25 * v, 700, 'bandpass', 0.6, 1800); for (let i = 0; i < 6; i++) N(t, 0.03, 0.1 * v, 3600, 'bandpass', 3, null, 0.1 + i * 0.12); },
+  emberburst: (t, v) => { N(t, 0.35, 0.4 * v, 900, 'lowpass', 0.8, 2600); T(t, 120, 0.3, 'sine', 0.3 * v, 60); },
   // putting on a new piece: a clank of metal, then a bright climb
   equip: (t, v) => { T(t, 180, 0.14, 'square', 0.12 * v, 110); N(t, 0.12, 0.3 * v, 3200, 'bandpass', 2.2); [784, 988, 1175, 1568].forEach((f, i) => T(t, f, 0.32, 'triangle', 0.1 * v, null, 0.08 + i * 0.06)); N(t, 0.5, 0.06 * v, 7000, 'highpass', 0.7, null, 0.2); },
   // the Vale: close-up gathering and brewing. Small, crisp and soft: these are the ASMR ones.

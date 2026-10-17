@@ -9,6 +9,7 @@ import VALE_ICONS from '../../art/vale_icons.json';
 import WARDROBE from '../../art/wardrobe.json';
 import { COLLECTIBLES, ITEMS, KITS, itemOf } from '../content';
 import { RARITY, ROLE_SLOTS, gearKey } from '../content/gear';
+import { xpThing } from '../content/xp';
 import { FOUNDERS, defaultSex } from '../content/folk';
 import type { Rar, RoleId, SlotId } from '../content/types';
 import { gildedOn, worn } from '../meta/gear';
@@ -30,6 +31,8 @@ export function iconOf(id: string): string {
   if (KITS[id]) return tile(KITS[id].icon);
   const c = COLLECTIBLES[id];
   if (c) return tile(c.icon);
+  const x = xpThing(id);
+  if (x) return tile(x.icon);
   return tile('mend');
 }
 /** How an item's rarity reads: regular gear by its rarity, set pieces are Epic, dungeon weapons are Unique,
@@ -49,9 +52,13 @@ export function colourOf(id: string): string {
   if (ITEMS[id] || KITS[id]) return rarLook(id).color;
   const c = COLLECTIBLES[id];
   if (c) return c.kind === 'pet' ? '#9BE15D' : c.kind === 'mount' ? '#8FD6FF' : '#C9A27A';
+  // XP: violet, the Grand Tome gold
+  if (xpThing(id)) return id === 'xp.grand' ? '#F2C230' : XP_VIOLET;
   return '#8E8A84';
 }
-export const nameOf = (id: string): string => ITEMS[id]?.name || KITS[id]?.name || COLLECTIBLES[id]?.name || id;
+/** the colour of XP everywhere: the numbers over a kill, the bar, the pages */
+export const XP_VIOLET = '#B98CFF';
+export const nameOf = (id: string): string => ITEMS[id]?.name || KITS[id]?.name || COLLECTIBLES[id]?.name || xpThing(id)?.name || id;
 
 /** A set on its armour stand (art/wardrobe.json): the pieces `on` says you have are put on, the rest are
  *  ghosts, and `drop` is the piece that has just arrived. The weapon leans behind the stand; the chest,

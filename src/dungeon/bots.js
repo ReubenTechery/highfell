@@ -5,6 +5,10 @@ import { S, emit } from './state.js';
 import { fx, killMob } from './entities.js';
 import { bestCluster, bombInReach, doDodge, heroBy, isFoe, useAbility } from './heroes.js';
 import { MAX_POINTS, POINT, burnable, mend } from './buttons.js';
+import { ROGUE_CRIT } from './entities.js';
+import { burnOf } from './fire.js';
+import { miracleFor } from './specs.js';
+import { BURN } from '../content/talents';
 import { ready } from './press.js';
 import { chainEnds, cutChain, liftCurse, mashCage } from './mobs.js';
 import { canStand, freeSpot, navPoint } from './world.js';
@@ -382,6 +386,8 @@ export function healerActions(h) {
   const tank = heroBy('tank');
   const mana = h.mana;
   const canMend = ready(h, 'mend');
+  // Miracle: a mate is down and Sunburst can bring them back
+  if (ready(h, 'a3') && mana >= 22 && miracleFor(h, 470)) { useAbility(h, 'a3'); return; }
   // a mate about to drop: Ward them, or Mend them
   if (pct(low[0]) < 0.36) {
     if (ready(h, 'a2') && low[0].absorb <= 0 && mana >= 10 && useAbility(h, 'a2', low[0])) return;
@@ -410,13 +416,14 @@ function pullsBoss(h, t, amt) {
 }
 /** about what a Comet does to this foe now, before a crit */
 function cometFor(h, t) {
-  const k = t.st.freeze > 0 ? 2 : t.st.chill > 0 || t.exposed > 0 ? 1.5 : 1;
-  return 330 * h.power * k * (t.exposed > 0 ? 1.35 : 1);
+  const fire = h.spec === 'fire' && burnOf(t) >= BURN.combust;
+  const k = t.st.freeze > 0 || (fire && !t.isBoss) ? 2 : t.st.chill > 0 || t.exposed > 0 || fire ? 1.5 : 1;
+  return AB.dps.a3.hit * h.power * k * (t.exposed > 0 ? 1.35 : 1);
 }
 /** about what a Shadowstrike would do to this foe now (the bots spend three points on a kill) */
 function strikeFor(h, t) {
   const bleeding = t.bleed && t.bleed.left > 0;
-  return POINT * (burnable(h, t) ? MAX_POINTS : h.points) * h.power * (bleeding ? 1.35 * 2 : 1);
+  return POINT * (burnable(h, t) ? MAX_POINTS : h.points) * h.power * (bleeding ? 1.35 * ROGUE_CRIT : 1);
 }
 export function rogueActions(h) {
   const tank = heroBy('tank');
@@ -479,8 +486,8 @@ export function dpsActions(h) {
   if (h.cast || h.st.stun > 0 || h.st.caged) return;
   const close = foes.filter((m) => !m.isBoss && dist(m, h) <= 140 + m.r);
   const caster = foes.find((m) => kickable(h, m) && dist(m, h) <= NOVA_REACH + m.r);
-  // Chill the boss when he is in reach, so Icicle and Comet shatter him
-  const cb = chillTarget(h);
+  // Chill the boss when he is in reach, so Icicle and Comet shatter him (Ember burst doesn't Chill: Fire skips it)
+  const cb = h.spec === 'fire' ? null : chillTarget(h);
   if (cb && ready(h, 'a2') && dist(cb, h) <= NOVA_REACH + cb.r - 4) { useAbility(h, 'a2'); return; }
   // Rime burst: stop a cast, or freeze what's on you
   if (ready(h, 'a2') && (close.length >= 2 || caster || close.some((m) => m.target === h))) { useAbility(h, 'a2'); return; }
@@ -489,7 +496,7 @@ export function dpsActions(h) {
     // a pack the tank holds, or the boss (on his own he's worth a storm too)
     if (c && (c.score >= 3 || (c.score >= 1.5 && S.boss)) && (tank && tank.alive ? foes.filter((m) => engagedByTank(m)).length >= 2 || !foes.some((m) => m.fightT < 1.0) : true)) { useAbility(h, 'a1', { x: c.x, y: c.y }); return; }
   }
-  if (ready(h, 'a3') && tgt && !tgt.cage && !tgt.M.wisp && h.stillT > 0.2 && (tgt.isBoss || tgt.M.big || tgt.st.freeze > 0.9 || tgt.st.chill > 0.9 || tgt.exposed > 0.9 || tgt.hp > 300) && !dangerAt(h, h.x, h.y, 1.3) && !pullsBoss(h, tgt, cometFor(h, tgt))) { useAbility(h, 'a3', tgt); return; }
+  if (ready(h, 'a3') && tgt && !tgt.cage && !tgt.M.wisp && h.stillT > 0.2 && (tgt.isBoss || tgt.M.big || tgt.st.freeze > 0.9 || tgt.st.chill > 0.9 || tgt.exposed > 0.9 || tgt.hp > 300 || burnOf(tgt) >= BURN.combust) && !dangerAt(h, h.x, h.y, 1.3) && !pullsBoss(h, tgt, cometFor(h, tgt))) { useAbility(h, 'a3', tgt); return; }
   // otherwise Icicle every beat: a red bomb in reach first, then something frozen, then the target (or the cage)
   if (ready(h, 'a4')) {
     const frozen = foes.filter((m) => m.st.freeze > 0.25 && dist(m, h) < 500).sort((a, b) => b.hp - a.hp)[0];

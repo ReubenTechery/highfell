@@ -10,6 +10,9 @@
 import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, ITEMS, KITS, heroicVersion } from '../content';
 import { TELL_SPRITES } from '../dungeon/walkout.js';
 import { KIT_RATE, gilded } from '../content/kits';
+import { TOME } from '../content/xp';
+import { levelProgress } from '../meta/xp';
+import { pointsAt, unspent } from '../meta/talents';
 import type { RaceId } from '../content/folk';
 import { BARROW } from '../content/barrow';
 import { RARITY, ROLE_SLOTS, gearId, gearKey, traitDef } from '../content/gear';
@@ -36,8 +39,8 @@ import type { RunOpts } from './run';
 
 export interface RevealExtra { unlocked: string[]; hero: string | null; role: RoleId; deaths: number; again: RunOpts | null; preview?: boolean; intro?: boolean }
 
-/** rarest last: regular gear, then table drops from most to least common */
-const order = (d: Drop): number => (d.source === 'regular' ? 0 : d.source === 'spare' ? 1 : 2 + (1 - (d.rate || 0)) * 1000);
+/** rarest last: regular gear, the pages, then table drops and tomes from most to least common */
+const order = (d: Drop): number => (d.source === 'regular' ? 0 : d.source === 'xp' && !d.rate ? 1 : 2 + (1 - (d.rate || 0)) * 1000);
 
 export class Reveal {
   private loot: RunLoot | null = null;
@@ -59,6 +62,8 @@ export class Reveal {
       home: () => { SFX.play('ui'); this.goHome(); },
       makeintro: () => { SFX.play('ui'); if (activeHero(this.app.p)) this.app.showHearth(); else this.app.showCreate(); },
       gear: () => { SFX.play('ui'); this.goHome(); const id = this.extra?.hero || activeHero(this.app.p)?.id; if (id) this.app.sheets.open({ kind: 'gear', hero: id }); },
+      // your level brought talent points: straight to your hero's tree
+      talents: () => { SFX.play('ui'); this.goHome(); const id = this.extra?.hero || activeHero(this.app.p)?.id; if (id) this.app.sheets.open({ kind: 'gear', hero: id, tab: 'talents' }); },
       keep: () => { this.trait = null; SFX.play('ui'); this.renderOffer(); },
       take: (el) => { const t = el.dataset.trait!; const h = heroById(this.app.p, this.extra?.hero); if (!this.extra?.preview && h) { takeTrait(h, t); this.app.store.save(); } this.trait = t; SFX.play('coin'); this.renderOffer(); },
       moment: () => this.closeMoment(),
@@ -151,6 +156,8 @@ export class Reveal {
       if (big && !this.skipping) await this.pause(520);
       const c = d.source === 'table' ? COLLECTIBLES[d.id] : undefined;
       if (c && (c.kind === 'pet' || c.kind === 'mount') && !this.skipping) await this.moment(d);
+      // a Grand Tome (1 in 500) gets the screen too
+      if (d.id === 'xp.grand' && !this.skipping) await this.tomeMoment(d);
       this.flip(i);
       if (!this.skipping) await this.pause(big ? 750 : 380);
       if (big && d.isNew && !this.skipping && !(c && (c.kind === 'pet' || c.kind === 'mount')) && this.logOf(d.id)) await this.slotMoment(d);
@@ -188,25 +195,30 @@ export class Reveal {
     const c = COLLECTIBLES[d.id];
     const it = ITEMS[d.id], kit = KITS[d.id];
     const h = heroById(this.app.p, this.extra?.hero || null) || activeHero(this.app.p);
-    const cls = c && c.kind === 'pet' ? 'r-pet' : kit ? 'r-kit' : table ? 'r-unique' : '';
+    const cls = c && c.kind === 'pet' ? 'r-pet' : kit ? 'r-kit' : table ? 'r-unique' : d.id === 'xp.grand' ? 'r-xpgrand' : '';
     let sub = '', note = '', gains = '';
     if (example) {
       if (d.source === 'regular') { sub = 'Every clear · Your hero'; note = 'Climbs Common → Rare in 8 clears'; }
-      else if (d.source === 'spare') { sub = 'Every clear · Shared warband'; note = 'Keeps your other heroes geared up'; }
       else if (c) { sub = `${fmtRate(d.rate)} fixed rate · Hearth trophy`; note = 'Display trophies, mounts & pets at home'; }
       else { sub = `${fmtRate(d.rate)} fixed rate · Set piece`; note = 'Every boss rolls its own table per kill'; }
-    } else if (d.source === 'regular' || d.source === 'spare') {
+    } else if (d.source === 'xp') {
+      // the chest's XP: its lore pages (always), or a tome (at its rate)
+      const tome = TOME[d.id];
+      sub = tome ? `${fmtRate(d.rate)} · rolled on its own` : 'In every chest';
+      gains = `<b class="lc-xp">+${fmtN(d.xp || 0)} XP</b>`;
+      note = tome ? esc(tome.desc) : `${d.n || 1} page${(d.n || 1) === 1 ? '' : 's'} this time: 1 to 10 a chest`;
+    } else if (d.source === 'regular') {
       const role = d.role as RoleId, slot = d.slot as SlotId, r = RARITY[d.rar as Rar];
-      const gk = d.source === 'regular' && h ? gearKey(h) : role;
+      const gk = h ? gearKey(h) : role;
       const slotName = ROLE_SLOTS[gk][slot].name.toLowerCase();
       if (d.offerTrait) { const t = traitDef(gk, d.offerTrait)!; sub = `Trait offer · ${esc(t.name)}`; note = esc(t.desc); }
       else {
         const prev = ITEMS[gearId(gk, slot, (d.prevRar ?? 0) as Rar)];
         const nowS = prev ? itemShare(prev) : { power: 0, health: 0, ilvl: 10 }, newS = it ? itemShare(it) : nowS;
         const dp = Math.round((newS.power - nowS.power) * 10) / 10, dh = Math.round((newS.health - nowS.health) * 10) / 10;
-        sub = `${r.name} ${slotName}${d.source === 'spare' ? ` · shared` : ` · Power ${nowS.ilvl} → ${newS.ilvl}`}`;
+        sub = `${r.name} ${slotName} · Power ${nowS.ilvl} → ${newS.ilvl}`;
         if (dp > 0) gains = `<span class="lc-gains"><b class="up">${GLYPH.rise}+${dp}% ${esc(ROLE_STAT[role].short)}</b><b class="up">${GLYPH.rise}+${dh}% hp</b></span>`;
-        note = d.source === 'spare' ? `For your ${ROLES[role].title.toLowerCase()} heroes` : prev && d.prevRar !== d.rar ? `Replaces ${esc(prev.name)}` : '';
+        note = prev && d.prevRar !== d.rar ? `Replaces ${esc(prev.name)}` : '';
         if (d.trait) note += `${note ? ' · ' : ''}Trait: ${esc(traitDef(gk, d.trait)?.name || '')}`;
       }
     } else {
@@ -224,8 +236,10 @@ export class Reveal {
       const piece = kit && ITEMS[kit.item];
       note = d.dupe ? `Duplicate · Seen ${fmtN(this.app.p.collection[d.id]?.n || 2)}× in log` : piece ? `Gilding kit · ${this.app.p.collection[piece.id] ? 'gilds your' : 'gilds the'} ${esc(piece.name)}` : c ? (c.kind === 'pet' ? 'Waiting by the fire' : c.kind === 'mount' ? 'In the paddock at home' : c.kind === 'cosmetic' ? 'A new look' : 'On the mantel') : it?.setId ? `${esc(it.name.split(' ')[0])} set piece · Power ${itemShare(it).ilvl}` : it?.effectDesc ? esc(it.effectDesc) : '';
     }
-    const stamp = example ? '<span class="stamp ex">Example</span>' : table ? (d.dupe ? '<span class="stamp dupe">Dupe</span>' : '<span class="stamp">New</span>') : d.offerTrait ? '' : '<span class="stamp" style="background: var(--green)">Up</span>';
-    const tapHint = `<span class="lc-tap">${it ? 'Tap to compare stats' : 'Tap to inspect'}</span>`;
+    const xp = d.source === 'xp';
+    const stamp = example ? '<span class="stamp ex">Example</span>' : table ? (d.dupe ? '<span class="stamp dupe">Dupe</span>' : '<span class="stamp">New</span>') : xp ? '<span class="stamp xp">XP</span>' : d.offerTrait ? '' : '<span class="stamp" style="background: var(--green)">Up</span>';
+    // XP has nothing more to see
+    const tapHint = xp ? '' : `<span class="lc-tap">${it ? 'Tap to compare stats' : 'Tap to inspect'}</span>`;
     return `<button type="button" class="lc ${cls}" data-act="flip" data-i="${i}" aria-label="Card ${i + 1}">
       <span class="in"><span class="fc back"></span>
       <span class="fc front" style="--rc: ${colourOf(d.id)}">${stamp}<span class="tile" aria-hidden="true">${iconOf(d.id)}</span><b>${esc(nameOf(d.id))}</b><span class="sub">${sub}</span>${gains}${note ? `<em>${note}</em>` : ''}${tapHint}</span></span></button>`;
@@ -243,11 +257,12 @@ export class Reveal {
       return;
     }
     el.classList.add('up');
-    el.setAttribute('aria-label', `${nameOf(d.id)} — tap to compare stats`);
+    el.setAttribute('aria-label', d.source === 'xp' ? `${nameOf(d.id)}: ${fmtN(d.xp || 0)} XP` : `${nameOf(d.id)} — tap to compare stats`);
     this.flipped++;
     const c = COLLECTIBLES[d.id];
     if (this.skipping) return;
     if (d.source === 'table') SFX.play(c && (c.kind === 'pet' || c.kind === 'mount') ? 'petfound' : d.dupe ? 'coin' : 'rare');
+    else if (d.source === 'xp') { SFX.play('flip'); SFX.play(d.rate ? 'rare' : 'xp', 0.8); }
     else SFX.play('flip');
   }
 
@@ -264,6 +279,22 @@ export class Reveal {
         <p>${esc(fmtRate(d.rate))} · kill count ${fmtN(d.kc || 0)}</p><p>${c.kind === 'pet' ? 'He is waiting by the fire at home.' : 'Waiting in the paddock at home.'}</p>${this.shareBtn(this.bragAt(c.kind === 'pet' ? 'pet' : 'unique', d.id))}<p style="opacity: 0.7">Tap to carry on</p></div>`;
       this.root.appendChild(el);
       SFX.play('petfound');
+      this.momentDone = () => { el.remove(); this.momentDone = null; res(); };
+      el.focus?.();
+    });
+  }
+  /** a Grand Tome: the rarest XP there is, gold, with what it gave */
+  private tomeMoment(d: Drop): Promise<void> {
+    return new Promise((res) => {
+      const el = document.createElement('div');
+      el.className = 'big-moment gold';
+      el.setAttribute('data-act', 'moment');
+      el.setAttribute('role', 'dialog');
+      el.setAttribute('aria-label', 'Grand Tome');
+      el.innerHTML = `<span class="rays"></span><div class="bm"><span class="tile bm-tile" aria-hidden="true">${tile('tome_grand')}</span><h2>Grand Tome!</h2>
+        <p>${esc(fmtRate(d.rate))} · <b>+${fmtN(d.xp || 0)} XP</b></p><p>${esc(TOME['xp.grand']?.desc || '')}</p>${this.shareBtn(this.bragAt('tome', d.id))}<p style="opacity: 0.7">Tap to carry on</p></div>`;
+      this.root.appendChild(el);
+      SFX.play('petfound'); SFX.play('levelup', 0.8);
       this.momentDone = () => { el.remove(); this.momentDone = null; res(); };
       el.focus?.();
     });
@@ -350,7 +381,7 @@ export class Reveal {
           ${kc.map(([b, n]) => `<div class="kv"><span>${esc(dg.bosses.find((x) => x.id === b)?.name || b)}</span><b>KC ${fmtN(n)}</b></div>`).join('')}
           <div class="kv"><span>Party deaths</span><b>${extra.deaths}</b></div>
           ${gardenKv(p, loot)}
-        </div>${strips}`;
+        </div>${xpStrip(p, loot, extra)}${strips}`;
     }
     const best = this.brags[0], brag = $('rv-brag', this.root);
     if (best) {
@@ -454,7 +485,7 @@ export class Reveal {
     const kcF = (p.bosses[`${dgId}.${fin}`]?.kc || 0) + 1, kcM = (p.bosses[`${dgId}.${mini}`]?.kc || 0) + 1;
     const drops: Drop[] = [
       { id: gearId(gk, 'helm', 2), source: 'regular', role, slot: 'helm', rar: 2, prevRar: 1, isNew: true, dupe: false, marks: 0, toEquip: true },
-      { id: gearId(role === 'tank' ? 'healer' : 'tank', 'chest', 1), source: 'spare', role: role === 'tank' ? 'healer' : 'tank', slot: 'chest', rar: 1, prevRar: 0, isNew: true, dupe: false, marks: 0 },
+      { id: 'xp.pages', source: 'xp', role, isNew: true, dupe: false, marks: 0, xp: 300, n: 3 },
     ];
     // your seat's set, the mini boss's trophy and the pet, from the dungeon's own log
     const stands = standsOf(base.id), rogue = h?.cls === 'rogue';
@@ -465,7 +496,9 @@ export class Reveal {
     if (tell === 'kit') drops.push({ id: gilded(`${set}.chest`), source: 'table', boss: fin, rate: KIT_RATE, kc: kcF, role, isNew: true, dupe: false, marks: 0 });
     if (tell === 'unique' && trophy) drops.push({ id: trophy, source: 'table', boss: mini, rate: dropOf(base, trophy).rate, kc: kcM, role, isNew: false, dupe: true, marks: 3 });
     if (tell === 'pet' && pet) drops.push({ id: pet, source: 'table', rate: dropOf(base, pet).rate, boss: fin, kc: kcF, role, isNew: true, dupe: false, marks: 0 });
-    const loot: RunLoot = { dungeon: dgId, role, hero: h?.id || '', drops, tell, gild: tell === 'kit', kc: { [mini]: kcM, [fin]: kcF }, marks: 1 + drops.reduce((a, d) => a + d.marks, 0), clears: (p.dungeons[dgId]?.clears || 0) + 1, time: 247, pb: p.dungeons[dgId]?.pb ?? 247, newPb: false, firstClear: false };
+    // made-up XP too: a run's kills, the clear and three pages
+    const xp = { start: p.xp, kills: 640, chest: { clear: 400, pages: 3, pagesXp: 300, tomes: [], total: 700 }, end: p.xp + 1340 };
+    const loot: RunLoot = { dungeon: dgId, role, hero: h?.id || '', drops, tell, gild: tell === 'kit', kc: { [mini]: kcM, [fin]: kcF }, marks: 1 + drops.reduce((a, d) => a + d.marks, 0), clears: (p.dungeons[dgId]?.clears || 0) + 1, time: 247, pb: p.dungeons[dgId]?.pb ?? 247, newPb: false, firstClear: false, xp };
     const log = logAchievement(base.id)?.id;
     this.app.show('reveal');
     this.show(loot, { unlocked: kind === 'log' && log ? [log] : [], hero: h?.id || null, role, deaths: 0, again: null, preview: true });
@@ -473,6 +506,20 @@ export class Reveal {
 }
 
 function $(id: string, root: HTMLElement): HTMLElement { return root.querySelector('#' + id) as HTMLElement; }
+/** the run's XP: what the kills, the clear and the chest paid, your level's bar (a level gained says so, with its
+ *  talent points and the way to spend them) */
+function xpStrip(p: Profile, loot: RunLoot, extra: RevealExtra): string {
+  const x = loot.xp;
+  if (!x || x.end <= x.start) return '';
+  const a = levelProgress(x.start), b = levelProgress(x.end), up = b.level - a.level;
+  const c = x.chest, parts = [`Kills +${fmtN(x.kills)}`, ...(c ? [`Clear +${fmtN(c.clear)}`, `Pages +${fmtN(c.pagesXp)}`, ...c.tomes.map((t) => `${TOME[t.id]?.name || 'Tome'} +${fmtN(t.xp)}`)] : [])];
+  const pts = pointsAt(b.level) - pointsAt(a.level);
+  const h = heroById(p, extra.hero) || activeHero(p), left = h ? unspent(p, h) : 0;
+  return `<div class="rv-xp${up ? ' up' : ''}"><span class="rx-top"><b class="rx-lv">${up ? `Level ${a.level} → ${b.level}!` : `Level ${b.level}`}</b><b class="rx-n">+${fmtN(x.end - x.start)} XP</b></span>
+    <span class="rx-bar" aria-hidden="true"><i style="width: ${(b.k * 100).toFixed(1)}%"></i></span>
+    <small class="rx-parts">${esc(parts.join(' · '))}</small>
+    ${up && !extra.preview ? `<span class="rx-up">${pts > 0 ? `<span>+${pts} talent point${pts === 1 ? '' : 's'}${left ? ` · <b>${left} to spend</b>` : ''}</span>` : '<span>Every talent point a tree holds is yours</span>'}${left ? '<button type="button" class="btn small gold" data-act="talents">Talents</button>' : ''}</span>` : ''}</div>`;
+}
 /** the garden after this run: seeds the bosses dropped, and beds this clear made ready */
 function gardenKv(p: Profile, loot: RunLoot): string {
   const seeds = Object.entries(loot.seeds || {});

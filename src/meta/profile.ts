@@ -19,11 +19,12 @@ import { SLOT_IDS } from '../content/gear';
 import { CLASSES, FOUNDERS, MAX_HEROES, canMake, cleanName, defaultSex, type ClassId, type RaceId, type SexId } from '../content/folk';
 import { DUNGEONS, KITS } from '../content';
 import { BEDS } from '../content/vale';
+import { HEROIC_XP, KILL_XP, TIER_XP } from '../content/xp';
 import { settleSpots } from './hearth';
 import { opened } from './logs';
 import { warbandOpen } from './warband';
 
-export const PROFILE_VERSION = 10;
+export const PROFILE_VERSION = 11;
 /** Shared gear climbs to Rare. Epic is earned on the hero. */
 export const WARBAND_CAP: Rar = 2;
 
@@ -51,6 +52,11 @@ export interface Hero {
   named: boolean;
   /** full clears this hero has done */
   clears: number;
+  /** the spec picked from its class's two (content/talents), or null before one is picked; kept as a string so a
+   *  spec from a newer build survives an older one */
+  spec: string | null;
+  /** talent points spent, by spec and talent: each spec keeps its own, so switching back costs nothing */
+  talents: Record<string, Record<string, number>>;
 }
 export interface CollectionEntry { n: number; kc: number; at: number }
 /** When an achievement came, and from v10 the kill count it came at (its dungeon's last boss; none for the garden's). */
@@ -108,6 +114,8 @@ export interface Profile {
   /** collection ids you have looked at in the log since they arrived */
   seen: Record<string, number>;
   vale: ValeState;
+  /** your XP, from every kill and chest since v11: the level it makes is yours, every hero's talent points */
+  xp: number;
 }
 
 const blankSlots = (): Record<SlotId, RegularSlot> => Object.fromEntries(SLOT_IDS.map((s) => [s, { rar: 0 as Rar }])) as Record<SlotId, RegularSlot>;
@@ -125,6 +133,7 @@ export function freshProfile(now = Date.now()): Profile {
     settings: { sound: true, looksOff: [] },
     seen: {},
     vale: freshVale(),
+    xp: 0,
   };
 }
 export const emptyBed = (): BedState => ({ seed: null, grown: 0, shimmer: false });
@@ -226,7 +235,32 @@ const MIGRATIONS: Record<number, (raw: any) => any> = {
   /* v9 kept only the day each achievement came. From v10 a new one also keeps the kill count it came at; the
      ones you have keep their day, and their count stays unknown. */
   9: (d) => d,
+  /* v10 had no XP. From v11 every kill and chest pays it, so the runs you had pay too, once: each clear about
+     what one pays now and each boss kill its own (xp.retro remembers how much, for the welcome back). Every hero
+     starts with no spec and no talent points spent. */
+  10: (d) => {
+    const xp = retroXp(d);
+    return { ...d, xp, counters: { ...obj(d.counters), ...(xp > 0 ? { 'xp.retro': xp } : {}) }, roster: (Array.isArray(d.roster) ? d.roster : []).map((h: unknown) => ({ ...obj(h), spec: null, talents: {} })) };
+  },
 };
+
+/** what a clear paid before XP, before its dungeon's multiplier and without its bosses: about its trash, the
+ *  clear itself and an average chest's pages */
+const RETRO_CLEAR_XP = 1500;
+/** The XP a save from before XP earned: every clear and every boss kill it has, at today's rates. A Heroic boss
+ *  kill also counted on its normal boss (v9), so only the normal one's pays. */
+export function retroXp(raw: unknown): number {
+  const d = obj(raw);
+  const mul = (id: string): number => { const dg = DUNGEONS[id]; return dg ? (TIER_XP[dg.tier || 1] || 1) * (dg.heroicOf ? HEROIC_XP : 1) : 0; };
+  let xp = 0;
+  for (const [id, rec] of Object.entries(obj(d.dungeons))) xp += Math.max(0, num(obj(rec).clears, 0)) * RETRO_CLEAR_XP * mul(id);
+  for (const [k, rec] of Object.entries(obj(d.bosses))) {
+    const at = k.indexOf('.'), dg = at > 0 ? DUNGEONS[k.slice(0, at)] : undefined;
+    if (!dg || dg.heroicOf) continue;
+    xp += Math.max(0, num(obj(rec).kc, 0)) * (k.slice(at + 1) === dg.finalBoss ? KILL_XP.final : KILL_XP.boss) * mul(dg.id);
+  }
+  return Math.round(xp);
+}
 
 /** Reads any stored value into a valid current profile. Unknown or broken data starts fresh. */
 export function migrate(raw: unknown, now = Date.now()): Profile {
@@ -252,7 +286,13 @@ function normHero(x: unknown, now: number): Hero | null {
   if (!id || !name || !race || !cls) return null;
   const sex: SexId = h.sex === 'm' || h.sex === 'f' ? h.sex : defaultSex(race, cls);
   const clears = Math.max(0, Math.floor(num(h.clears, 0)));
-  const out: Hero = { id, name, race, cls, sex, createdAt: num(h.createdAt, now), playedAt: num(h.playedAt, now), regular: blankSlots(), bag: blankBag(), equip: blankEquip(), fresh: [], title: str(h.title), named: h.named !== false, clears };
+  const out: Hero = { id, name, race, cls, sex, createdAt: num(h.createdAt, now), playedAt: num(h.playedAt, now), regular: blankSlots(), bag: blankBag(), equip: blankEquip(), fresh: [], title: str(h.title), named: h.named !== false, clears, spec: str(h.spec), talents: {} };
+  // talent points by spec: whole numbers above nothing (a spec or talent this build doesn't know is kept)
+  for (const [sp, ranks] of Object.entries(obj(h.talents))) {
+    const r: Record<string, number> = {};
+    for (const [t, n] of Object.entries(obj(ranks))) { const v = Math.floor(num(n, 0)); if (v > 0) r[t] = v; }
+    out.talents[sp] = r;
+  }
   for (const s of SLOT_IDS) {
     out.regular[s] = normRegular(obj(h.regular)[s]);
     const b = obj(h.bag)[s];
@@ -291,6 +331,7 @@ export function normalize(d: any, now = Date.now()): Profile {
   p.settings.looksOff = Array.isArray(off) ? off.filter((x: unknown) => typeof x === 'string') : [];
   for (const [k, v] of Object.entries(obj(d.seen))) p.seen[k] = num(v, 0);
   p.vale = normVale(d.vale);
+  p.xp = Math.max(0, Math.floor(num(d.xp, 0)));
   return p;
 }
 
@@ -353,7 +394,7 @@ export function createHero(p: Profile, o: { name: string; race: RaceId; cls: Cla
   const h: Hero = {
     id: id || 'h_' + now.toString(36) + Math.floor(Math.random() * 1e6).toString(36),
     name: o.name, race: o.race, cls: o.cls, sex, createdAt: now, playedAt: now,
-    regular: blankSlots(), bag: blankBag(), equip: blankEquip(), fresh: [], title: null, named: true, clears: 0,
+    regular: blankSlots(), bag: blankBag(), equip: blankEquip(), fresh: [], title: null, named: true, clears: 0, spec: null, talents: {},
   };
   for (const s of SLOT_IDS) h.regular[s] = { ...p.warband[role][s] };
   p.roster.push(h);

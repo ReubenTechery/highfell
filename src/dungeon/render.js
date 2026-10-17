@@ -7,7 +7,7 @@ import { BAKE_S, FONT, K, PAT, bakeAll, drawSpr, makePatterns, mkCanvas } from '
 import { PERFECT_WINDOW, dots } from './entities.js';
 import { drawWalkout, walkoutFocus } from './walkout.js';
 import { CURSE_COL, CURSE_TIME } from './mobs.js';
-import { drawAir, drawFx, drawTexts } from './drawfx.js';
+import { drawAir, drawBurn, drawFireZone, drawFx, drawTexts } from './drawfx.js';
 import { drawMap } from './mapdraw.js';
 import { areaOf } from './world.js';
 
@@ -239,6 +239,8 @@ export function drawZone(ctx, z) {
       const x = z.x + Math.cos(a) * rr + Math.sin(S.t * 3 + i) * 6, y = z.y + Math.sin(a) * rr * 0.55;
       drawSpr(ctx, 'flake', x, y - 90 * (1 - fall), { alpha: 0.4 + fall * 0.6, rot: S.t * 2 + i });
     }
+  } else if (z.kind === 'firestorm') {
+    drawFireZone(ctx, z);
   } else if (z.kind === 'ice') {
     ctx.fillStyle = 'rgba(221, 243, 255, 0.35)'; ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill();
     ctx.lineWidth = 3; ctx.strokeStyle = '#8FD6FF'; ctx.stroke();
@@ -509,7 +511,10 @@ export function drawMob(ctx, m) {
   // a hit flashes white; a payoff flashes white, then gold. A Chilled boss wears a lighter frost than a frozen mob,
   // and no ice block round him
   const fk = m.flash > 0 ? m.flash / (m.flashMax || 0.1) : 0, gold = m.flash > 0 && m.flashGold && fk < 0.55;
-  drawSpr(ctx, name, x, y, { flip: m.flip, sx, sy, rot, alpha, tint: gold ? 'gold' : m.flash > 0 ? 'flash' : frozen || chilled ? 'frost' : null, tintA: gold ? 0.7 : m.flash > 0 ? (m.isBoss ? 0.4 : 0.7) : chilled ? 0.55 : 1 });
+  // a burning foe glows orange, more with every Burn (fire.js)
+  const burn = m.alive && m.burn && m.burn.left > 0 ? m.burn.n : 0;
+  drawSpr(ctx, name, x, y, { flip: m.flip, sx, sy, rot, alpha, tint: gold ? 'gold' : m.flash > 0 ? 'flash' : frozen || chilled ? 'frost' : burn ? 'fire' : null, tintA: gold ? 0.7 : m.flash > 0 ? (m.isBoss ? 0.4 : 0.7) : chilled ? 0.55 : burn ? 0.18 + 0.06 * Math.min(7, burn) : 1 });
+  if (burn) drawBurn(ctx, m, x, y, burn);
   if (frozen) { ctx.lineWidth = 3; ctx.strokeStyle = '#DDF3FF'; ctx.globalAlpha = 0.9; const hh = m.M.big ? 150 : 90; roundRect(ctx, m.x - m.r - 12, m.y - hh, (m.r + 12) * 2, hh + 4, 10); ctx.stroke(); ctx.globalAlpha = 1; }
   if (m.st.stun > 0) stars(ctx, m.x, m.y - (m.isBoss ? 220 : m.M.big ? 160 : 108), '#F2C230');
   else if (m.st.stagger > 0) stars(ctx, m.x, m.y - 220, '#FFF8EC');
@@ -560,11 +565,11 @@ export function drawAim(ctx) {
   const def = AB[abKey(S.player)][a.slot];
   const p = { x: a.x, y: a.y };
   const r = def.key === 'circle' ? 110 : 120;
-  const col = def.key === 'circle' ? '#F2C230' : '#DDF3FF';
+  const col = def.key === 'circle' ? '#F2C230' : S.player.spec === 'fire' ? '#FFB347' : '#DDF3FF';
   ctx.globalAlpha = 0.9;
   ctx.lineWidth = 3; ctx.strokeStyle = col; ctx.setLineDash([12, 10]);
   ctx.beginPath(); ctx.arc(S.player.x, S.player.y, def.range, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
-  ctx.fillStyle = def.key === 'circle' ? 'rgba(242, 194, 48, 0.22)' : 'rgba(143, 214, 255, 0.22)';
+  ctx.fillStyle = def.key === 'circle' ? 'rgba(242, 194, 48, 0.22)' : S.player.spec === 'fire' ? 'rgba(255, 138, 61, 0.22)' : 'rgba(143, 214, 255, 0.22)';
   ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, TAU); ctx.fill();
   ctx.lineWidth = 7; ctx.strokeStyle = K; ctx.stroke(); ctx.lineWidth = 4; ctx.strokeStyle = col; ctx.stroke();
   ctx.globalAlpha = 1;

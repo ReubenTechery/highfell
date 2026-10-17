@@ -1,6 +1,7 @@
 /// <reference types="node" />
 /**
- * First-time tips: which one the house shows (the welcome tour, then the garden's as each first comes) and which
+ * First-time tips: which one the house shows (the welcome tour, your first talent points, then the garden's as each
+ * first comes) and which
  * the Dungeons door shows (your Warband, then your first bottle), each once.
  */
 import { test } from 'node:test';
@@ -12,6 +13,8 @@ import { newHero } from '../src/meta/gear';
 import { beginHarvest, brew, endHarvest, growBeds, plant, rollSeeds } from '../src/meta/vale';
 import { doorTip, finishTip, houseTip } from '../src/meta/tips';
 import { WARBAND_KEY } from '../src/meta/warband';
+import { xpForLevel } from '../src/content/xp';
+import { addPoint, pickSpec } from '../src/meta/talents';
 
 const T0 = Date.UTC(2026, 9, 16, 2);
 const BARROW = DUNGEONS.barrow;
@@ -95,4 +98,27 @@ test('tips: once the Warband opens, the Dungeons door shows it first (on Normal 
   assert.equal(back.v, p.v);
   assert.equal(doorTip(back, false), null);
   assert.equal(houseTip(back), null);
+});
+
+test('tips: your first talent points get a tip once, after the welcome tour; a save that already spent one never does', () => {
+  const p = freshProfile(T0);
+  const h = newHero(p, { name: 'Edda Brightwater', race: 'human', cls: 'cleric' })!;
+  startHearthTour(p);
+  p.xp = xpForLevel(2);
+  assert.equal(houseTip(p), 'tour', 'the welcome tour first');
+  finishTip(p, 'tour');
+  assert.equal(houseTip(p), 'talents');
+  finishTip(p, 'talents');
+  assert.equal(houseTip(p), null, 'once');
+  // a hero who already put a point in: no tip
+  const q = freshProfile(T0), k = newHero(q, { name: 'Bram Oakes', race: 'human', cls: 'cleric' })!;
+  q.xp = xpForLevel(3);
+  pickSpec(k, 'mercy');
+  assert.ok(addPoint(q, k, 'mercy', 'me.hands'));
+  assert.equal(houseTip(q), null);
+  // level 1 has no points to spend
+  const r = freshProfile(T0);
+  newHero(r, { name: 'Cora Vale', race: 'human', cls: 'cleric' });
+  assert.equal(houseTip(r), null);
+  assert.equal(h.spec, null);
 });

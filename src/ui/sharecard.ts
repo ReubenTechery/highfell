@@ -15,6 +15,8 @@ import type { Brag } from '../meta/brag';
 import { loadoutFor } from '../meta/gear';
 import { logSlots, standsOf } from '../meta/logs';
 import { roleOf, type Hero, type Profile } from '../meta/profile';
+import { specOf } from '../meta/talents';
+import { levelOf } from '../content/xp';
 import { ART, heroSprite, iconOf, nameOf, pieceSvg, placeSprite, rarLook, riderSvg, standSvg } from './art';
 import { mainReward } from './dungeonsheet';
 import { fmtN, fmtT, wait } from './dom';
@@ -33,7 +35,7 @@ export function cardHero(p: Profile, h: Hero): CardHero {
   const race = RACES[h.race as RaceId], cls = CLASSES[h.cls as ClassId];
   return {
     name: h.name, title: h.title && TITLES[h.title] ? TITLES[h.title].text : '',
-    line: `${race?.name || h.race} ${cls?.name || h.cls} · Power ${ilvl(loadoutFor(p, h).score)}`,
+    line: `${race?.name || h.race} ${specOf(h) ? `${specOf(h)!.name} ` : ''}${cls?.name || h.cls} · Level ${levelOf(p.xp)} · Power ${ilvl(loadoutFor(p, h).score)}`,
     sprite: heroSprite(h, roleOf(h), p), light: race?.light || '#F4B942',
   };
 }
@@ -60,6 +62,7 @@ export function cardWords(b: Brag): CardWords {
     case 'unique': return { eyebrow: eyebrow(whatOf(b.id)), title: nameOf(b.id), sub: `${oneIn(b.rate)} · ${dg?.heroicOf && dg.collection.includes(b.id) ? 'Heroic ' : ''}${kc}` };
     case 'set': return { eyebrow: eyebrow('Set complete'), title: `${b.gilded ? 'Gilded ' : ''}${SETS[b.id]?.name || b.id} set complete`, sub: `All ${SETS[b.id]?.pieces.length || 3} pieces · ${kc}` };
     case 'pb': return { eyebrow: eyebrow('Personal best'), title: `New best: ${fmtT(b.time)}`, sub: `Clear ${fmtN(b.clears || 0)}` };
+    case 'tome': return { eyebrow: eyebrow('Grand Tome'), title: 'Grand Tome!', sub: `+${fmtN(b.xp || 0)} XP · ${oneIn(b.rate)} · Clear ${fmtN(b.clears || 0)}` };
     case 'log': {
       const a = ACHIEVEMENTS[b.id], log = a?.log || b.dungeon, main = a && mainReward(a);
       return { eyebrow: `${placeName(log)} · Collection log`, title: 'Collection log complete', sub: `All ${logSlots(log).length} slots${main ? ` · unlocked ${main.name.replace(/^The /, 'the ')}` : ''}` };
@@ -144,6 +147,7 @@ function scene(b: Brag, who: CardHero): { body: string; at: [number, number] } {
       return { body: heroAt(who, 310) + (art ? shadow(780, 80) + placeSprite(art, 780, FEET, { k: HERO_K }) : floating(b.id, 770, 640)), at: [600, 620] };
     }
     case 'pb': return { body: heroAt(who, 540), at: [540, 600] };
+    case 'tome': return { body: heroAt(who, 310) + floating(b.id, 760, 640), at: [760, 640] };
     case 'ach': {
       const [x, y] = MEDAL_AT, tier = ACHIEVEMENTS[b.id]?.tier || 'gold';
       return { body: heroAt(who, 310) + shadow(x, 100) + `<circle cx="${x}" cy="${y}" r="160" style="fill: ${MEDAL[tier] || GOLD}; stroke: ${INK}; stroke-width: 11"/><circle cx="${x}" cy="${y}" r="126" style="fill: none; stroke: ${CREAM}; stroke-width: 8; opacity: 0.5"/><path d="M${x - 98} ${y - 92} C${x - 64} ${y - 128} ${x - 10} ${y - 140} ${x + 32} ${y - 132}" style="fill: none; stroke: ${CREAM}; stroke-width: 12; stroke-linecap: round; opacity: 0.55"/>`, at: [x, y] };
@@ -155,7 +159,7 @@ function scene(b: Brag, who: CardHero): { body: string; at: [number, number] } {
  *  stand on it. */
 export function cardArt(b: Brag, who: CardHero): string {
   const st = stageOf(b.dungeon), light = lightOf(b, who), { body, at } = scene(b, who);
-  const big = b.kind === 'pet' || b.kind === 'log' || b.kind === 'set' || (b.kind === 'unique' && (b.rate || 1) <= SET_RATE);
+  const big = b.kind === 'pet' || b.kind === 'log' || b.kind === 'set' || b.kind === 'tome' || (b.kind === 'unique' && (b.rate || 1) <= SET_RATE);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_W}" height="${CARD_H}" viewBox="0 0 ${CARD_W} ${CARD_H}"><defs>
     <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2E2A55"/><stop offset="0.72" stop-color="${st?.bg || '#241C33'}"/></linearGradient>
     <radialGradient id="glow"><stop offset="0" stop-color="${light}" stop-opacity="0.55"/><stop offset="0.45" stop-color="${light}" stop-opacity="0.2"/><stop offset="1" stop-color="${light}" stop-opacity="0"/></radialGradient>

@@ -30,7 +30,10 @@ The owner has chosen this direction. It isn't built, and it changes the brief, s
 What it replaces or changes: the brief's "later dungeons drop upgrade attachments that awaken older dungeon
 gear" (old gear becomes collection instead), "raids are a later bonus activity" (each season has one), and
 the Free Trial → Base Game → Expansions model in `docs/dungeons.md`. Still to settle (a `/grill-me`): how much
-power a season adds, what timewalked runs give, the wing timing, the price, and whether Season 0 is free.
+power a season adds, what timewalked runs give, the wing timing, the price, and whether Season 0 is free. And
+levels and talents (built 17 Oct, account-wide and lasting, like champion points): do they carry across seasons
+as they are (my pick: yes, as the one power that lasts, small next to gear), or does a season add a row or raise
+the level cap?
 
 ## Proposal: the Hall of Doors when Season 1 comes
 

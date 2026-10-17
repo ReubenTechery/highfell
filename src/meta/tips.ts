@@ -1,6 +1,7 @@
 /**
  * First-time tips: each shows once a save, the first time its moment comes. The house shows one at a time: the
- * welcome tour after your first hero, then the garden's, each as its first comes: your first seed (plant it),
+ * welcome tour after your first hero, your first talent points (spend them), then the garden's, each as its
+ * first comes: your first seed (plant it),
  * your first ready bed (pick it) and your first herbs that make a brew (to the cauldron). The Dungeons door has
  * two: your Warband, the first time you open it, and your first bottle (it's poured at the door). A tip is done
  * once it has shown and you've tapped on, or once you've done what it was about. It all lives in `p.counters`,
@@ -10,9 +11,10 @@ import { RECIPE_ORDER } from '../content/vale';
 import { finishHearthTour, finishSeedTour, needsHearthTour, needsSeedTour, type Profile } from './profile';
 import { canBrew, readyBeds } from './vale';
 import { warbandOpen } from './warband';
+import { pointsOf } from './talents';
 
-/** the house's tips: the welcome tour, then the garden's in the order they come */
-export type HouseTip = 'tour' | 'seed' | 'ready' | 'herbs';
+/** the house's tips: the welcome tour, your first talent points, then the garden's in the order they come */
+export type HouseTip = 'tour' | 'talents' | 'seed' | 'ready' | 'herbs';
 /** the Dungeons door's tips: your Warband, then your first bottle */
 export type DoorTip = 'warband' | 'brew';
 
@@ -22,6 +24,8 @@ const seen = (p: Profile, tip: string): boolean => !!p.counters['tip.' + tip];
 export function houseTip(p: Profile): HouseTip | null {
   if (!p.roster.length) return null;
   if (needsHearthTour(p)) return 'tour';
+  // your first talent points, if no hero of yours has put one in yet
+  if (!seen(p, 'talents') && pointsOf(p) > 0 && !p.roster.some((h) => Object.values(h.talents).some((r) => Object.keys(r).length))) return 'talents';
   if (needsSeedTour(p)) return 'seed';
   // your first crop to pick, if you've never picked one
   if (!seen(p, 'ready') && !p.counters['vale.harvests'] && readyBeds(p) > 0) return 'ready';

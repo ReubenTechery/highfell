@@ -32,13 +32,17 @@ import type { BindSlot } from '../content/keys';
 import { gearKey } from '../content/gear';
 import { CLASSES } from '../content/folk';
 import { ARMOURY_TABS, armouryActions, armourySheet, countUp, leftSlot, settle, type ArmouryTab, type ArmouryView } from './armoury';
+import { TALENTS } from '../content/talents';
+import { MAX_LEVEL, levelOf, xpForLevel } from '../content/xp';
+import { gainXp } from '../meta/xp';
+import { specOf } from '../meta/talents';
 
 export type SheetSpec =
   /** the Dungeons, on that dungeon's door when it says (a door in the house's cellar) */
   | { kind: 'dungeon'; dungeon?: string }
   | { kind: 'satchel' }
   | { kind: 'hero'; hero: string }
-  | { kind: 'gear'; hero: string; slot?: SlotId; pick?: string; tab?: ArmouryTab }
+  | { kind: 'gear'; hero: string; slot?: SlotId; pick?: string; tab?: ArmouryTab; node?: string }
   | { kind: 'logs'; tab: LogTab; entry?: string }
   | { kind: 'settings' }
   | { kind: 'picker'; spot: string }
@@ -54,7 +58,7 @@ export function normSpec(x: unknown): SheetSpec | null {
     case 'dungeon': return typeof s.dungeon === 'string' ? { kind: 'dungeon', dungeon: s.dungeon } : { kind: 'dungeon' };
     case 'settings': case 'satchel': case 'looks': case 'heroes': case 'mounts': return { kind: s.kind };
     case 'hero': return typeof s.hero === 'string' ? { kind: 'hero', hero: s.hero } : null;
-    case 'gear': return typeof s.hero === 'string' ? { kind: 'gear', hero: s.hero, ...(SLOT_IDS.includes(s.slot) ? { slot: s.slot } : {}), ...(typeof s.pick === 'string' && ITEMS[s.pick] ? { pick: s.pick } : {}), ...(ARMOURY_TABS.includes(s.tab) ? { tab: s.tab } : {}) } : null;
+    case 'gear': return typeof s.hero === 'string' ? { kind: 'gear', hero: s.hero, ...(SLOT_IDS.includes(s.slot) ? { slot: s.slot } : {}), ...(typeof s.pick === 'string' && ITEMS[s.pick] ? { pick: s.pick } : {}), ...(ARMOURY_TABS.includes(s.tab) ? { tab: s.tab } : {}), ...(typeof s.node === 'string' && TALENTS[s.node] ? { node: s.node } : {}) } : null;
     case 'logs': return { kind: 'logs', tab: LOG_TABS.includes(s.tab) ? s.tab : 'collection', ...(typeof s.entry === 'string' ? { entry: s.entry } : {}) };
     case 'picker': return typeof s.spot === 'string' && spotById(s.spot) ? { kind: 'picker', spot: s.spot } : null;
     case 'item': return typeof s.id === 'string' && thing(s.id) ? { kind: 'item', id: s.id, ...(s.back ? { back: normSpec(s.back) || undefined } : {}) } : null;
@@ -76,7 +80,7 @@ export class Sheets {
   private heroSt: HeroSheetState = { delArmed: false, renaming: false, err: '' };
   private heroTimer = 0;
   /** the armoury remembers the piece just put on, for the moment it takes */
-  private readonly armoury: ArmouryView = { justOn: null };
+  private readonly armoury: ArmouryView = { justOn: null, justTal: null, tReset: false };
 
   constructor(private app: App, private root: HTMLElement) {
     actions(root, {
@@ -131,6 +135,11 @@ export class Sheets {
       vfree: () => { this.app.setDev({ valeFree: !this.app.dev.valeFree }); SFX.play('ui'); this.app.refresh(); },
       vluck: () => { this.app.setDev({ valeLuck: !this.app.dev.valeLuck }); SFX.play('ui'); this.app.refresh(); },
       allopen: () => { this.app.setDev({ allOpen: !this.app.dev.allOpen }); SFX.play('ui'); this.app.refresh(); },
+      xpup: () => {
+        const p = this.app.p, to = Math.min(MAX_LEVEL, levelOf(p.xp) + 5);
+        if (gainXp(p, xpForLevel(to) - p.xp).xp <= 0) { SFX.play('nope'); return; }
+        SFX.play('levelup'); this.app.save(); this.app.toasts.text(`Level ${to}`, 'For testing: spend the points in your hero’s Talents.');
+      },
       lookpick: (el) => { this.lookPick = el.dataset.id || null; SFX.play('ui'); this.refresh(); },
       lookput: (el) => {
         const room = el.dataset.room!;
@@ -187,9 +196,9 @@ export class Sheets {
     if (looked) this.app.save();
   }
   /** your active hero's class, for Settings' Keys list (none on a touch screen, where there are no keys) */
-  private keysClass(): { k: ReturnType<typeof gearKey>; cls: string } | null {
+  private keysClass(): { k: ReturnType<typeof gearKey>; cls: string; spec: string | null } | null {
     const h = this.app.touch ? null : activeHero(this.app.p);
-    return h ? { k: gearKey({ role: roleOf(h), cls: h.cls }), cls: CLASSES[h.cls as keyof typeof CLASSES]?.name || 'hero' } : null;
+    return h ? { k: gearKey({ role: roleOf(h), cls: h.cls }), cls: CLASSES[h.cls as keyof typeof CLASSES]?.name || 'hero', spec: specOf(h)?.id || null } : null;
   }
   close(): void {
     if (!this.spec) return;

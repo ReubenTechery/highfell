@@ -2,7 +2,7 @@ import os as _hf_os
 HF_ROOT = _hf_os.environ.get('HIGHFELL_ROOT') or _hf_os.path.dirname(_hf_os.path.dirname(_hf_os.path.abspath(__file__)))
 # Ability icons for the Barrow Crypt (64x64 TV tiles: flat bright ground, one black line, one idea each).
 # Usage: python3 tools/art_icons.py -> art/icons.json + art/_icons_preview.html
-import json, math, os, sys
+import json, math, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fighttiles import TV_TILES
 from art_sprites import gild, m
@@ -414,6 +414,251 @@ T['c_dye_gilded'] = gild(T['c_dye'], {'#9FD9C6': '#F2C230', '#DCFFF0': '#FFE9A8'
 # ---- heroic Thimblebriar drops: the same, gilded as their stands are (their steel, bone and cream turn gold)
 for _n in [f's_{_s}_{_p}' for _s in MARKS_TB for _p in ('helm', 'shoulders', 'chest')] + ['u_mainspring', 'u_sporelight', 'u_arcwright', 'u_fusecutters']:
     T[_n + '_gilded'] = gild(T[_n], tile=True)
+
+
+# ---- the fire mage's four buttons: the fire twins of icicle, comet, blizzard and nova
+FIRE, FLAME, HOT = '#FF8A4C', '#FFE08A', '#FFF6D0'
+
+
+def glow(cx, cy, r, col, op=0.3):
+    """light: a soft disc behind a thing, never on it"""
+    return f'<circle cx="{f1(cx)}" cy="{f1(cy)}" r="{f1(r)}" style="fill: {col}; opacity: {op}"/>'
+
+
+def sc(d, k):
+    """path data scaled by k about (0, 0), so a shape can shrink while its line weights stay as they are"""
+    return re.sub(r'-?\d+(?:\.\d+)?', lambda mm: f1(float(mm.group(0)) * k), d)
+
+
+def tongue(x, y, w, h, lean=0.0, curl=0.8):
+    """a flame tongue standing on (x, y): a round foot w wide, its tip h above it, leaning by lean and curling with it"""
+    r, tx, ty = w / 2, x + lean, y - h
+    return (f'M{f1(tx)} {f1(ty)} C{f1(tx - lean * curl + r * 0.05)} {f1(ty + h * 0.22)} {f1(x + r * 1.05)} {f1(y - h * 0.62)} {f1(x + r)} {f1(y - r * 0.85)} '
+            f'C{f1(x + r * 0.95)} {f1(y + r * 0.18)} {f1(x - r * 0.95)} {f1(y + r * 0.18)} {f1(x - r)} {f1(y - r * 0.85)} '
+            f'C{f1(x - r * 1.1)} {f1(y - h * 0.5)} {f1(tx - r * 0.55 - lean * curl)} {f1(ty + h * 0.42)} {f1(tx)} {f1(ty)} Z')
+
+
+def blaze(x, y, w, h, lean=0.0, wk=3.2):
+    """a flame: an orange tongue with a yellow one inside it"""
+    return F(tongue(x, y, w, h, lean), FIRE, wk) + F(tongue(x, y - w * 0.04, w * 0.5, h * 0.56, lean * 0.5), FLAME, 0)
+
+
+def boom(cx, cy, rs, n, a0=-90.0):
+    """a cartoon explosion: n points stepping through the radii rs, the edges between them bowed in"""
+    pt = lambda r, a: (cx + r * math.cos(math.radians(a)), cy + r * math.sin(math.radians(a)))
+    tips = [pt(rs[i % len(rs)], a0 + i * 360 / n) for i in range(n)]
+    d = f'M{f1(tips[0][0])} {f1(tips[0][1])}'
+    for i in range(n):
+        qx, qy = pt(min(rs) * 0.55, a0 + (i + 0.5) * 360 / n)
+        d += f' Q{f1(qx)} {f1(qy)} {f1(tips[(i + 1) % n][0])} {f1(tips[(i + 1) % n][1])}'
+    return d + ' Z'
+
+
+def drop(x, y, r):
+    """a drop hanging from its tip, its round end r wide about (x, y)"""
+    q = lambda dx, dy: f'{f1(x + dx * r)} {f1(y + dy * r)}'
+    return (f'M{q(0, -2.4)} C{q(0.7, -1.4)} {q(1, -0.7)} {q(1, 0)} C{q(1, 0.6)} {q(0.55, 1)} {q(0, 1)} '
+            f'C{q(-0.55, 1)} {q(-1, 0.6)} {q(-1, 0)} C{q(-1, -0.7)} {q(-0.7, -1.4)} {q(0, -2.4)} Z')
+
+
+# the bolt and the comet's tail are drawn flying along +x, then turned into place
+BOLT = ('M24 0 C24 -8 17 -13 8 -13 C-2 -13 -14 -14 -26 -16 C-21 -11 -18 -8 -14 -5 C-22 -4 -30 -2 -38 0 '
+        'C-30 2 -22 4 -14 5 C-18 8 -21 11 -26 15 C-14 14 -2 13 8 13 C17 13 24 8 24 0 Z')
+BOLT_IN = 'M19 0 C19 -5 14 -8 8 -8 C0 -8 -8 -7 -20 -4 C-12 -1 -12 1 -18 4 C-8 6 0 8 8 8 C14 8 19 5 19 0 Z'
+TAIL = ('M3 -14.5 C-8 -15.5 -16 -12 -24 -15 C-21 -11.5 -20 -10 -21 -8.5 C-30 -9 -42 -6 -56 -2 '
+        'C-44 2 -34 4 -24 6 C-25 8.5 -27 10.5 -30 13 C-20 14 -8 15 3 14.5 Z')
+TAIL_IN = 'M2 -9 C-8 -9.5 -20 -7 -40 -2.5 C-26 0.5 -21 2 -22 6.5 C-14 8.5 -6 9 2 9 Z'
+
+
+def fireball(x, y, k=1.0, wk=3.5):
+    """a comet of fire falling down and to the right, its ball 14k round about (x, y)"""
+    q = lambda dx, dy: f'{f1(x + dx * k)} {f1(y + dy * k)}'
+    return (turned(x, y, 40, F(sc(TAIL, k), FIRE, wk) + F(sc(TAIL_IN, k), FLAME, 0)) + C(x, y, 14 * k, FIRE, wk) +
+            C(x + 2 * k, y - 2 * k, 8.5 * k, FLAME, 0) + F(f'M{q(4, -8)} L{q(10, -2)} L{q(2, 0)} Z', '#FFFFFF', 1.8 if k > 0.8 else 0))
+
+
+T['firebolt'] = tile('#8A2A1E', glow(37, 27, 18, FIRE) +
+                     turned(30, 34, -45, F(BOLT, FIRE) + F(BOLT_IN, FLAME, 0) + P('M10 -8.5 C15 -8.5 18.5 -5.5 19.5 -1.5', '#FFFFFF', 2.4)) +
+                     P('M52 44 V54 M47 49 H57', FLAME, 2.8) + P('M14 12 V18 M11 15 H17', FLAME, 2.4))
+T['comet_fire'] = tile('#4A2A6A', fireball(38, 42))
+# the blizzard's cloud as smoke, raining drops of fire onto flames
+T['firestorm'] = tile('#5E1F1A', ''.join(turned(x, y, -25, F(drop(0, 0, 3), FLAME, 2)) for x, y in ((16, 35), (31, 32), (46, 34), (24, 42), (40, 43))) +
+                      blaze(14, 61, 13, 17, -2, 2.8) + blaze(50, 61, 13, 18, 2, 2.8) + blaze(32, 62, 17, 22, 1, 2.8) +
+                      F('M12 26 C6 26 6 17 13 16 C13 8 24 5 28 11 C32 3 46 5 46 13 C54 12 58 22 51 26 Z', '#9C8590') + P('M17 22 H44', '#BBA6B0', 2.4))
+T['emberburst'] = tile('#A8322A', P(' '.join(f'M{f1(32 + 25 * math.cos(math.radians(a)))} {f1(32 + 25 * math.sin(math.radians(a)))} '
+                                             f'L{f1(32 + 29 * math.cos(math.radians(a)))} {f1(32 + 29 * math.sin(math.radians(a)))}' for a in range(0, 360, 45)), FLAME, 2.6) +
+                       F(boom(32, 32, (24, 20, 23, 19), 10), FIRE, 3.2) + F(boom(32, 32, (15, 12, 14, 11), 10, -72), FLAME, 0) + F(boom(32, 32, (7, 6), 8), HOT, 2.4))
+
+
+# ---- talents: what a point buys, one plain idea on its own colour (they must read at 32 to 48 px)
+def heart(cx, cy, k=1.0):
+    """a fat round heart about (cx, cy), 38k wide"""
+    q = lambda x, y: f'{f1(cx + x * k)} {f1(cy + y * k)}'
+    return (f'M{q(0, 18)} C{q(-10, 11)} {q(-19, 3)} {q(-19, -6)} C{q(-19, -14)} {q(-13, -18)} {q(-8, -18)} C{q(-4, -18)} {q(-1, -15)} {q(0, -12)} '
+            f'C{q(1, -15)} {q(4, -18)} {q(8, -18)} C{q(13, -18)} {q(19, -14)} {q(19, -6)} C{q(19, 3)} {q(10, 11)} {q(0, 18)} Z')
+
+
+def burst(cx, cy, rs, n, a0=-90.0):
+    """a jagged star of n points stepping through the radii rs (outer, inner, outer, ...); one radius makes a polygon"""
+    return 'M' + ' L'.join(f'{f1(cx + rs[i % len(rs)] * math.cos(math.radians(a0 + i * 180 / n)))} '
+                           f'{f1(cy + rs[i % len(rs)] * math.sin(math.radians(a0 + i * 180 / n)))}' for i in range(2 * n)) + ' Z'
+
+
+def star4(cx, cy, r, k=0.22):
+    """a four-point sparkle with curved sides"""
+    q = r * k
+    return (f'M{f1(cx)} {f1(cy - r)} Q{f1(cx + q)} {f1(cy - q)} {f1(cx + r)} {f1(cy)} Q{f1(cx + q)} {f1(cy + q)} {f1(cx)} {f1(cy + r)} '
+            f'Q{f1(cx - q)} {f1(cy + q)} {f1(cx - r)} {f1(cy)} Q{f1(cx - q)} {f1(cy - q)} {f1(cx)} {f1(cy - r)} Z')
+
+
+T['t_dmg'] = tile('#E07A2E', glow(49, 15, 14, FLAME, 0.5) +
+                  F('M15.5 41.5 L42.5 14.5 L54 10 L49.5 21.5 L22.5 48.5 Z', '#D7DEE6') + P('M19.5 41 L43.5 17', '#FFFFFF', 2.2, 0.9) +
+                  inked('M18 46 L11 53', '#8A5A34', 4.6) + inked('M12 38.5 L25.5 52', '#F2C230', 4.4) + C(9, 55, 3.6, '#F2C230', 2.4) +
+                  F(star4(50, 14, 11), '#FFF3C4', 2.6))
+T['t_heal'] = tile('#2E8B6E', glow(32, 32, 26, '#D8FFB8', 0.25) + F(heart(32, 34, 1.15), '#E8505B') +
+                   P('M16 26 C16.5 22 19 19.5 23 19', '#FFFFFF', 2.6) + inked('M32 25 V43 M23 34 H41', '#FFFFFF', 4.2) +
+                   P('M53 10 V17 M49.5 13.5 H56.5', '#FFFFFF', 2.4) + P('M10 47 V53 M7 50 H13', '#FFFFFF', 2.4))
+T['t_hp'] = tile('#4F6FA8', F(heart(32, 34, 1.42), '#C8403F', 3.6) + P('M12.5 27 C13 20.5 17 16.5 23 16', '#FFFFFF', 3) + C(13.5, 33, 2, '#FFFFFF', 0))
+T['t_crit'] = tile('#4F3780', glow(32, 32, 28, FLAME, 0.25) + F(burst(32, 32, (28, 14, 23, 14), 10), '#F2C230') +
+                   F('M28.5 16 C28.5 13.5 35.5 13.5 35.5 16 L34 36 C33.8 38 30.2 38 30 36 Z', '#C8403F', 3) + C(32, 45, 3.8, '#C8403F', 3))
+GLASS = 'M-11 -18 H11 C11 -9 3 -5 1.5 0 C3 5 11 9 11 18 H-11 C-11 9 -3 5 -1.5 0 C-3 -5 -11 -9 -11 -18 Z'
+T['t_haste'] = tile('#2F6FA8', P('M4 22 H13 M2 33 H11 M5 44 H14', '#DDF3FF', 3.2) +
+                    turned(37, 32, 14, inked('M-13.5 -18 V18 M13.5 -18 V18', '#8A5A34', 2.6) + F(GLASS, '#DDF3FF', 3) +
+                           F('M-7.5 -11 H7.5 C5.5 -6.5 2 -4 0 -2.5 C-2 -4 -5.5 -6.5 -7.5 -11 Z', '#F2C230', 0) + P('M0 -2 V11', '#F2C230', 2) +
+                           F('M-10 17.5 C-8.5 12 -4.5 10 0 10 C4.5 10 8.5 12 10 17.5 Z', '#F2C230', 2.2) + P('M-7 -15 C-7 -12 -6 -10 -4 -8', '#FFFFFF', 2.2) +
+                           F('M-16 -25 H16 V-18 H-16 Z', '#8A5A34', 3) + F('M-16 18 H16 V25 H-16 Z', '#8A5A34', 3)))
+T['t_armor'] = tile('#8A5A34', F('M17 52 H47 L48 58 C40 60 24 60 16 58 Z', '#9AA7B8', 3) + F('M18 46 H46 L47 52 H17 Z', '#7D8FA3', 3) +
+                    F('M14 14 C19 11 24 11 26 12 C28 17 36 17 38 12 C40 11 45 11 50 14 L54 24 L47 29 C48 37 47 43 45 47 H19 C17 43 16 37 17 29 L10 24 Z', '#9AA7B8') +
+                    P('M32 17 V46', '#7D8FA3', 3) + P('M20 30 C25 34 29 34 32 31 C35 34 39 34 44 30', '#7D8FA3', 2.6) +
+                    ''.join(C(x, y, 1.9, '#C9D2DC', 1.5) for x, y in ((17.5, 17.5), (46.5, 17.5), (22, 49), (42, 49), (22, 55), (42, 55))) +
+                    P('M17 21 C19 18 22 16.5 25 16.5', '#FFFFFF', 2.4))
+T['t_threat'] = tile('#C8403F', P('M7 9 L12 14 M57 9 L52 14 M32 3 V9', '#FFF3C4', 3) +
+                     '<ellipse cx="20" cy="32" rx="9.5" ry="10.5" style="fill: #FFFFFF; stroke: #1E1A1A; stroke-width: 3"/>'
+                     '<ellipse cx="44" cy="32" rx="9.5" ry="10.5" style="fill: #FFFFFF; stroke: #1E1A1A; stroke-width: 3"/>' +
+                     C(22.5, 34, 3.4, K, 0) + C(41.5, 34, 3.4, K, 0) + F('M7 17 L30 25 L28.5 30 L6 22.5 Z', K, 2) + F('M57 17 L34 25 L35.5 30 L58 22.5 Z', K, 2) +
+                     F('M21 51 C23 45.5 41 45.5 43 51 C41 56 23 56 21 51 Z', '#5A1416', 3) + P('M25 48.5 H39', '#FFFFFF', 2.4))
+
+# ---- spec emblems: one per spec, bold, each on its own colour; the spec's capstone sits on the same colour
+TOWER = 'M-18 -26 H18 C19.5 -26 20.5 -25 20.5 -23.5 V4 C20.5 15 11 21.5 0 26 C-11 21.5 -20.5 15 -20.5 4 V-23.5 C-20.5 -25 -19.5 -26 -18 -26 Z'
+TOWER_IN = 'M-14.5 -22 H14.5 V3.5 C14.5 12 7.5 17.5 0 21 C-7.5 17.5 -14.5 12 -14.5 3.5 Z'
+BIT = 'M-4 -40 C-10 -42 -18 -47 -27 -48 C-33 -38 -33 -22 -27 -12 C-18 -13 -10 -18 -4 -20 Z'
+
+
+def tower(k=1.0):
+    """the tower shield, drawn about its middle"""
+    return (F(sc(TOWER, k), '#F2C230') + F(sc(TOWER_IN, k), '#C8403F', 3) + C(0, -5 * k, 7.5 * k, '#C9D2DC', 3) + C(0, -5 * k, 2.8 * k, '#9AA7B8', 0) +
+            ''.join(C(x * k, y * k, 2 * k, '#F2C230', 1.4) for x, y in ((-10, -17), (10, -17), (-10, 6), (10, 6))) +
+            P(sc('M-11 -18.5 C-7 -19.5 -3 -19.5 1 -19', k), '#FFFFFF', 2.2, 0.85))
+
+
+def great_axe(k=1.0):
+    """a two-handed axe with a blade either side, its haft standing on (0, 0)"""
+    return (inked(sc('M0 22 L0 -34', k), '#A0703F', 5) + C(0, 23 * k, 3.6, '#6B4528', 2.2) + F(sc(BIT, k), '#D7DEE6') + F(m(sc(BIT, k)), '#D7DEE6') +
+            F(sc('M-5.5 -44 H5.5 V-15 H-5.5 Z', k), '#8A8F99', 3) + F(sc('M-3 -44 L0 -51 L3 -44 Z', k), '#8A8F99', 2.4) +
+            P(sc('M-25 -41 C-28 -34 -28.5 -26 -25.5 -18 M25 -41 C28 -34 28.5 -26 25.5 -18', k), '#FFFFFF', 2.2, 0.9))
+
+
+def hammer(k=1.0):
+    """a war hammer, gold with steel faces, its head 21.5k above (0, 0)"""
+    return (inked(sc('M0 30 L0 -14', k), '#A0703F', 5) + C(0, 31 * k, 3.4, '#F2C230', 2.2) + F(sc('M-15 -30 H15 V-13 H-15 Z', k), '#F2C230') +
+            F(sc('M-20 -32.5 H-14 V-10.5 H-20 Z', k), '#D7DEE6', 3) + F(sc('M20 -32.5 H14 V-10.5 H20 Z', k), '#D7DEE6', 3) + P(sc('M-10 -26 H6', k), '#FFF3C4', 2.4))
+
+
+def spokes(cx, cy, r0, r1, angles, col='#F2C230', w=3):
+    """inked rays from r0 out to r1 at the given angles (degrees)"""
+    return inked(' '.join(f'M{f1(cx + r0 * math.cos(math.radians(a)))} {f1(cy + r0 * math.sin(math.radians(a)))} '
+                          f'L{f1(cx + r1 * math.cos(math.radians(a)))} {f1(cy + r1 * math.sin(math.radians(a)))}' for a in angles), col, w)
+
+
+def knife(k=1.0):
+    """a throwing knife pointing along +x"""
+    return (C(-15 * k, 0, 3 * k, '#C9A040', 2) + inked(sc('M-13 0 H-6.5', k), '#5C4028', 4 * k) + inked(sc('M-5.5 -6.5 V6.5', k), '#C9A040', 3.4 * k) +
+            F(sc('M-4.5 -4.5 C2 -5 10 -4.5 20 0 C10 4.5 2 5 -4.5 4.5 Z', k), '#D7DEE6', 2.8) + P(sc('M-2 -2 C4 -2.6 10 -2.2 15 -0.6', k), '#FFFFFF', 1.8))
+
+
+def whirl(cx, cy, r, a0, a1, w0, w1, n=18):
+    """a swoosh round a circle from a0 to a1 degrees, w0 wide where it starts and w1 where it ends"""
+    return taper([(cx + r * math.cos(math.radians(a0 + (a1 - a0) * i / n)), cy + r * math.sin(math.radians(a0 + (a1 - a0) * i / n))) for i in range(n + 1)], w0, w1)
+
+
+VEN = '#7CF06A'
+BG_SHIELD, BG_AXE, BG_MERCY, BG_WRATH, BG_FROST, BG_FIRE, BG_VENOM, BG_BLADES = (
+    '#4F6FA8', '#E07A2E', '#7A5BB8', '#9E2F2E', '#1F4F7A', '#5E1F1A', '#34224E', '#2A5C52')
+T['spec_shield'] = tile(BG_SHIELD, turned(32, 33, 0, tower(1.06)))
+T['spec_axe'] = tile(BG_AXE, turned(32, 41, 10, great_axe(0.7)))
+T['spec_mercy'] = tile(BG_MERCY, glow(32, 46, 30, '#FFF3C4', 0.3) + spokes(32, 46, 21, 29, (-165, -135, -105, -75, -45, -15), '#F2C230', 3.4) +
+                       C(32, 46, 17, '#F2C230', 3.5) + C(26, 40, 4.5, HOT, 0) + F('M-4 50 C10 44 22 43 32 45 C42 43 54 44 68 50 V68 H-4 Z', '#4F3780', 3.5))
+T['spec_wrath'] = tile(BG_WRATH, glow(24.6, 23.5, 17, FLAME, 0.4) + spokes(24.6, 23.5, 14, 19, range(0, 360, 45)) + turned(33, 38, -30, hammer(0.78)))
+_flake = []
+for _k in range(6):
+    _a = math.radians(_k * 60 - 90)
+    _ux, _uy = math.cos(_a), math.sin(_a)
+    _flake.append(f'M32 32 L{f1(32 + 25 * _ux)} {f1(32 + 25 * _uy)}')
+    for _d in (-1, 1):
+        _b, _bx, _by = _a + _d * math.radians(48), 32 + 14 * _ux, 32 + 14 * _uy
+        _flake.append(f'M{f1(_bx)} {f1(_by)} L{f1(_bx + 9 * math.cos(_b))} {f1(_by + 9 * math.sin(_b))}')
+T['spec_frost'] = tile(BG_FROST, glow(32, 32, 27, '#8FD6FF', 0.3) + inked(' '.join(_flake), '#DDF3FF', 4.4) + F(burst(32, 32, (7,), 3), '#8FD6FF', 3) + C(32, 32, 2.4, '#FFFFFF', 0))
+T['spec_fire'] = tile(BG_FIRE, glow(32, 36, 27, FIRE, 0.3) +
+                      F('M34 5 C35 14 40 20 42 27 C44 23 48 20 51 16 C55 26 54 36 53 42 C52 53 43 59 32 59 C21 59 12 53 11 43 '
+                        'C10 34 12 26 15 20 C18 25 21 28 23 31 C23 21 28 12 34 5 Z', FIRE) +
+                      F('M33 22 C35 29 41 33 41 42 C41 49 37 53 32 53 C27 53 23 49 23 43 C23 36 29 31 33 22 Z', FLAME, 0) +
+                      F('M32 39 C34 42.5 36 45 36 48 C36 50.5 34.2 52 32 52 C29.8 52 28 50.5 28 48 C28 45 30 42.5 32 39 Z', HOT, 0))
+BLADE_V = 'M24.5 23 H39.5 L38 39 L32 51 L26 39 Z'
+T['spec_venom'] = tile(BG_VENOM, glow(32, 52, 11, VEN, 0.25) + inked('M32 9 V21', '#5C4028', 5.4) + C(32, 7, 4.2, '#C9A040', 2.4) +
+                       F(BLADE_V, '#D7DEE6', 0) + F('M25.3 33 C28 35.5 30 32 32.5 34.5 C35 37 36.5 33.5 38.7 33.5 L38 39 L32 51 L26 39 Z', VEN, 0) +
+                       P(BLADE_V, K, 3.4) + P('M28.5 26.5 L28 32', '#FFFFFF', 2.2) + inked('M18 22 H46', '#C9A040', 4.6) + F(drop(32, 58.5, 3.4), VEN, 2.4))
+T['spec_blades'] = tile(BG_BLADES, ''.join(F(whirl(32, 32, 26, a - 110, a - 30, 0.5, 6), '#BDF5E6', 2.2) for a in (-90, 30, 150)) +
+                        ''.join(turned(32, 32, k * 120, turned(1, -14, 0, knife(1.1))) for k in range(3)) + C(32, 32, 4.5, '#C9A040', 2.4))
+
+# ---- capstones: the biggest talent of each spec, on its spec's colour, with a little gold
+T['cap_payback'] = tile(BG_SHIELD, glow(46, 26, 18, FLAME, 0.45) + F(burst(46, 26, (19, 8, 14, 8), 8, -75), '#F2C230', 3) +
+                        P('M4 22 H11 M2 33 H9 M4 44 H11', '#FFF3C4', 3) + turned(27, 35, -12, tower(0.72)))
+T['cap_axestorm'] = tile(BG_AXE, F(whirl(32, 32, 26, 110, 290, 0.5, 6.5), '#F2C230', 2.6) + F(whirl(32, 32, 26, 290, 470, 0.5, 6.5), '#F2C230', 2.6) +
+                         turned(33, 40, 40, great_axe(0.55)))
+WING = 'M-9 -3 C-13 -13 -21 -18 -31 -18 C-30 -14 -29 -12 -27 -10.5 C-28.5 -8 -27.5 -5.5 -24 -4.5 C-25 -2 -23.5 0.5 -20 0.5 C-17 3 -12 2 -9 -3 Z'
+T['cap_miracle'] = tile(BG_MERCY, '<path d="M19 64 L26 22 H38 L45 64 Z" style="fill: #FFE08A; opacity: 0.35"/>' + glow(32, 28, 20, FLAME, 0.4) +
+                        inked('M32 4 V9 M20 8 L22.5 12 M44 8 L41.5 12', '#F2C230', 2.6) +
+                        turned(32, 30, 0, F(WING, '#FFFFFF', 3) + F(m(WING), '#FFFFFF', 3) + F(heart(0, 2, 0.72), '#E8505B', 3.2) +
+                               P('M-9 -6 C-8.5 -8.5 -6.5 -10 -4.5 -10', '#FFFFFF', 2)) +
+                        F(star4(12, 50, 4.5), '#F2C230', 1.8) + F(star4(52, 46, 5), '#F2C230', 1.8))
+T['cap_sunstrike'] = tile(BG_WRATH, glow(48, 16, 14, FLAME, 0.45) + spokes(48, 16, 10, 14.5, range(0, 360, 45), '#F2C230', 2.4) + C(48, 16, 7, '#F2C230', 3) +
+                          P('M33 19 L14 38 M45 29 L26 48', '#FFE08A', 2.6, 0.8) + inked('M43 21 L22 42', '#F2C230', 4.4) +
+                          turned(22, 42, 135, F('M-6 0 C0 -7 10 -9 24 0 C10 9 0 7 -6 0 Z', '#FFF3C4', 3.2) + P('M2 -2.5 C8 -4.5 14 -4 18 -1.5', '#FFFFFF', 2)) +
+                          F(burst(9, 55, (9, 4), 6), '#F2C230', 2.4) + inked('M36 48 V58 M31 53 H41', '#FFFFFF', 2.8) + inked('M54 36 V44 M50 40 H58', '#FFFFFF', 2.4))
+
+
+def shard(dx, dy, k=0.8):
+    """the icicle's shard, smaller, moved by (dx, dy)"""
+    q = lambda x, y: f'{f1(32 + (x - 32) * k + dx)} {f1(34 + (y - 34) * k + dy)}'
+    return F(f'M{q(8, 58)} L{q(44, 10)} L{q(54, 18)} Z', '#DDF3FF', 3.2) + P(f'M{q(16, 50)} L{q(44, 16)}', '#FFFFFF', 2.2) + P(f'M{q(30, 42)} L{q(48, 22)}', '#8FD6FF', 2.2)
+
+
+T['cap_hailstorm'] = tile(BG_FROST, glow(38, 22, 18, '#8FD6FF', 0.3) + shard(-7, -6) + shard(7, 6) + F(star4(53, 50, 6), '#F2C230', 2) + F(star4(12, 14, 5), '#F2C230', 1.8))
+T['cap_shower'] = tile(BG_FIRE, fireball(22, 20, 0.55, 2.8) + fireball(51, 27, 0.48, 2.8) + fireball(36, 49, 0.62, 2.8) +
+                       F(star4(52, 52, 5), '#F2C230', 1.8) + F(star4(10, 40, 4), '#F2C230', 1.6))
+T['cap_fangs'] = tile(BG_VENOM, '<path d="M4 26 C18 14 32 8 46 6 M18 60 C32 46 46 36 60 32" style="fill: none; stroke: #1E1A1A; stroke-width: 10; stroke-linecap: round"/>'
+                      '<path d="M4 26 C18 14 32 8 46 6 M18 60 C32 46 46 36 60 32" style="fill: none; stroke: #7CF06A; stroke-width: 5; stroke-linecap: round"/>' +
+                      inked('M12 46 L22 34', '#5C4028', 4.5) + F('M17 29 L27 39 L24 42 L14 32 Z', '#F2C230', 2.8) + F('M20 32 C28 20 38 10 46 8 C44 17 36 29 26 37 Z', '#D7DEE6', 3.2) +
+                      inked('M24 54 L36 40', '#5C4028', 4.8) + F('M30 34 L42 46 L39 49 L27 37 Z', '#F2C230', 3) + F('M34 38 C44 24 52 14 58 12 C56 22 48 36 39 43 Z', '#D7DEE6', 3.4))
+T['cap_knifestorm'] = tile(BG_BLADES, glow(32, 32, 14, FLAME, 0.4) + F(whirl(32, 32, 9, 0, 150, 0.5, 4.5), '#F2C230', 2.2) + F(whirl(32, 32, 9, 180, 330, 0.5, 4.5), '#F2C230', 2.2) +
+                           ''.join(turned(32, 32, k * 72, turned(0, -20, 0, knife(0.78))) for k in range(5)))
+
+# ---- experience, and the tomes that teach talents
+T['xp'] = tile('#2E2A55', glow(32, 32, 24, '#B98CFF', 0.3) + F(star4(32, 32, 26), '#B98CFF', 3.5) + P('M29.5 14 C29 19 28 22 26 24.5', '#FFFFFF', 2.4) +
+               F(star4(53, 12, 6.5), '#B98CFF', 2.2) + F(star4(11, 52, 5), '#B98CFF', 2))
+PAGE, LINES = 'M-13 -17 H13 V17 H-13 Z', P('M-7 -9 H7 M-7 -3 H7 M-7 3 H3', '#B8A27A', 2)
+T['tome_pages'] = tile('#2F6F5A', turned(23, 30, -16, F(PAGE, '#F3E6CC', 3) + LINES) + turned(41, 30, 14, F(PAGE, '#F3E6CC', 3) + LINES) +
+                       turned(32, 36, -3, F('M-13 -17 H7 L13 -11 V17 H-13 Z', '#F3E6CC', 3) + F('M7 -17 V-11 H13 Z', '#D8C9A8', 2.4) + LINES))
+T['tome_scholar'] = tile('#A0703F', turned(32, 32, -8, F('M-17 -24 H17 C18.5 -24 19 -23.5 19 -22 V24 C19 25.5 18.5 26 17 26 H-17 Z', '#F3E6CC', 3) +
+                                                   P('M17 -18 V20', '#D8C9A8', 1.6) + F('M-20 -27 H14 C15.5 -27 16 -26.5 16 -25 V21 C16 22.5 15.5 23 14 23 H-20 Z', '#4F6FA8', 3.5) +
+                                                   F('M-20 -27 H-13 V23 H-20 Z', '#3D5A8C', 3) + P('M-7 -20 H9 V16 H-7 Z', '#7D98C8', 2) + F(burst(1, -2, (6.5,), 2), '#F2C230', 2.4) +
+                                                   F('M12 -6.5 H21 V1.5 H12 Z', '#6B4528', 2.6) + F('M9 -8.5 H15 V3.5 H9 Z', '#F2C230', 2.4) + C(12, -2.5, 1.2, K, 0)))
+T['tome_grand'] = tile('#3B2B54', glow(32, 33, 31, '#FFB547', 0.25) + glow(32, 33, 22, FLAME, 0.35) + P('M32 1 V6 M7 11 L11 14 M57 11 L53 14 M2 33 H7 M62 33 H57', FLAME, 2.6) +
+                       turned(32, 35, -6, F('M-20 -22 H21 C22.5 -22 23 -21.5 23 -20 V24 C23 25.5 22.5 26 21 26 H-20 Z', '#FFF3C4', 3) +
+                              F('M-23 -25 H18 C19.5 -25 20 -24.5 20 -23 V21 C20 22.5 19.5 23 18 23 H-23 Z', '#6A4BA3', 3.5) +
+                              F('M-23 -25 H-15 V23 H-23 Z', '#4F3780', 3) + P('M-23 -15 H-15 M-23 13 H-15', '#F2C230', 3) +
+                              ''.join(F(d, '#F2C230', 2.4) for d in ('M-15 -25 H-6 L-15 -16 Z', 'M20 -25 H11 L20 -16 Z', 'M-15 23 H-6 L-15 14 Z', 'M20 23 H11 L20 14 Z')) +
+                              C(2.5, -1, 8, '#F2C230', 2.6) + F(burst(2.5, -1, (5.5,), 2), '#E9DDFF', 2) + P('M0.5 -4 L1.5 -5', '#FFFFFF', 1.6)))
 
 
 if __name__ == '__main__':

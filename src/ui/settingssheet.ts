@@ -10,16 +10,19 @@ import { esc, fmtDate, fmtN, GLYPH } from './dom';
 import { MUSIC } from './music';
 import { AB, SLOTS_AB } from '../content/roles';
 import { DEFAULT_KEYS, keyLabel, type BindSlot } from '../content/keys';
-import type { GearKey } from '../content/types';
+import type { AbilitySlot, GearKey } from '../content/types';
+import { buttonFor } from '../content/talents';
 import { tile } from './art';
 import { KEYWAIT, ownKeys } from './keybinds';
 
-/** Your keys: each of your class's four buttons and the dodge, E, Q, F, R order. Tap one, then press a key. */
-function keysBox(k: GearKey, cls: string): string {
+/** Your keys: each of your class's four buttons (as your spec has them: Fire's are fire) and the dodge, E, Q, F, R
+ *  order. Tap one, then press a key. */
+function keysBox(k: GearKey, cls: string, spec: string | null): string {
   const own = ownKeys(k);
   const order = (Object.entries(DEFAULT_KEYS[k]) as [string, string][]).sort((a, b) => 'EQFR'.indexOf(a[1].slice(3)) - 'EQFR'.indexOf(b[1].slice(3))).map(([s]) => s as BindSlot);
   const row = (slot: BindSlot): string => {
-    const name = slot === 'dodge' ? 'Dodge' : AB[k][slot as 'a1'].name, icon = slot === 'dodge' ? 'dodge' : AB[k][slot as 'a1'].key;
+    const b = slot === 'dodge' ? null : buttonFor(AB[k][slot as AbilitySlot], spec, slot as AbilitySlot);
+    const name = b ? b.name : 'Dodge', icon = b ? b.icon : 'dodge';
     const wait = KEYWAIT.slot === slot;
     return `<li class="kb-row"><span class="kb-ic">${tile(icon)}</span><span class="kb-n">${esc(name)}</span><button type="button" class="btn small kb-k${wait ? ' wait' : ''}" data-act="rebind" data-slot="${slot}" aria-label="${esc(name)}: ${wait ? 'press a key' : esc(keyLabel(k, slot, own))}">${wait ? 'Press a key…' : esc(keyLabel(k, slot, own))}</button></li>`;
   };
@@ -35,12 +38,12 @@ declare const __BUILD__: string;
 const BUILD = typeof __BUILD__ === 'string' ? __BUILD__ : 'dev';
 
 /** `keys`: your class on a computer (its Keys list), or null on a touch screen or before your first hero */
-export function settingsSheet(p: Profile, st: SyncState, dev: Dev, resetArmed: boolean, keys: { k: GearKey; cls: string } | null): { head: string; body: string } {
+export function settingsSheet(p: Profile, st: SyncState, dev: Dev, resetArmed: boolean, keys: { k: GearKey; cls: string; spec: string | null } | null): { head: string; body: string } {
   const where = st === 'account' ? 'Saved to your account. It follows you between your phone and your computer.' : st === 'connecting' ? 'Connecting to your account…' : st === 'offline' ? 'Your account save could not be reached, so this device is keeping your progress until it can.' : 'Saved on this device. Open the game on claude.ai to keep it in your account too.';
   const body = `
     <div class="box"><h3 class="section-title">Sound</h3><div class="actions vol-row"><button type="button" class="btn small" data-act="sound">${p.settings.sound ? GLYPH.sound + 'Sound on' : GLYPH.mute + 'Sound off'}</button>
       <label class="vol"><span>Music</span><input type="range" min="0" max="100" step="5" value="${Math.round(MUSIC.volume * 100)}" data-act="music" aria-label="Music volume"></label></div></div>
-    ${keys ? keysBox(keys.k, keys.cls) : ''}
+    ${keys ? keysBox(keys.k, keys.cls, keys.spec) : ''}
     <div class="box"><h3 class="section-title">Your save</h3><p class="fine">${esc(where)}</p><p class="fine">Save ${fmtN(p.rev)} · started ${fmtDate(p.createdAt)} · ${p.roster.length} hero${p.roster.length === 1 ? '' : 'es'}</p></div>
     <div class="box"><h3 class="section-title">For testing</h3>
       <p class="fine">See the end-of-run reveal of the dungeon picked on the Dungeons sheet, without earning it. Nothing is added to your save.</p>
@@ -49,6 +52,8 @@ export function settingsSheet(p: Profile, st: SyncState, dev: Dev, resetArmed: b
       <div class="seg"><button type="button" class="sg" role="switch" data-act="vfree" aria-checked="${dev.valeFree}">Instant growth</button><button type="button" class="sg" role="switch" data-act="vluck" aria-checked="${dev.valeLuck}">Lucky ×50</button></div>
       <p class="fine">Collection log rewards and Heroic: try the house looks, the Risen and Heroic before you earn them. A look you haven't earned shows only while this is on; a hero you make stays.</p>
       <div class="seg"><button type="button" class="sg" role="switch" data-act="allopen" aria-checked="${dev.allOpen}">Everything open</button></div>
+      <p class="fine">Levels: add the XP for five more, to try talents out. It stays in your save, like XP from a run.</p>
+      <div class="actions"><button type="button" class="btn small" data-act="xpup">+5 levels</button></div>
       <p class="fine">Onboarding: replay the Crypt Trial as your hero, or the guided tour of your house.</p>
       <div class="actions"><button type="button" class="btn small" data-act="intro">Play the trial</button><button type="button" class="btn small" data-act="tour">Hearth tour</button></div></div>
     <div class="box"><h3 class="section-title">Start over</h3><p class="fine">Wipes every hero, their gear, kill counts, the collection log, achievements and the house.</p>

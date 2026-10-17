@@ -25,18 +25,22 @@ import { dropSource } from './logpeek';
 import { pieceCard, traitRow } from './armourycard';
 import type { SheetSpec } from './sheets';
 import { progressHtml } from './achcard';
+import { talentActions, talentLines, talentsTab } from './talentstab';
+import { MEND } from '../content/roles';
+import { TALENTS, buttonFor } from '../content/talents';
+import { specOf, talentLoadout, unspent } from '../meta/talents';
 
-export type ArmouryTab = 'gear' | 'abilities' | 'looks';
-export const ARMOURY_TABS: ArmouryTab[] = ['gear', 'abilities', 'looks'];
-const TAB_WORD: Record<ArmouryTab, string> = { gear: 'Gear', abilities: 'Abilities', looks: 'Looks' };
+export type ArmouryTab = 'gear' | 'talents' | 'abilities' | 'looks';
+export const ARMOURY_TABS: ArmouryTab[] = ['gear', 'talents', 'abilities', 'looks'];
+const TAB_WORD: Record<ArmouryTab, string> = { gear: 'Gear', talents: 'Talents', abilities: 'Abilities', looks: 'Looks' };
 type GearSpec = Extract<SheetSpec, { kind: 'gear' }>;
 
 const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 L14.9 8.7 L21.6 9.4 L16.6 13.9 L18 20.6 L12 17.2 L6 20.6 L7.4 13.9 L2.4 9.4 L9.1 8.7 Z" style="fill: #F2C230; stroke: #1E1A1A; stroke-width: 2; stroke-linejoin: round"/></svg>';
 const BURST = '<span class="sl-burst" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>';
 
 /** what the armoury remembers while the page is open: the piece just put on, for the moment it takes (which
- *  slot, and the item level before and after) */
-export interface ArmouryView { justOn: { hero: string; slot: SlotId; from: number; to: number; at: number } | null }
+ *  slot, and the item level before and after), the talent a point just went in, and Take all back's second tap */
+export interface ArmouryView { justOn: { hero: string; slot: SlotId; from: number; to: number; at: number } | null; justTal: { id: string; at: number } | null; tReset: boolean }
 
 /** what the armoury's buttons need from the sheets: what is open, a way to open something, and where it's drawn */
 export interface ArmouryHost { app: App; root: HTMLElement; view: ArmouryView; spec(): SheetSpec | null; open(spec: SheetSpec): void }
@@ -49,7 +53,7 @@ export function settle(p: Profile, s: GearSpec): GearSpec {
   const slot = s.slot || SLOT_IDS.find((x) => waitingFor(p, h, x)) || 'weapon';
   const row = shelfFor(p, h, slot);
   const pick = s.pick && row.some((x) => x.def.id === s.pick) ? s.pick : (row.find((x) => x.isNew) || row.find((x) => x.worn) || row[0]).def.id;
-  return { kind: 'gear', hero: h.id, slot, pick, tab: s.tab || 'gear' };
+  return { kind: 'gear', hero: h.id, slot, pick, tab: s.tab || 'gear', ...(s.node ? { node: s.node } : {}) };
 }
 
 /** Moving on from the slot you had open (another slot, another hero, or closing): you've looked, so its new
@@ -83,6 +87,7 @@ export function armouryActions(x: ArmouryHost): Record<string, (el: HTMLElement)
     setTimeout(() => { if (v.justOn && performance.now() - v.justOn.at > 1500) v.justOn = null; }, 1600);
   };
   return {
+    ...talentActions(x),
     artab: (el) => go({ tab: el.dataset.tab as ArmouryTab }),
     arslot: (el) => go({ slot: el.dataset.slot as SlotId, pick: undefined, tab: 'gear' }),
     // only the picked piece, when it can go on, carries data-wear (pieceTile)
@@ -122,8 +127,10 @@ export function countUp(root: HTMLElement, view: ArmouryView): void {
 
 /** The armoury for a hero, on a settled spec. */
 export function armourySheet(p: Profile, h: Hero, s: GearSpec, view: ArmouryView): { head: string; tabs: string; body: string; foot: string } {
-  const tab = s.tab || 'gear', n = waiting(p, h).length;
-  const tabs = `<div class="tabs" role="tablist">${ARMOURY_TABS.map((t) => `<button type="button" class="tab" role="tab" data-act="artab" data-tab="${t}" aria-selected="${t === tab}">${TAB_WORD[t]}${t === 'gear' && n ? ` <i class="tab-pip gold">${n}</i>` : ''}</button>`).join('')}</div>`;
+  const tab = s.tab || 'gear', n = waiting(p, h).length, pts = unspent(p, h);
+  const pip = (t: ArmouryTab): string => (t === 'gear' && n ? ` <i class="tab-pip gold">${n}</i>` : t === 'talents' && pts ? ` <i class="tab-pip gold">${pts}</i>` : '');
+  const tabs = `<div class="tabs" role="tablist">${ARMOURY_TABS.map((t) => `<button type="button" class="tab" role="tab" data-act="artab" data-tab="${t}" aria-selected="${t === tab}">${TAB_WORD[t]}${pip(t)}</button>`).join('')}</div>`;
+  if (tab === 'talents') return { head: head(p, h), tabs, ...talentsTab(p, h, s.node, view) };
   if (tab === 'abilities') return { head: head(p, h), tabs, body: abilities(p, h), foot: '' };
   if (tab === 'looks') return { head: head(p, h), tabs, body: looks(p, h), foot: '' };
   return { head: head(p, h), tabs, ...gear(p, h, s, view) };
@@ -198,29 +205,35 @@ function foot(p: Profile, h: Hero, slot: SlotId, x: ShelfPiece, j: ArmouryView['
   return `<button type="button" class="btn big ar-wear${worse ? '' : ' gold'}${x.isNew && !worse ? ' now' : ''}" data-act="arwear">${GLYPH.shield}Put it on</button>`;
 }
 
-/** the Abilities tab: the four buttons with what the gear does to each, then what is always on */
+/** the Abilities tab: the four buttons as the hero's spec has them (Fire's are fire), with what the gear and
+ *  the talents do to each (a healer's Mend too), then what is always on */
 function abilities(p: Profile, h: Hero): string {
-  const gk = gearKey(h), ak = abKey(h), L = loadoutFor(p, h);
+  const gk = gearKey(h), ak = abKey(h), L = loadoutFor(p, h), spec = specOf(h);
   const keyNum: Record<AbilitySlot, string> = { a1: '1', a2: '2', a3: '3', a4: '4' };
   const fx = effectsOf(L, gk).filter((e) => !e.later);
-  const cards = SLOTS_AB.map((s) => {
-    const ab = AB[ak][s];
-    const buffs = fx.filter((e) => e.desc.toLowerCase().includes(ab.name.toLowerCase()));
-    return `<article class="at-card${buffs.length ? ' on' : ''}">
+  const tal = talentLoadout(p, h).tal.map((id) => TALENTS[id]?.def).filter((t) => !!t);
+  const extras = (names: string[], slot: AbilitySlot | 'mend'): string => {
+    const buffs = fx.filter((e) => names.some((nm) => e.desc.toLowerCase().includes(nm.toLowerCase())));
+    return buffs.map((b) => `<div class="at-combo"><b>+ ${esc(b.name)}:</b> ${esc(b.desc)}</div>`).join('')
+      + tal.filter((t) => t.slot === slot).map((t) => `<div class="at-combo tal" style="--sc: ${spec?.color || '#8A63D2'}"><b>+ ${esc(t.name)}:</b> ${esc(t.desc)}</div>`).join('');
+  };
+  const card = (icon: string, kbd: string, name: string, meta: string, desc: string, more: string): string => `<article class="at-card${more ? ' on' : ''}">
       <div class="at-top">
-        <span class="at-ic"><span class="tile">${tile(ab.key)}</span><kbd>${keyNum[s]}</kbd></span>
+        <span class="at-ic"><span class="tile">${tile(icon)}</span><kbd>${kbd}</kbd></span>
         <div class="at-info">
-          <div class="at-title-row"><b>${esc(ab.name)}</b><span class="at-meta">${ab.hold ? 'Hold · Block' : `${ab.cd}s CD`}${ab.mana ? ` · ${ab.mana} Mana` : ''}</span></div>
-          <p>${esc(ab.desc)}</p>
+          <div class="at-title-row"><b>${esc(name)}</b><span class="at-meta">${meta}</span></div>
+          <p>${esc(desc)}</p>
         </div>
-      </div>
-      ${buffs.map((b) => `<div class="at-combo"><b>+ ${esc(b.name)}:</b> ${esc(b.desc)}</div>`).join('')}
-    </article>`;
+      </div>${more}</article>`;
+  let cards = SLOTS_AB.map((s) => {
+    const base = AB[ak][s], ab = buttonFor(base, spec?.id, s);
+    return card(ab.icon, keyNum[s], ab.name, `${ab.hold ? 'Hold · Block' : ab.filler ? 'Every beat' : `${ab.cd}s CD`}${ab.mana ? ` · ${ab.mana} Mana` : ''}`, ab.desc, extras([...new Set([base.name, ab.name])], s));
   }).join('');
-  const always = fx.filter((e) => e.kind === 'set' || e.kind === 'trait');
-  return `<h3 class="section-title">Your four buttons<small>with your gear</small></h3><div class="at-list">${cards}</div>
-    <h3 class="section-title">Always on<small>sets and the weapon trait</small></h3>
-    ${always.length ? `<div class="ar-always">${always.map((e) => `<p><b>${esc(e.kind === 'trait' ? `${e.name} trait` : e.name)}</b> ${esc(e.desc)}</p>`).join('')}</div>` : '<p class="fine">Wear two pieces of a set, or a Rare weapon with a trait, to switch one on.</p>'}`;
+  if (ak === 'healer') cards += card('mend', 'Tap', 'Mend', `Tap a name · ${MEND.mana} Mana`, `Heal the mate whose name you tap for ${MEND.heal}.`, extras(['Mend'], 'mend'));
+  const always = fx.filter((e) => e.kind === 'set' || e.kind === 'trait'), lines = talentLines(p, h);
+  return `<h3 class="section-title">Your buttons<small>with your gear${spec ? ` and ${esc(spec.name)}` : ''}</small></h3><div class="at-list">${cards}</div>
+    <h3 class="section-title">Always on<small>sets, the weapon trait, talents</small></h3>
+    ${always.length || lines.length ? `<div class="ar-always">${always.map((e) => `<p><b>${esc(e.kind === 'trait' ? `${e.name} trait` : e.name)}</b> ${esc(e.desc)}</p>`).join('')}${lines.length && spec ? `<p><b>${esc(spec.name)} talents</b> ${esc(lines.join(' · '))}</p>` : ''}</div>` : '<p class="fine">Wear two pieces of a set, a Rare weapon with a trait, or put talent points in, to switch one on.</p>'}`;
 }
 
 /** the Looks tab: every title (the ones you have to wear with a tap, and where each came from; the rest with

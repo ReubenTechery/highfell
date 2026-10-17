@@ -7,6 +7,9 @@ import { HOOKS, S, SHARED_MOBS, emit } from './state.js';
 import { onBossDead, checkPack, startBoss } from './game.js';
 import { breakCage, cutChain, interruptCast } from './mobs.js';
 import { onPerfectBlock } from './buttons.js';
+import { onBlock, talentHitMul, talentStats, wallMul } from './specs.js';
+import { onBurnDeath } from './fire.js';
+import { killXp } from '../content/xp';
 
 /* play a sound; during the pet walkout everything is hushed except what forces through */
 export const sfx = (n, v, force) => { if (S && !S.quiet && (!S.hush || force)) HOOKS.sound(n, v); };
@@ -26,8 +29,10 @@ export const BREW_FX = {
 };
 export const brewFx = (id) => (id && BREW_FX[id]) || {};
 
-/* loadout: what the meta layer worked out from the hero's gear.
-   { power, traits: Set, bonuses: Set, weaponRar, unique, name?, sprite?, fit?, brew?, brewCol? }
+/* loadout: what the meta layer worked out from the hero's gear and talents.
+   { power, traits: Set, bonuses: Set, weaponRar, unique, name?, sprite?, fit?, brew?, brewCol?, spec?, tal?, ts? }
+   spec is the hero's spec (Fire changes the buttons), tal the talents it has that change a button, ts its talent
+   stats added up (meta/talents.ts talentLoadout; specs.js turns them into multipliers). Bots have none.
    name is your hero's (a bot's is its role's); sprite is the hero's picture for this run, composed in layers by the
    run screen, and fit its weapon glow and head top (render.js heroFit). */
 export function makeHero(role, isPlayer, loadout) {
@@ -36,13 +41,15 @@ export function makeHero(role, isPlayer, loadout) {
   const cls = L.cls || (role === 'tank' ? 'warrior' : role === 'healer' ? 'cleric' : 'mage');
   const isRogue = cls === 'rogue';
   const power = L.power || 1;
-  const maxHp = Math.round(R.hp * hpMultiplier(power));
+  const ts = talentStats(L.ts);
+  const maxHp = Math.round(R.hp * hpMultiplier(power) * ts.hp);
   const B = brewFx(L.brew);
   return {
     id: 'h_' + role, kind: 'hero', role, cls, name: L.name || R.name, sprite: L.sprite || '', fit: L.fit || null, isPlayer, x: 0, y: 0, r: R.r,
     face: -Math.PI / 2, back: true, flip: false, hp: maxHp, maxHp, armor: R.armor, power,
     traits: new Set(L.traits || []), bonuses: new Set(L.bonuses || []), unique: L.unique || null,
-    weaponRar: L.weaponRar || 0, threatMod: R.threat * (B.threat || 1), speed: R.speed * (isRogue ? 1.1 : 1) * (B.speed || 1), alive: true,
+    spec: L.spec || null, tal: new Set(L.tal || []), ts,
+    weaponRar: L.weaponRar || 0, threatMod: R.threat * (B.threat || 1) * ts.threat, speed: R.speed * (isRogue ? 1.1 : 1) * (B.speed || 1), alive: true,
     // the party's brew, poured at the door (see BREW_FX)
     brew: L.brew || null, brewCol: L.brewCol || null, brewUsed: false,
     mana: 100, maxMana: 100, cd: { a1: 0, a2: 0, a3: 0, a4: 0, dodge: 0 }, gcd: 0, atkT: 0.4,
@@ -53,6 +60,8 @@ export function makeHero(role, isPlayer, loadout) {
     // only drawn: held still on impact, the green glow of a heal
     holdT: 0, healGlow: 0,
     frenzyT: 0, nightstalkerT: 0, ghostSaved: false,
+    // talents (specs.js): Payback readied, Rising Fury's stacks, Knife Storm, Miracle used
+    payback: false, fury: 0, furyT: 0, stormT: 0, miracleUsed: false,
     target: null, picked: null, stillT: 1, dodgeT: 0, dodgeX: 0, dodgeY: -1, iframe: 0,
     blocking: false, blockT: 9, dash: null, cast: null,
     st: { stun: 0, root: 0, haunt: 0, air: 0, ghost: 0, surge: 0, zeal: 0, kx: 0, ky: 0, chained: null, caged: null, curse: null },
@@ -148,6 +157,9 @@ export const FEEL = {
   crit: { hold: 0.05, flash: 0.1, shake: 1.5, size: 30, flinch: true, sparks: 4 },
   payoff: { hold: 0.07, flash: 0.12, shake: 3.5, size: 34, flinch: true, shards: 8 },
 };
+/** how hard a crit hits: twice as hard, and a rogue's two and a half times (the rogue's crits are its big numbers) */
+export const ROGUE_CRIT = 2.5;
+const critMul = (src) => (src && src.cls === 'rogue' ? ROGUE_CRIT : 2);
 /** the last hit hurtMob landed: whether it crit and how it felt (the buttons read it to prime their payoffs) */
 export const LAST = { crit: false, tier: 'hit', amt: 0 };
 export function bits(x, y, sp, n, spd, o) {
@@ -237,12 +249,16 @@ export function hurtHero(h, amt, src, o) {
         a *= 0.25; h.stats.blocks++;
         if (h.isPlayer) fxText(h.x, h.y - 90, 'Blocked', '#C9D2DC', 18);
         sfx('block');
+        onBlock(h, src);
         fx({ type: 'ring', x: h.x + Math.cos(h.face) * 22, y: h.y - 30 + Math.sin(h.face) * 12, r0: 6, r1: 40, col: '#FFFFFF', dur: 0.2, w: 4 });
         emit({ type: 'block', perfect: false, player: !!h.isPlayer, smash: !!o.smash });
       }
     }
   }
   if (!o.pierce && (!o.hazard || blocked)) a *= 1 - h.armor * (o.magic ? 0.4 : 1);
+  // talents: a tank's thicker skin, and a mate behind an Iron Wall
+  if (h.ts) a *= h.ts.armor;
+  a *= wallMul(h);
   // Barrowguard 3pc: active skeleton thralls beside the tank soak 25% of incoming hits
   if (h.role === 'tank' && a > 0 && S.thralls && S.thralls.some((tr) => tr.alive && tr.kind === 'bg' && tr.owner === h)) {
     a *= 0.75;
@@ -309,10 +325,10 @@ export function killHero(h) {
 }
 
 /* ---------- damage to mobs ---------- */
-/** the crit chance gear and Lantern Zeal add to a hero's own (up to +14% from Power, +10% in the Zeal) */
+/** the crit chance gear, talents and Lantern Zeal add to a hero's own (up to +14% from Power, +10% in the Zeal) */
 export function critBonus(src) {
   if (!src || src.kind !== 'hero') return 0;
-  return (src.power > 1 ? Math.min(0.14, (src.power - 1) * 0.14) : 0) + (src.st && src.st.zeal > 0 ? 0.1 : 0);
+  return (src.power > 1 ? Math.min(0.14, (src.power - 1) * 0.14) : 0) + (src.st && src.st.zeal > 0 ? 0.1 : 0) + (src.ts ? src.ts.crit : 0);
 }
 /** A hit on a mob. o: { raw (no Power), crit (its chance; 1 always), noCrit, shatter / chillShatter (Shatter
  *  multipliers), knock, threat (×), tier (how it feels: FEEL), auto (an automatic swing, counted apart), col,
@@ -331,12 +347,14 @@ export function hurtMob(m, amt, src, o) {
     if (src.st.surge > 0) a *= 1.2;
     if (src.st.ghost > 0) a *= 1.25;
   }
+  // talents: the hero's damage, and what its talents add on this foe (specs.js)
+  if (!o.raw && src && src.kind === 'hero' && src.ts) a *= src.ts.dmg * talentHitMul(src, m);
   if (m.exposed > 0) a *= 1.35;
   let crit = false;
   // the party's brew: Glowcap Draught and Starlight Elixir hit harder
   if (src && src.brew) a *= brewFx(src.brew).dmg || 1;
   const critChance = o.crit === 1 ? 1 : (o.crit === undefined ? 0.12 : o.crit) + critBonus(src);
-  if (!o.noCrit && rng() < critChance) { a *= 2; crit = true; }
+  if (!o.noCrit && rng() < critChance) { a *= critMul(src); crit = true; }
   else if (!o.noCrit && src && src.traits && src.traits.has('headsman') && stunned(m)) { a *= 2; crit = true; }
   const shattered = !!o.shatter && shatterable(m);
   if (shattered) a *= m.st.freeze > 0 ? o.shatter : o.chillShatter || CHILL_SHATTER;
@@ -385,7 +403,10 @@ export function hurtMob(m, amt, src, o) {
 }
 export function killMob(m, src) {
   m.hp = 0; m.alive = false; m.deadT = 0; m.cast = null; m.state = 'dead';
-  emit({ type: 'mob.killed', mob: m.type, boss: !!m.isBoss, undead: !!m.M.skeleton, byPlayer: !!(src && src.isPlayer), ...(m.M.tally ? { tally: m.M.tally } : {}) });
+  const xp = killXpOf(m);
+  emit({ type: 'mob.killed', mob: m.type, boss: !!m.isBoss, undead: !!m.M.skeleton, byPlayer: !!(src && src.isPlayer), x: m.x, y: m.y, xp, ...(m.M.tally ? { tally: m.M.tally } : {}) });
+  // Wildfire: a foe that dies burning passes its Burn on
+  if (m.burn) onBurnDeath(m);
   if (m.M.wisp) {
     dots(m.x, m.y - 40, '#C8F5E8', 10, 160); fx({ type: 'ring', x: m.x, y: m.y - 40, r0: 8, r1: 46, col: '#C8F5E8', dur: 0.25, w: 4 }); sfx('pop');
     // Soul Spark backlash: banishing a wisp during a boss fight zaps the boss and restores healer mana
@@ -429,6 +450,21 @@ export function killMob(m, src) {
   if (m.pack) checkPack(m.pack);
 }
 
+/* ---------- XP ---------- */
+/** What a kill pays (content/xp.ts), times the run's multiplier (its dungeon's tier, Heroic), popped in violet over
+ *  the mob. Only a run that counts pays (the run sets opts.xp); the run scene adds it to your total. */
+export const XP_COL = '#B98CFF';
+function killXpOf(m) {
+  if (!S.opts || !S.opts.xp) return 0;
+  const n = Math.round(killXp(m.M, m.type === S.finalBoss) * (S.opts.xpMul || 1));
+  if (n > 0) {
+    S.xpRun = (S.xpRun || 0) + n;
+    const big = m.isBoss;
+    fxText(m.x, m.y - (big ? 260 : m.M.big ? 150 : 100), `+${n} XP`, XP_COL, big ? 30 : m.M.big ? 22 : 17, { dur: big ? 1.8 : 1.2, vy: -46 });
+  }
+  return n;
+}
+
 /* ---------- healing ---------- */
 /** A heal. o: { raw (no Power and no crit), noCrit, show (a number even at full health), size }. Heals from a hero
  *  crit for 1.5x on the same chance as a hit. Returns what it really healed. */
@@ -437,8 +473,8 @@ export function healHero(src, t, amt, o) {
   if (!t.alive) return 0;
   const before = t.hp / t.maxHp;
   const crit = !o.raw && !o.noCrit && !!src && src.kind === 'hero' && rng() < 0.12 + critBonus(src);
-  const a = Math.round(amt * (o.raw ? 1 : (src && src.power) || 1) * (crit ? 1.5 : 1));
-  LAST.healCrit = crit;
+  const a = Math.round(amt * (o.raw ? 1 : ((src && src.power) || 1) * ((src && src.ts && src.ts.heal) || 1)) * (crit ? 1.5 : 1));
+  LAST.healCrit = crit; LAST.healAmt = a;
   const real = Math.min(a, t.maxHp - t.hp);
   t.hp += real;
   if (t.st && t.st.ghost > 0 && t.hp >= t.maxHp * 0.85) {

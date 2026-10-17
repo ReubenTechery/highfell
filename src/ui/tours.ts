@@ -1,7 +1,7 @@
 /**
  * The house's tips, as data: the welcome tour after your first hero (your gear, your Warband's beds, the
- * dungeons), and the garden's one-step tips, each the first time its moment comes (meta/tips.ts says when):
- * your first seed, your first ready bed and your first herbs. Each step is a room, what it points at, where its
+ * dungeons), and the one-step tips, each the first time its moment comes (meta/tips.ts says when): your first
+ * talent points, your first seed, your first ready bed and your first herbs. Each step is a room, what it points at, where its
  * pin stands and its words; the hearth draws them.
  */
 import { BUNK_SLOTS, HALL, HERO_AT, THINGS } from '../content/house';
@@ -52,8 +52,20 @@ export const TOUR_STEPS: TourStep[] = [
   },
 ];
 
-/** the garden's tips, one step each: plant your first seed, pick your first crop, brew your first herbs */
-const GARDEN_TIPS: Record<Exclude<HouseTip, 'tour'>, TourStep> = {
+/** the one-step tips: spend your first talent points, plant your first seed, pick your first crop, brew your
+ *  first herbs */
+const TIPS: Record<Exclude<HouseTip, 'tour'>, TourStep> = {
+  talents: {
+    room: 'hall',
+    thing: 'me',
+    at: [HERO_AT.x, HERO_AT.y - 310],
+    cam: HERO_AT.x + 70,
+    callout: 'Tap Your Hero · Talents',
+    step: 'New',
+    title: 'Talent Points',
+    sub: 'Your level gave you talent points. Pick a spec and spend them.',
+    next: 'Got it',
+  },
   seed: {
     room: 'yard',
     thing: 'bed.1',
@@ -93,7 +105,7 @@ export function tipSteps(tip: HouseTip, p: Profile): TourStep[] {
     const steps = warbandOpen(p) ? TOUR_STEPS : TOUR_STEPS.filter((s) => s.thing !== 'newhero');
     return steps.map((s, i) => ({ ...s, step: `${i + 1} / ${steps.length}` }));
   }
-  const step = GARDEN_TIPS[tip];
+  const step = TIPS[tip];
   if (tip !== 'ready') return [step];
   const bed = THINGS.find((t) => t.action === 'garden' && t.bed !== undefined && !!p.vale.beds[t.bed] && bedPhase(p.vale.beds[t.bed]) === 'ready');
   return [bed ? { ...step, thing: bed.id, at: [bed.x, -150] } : step];

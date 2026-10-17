@@ -24,9 +24,49 @@ export interface AbilityDef {
   offBeat?: boolean;
   /** the class's filler: no cooldown, pressed every beat (Cleave, Smite, Icicle, Viper Blades) */
   filler?: boolean;
-  /** a filler's hit before Power and gear (the armoury card shows it before and after a piece) */
+  /** a filler's hit before Power and gear (the armoury card shows it before and after a piece), or Comet's */
   hit?: number;
   combo?: string;
+}
+
+/* ---------------------------------------------------------------- talents: two specs a class, a tree each */
+/** a stat a talent point adds to (TALENT_STATS in talents/ says how much a point) */
+export type TalentStat = 'dmg' | 'heal' | 'hp' | 'crit' | 'haste' | 'armor' | 'threat';
+/** A talent in a spec's tree. A stat talent takes several points, each adding to its stat; the rest take one and
+ *  change how a button works. A row opens once enough points are in the rows above it (ROW_NEED). */
+export interface TalentDef {
+  id: string;
+  name: string;
+  /** what it does, in one plain sentence (a stat talent's is written from its stat) */
+  desc: string;
+  icon: string;
+  /** 1 (the top) to 5 (the capstone's row) */
+  row: number;
+  ranks: number;
+  stat?: TalentStat;
+  /** one of a pair in its row: you can have only one of the two (they share this) */
+  choice?: string;
+  /** the button it changes, for the Abilities tab */
+  slot?: AbilitySlot | 'mend';
+  /** the spec's biggest talent, at the bottom */
+  capstone?: boolean;
+}
+/** A button a spec changes: its new name, picture and what it does (Fire's four). The engine still knows it by
+ *  its slot, so gear that makes a button better makes this one better. */
+export interface SpecButton { name: string; icon: string; desc: string; combo?: string }
+/** One of a class's two specs: its own tree, and what picking it changes before any points are in. */
+export interface SpecDef {
+  id: string;
+  cls: 'warrior' | 'cleric' | 'mage' | 'rogue';
+  name: string;
+  /** one line: what it plays like */
+  pitch: string;
+  icon: string;
+  color: string;
+  /** what picking it changes on its own, if anything (Fire turns the four buttons to fire) */
+  base?: string;
+  buttons?: Partial<Record<AbilitySlot, SpecButton>>;
+  talents: TalentDef[];
 }
 
 export interface RarityDef { key: string; name: string; score: number; color: string; ink: string }
@@ -177,7 +217,7 @@ export interface DungeonInfo {
   tier?: 1 | 2 | 3;
   /** Recommended entry item level for this dungeon. */
   recIlvl?: number;
-  /** Item level of this dungeon's Epic set pieces and boss weapons. */
+  /** The most Power this dungeon's drops have: its boss weapons' (its set pieces are 4 less). */
   dropsIlvl?: number;
   bosses: BossInfo[];
   /** the last boss: its death ends the run */

@@ -42,8 +42,10 @@ export function worn(p: Profile, h: Hero): Record<SlotId, Worn> {
   return out;
 }
 
-/** True Epic drops (dungeon set pieces & boss weapons) sit a tier above regular ladder gear and step up +8 ilvl per dungeon tier (Tier 1: 26, Tier 2: 34, Tier 3: 42). */
-export const itemScore = (def: ItemDef): number => RARITY[def.rar].score + (def.kind !== 'gear' ? 4 + ((def.tier || 1) - 1) * 8 : 0);
+/** True Epic drops sit above the regular ladder and step up 8 a dungeon tier: a set piece is 26 in the Barrow, 34 in
+ *  Thimblebriar, 42 in Moonmere, and a boss weapon 4 more (30, 38, 46): the drop you feel most. */
+export const BOSS_WEAPON_EDGE = 4;
+export const itemScore = (def: ItemDef): number => RARITY[def.rar].score + (def.kind !== 'gear' ? 4 + ((def.tier || 1) - 1) * 8 + (def.kind === 'unique' && def.slot === 'weapon' ? BOSS_WEAPON_EDGE : 0) : 0);
 
 export function loadoutOf(items: Worn[]): Loadout {
   const scores = {} as Record<SlotId, number>;

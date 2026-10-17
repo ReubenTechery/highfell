@@ -136,7 +136,7 @@ function achievements(p: Profile, entry: string | undefined): string {
   const asked = entry && ACHIEVEMENTS[entry] ? placeOf(ACHIEVEMENTS[entry]) : entry;
   const place = asked && places.includes(asked) ? asked : places[0];
   const earned = (list: typeof shown): number => list.filter((a) => p.achievements[a.id]).length;
-  const word = (id: string): string => (DUNGEONS[id] ? DUNGEONS[id].name.split(' ')[0] : 'Garden');
+  const word = (id: string): string => (DUNGEONS[id] ? DUNGEONS[id].name.split(' ')[0] : id === 'levels' ? 'Level' : 'Garden');
   let out = `<div class="stats"><span class="chip">Points <b>${points(p)}</b> / ${maxPoints()}</span><span class="chip">Earned <b>${earned(shown)}</b> / ${shown.length}</span>
     <button type="button" class="chip ac-titles" data-act="titles">Titles <b>${p.titles.length}</b><span>Wear one</span></button></div>
     <nav class="lb-chips ac-places" aria-label="Where they are earned">${places.map((id) => { const l = shown.filter((a) => placeOf(a) === id); return `<button type="button" class="lb-chip" data-act="achplace" data-id="${esc(id)}" aria-pressed="${id === place}">${esc(word(id))}<small>${earned(l)}/${l.length}</small></button>`; }).join('')}</nav>

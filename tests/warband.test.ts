@@ -67,3 +67,29 @@ test('warband: a save that already has more heroes, or has earned a new race, ha
     assert.equal(warbandOpen(q), true, 'a log’s new race can be made');
   }
 });
+
+test('warband: your other heroes come along only when their gear is at least a bot’s, and never get loot', async () => {
+  const { resolveRun } = await import('../src/meta/loot');
+  const { BARROW } = await import('../src/content/barrow');
+  const { makeRng } = await import('../src/core/rng');
+  const p = withHero();
+  p.counters[WARBAND_KEY] = 1;
+  const healer = p.roster[0];
+  const tank = newHero(p, { name: 'Brannoc Ashvale', race: 'dwarf', cls: 'warrior' })!;
+  // all Common: the tank's gear is as good as the bot's, so it comes along
+  assert.equal(seats(p, false).find((s) => s.role === 'tank')?.hero?.id, tank.id);
+  // you in Rare: the bots wear Rare too, so your tank in Common stays home and a bot takes the seat
+  for (const s of ['weapon', 'helm', 'shoulders', 'chest'] as const) healer.regular[s] = { rar: 2 };
+  const seat = seats(p, false).find((s) => s.role === 'tank')!;
+  assert.equal(seat.hero, null, 'worse than the bot: the bot goes');
+  assert.ok(seat.bot);
+  // gear it up to Rare and it comes back
+  for (const s of ['weapon', 'helm', 'shoulders', 'chest'] as const) tank.regular[s] = { rar: 2 };
+  assert.equal(seats(p, false).find((s) => s.role === 'tank')?.hero?.id, tank.id);
+  // it came along: it gets nothing, the loot is all your hero's
+  const before = JSON.stringify(tank);
+  const r = resolveRun(p, BARROW, { hero: healer, bosses: ['knight', 'keeper'], bossTimes: { knight: 60, keeper: 90 }, cleared: true, practice: false, time: 230 }, makeRng(4));
+  assert.equal(JSON.stringify(tank), before, 'your tank got nothing');
+  assert.ok(r.drops.every((d) => d.role === 'healer'));
+  assert.equal(seats(p, true).find((s) => s.role === 'tank')?.hero, null, 'Heroic never seats your Warband');
+});

@@ -11,7 +11,7 @@ export const BARROW: DungeonInfo = {
   season: 0,
   tier: 1,
   recIlvl: 10,
-  dropsIlvl: 26,
+  dropsIlvl: 30,
   bosses: [
     { id: 'knight', name: 'Sir Rattlebones', phases: 2, enrage: 180, room: 3 },
     { id: 'keeper', name: 'The Gravekeeper', phases: 2, enrage: 300, room: 5 },

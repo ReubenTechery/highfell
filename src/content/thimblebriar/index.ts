@@ -12,7 +12,7 @@ export const THIMBLEBRIAR: DungeonInfo = {
   season: 0,
   tier: 2,
   recIlvl: 22,
-  dropsIlvl: 34,
+  dropsIlvl: 38,
   bosses: [
     { id: 'toadstool', name: 'Old Toadstool', phases: 2, enrage: 120, room: 4 },
     { id: 'tinker', name: 'The Tinker King', phases: 2, enrage: 210, room: 6 },

@@ -117,15 +117,17 @@ export function drawFx(ctx, f) {
     ctx.lineWidth = 5; ctx.strokeStyle = f.col; ctx.stroke();
     ctx.globalAlpha = 1;
   } else if (f.type === 'nova') {
+    // Rime burst's ring of ice, or Ember burst's of fire
     ctx.globalAlpha = 1 - k;
     const r = f.r * (0.3 + 0.7 * Math.sqrt(k));
-    ctx.fillStyle = 'rgba(143, 214, 255, 0.25)'; ctx.beginPath(); ctx.ellipse(f.x, f.y, r, r * 0.6, 0, 0, TAU); ctx.fill();
-    ctx.lineWidth = 7; ctx.strokeStyle = K; ctx.stroke(); ctx.lineWidth = 4; ctx.strokeStyle = '#DDF3FF'; ctx.stroke();
-    for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU; drawSpr(ctx, 'shard_ice', f.x + Math.cos(a) * r, f.y + Math.sin(a) * r * 0.6 - 10, { sx: 1.6, sy: 1.6 }); }
+    ctx.fillStyle = f.fire ? 'rgba(255, 138, 61, 0.28)' : 'rgba(143, 214, 255, 0.25)'; ctx.beginPath(); ctx.ellipse(f.x, f.y, r, r * 0.6, 0, 0, TAU); ctx.fill();
+    ctx.lineWidth = 7; ctx.strokeStyle = K; ctx.stroke(); ctx.lineWidth = 4; ctx.strokeStyle = f.fire ? '#FFB347' : '#DDF3FF'; ctx.stroke();
+    for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU; drawSpr(ctx, f.fire ? 'flame' : 'shard_ice', f.x + Math.cos(a) * r, f.y + Math.sin(a) * r * 0.6 - 10, { sx: 1.6, sy: 1.6 }); }
     ctx.globalAlpha = 1;
   } else if (f.type === 'comet') {
-    const z = (1 - k) * 420;
-    drawSpr(ctx, 'comet', f.x - (1 - k) * 160, f.y - 30 - z, { rot: Math.atan2(420, 160) * 0.5 + 0.3, sx: 1.4, sy: 1.4 });
+    // a comet falling onto its spot (a burning one for Fire; Comet Shower's small ones)
+    const z = (1 - k) * (f.small ? 300 : 420), sc = f.small ? 0.9 : 1.4;
+    drawSpr(ctx, f.sp || 'comet', f.x - (1 - k) * (f.small ? 110 : 160), f.y - 30 - z, { rot: Math.atan2(420, 160) * 0.5 + 0.3, sx: sc, sy: sc });
   } else if (f.type === 'swipe') {
     ctx.globalAlpha = 1 - k;
     ctx.lineWidth = 12; ctx.strokeStyle = K; ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(lerp(f.x, f.x2, Math.min(1, k * 2)), lerp(f.y, f.y2, Math.min(1, k * 2))); ctx.stroke();
@@ -153,4 +155,26 @@ export function drawTexts(ctx) {
     } else { ctx.strokeText(t.str, t.x, t.y); ctx.fillText(t.str, t.x, t.y); }
   }
   ctx.globalAlpha = 1;
+}
+
+/* a burning foe: a flame flickering over it for each Burn, up to five shown (fire.js) */
+export function drawBurn(ctx, m, x, y, n) {
+  const top = y - (m.isBoss ? 190 : m.M.big ? 120 : 76), w = m.r * 0.9, shown = Math.min(5, n);
+  for (let i = 0; i < shown; i++) {
+    const a = (i / shown) * TAU + S.t * 1.6, fl = Math.sin(S.t * 13 + i * 2.1) * 0.12;
+    drawSpr(ctx, 'flame', x + Math.cos(a) * w, top + Math.sin(a) * 8, { sx: 0.9 + fl, sy: 0.9 - fl, alpha: 0.9 });
+  }
+}
+/* a Firestorm (or Afterburn's burning ground): an orange pool with flames rising and embers drifting up */
+export function drawFireZone(ctx, z) {
+  ctx.fillStyle = 'rgba(255, 138, 61, 0.22)'; ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill();
+  ctx.lineWidth = 7; ctx.strokeStyle = K; ctx.stroke();
+  ctx.lineWidth = 3.5; ctx.strokeStyle = '#FFB347'; ctx.stroke();
+  const n = Math.round(z.r / 8);
+  for (let i = 0; i < n; i++) {
+    const a = i * 2.39996 + z.seed, rr = z.r * Math.sqrt(((i * 0.618) % 1));
+    const k = ((S.t * 1.3 + i * 0.17) % 1);
+    const x = z.x + Math.cos(a) * rr, y = z.y + Math.sin(a) * rr * 0.55;
+    drawSpr(ctx, 'flame', x, y - 30 * k, { sx: 1.4 - k * 0.55, sy: 1.55 - k * 0.7, alpha: 1 - k * 0.8 });
+  }
 }

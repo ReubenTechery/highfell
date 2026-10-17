@@ -2,26 +2,29 @@
  * Loot, OSRS rules. Every line of a boss's table rolls on its own for each player, so two uniques in
  * one clear can happen and so can a long dry streak. Kill counts go up with every kill. Duplicates
  * turn into marks. On top of that, every full clear drops one regular piece that climbs the
- * Common to Epic ladder for the hero you played, and one shared piece for another role, so no run
- * is ever empty. Uniques go into the collection, which the whole roster shares. A Heroic kill rolls
- * its normal dungeon's tables first, then its own: the gilding kits (content/kits.ts).
+ * Common to Rare ladder for the hero you played, and its chest holds XP: lore pages and maybe a tome
+ * (meta/xp.ts). Your other heroes never get loot from your runs, even when they come along (the owner's call,
+ * 17 Oct): the run is your hero's. Uniques go into the collection, which the whole roster shares. A Heroic
+ * kill rolls its normal dungeon's tables first, then its own: the gilding kits (content/kits.ts).
  */
 import type { BossLootDef, DropDef, DungeonInfo, Rar, RoleId, SlotId } from '../content/types';
 import { COLLECTIBLES, DUNGEONS, ITEMS, KITS } from '../content';
 import { EPIC, SLOT_IDS, TRAITS, gearId, gearKey } from '../content/gear';
-import { ORDER } from '../content/roles';
 import type { Rng } from '../core/rng';
 import { autoPlace } from './hearth';
 import { bagIt, bestRegular, fitsHero, freshForRole } from './gear';
 import { WARBAND_CAP, bossRecord, dungeonRecord, roleOf, type Hero, type Profile } from './profile';
 import { growBeds, rollSeeds } from './vale';
+import { chestXp, type ChestXp } from './xp';
+import { TOMES } from '../content/xp';
 
 /** What the lantern tells about the last boss's drops: nothing rare, a gilding kit, a unique, or the pet. */
 export type Tell = 'normal' | 'kit' | 'unique' | 'pet';
 
 export interface Drop {
   id: string;
-  source: 'table' | 'regular' | 'spare';
+  /** a boss's table, the ladder piece, or the chest's XP (its pages and tomes: `xp` says how much, `n` how many pages) */
+  source: 'table' | 'regular' | 'xp';
   boss?: string;
   rate?: number;
   kc?: number;
@@ -39,6 +42,9 @@ export interface Drop {
   /** new gear the hero who got it can put on (it is never put on for you) */
   toEquip?: boolean;
   placed?: string | null;
+  /** an XP drop's XP, and how many pages */
+  xp?: number;
+  n?: number;
 }
 
 export interface RunLoot {
@@ -60,6 +66,8 @@ export interface RunLoot {
   bedsReady?: number;
   /** a gilding kit came from the last boss: the lantern sifts gold dust onto the chest, whatever its tell */
   gild?: boolean;
+  /** XP: what you had when the run started, what the kills paid, the chest's, and where it ended */
+  xp?: { start: number; kills: number; chest: ChestXp | null; end: number };
 }
 
 export const DUPE_MARKS = 3;
@@ -133,21 +141,6 @@ function raiseFloor(p: Profile, role: RoleId, slot: SlotId, rar: Rar): void {
   for (const h of p.roster) if (roleOf(h) === role) bagIt(h, slot, { rar: r });
 }
 
-/** One shared piece for a role you are not playing, so a hero of that role is never a cold start.
- *  It raises the floor every hero of that role wears, including heroes made later. */
-export function spareDrop(p: Profile, played: RoleId, rng: Rng): Drop | null {
-  const others = ORDER.filter((r) => r !== played && Math.min(...SLOT_IDS.map((s) => p.warband[r][s].rar)) < WARBAND_CAP);
-  if (!others.length) return null;
-  const who = others[Math.floor(rng() * others.length)];
-  const floor = p.warband[who];
-  const minR = Math.min(...SLOT_IDS.map((s) => floor[s].rar)) as Rar;
-  const slots = SLOT_IDS.filter((s) => floor[s].rar === minR);
-  const slot = slots[Math.floor(rng() * slots.length)];
-  const rar = (minR + 1) as Rar;
-  raiseFloor(p, who, slot, rar);
-  return { id: gearId(who, slot, rar), source: 'spare', role: who, slot, rar, prevRar: minR, isNew: true, dupe: false, marks: 0 };
-}
-
 /** Accept or refuse a sideways trait offer. It goes on your regular weapon, worn or in the bag. */
 export function takeTrait(h: Hero, trait: string): void {
   const gKey = gearKey({ role: roleOf(h), cls: h.cls });
@@ -177,25 +170,24 @@ export interface RunEnd {
 /** What one boss kill gave: rolled the moment it dies, like loot hitting the floor. */
 export interface KillLoot { boss: string; kc: number; time: number; newPb: boolean; drops: Drop[]; marks: number; seeds?: Record<string, number> }
 
-/** The Crypt Trial's chest: an Uncommon weapon for your first hero and an Uncommon helm for another role's
- *  shared floor, so the first real run starts a step up. As drops, for the chest to show. */
+/** The Crypt Trial's chest: an Uncommon weapon and an Uncommon helm for your first hero, so the first real run
+ *  starts a step up. As drops, for the chest to show. */
 export function trialStarter(h: Hero): Drop[] {
-  const role = roleOf(h), spare = trialSpare(role);
+  const role = roleOf(h), gk = gearKey({ role, cls: h.cls });
   return [
-    { id: gearId(gearKey({ role, cls: h.cls }), 'weapon', 1), source: 'regular', role, slot: 'weapon', rar: 1, prevRar: 0, isNew: true, dupe: false, marks: 0, toEquip: true },
-    { id: gearId(spare, 'helm', 1), source: 'spare', role: spare, slot: 'helm', rar: 1, prevRar: 0, isNew: true, dupe: false, marks: 0 },
+    { id: gearId(gk, 'weapon', 1), source: 'regular', role, slot: 'weapon', rar: 1, prevRar: 0, isNew: true, dupe: false, marks: 0, toEquip: true },
+    { id: gearId(gk, 'helm', 1), source: 'regular', role, slot: 'helm', rar: 1, prevRar: 0, isNew: true, dupe: false, marks: 0, toEquip: true },
   ];
 }
-const trialSpare = (role: RoleId): RoleId => (role === 'tank' ? 'healer' : 'tank');
 
 /** Give the trial's chest, once a save, to the first hero you make (played or skipped, the trial gives the
- *  same). Like ladder pieces, both raise their role's shared floor; nothing goes on by itself. */
+ *  same). Like ladder pieces, they raise their role's shared floor; nothing goes on by itself. */
 export function grantTrialStarter(p: Profile, h: Hero): boolean {
   if (p.counters['intro.starter']) return false;
   p.counters['intro.starter'] = 1;
   const role = roleOf(h);
   raiseFloor(p, role, 'weapon', 1);
-  raiseFloor(p, trialSpare(role), 'helm', 1);
+  raiseFloor(p, role, 'helm', 1);
   return true;
 }
 
@@ -225,23 +217,33 @@ export function resolveKill(p: Profile, dg: DungeonInfo, boss: string, h: Hero, 
   return out;
 }
 
-/** What finishing the dungeon gave: the clear, the ladder piece, the spare piece and a mark. The garden grows a step. */
-export interface ClearLoot { clears: number; time: number; pb: number | null; newPb: boolean; firstClear: boolean; drops: Drop[]; marks: number; bedsReady?: number }
+/** What finishing the dungeon gave: the clear, the ladder piece, the chest's XP and a mark. The garden grows a step. */
+export interface ClearLoot { clears: number; time: number; pb: number | null; newPb: boolean; firstClear: boolean; drops: Drop[]; marks: number; bedsReady?: number; xp: ChestXp }
 
 export function resolveClear(p: Profile, dg: DungeonInfo, h: Hero, time: number, rng: Rng): ClearLoot {
   const rec = dungeonRecord(p, dg.id);
   rec.clears++;
   h.clears++;
-  const out: ClearLoot = { clears: rec.clears, time, pb: null, newPb: false, firstClear: rec.clears === 1, drops: [], marks: CLEAR_MARKS };
+  const xp = chestXp(p, dg, rng);
+  const out: ClearLoot = { clears: rec.clears, time, pb: null, newPb: false, firstClear: rec.clears === 1, drops: [], marks: CLEAR_MARKS, xp };
   if (rec.pb === null || time < rec.pb) { out.newPb = rec.pb !== null; rec.pb = time; }
   out.pb = rec.pb;
   out.drops.push(regularDrop(p, h, rng));
-  const spare = spareDrop(p, roleOf(h), rng);
-  if (spare) out.drops.push(spare);
+  out.drops.push(...xpDrops(xp, h));
   dungeonRecord(p, marksOf(dg)).marks += out.marks;
   out.bedsReady = growBeds(p);
   return out;
 }
+
+/** the chest's XP as cards: the pages, then each tome */
+export function xpDrops(xp: ChestXp, h: Hero): Drop[] {
+  const role = roleOf(h);
+  return [
+    { id: 'xp.pages', source: 'xp', role, isNew: true, dupe: false, marks: 0, xp: xp.pagesXp, n: xp.pages },
+    ...xp.tomes.map((t): Drop => ({ id: t.id, source: 'xp', role, isNew: true, dupe: false, marks: 0, xp: t.xp, rate: TOME_RATE[t.id] })),
+  ];
+}
+const TOME_RATE: Record<string, number> = Object.fromEntries(TOMES.map((t) => [t.id, t.rate]));
 
 /** Everything a run gave, put together for the reveal. The final boss's drops decide the tell. */
 export function runLoot(p: Profile, dg: DungeonInfo, h: Hero, kills: KillLoot[], clear: ClearLoot | null): RunLoot {

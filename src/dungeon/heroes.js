@@ -7,6 +7,8 @@ import { banner, bits, brewFx, dots, fx, fxText, healHero, hurtMob, sfx } from '
 import { canStand, moveEnt } from './world.js';
 import { gearMul } from './gadgets.js';
 import { BUTTONS, dashTick, finishCast } from './buttons.js';
+import { FIRE_BUTTONS } from './fire.js';
+import { has, knifeStorm, venomStacks } from './specs.js';
 
 export const heroBy = (role) => S.heroes.find((h) => h.role === role) || null;
 export const aliveHeroes = () => S.heroes.filter((h) => h.alive);
@@ -101,10 +103,14 @@ export function autoTarget(h, noBomb) {
 
 export function heroTick(h, dt) {
   const st = h.st;
-  // Bramble Fizz and Lantern Zeal: every cooldown (the dodge's and the beat too) comes back sooner
+  // Bramble Fizz and Lantern Zeal: every cooldown (the dodge's and the beat too) comes back sooner; a talent's
+  // haste speeds the buttons' cooldowns, never the beat
   const cdRate = (st && st.zeal > 0 ? 1.15 : 1) * (brewFx(h.brew).cd || 1);
-  for (const k in h.cd) if (h.cd[k] > 0) h.cd[k] = Math.max(0, h.cd[k] - dt * cdRate);
+  const haste = h.ts ? h.ts.haste : 1;
+  for (const k in h.cd) if (h.cd[k] > 0) h.cd[k] = Math.max(0, h.cd[k] - dt * cdRate * (k === 'dodge' ? 1 : haste));
   if (h.beat > 0) h.beat = Math.max(0, h.beat - dt * cdRate);
+  if (h.furyT > 0) h.furyT = Math.max(0, h.furyT - dt);
+  if (h.stormT > 0) h.stormT = Math.max(0, h.stormT - dt);
   h.gcd -= dt; h.iframe -= dt; h.flash -= dt; h.hurtT -= dt; h.lunge -= dt; h.sayT -= dt; h.moving -= dt;
   if (h.frenzyT > 0) h.frenzyT = Math.max(0, h.frenzyT - dt);
   if (h.nightstalkerT > 0) h.nightstalkerT = Math.max(0, h.nightstalkerT - dt);
@@ -165,20 +171,22 @@ function tickHots(h, dt) {
   }
 }
 
-/** Viper Venom: this much every half second while it lasts */
-export const VENOM = 18;
+/** Viper Venom: this much every half second while it lasts (each stack, with Deadly Venom: up to three) */
+export const VENOM = 14;
 export function applyBleed(h, m, durOverride) {
   if (!m || !m.alive || m.cage || m.M.wisp || m.M.thing) return;
   const chestMul = (h.bonuses && h.bonuses.has('sv_chest') ? 1.3 : 1) * gearMul(h, 'venom');
   const per = Math.round(VENOM * chestMul);
   const fullDur = 5.5 + (h.bonuses && h.bonuses.has('sv_chest') ? 1.0 : 0);
   const dur = durOverride ? Math.max(m.bleed ? m.bleed.left : 0, durOverride) : fullDur;
-  m.bleed = { src: h, per, left: dur, next: m.bleed && m.bleed.left > 0 ? m.bleed.next : 0.5 };
+  const on = m.bleed && m.bleed.left > 0;
+  const n = durOverride ? (on ? m.bleed.n || 1 : 1) : Math.min(venomStacks(h), on ? (m.bleed.n || 1) + 1 : 1);
+  m.bleed = { src: h, per, n, left: dur, next: on ? m.bleed.next : 0.5 };
 }
 
 /* Automatic attacks: the melee keep small ones between presses (the axe and the daggers keep moving); the healer
    and the mage have none, their filler is their damage. */
-export const AUTO = { tank: { dmg: 25, every: 1.5 }, rogue: { dmg: 16, every: 0.7 } };
+export const AUTO = { tank: { dmg: 25, every: 1.5 }, rogue: { dmg: 14, every: 0.7 } };
 function heroAuto(h, dt) {
   h.atkT -= dt;
   if (h.dodgeT > 0 || h.cast || h.dash) return;
@@ -201,6 +209,11 @@ function heroAuto(h, dt) {
       h.face = angTo(h, t); h.lunge = 0.13; h.lungeA = h.face;
       h.swings = (h.swings || 0) + 1;
       hurtMob(t, AUTO.rogue.dmg, h, { crit: 0.2, col: '#D7DEE6', tier: 'tick', auto: true, key: 'auto' });
+      // Knife Storm: for a while after Shadowstep, every swing hits every foe round you
+      if (knifeStorm(h)) {
+        for (const o of foesNear(h.x, h.y, 120, false)) if (o !== t && !o.cage) hurtMob(o, AUTO.rogue.dmg, h, { crit: 0.2, col: '#B79CFF', tier: 'tick', auto: true, key: 'storm' });
+        fx({ type: 'whirl', h, x: h.x, y: h.y, r: 120, dur: 0.2, col: '#B79CFF' });
+      }
       if (t.alive && h.traits.has('twinvenom') && t.bleed && t.bleed.left > 0) t.bleed.left = Math.min(7.5, t.bleed.left + 1.5);
       if (h.unique === 'cryptfangs' && h.swings % 4 === 0 && t.alive) {
         hurtMob(t, 32, h, { crit: 0.25, col: '#7CF06A', size: 19, tier: 'tick' });
@@ -214,6 +227,9 @@ function heroAuto(h, dt) {
 
 export function abCd(h, slot) {
   const def = AB[abKey(h)][slot];
+  // Quick Charge and Whirling Edges bring their button back sooner
+  if (slot === 'a2' && has(h, 'ax.quick')) return 6;
+  if (slot === 'a3' && has(h, 'bl.whirl')) return 4;
   return def && def.cd ? def.cd : 0;
 }
 export function abMana(h, slot) {
@@ -253,7 +269,8 @@ export function useAbility(h, slot, aim, quiet = false) {
   try { return fire(h, slot, aim, def, beat, mCost, quiet); } finally { quietPress = false; }
 }
 function fire(h, slot, aim, def, beat, mCost, quiet) {
-  const ok = BUTTONS[def.key](h, aim);
+  // a Fire mage's buttons are fire's own (fire.js); Comet's cast is the same, and lands burning
+  const ok = ((h.spec === 'fire' && FIRE_BUTTONS[def.key]) || BUTTONS[def.key])(h, aim);
   // Comet's cast takes the beat now; its cooldown starts when it lands (buttons.js finishCast)
   if (ok && def.key === 'comet') { h.beat = BEAT.len; return true; }
   if (ok) {

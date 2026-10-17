@@ -91,7 +91,7 @@ test('profile: a v9 save keeps every achievement and the day it came, with no ki
   const v9 = { ...JSON.parse(JSON.stringify(freshProfile(1))), v: 9, achievements: { 'barrow.into': { at: 7 }, 'barrow.rattle': { at: 9 } }, titles: ['title.bonebreaker'] };
   const p = migrate(v9);
   assert.equal(p.v, PROFILE_VERSION);
-  assert.equal(PROFILE_VERSION, 10);
+  assert.equal(PROFILE_VERSION, 11);
   assert.deepEqual(p.achievements, { 'barrow.into': { at: 7 }, 'barrow.rattle': { at: 9 } });
   assert.deepEqual(p.titles, ['title.bonebreaker']);
 });
@@ -126,9 +126,10 @@ test('titles: only one you have earned goes on, and taking it off is always fine
   assert.equal(h.title, null);
 });
 
-test('the page: a Heroic’s achievements go with its dungeon, and the garden’s are their own place', () => {
+test('the page: a Heroic’s achievements go with its dungeon, and the garden’s and your level’s are their own places', () => {
   assert.equal(placeOf(ACHIEVEMENTS['barrow-heroic.log']), 'barrow');
   assert.equal(placeOf(ACHIEVEMENTS['thimblebriar-heroic.log']), 'thimblebriar');
   assert.equal(placeOf(ACHIEVEMENTS['vale.brewer']), 'garden');
-  assert.deepEqual([...new Set(ACHIEVEMENT_LIST.map(placeOf))], ['barrow', 'thimblebriar', 'garden']);
+  assert.equal(placeOf(ACHIEVEMENTS['level.50']), 'levels');
+  assert.deepEqual([...new Set(ACHIEVEMENT_LIST.map(placeOf))], ['barrow', 'thimblebriar', 'garden', 'levels']);
 });

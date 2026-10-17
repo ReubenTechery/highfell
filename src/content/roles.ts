@@ -35,12 +35,12 @@ export const AB: Record<GearKey, Record<AbilitySlot, AbilityDef>> = {
   dps: {
     a1: { key: 'blizzard', name: 'Blizzard', cd: 7.8, aim: true, range: 520, desc: 'Ice storm on the ground. Hits and slows everything in it.', combo: 'Slow the pack, then Rime burst freezes it. On a boss it hits, but doesn’t slow' },
     a2: { key: 'nova', name: 'Rime burst', cd: 10, range: 155, desc: 'Freeze everything close to you for 4 seconds and stop their casts. A boss is Chilled instead.', combo: 'Frozen foes Shatter: Icicle 3×, Comet 2×. A Chilled boss Shatters for 1.5×' },
-    a3: { key: 'comet', name: 'Comet', cd: 5.6, cast: 0.9, desc: 'A big hit with splash damage. Double damage on frozen targets.', combo: '2× on frozen targets, 1.5× on a Chilled boss' },
-    a4: { key: 'icicle', name: 'Icicle', cd: 0, filler: true, hit: 62, desc: 'An instant ice shard, every beat. Shatters frozen foes for 3× and a Chilled boss for 1.5×.', combo: 'A crit makes the next Icicle Shatter anything' },
+    a3: { key: 'comet', name: 'Comet', cd: 5.6, cast: 0.9, hit: 280, desc: 'A big hit with splash damage. Double damage on frozen targets.', combo: '2× on frozen targets, 1.5× on a Chilled boss' },
+    a4: { key: 'icicle', name: 'Icicle', cd: 0, filler: true, hit: 68, desc: 'An instant ice shard, every beat. Shatters frozen foes for 3× and a Chilled boss for 1.5×.', combo: 'A crit makes the next Icicle Shatter anything' },
   },
   rogue: {
     a1: { key: 'viper', name: 'Viper Blades', cd: 0, filler: true, hit: 38, desc: 'Slash with venomed daggers, every beat: it poisons for 5.5 seconds and adds a point (two on a crit).', combo: 'Build five points, then spend them on Shadowstrike' },
-    a2: { key: 'ambush', name: 'Shadowstrike', cd: 0, desc: 'Spend every point on one strike, about 25 a point. On a poisoned target it always crits and hits 35% harder.', combo: 'At five points it’s the biggest hit you have' },
+    a2: { key: 'ambush', name: 'Shadowstrike', cd: 0, desc: 'Spend every point on one strike, 28 a point. On a poisoned target it always crits and hits 35% harder, and a rogue’s crits hit two and a half times as hard.', combo: 'At five points it’s the biggest hit you have' },
     a3: { key: 'flurry', name: 'Fan of Blades', cd: 6.0, desc: 'Whirl knives round you: they stop casts, refresh venom and add a point if they hit.', combo: 'Your interrupt for a pack’s casters' },
     a4: { key: 'shadowstep', name: 'Shadowstep', cd: 8, offBeat: true, desc: 'Blink behind your target, strike it and stop its cast. You swing 35% faster for 3.8 seconds and gain two points.', combo: 'Close the gap, stop a cast, and bank points' },
   },

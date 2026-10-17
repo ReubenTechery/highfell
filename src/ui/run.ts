@@ -27,7 +27,7 @@ import { render, resizeView, updateCam, VIEW } from '../dungeon/render.js';
 import { addHeroes, dropHeroes, dropVariants } from '../dungeon/art.js';
 import { roomIndexOf } from '../dungeon/world.js';
 import { lootGlint, startWalkout } from '../dungeon/walkout.js';
-import { Achiever } from '../meta/achievements';
+import { Achiever, levelAchiever } from '../meta/achievements';
 import { loadoutFor, partyRar, plainLoadout, trialWeapon, worn } from '../meta/gear';
 import { countBossWipe, countRunStart, gildOf, resolveClear, resolveKill, runLoot, tellOf, type ClearLoot, type KillLoot } from '../meta/loot';
 import { pourFor, seatsFor } from '../meta/party';
@@ -45,6 +45,11 @@ import { SFX } from './sound';
 import { openWarband } from '../meta/warband';
 import { RunGuard } from './runguard';
 import { TUT_BY_CLASS, type TutStep } from './trial';
+import { RunXp } from './runxp';
+import { xpMul } from '../meta/xp';
+import { talentLoadout } from '../meta/talents';
+import { BURN, buttonFor } from '../content/talents';
+import { burnOf } from '../dungeon/fire.js';
 
 /** A run plays the hero you are playing, from the entrance. `start`, `testRar` and `role` are for the Crypt
  *  Trial and for testing: a run that starts past the entrance or in test gear doesn't count (no loot, kill
@@ -94,6 +99,8 @@ export class RunScene implements InputUI {
   private bound = false;
   /** the back swipe pauses a run instead of leaving the game (runguard.ts) */
   private guard = new RunGuard(() => { if (this.active() && S && !S.paused && !S.over) this.pause(); });
+  /** XP: the bar along the bottom, the kills' XP into your save, a level's burst */
+  private xp = new RunXp($('hud'));
 
   constructor(private app: App, private root: HTMLElement) {
     $('pause-btn').addEventListener('click', (e) => { e.stopPropagation(); this.pause(); });
@@ -275,7 +282,7 @@ export class RunScene implements InputUI {
       const mate = r === role ? null : team?.find((s) => s.role === r)?.hero || null;
       if (mate) {
         const base = loadoutFor(p, mate);
-        loadouts[r] = { ...base, cls: mate.cls, name: mate.name, sprite: heroSprite(mate, r, p) };
+        loadouts[r] = { ...base, ...talentLoadout(p, mate), cls: mate.cls, name: mate.name, sprite: heroSprite(mate, r, p) };
       } else {
         const base = r === role ? (test || !h ? plainLoadout(r, rar, h?.cls) : loadoutFor(p, h)) : plainLoadout(r, rar);
         loadouts[r] = { ...base, sprite: botSprite(r, rar) };
@@ -295,7 +302,8 @@ export class RunScene implements InputUI {
     if (brew && !this.practice) spendBottle(p, brew);
     if (h) {
       const spr = test ? plainSprite(h, role, rar, loadouts[role].unique) : heroSprite(h, role, p);
-      loadouts[role] = { ...loadouts[role], cls: h.cls, name: h.name, sprite: spr };
+      // your talents come too, in test gear as well (they aren't gear); the trial teaches the class as it is
+      loadouts[role] = { ...loadouts[role], ...(intro ? {} : talentLoadout(p, h)), cls: h.cls, name: h.name, sprite: spr };
     }
     // a hero drawn in layers brings its picture, composed for this run, and where its weapon and head are
     const pics: Record<string, unknown> = {};
@@ -337,7 +345,7 @@ export class RunScene implements InputUI {
       onChest: () => this.finish(),
       playerIntent,
     });
-    newGame(engine, { role, loadouts, start: o.start, seed: (Math.random() * 0x7fffffff) | 1, looks, ghostly, gilded, sporeglow, testGear: test, heroic: !!o.heroic, swipeHint: this.swipeHint, ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) });
+    newGame(engine, { role, loadouts, start: o.start, seed: (Math.random() * 0x7fffffff) | 1, looks, ghostly, gilded, sporeglow, testGear: test, heroic: !!o.heroic, swipeHint: this.swipeHint, xp: !this.practice, xpMul: xpMul(dg), ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) });
     S.startedAt = S.t;
     // a heroic run counts for the Barrow's own achievements
     this.ach = this.practice ? null : new Achiever(p, { dungeon: dg.heroicOf || dg.id, role, practice: false, testGear: false });
@@ -358,6 +366,7 @@ export class RunScene implements InputUI {
     this.root.style.setProperty('--learn', this.learn.toFixed(2));
     this.root.classList.toggle('swipe-hint', this.swipeHint);
     this.buildHud();
+    this.xp.begin(p, !this.practice);
     resizeView();
     updateCam(0, true);
     this.lastRoom = -1;
@@ -446,6 +455,11 @@ export class RunScene implements InputUI {
     if (!S || !this.opts) return;
     const p = this.app.p, hero = this.hero();
     if (this.ach) for (const id of this.ach.event(e)) this.unlockedNow(id);
+    // a kill's XP goes into your save as it lands; a new level saves, and may earn a level's achievement
+    if (e.type === 'mob.killed' && e.xp && !this.practice) {
+      const g = this.xp.gain(p, e.xp);
+      if (g && g.to > g.from) { this.levelUp(); this.app.store.save(); }
+    }
     if (e.type === 'boss.killed') {
       const x = e.x ?? S.player.x, y = e.y ?? S.player.y;
       const last = e.boss === this.dg.finalBoss;
@@ -459,6 +473,7 @@ export class RunScene implements InputUI {
         for (const d of kl.drops) if (d.isNew && this.ach) for (const id of this.ach.collected(d.id)) this.unlockedNow(id);
         if (last) {
           this.clear = resolveClear(p, this.dg, hero, S.t - S.startedAt, this.lootRng);
+          this.levelUp();
           // the last of your first clears opens your Warband: say so (the Dungeons door explains it next time)
           if (openWarband(p)) this.app.toasts.text('Your Warband is open', 'Make more heroes in the bunk room: they fill your other seats.', 'Unlocked');
           startWalkout(tellOf(kl.drops), x, y, gildOf(kl.drops));
@@ -490,6 +505,10 @@ export class RunScene implements InputUI {
       this.app.store.save();
     }
   }
+  /** XP came in: any level achievement it earned */
+  private levelUp(): void {
+    for (const id of levelAchiever(this.app.p, this.role).check()) this.unlockedNow(id);
+  }
   private unlockedNow(id: string): void {
     this.unlocked.push(id);
     this.app.toasts.achievement(this.app.p, id);
@@ -510,6 +529,7 @@ export class RunScene implements InputUI {
     const hero = this.hero();
     if (this.practice || !hero) { this.showTestDone(summary.time); return; }
     const loot = runLoot(this.app.p, this.dg, hero, this.kills, this.clear);
+    loot.xp = { start: this.xp.start, kills: this.xp.kills, chest: this.clear ? this.clear.xp : null, end: this.app.p.xp };
     this.stop();
     this.app.showReveal(loot, { unlocked: this.unlocked.slice(), hero: hero.id, role: this.role, deaths: summary.deaths, again: this.opts });
   }
@@ -608,7 +628,7 @@ export class RunScene implements InputUI {
       <span class="fb"><i class="hpf"></i><i class="abf"></i></span>${h.role === 'healer' ? '<span class="fb mp"><i class="mpf"></i></span>' : ''}${CURSE_MARK()}</li>`).join('');
     $('frames').querySelectorAll<HTMLElement>('.fr').forEach((li) => li.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (S.player.role === 'healer') press(S.player, 'mend', heroBy(li.dataset.role)); }));
     const btn = (slot: string) => {
-      const def = slot === 'dodge' ? { key: 'dodge', name: 'Dodge', desc: 'Roll out of trouble.' } as { key: string; name: string; desc: string; mana?: number; hold?: boolean; combo?: string; filler?: boolean } : A[slot as 'a1'];
+      const def = slot === 'dodge' ? { key: 'dodge', icon: 'dodge', name: 'Dodge', desc: 'Roll out of trouble.' } as { key: string; icon: string; name: string; desc: string; mana?: number; hold?: boolean; combo?: string; filler?: boolean } : buttonFor(A[slot as 'a1'], p.spec, slot as 'a1');
       const mana = slot === 'dodge' ? 0 : abMana(p, slot);
       const tip = def.combo ? `${def.name}: ${def.desc} (${def.combo})` : `${def.name}: ${def.desc}`;
       const tag = slot === 'dodge' ? 'Roll' : def.hold ? 'Block' : '';
@@ -616,7 +636,7 @@ export class RunScene implements InputUI {
       // the rogue's points: five pips on Shadowstrike
       const pips = def.key === 'ambush' ? `<span class="pips" aria-hidden="true">${'<i></i>'.repeat(MAX_POINTS)}</span>` : '';
       return `<button type="button" class="ab${kind}" data-slot="${slot}" data-pos="${posOf(slot)}" aria-label="${esc(def.name)}" title="${esc(tip)} (${esc(keyOf(slot))})">
-        <span class="face">${tile(def.key)}</span><span class="sweep"></span><span class="cdn"></span><kbd>${esc(keyOf(slot))}</kbd>${mana ? `<span class="cost">${mana}</span>` : ''}${tag ? `<span class="ab-tag">${tag}</span>` : ''}${pips}<span class="c-tag" aria-hidden="true"></span><span class="glow"></span></button>`;
+        <span class="face">${tile(def.icon)}</span><span class="sweep"></span><span class="cdn"></span><kbd>${esc(keyOf(slot))}</kbd>${mana ? `<span class="cost">${mana}</span>` : ''}${tag ? `<span class="ab-tag">${tag}</span>` : ''}${pips}<span class="c-tag" aria-hidden="true"></span><span class="glow"></span></button>`;
     };
     $('abar').innerHTML = ['a1', 'a2', 'a3', 'a4', 'dodge'].map(btn).join('');
     $('abar').querySelectorAll<HTMLElement>('.ab').forEach((b) => this.bindAbility(b, b.dataset.slot!));
@@ -817,13 +837,14 @@ function comboFor(p: any, slot: string): Combo {
     case 'nova': return kickIn(150) ? warn('KICK!') : null;
     case 'comet': {
       if (!(t && t.alive && t.st && !t.cage)) return null;
+      if (p.spec === 'fire') return burnOf(t) >= BURN.combust || t.exposed > 0.6 ? pay('COMBUST!') : null;
       const lance = p.traits.has('shatterlance');
       return t.st.freeze > 0.6 ? pay(lance ? 'SHATTER 3×!' : 'SHATTER 2×!') : t.st.chill > 0.6 || t.exposed > 0.6 ? pay(lance ? 'SHATTER 2×!' : 'SHATTER 1.5×!') : null;
     }
     case 'icicle': {
       if (!(t && t.alive && t.st && !t.cage)) return null;
-      const k = icicleShatter(p, t).k;
-      return k > 1 ? pay(k >= 3 ? 'SHATTER 3×!' : 'SHATTER 1.5×!') : null;
+      const k = icicleShatter(p, t).k, word = p.spec === 'fire' ? 'FLARE' : 'SHATTER';
+      return k > 1 ? pay(k >= 3 ? `${word} 3×!` : `${word} 1.5×!`) : null;
     }
     case 'ambush': return t && t.alive && !t.cage && dist(t, p) < 110 + t.r && (p.points >= MAX_POINTS || burnable(p, t)) ? pay('FINISH!') : null;
     case 'flurry': return kickIn(135) ? warn('KICK!') : null;

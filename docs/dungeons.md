@@ -222,6 +222,12 @@ What changed on the way in, and the numbers it landed on (`src/content/thimblebr
 Full Barrow epics land near 2:15, not the 3:00 this spec guessed: the Barrow's 3-piece summons and the Gravefrost
 Staff are strong. The own kit is still the fastest, and 1.72 is where the dungeon is made to be met.
 
+Since 17 Oct the regular ladder is shorter (Rare is Power 14, `1.24`) and the epics bigger (the Barrow's full kit
+`2.06`, Thimblebriar's own `2.54`); the rows above are by Power and still hold at those numbers. Bots in Rare no
+longer get through at all (12 of 12 runs gave up after six wipes, the Tinker King every time): Thimblebriar now
+asks for Barrow epics. A hero wearing two of them (a boss weapon and a set piece is about `1.77`) gets bots in
+plain Epic (`partyRar`), which is where the dungeon is made to be met.
+
 #### Plan
 
 - `src/content/thimblebriar/`, copied from the template: the winding burrow, the mobs and packs, the two bosses,

@@ -17,6 +17,8 @@ import { BUNK_SLOTS, FLOORS, HERO_AT, HOUSE_SPOTS, LOOK_ROOMS, PADDOCK, ROOMS, T
 import { lookOf, ownedOfKind, paddock } from '../meta/hearth';
 import { loadoutFor, waiting, wholeIlvl } from '../meta/gear';
 import { activeHero, roleOf, type Hero } from '../meta/profile';
+import { unspent } from '../meta/talents';
+import { levelOf } from '../content/xp';
 import { finishTip, houseTip, type HouseTip } from '../meta/tips';
 import { bedToOpen } from '../meta/vale';
 import type { App } from './app';
@@ -181,8 +183,10 @@ export class Hearth {
     }
   }
 
-  /** the pin over what a step points at: on the welcome tour it's Next; on a garden tip it does what it says */
+  /** the pin over what a step points at: on the welcome tour it's Next; on a tip it does what it says (the talents
+   *  tip opens your hero's Talents) */
   private pinTap(): void {
+    if (this.tip === 'talents') { this.dropTour(); const h = activeHero(this.app.p); if (h) this.app.sheets.open({ kind: 'gear', hero: h.id, tab: 'talents' }); return; }
     const t = this.tip !== 'tour' ? THINGS.find((x) => x.id === this.step?.thing) : undefined;
     if (!t) { this.nextTour(); return; }
     this.dropTour();
@@ -402,7 +406,8 @@ export class Hearth {
     switch (a) {
       case 'dungeons': app.sheets.open(pick.dungeon ? { kind: 'dungeon', dungeon: pick.dungeon } : { kind: 'dungeon' }); break;
       case 'garden': app.garden.open(pick.bed ?? bedToOpen(app.p)); break;
-      case 'gear': { const h = activeHero(app.p); if (h) app.sheets.open({ kind: 'gear', hero: h.id }); break; }
+      // your gear, or your talents when they have points to spend and the gear has nothing new
+      case 'gear': { const h = activeHero(app.p); if (h) app.sheets.open({ kind: 'gear', hero: h.id, ...(!waiting(app.p, h).length && unspent(app.p, h) ? { tab: 'talents' as const } : {}) }); break; }
       case 'logs': app.sheets.open({ kind: 'logs', tab: 'collection' }); break;
       case 'brew': app.showBrew(); break;
       case 'satchel': app.sheets.open({ kind: 'satchel' }); break;
@@ -446,7 +451,7 @@ export class Hearth {
     else if (t.action === 'logs') label = `<text class="lbl small" x="${t.x}" y="${t.y + 26}">Collection Log</text>`;
     else if (t.action === 'brew') label = `<text class="lbl small" x="${t.x}" y="${t.y + 26}">Brew</text>`;
     else if (t.action === 'satchel') label = `<text class="lbl small" x="${t.x}" y="${t.y + 26}">Satchel</text>`;
-    if (t.action === 'gear') { const up = waiting(this.app.p, h).length; if (up) extra.pips.push(pip(t.x + 60, top + 20, String(up))); }
+    if (t.action === 'gear') { const up = waiting(this.app.p, h).length || unspent(this.app.p, h); if (up) extra.pips.push(pip(t.x + 60, top + 20, String(up))); }
     const hl = this.step?.thing === t.id ? ' tour-hl' : '';
     return `<g class="thing a-${t.action}${hl}" data-thing="${t.id}" data-x="${t.x}" data-y="${t.y}" tabindex="0" role="button" aria-label="${esc(t.label)}">
       ${placeSprite(sprite, t.x, t.y, { k })}${bed?.plant ? placeSprite(bed.plant, t.x, t.y - 36 * k, { k: 0.9 * k }) : ''}${label}<rect class="hl" x="${(t.x + vx * k).toFixed(1)}" y="${top.toFixed(1)}" width="${(w * k).toFixed(1)}" height="${(hh * k).toFixed(1)}" rx="16"/></g>`;
@@ -539,12 +544,12 @@ export class Hearth {
   private hud(h: Hero): void {
     const p = this.app.p, role = roleOf(h);
     const cls = CLASSES[h.cls as ClassId], race = RACES[h.race as RaceId];
-    const up = waiting(p, h).length;
+    const up = waiting(p, h).length, pts = unspent(p, h), lv = levelOf(p.xp);
     // the bars and the signs are only rebuilt when they change, so a save keeps the name tag bobbing and the focus where it was
     const top = this.draw(this.top, `
-      <button type="button" class="h-tag" data-act="gear" style="--light: ${race?.light || '#F4B942'}" aria-label="${esc(h.name)}, Power ${ilvl(loadoutFor(p, h).score)}: gear${up ? `, ${up} new to put on` : ''}">
-        <i class="rdot ${role}" aria-hidden="true"></i><span><b>${esc(h.name)}</b><small><span class="long">${esc(race?.name || h.race)} ${esc(cls?.name || h.cls)} · </span>Power ${ilvl(loadoutFor(p, h).score)}</small></span>
-        ${up ? `<i class="badge" aria-hidden="true">${up}</i>` : ''}
+      <button type="button" class="h-tag" data-act="gear" style="--light: ${race?.light || '#F4B942'}" aria-label="${esc(h.name)}, Level ${lv}, Power ${ilvl(loadoutFor(p, h).score)}: gear${up ? `, ${up} new to put on` : ''}${pts ? `, ${pts} talent point${pts === 1 ? '' : 's'} to spend` : ''}">
+        <i class="rdot ${role}" aria-hidden="true"></i><span><b>${esc(h.name)}</b><small><span class="long">${esc(race?.name || h.race)} ${esc(cls?.name || h.cls)} · </span>Level ${lv} · Power ${ilvl(loadoutFor(p, h).score)}</small></span>
+        ${up ? `<i class="badge" aria-hidden="true">${up}</i>` : pts ? `<i class="badge gold" aria-hidden="true">${pts}</i>` : ''}
       </button>
       <div class="right">
         <span class="chip dark" id="sync-chip" hidden></span>
@@ -553,7 +558,7 @@ export class Hearth {
       </div>`);
     const step = this.step, tip = this.tip !== 'tour';
     const bottom = this.draw(this.bottom, step
-      ? `<div class="h-tour" role="region" aria-label="${tip ? 'Garden tip' : 'Welcome tour'}">
+      ? `<div class="h-tour" role="region" aria-label="${tip ? 'Tip' : 'Welcome tour'}">
           <div class="h-tour-tx">
             <b><span class="h-tour-step">${esc(step.step)}</span>${esc(step.title)}</b>
             <p>${esc(step.sub)}</p>

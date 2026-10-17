@@ -243,7 +243,7 @@ test('thimblebriar: in the Barrow’s epics (power 1.72) the bots clear in 3:20 
   assert.ok(fight('G') > 70 && fight('G') < 90, `the Tinker King took ${fight('G').toFixed(1)}s`);
 });
 
-test('thimblebriar: in Rare gear (power 1.48) the bots wipe at least once in most runs, mostly at the Tinker King', () => {
+test('thimblebriar: in Rare gear (power 1.24) the bots wipe at least once in most runs, mostly at the Tinker King', () => {
   let wiped = 0, atKing = 0;
   // the balance table's own seeds (npm run sim: s * 7919, plus 1 to 3 for the seat)
   const seeds: [RoleId, number][] = [1, 2, 3].flatMap((s) => (['tank', 'healer', 'dps'] as RoleId[]).map((r, i): [RoleId, number] => [r, s * 7919 + i + 1]));
@@ -255,11 +255,11 @@ test('thimblebriar: in Rare gear (power 1.48) the bots wipe at least once in mos
   assert.ok(atKing >= wiped - 1, `${atKing} of the ${wiped} wipes were at the Tinker King`);
 });
 
-test('thimblebriar: its own full kit melts it in about half the time of power 1.72', () => {
+test('thimblebriar: its own full kit (power 2.54) melts it in about half the time of power 1.72', () => {
   const W = (id: string, slot: 'helm' | 'shoulders' | 'chest' | 'weapon', trait?: string) => ({ slot, def: ITEMS[id], trait, unique: true });
   const kit = (set: string, weapon: string, trait: string) => loadoutOf([W(`${set}.helm`, 'helm'), W(`${set}.shoulders`, 'shoulders'), W(`${set}.chest`, 'chest'), W(weapon, 'weapon', trait)]);
   const own = { tank: kit('clockguard', 'tinker.tank', 'wide'), healer: kit('sporebloom', 'tinker.healer', 'sunflare'), dps: kit('arcspark', 'tinker.dps', 'shatterlance') };
-  assert.ok(Math.abs(own.tank.power - 2.44) < 0.01, `power ${own.tank.power}`);
+  assert.ok(Math.abs(own.tank.power - 2.536) < 0.01, `power ${own.tank.power}`);
   // over three seeds: one run swings a few percent either way
   let epicT = 0, bisT = 0;
   for (const seed of [404, 505, 606]) {

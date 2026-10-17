@@ -197,7 +197,7 @@ function withHero(role: 'tank' | 'healer' | 'dps' = 'tank', p: Profile = openPro
 }
 const clear = (hero: Hero) => ({ hero, bosses: ['knight', 'keeper'], bossTimes: { knight: 70, keeper: 140 }, cleared: true, practice: false, time: 290 });
 
-test('loot: a clear counts kills, gives marks, a ladder piece and a spare piece', () => {
+test('loot: a clear counts kills, gives marks, a ladder piece and the chest’s XP, and nothing for your other heroes', () => {
   const { p, h } = withHero('tank');
   const r = resolveRun(p, BARROW, clear(h), makeRng(1));
   assert.equal(r.kc.keeper, 1);
@@ -212,9 +212,12 @@ test('loot: a clear counts kills, gives marks, a ladder piece and a spare piece'
   assert.equal(h.bag[reg.slot!]!.rar, reg.rar, 'it waits in the bag');
   assert.equal(h.clears, 1);
   assert.equal(r.hero, h.id);
-  const spare = r.drops.find((d) => d.source === 'spare')!;
-  assert.ok(spare && spare.role !== 'tank');
-  assert.equal(p.warband[spare.role!][spare.slot!].rar, spare.rar, 'a spare piece raises that role\'s shared gear');
+  // the owner's call, 17 Oct: your clears never gear your other roles (no spare pieces)
+  assert.ok(r.drops.every((d) => d.role === 'tank'), 'every drop is for the hero you played');
+  assert.deepEqual([p.warband.healer, p.warband.dps].map((w) => Object.values(w).every((x) => x.rar === 0)), [true, true], 'the other roles\' shared gear is untouched');
+  const pages = r.drops.find((d) => d.id === 'xp.pages')!;
+  assert.ok(pages && pages.source === 'xp' && pages.n! >= 1 && pages.xp === pages.n! * 100, 'the chest always has lore pages, 100 XP each in the Barrow');
+  assert.ok(p.xp >= 400 + pages.xp!, 'the clear and the pages are added to your XP');
   assert.ok(r.marks >= 1);
   assert.equal(p.dungeons.barrow.marks, r.marks);
   assert.equal(p.bosses['barrow.keeper'].pb, 140);
@@ -240,7 +243,7 @@ test('loot: the regular ladder reaches full Rare in eight clears, then offers tr
   }
 });
 
-test('loot: shared gear lifts every hero of a role, now and later, up to Rare', () => {
+test('loot: your ladder lifts every hero of your own role, now and later, up to Rare; the other roles get nothing', () => {
   const { p, h } = withHero('tank');
   const alt = newHero(p, { name: 'Gruna Deepforge', race: 'dwarf', cls: 'warrior' })!;
   const rng = makeRng(3);
@@ -250,10 +253,12 @@ test('loot: shared gear lifts every hero of a role, now and later, up to Rare', 
     assert.equal(bestRegular(alt, s).rar, WARBAND_CAP, 'and your alts of that role can put it on');
     assert.equal(alt.regular[s].rar, 0, 'but nobody puts it on for them');
     assert.equal(bestRegular(h, s).rar, WARBAND_CAP, 'regular gear caps at Rare; Epic is earned from sets and boss weapons');
-    assert.equal(p.warband.healer[s].rar, WARBAND_CAP);
+    assert.equal(p.warband.healer[s].rar, 0, 'no spare pieces for the other roles: the run is your hero’s');
   }
-  const later = newHero(p, { name: 'Edda Thatcher', race: 'human', cls: 'cleric' })!;
-  assert.ok(SLOT_IDS.every((s) => later.regular[s].rar === WARBAND_CAP), 'a healer made later starts in Rare');
+  const later = newHero(p, { name: 'Brom Deepforge', race: 'dwarf', cls: 'warrior' })!;
+  assert.ok(SLOT_IDS.every((s) => later.regular[s].rar === WARBAND_CAP), 'a tank made later starts in Rare');
+  const healer = newHero(p, { name: 'Edda Thatcher', race: 'human', cls: 'cleric' })!;
+  assert.ok(SLOT_IDS.every((s) => healer.regular[s].rar === 0), 'a healer starts at the start');
   assert.equal(alt.clears, 0);
   assert.equal(h.clears, 40);
 });
@@ -906,25 +911,20 @@ test('onboarding: the first curse a healer sees brings its tip once a save, with
   assert.equal(needsCurseTip(migrate(JSON.parse(JSON.stringify(p)))), false, 'it stays seen after a save and load');
 });
 
-test('onboarding: the Crypt Trial gives the first hero an Uncommon weapon and another role an Uncommon helm, once a save', () => {
+test('onboarding: the Crypt Trial gives the first hero an Uncommon weapon and an Uncommon helm, once a save', () => {
   const { p, h } = withHero('healer');
   assert.equal(grantTrialStarter(p, h), true);
   assert.equal(h.bag.weapon?.rar, 1, 'the weapon waits in the bag');
+  assert.equal(h.bag.helm?.rar, 1, 'and the helm');
   assert.equal(h.regular.weapon.rar, 0, 'nothing goes on by itself');
   assert.equal(p.warband.healer.weapon.rar, 1, 'like a ladder piece, it lifts the healer floor');
-  assert.equal(p.warband.tank.helm.rar, 1, 'the shared piece: a helm for the tanks');
+  assert.equal(p.warband.tank.helm.rar, 0, 'nothing for another role: the run is your hero’s');
   assert.equal(grantTrialStarter(p, h), false, 'once a save');
-  assert.equal(p.warband.tank.helm.rar, 1);
   // the chest shows exactly what was given
   const [w, s] = trialStarter(h);
   assert.deepEqual([w.id, w.source, w.rar, w.prevRar], [gearId('healer', 'weapon', 1), 'regular', 1, 0]);
-  assert.deepEqual([s.id, s.source, s.role, s.slot, s.rar], [gearId('tank', 'helm', 1), 'spare', 'tank', 'helm', 1]);
+  assert.deepEqual([s.id, s.source, s.role, s.slot, s.rar], [gearId('healer', 'helm', 1), 'regular', 'healer', 'helm', 1]);
   assert.ok(ITEMS[w.id] && ITEMS[s.id]);
-  // a tank's shared piece goes to the healers; a rogue gets a rogue's weapon
-  const t = withHero('tank');
-  grantTrialStarter(t.p, t.h);
-  assert.equal(t.p.warband.healer.helm.rar, 1);
-  assert.equal(t.p.warband.tank.helm.rar, 0);
   const r = openProfile();
   const rogue = newHero(r, { name: 'Test Rogue', race: 'elf', cls: 'rogue' })!;
   assert.equal(trialStarter(rogue)[0].id, gearId('rogue', 'weapon', 1));
@@ -968,13 +968,13 @@ test('gnomes and goblins: every class, sex, ladder armour tier, and Barrow Epic 
         assert.ok(h, `created ${race} ${cls} (${sex})`);
         // Tier 0: Common rags (score 10)
         assert.equal(Math.round(loadoutFor(p, h).score), 10);
-        // Tier 1: Uncommon iron/leather/linen (score 14)
+        // Tier 1: Uncommon iron/leather/linen (score 12)
         for (const slot of SLOT_IDS) { h.bag[slot] = { rar: 1 }; assert.ok(putOn(p, h, slot)); }
-        assert.equal(Math.round(loadoutFor(p, h).score), 14);
-        // Tier 2: Rare steel/plate/silk (score 18)
+        assert.equal(Math.round(loadoutFor(p, h).score), 12);
+        // Tier 2: Rare steel/plate/silk (score 14)
         for (const slot of SLOT_IDS) { h.bag[slot] = { rar: 2 }; assert.ok(putOn(p, h, slot)); }
-        assert.equal(Math.round(loadoutFor(p, h).score), 18);
-        // Tier 3: Full Epic Barrow 3-piece set + Boss Weapon (score 26)
+        assert.equal(Math.round(loadoutFor(p, h).score), 14);
+        // Tier 3: Full Epic Barrow 3-piece set (26 each) + Boss Weapon (30): 27.6, shown as 28
         const kit = epicKits[cls];
         for (const slot of ['helm', 'shoulders', 'chest'] as const) {
           const id = `${kit.set}.${slot}`;
@@ -984,7 +984,7 @@ test('gnomes and goblins: every class, sex, ladder armour tier, and Barrow Epic 
         p.collection[kit.weapon] = { n: 1, kc: 1, at: 1 };
         assert.ok(equip(p, h, 'weapon', kit.weapon), `${race} ${cls} equips ${kit.weapon}`);
         const L = loadoutFor(p, h);
-        assert.equal(Math.round(L.score), 26);
+        assert.equal(Math.round(L.score), 28);
         assert.equal(L.sets[kit.set], 3);
         assert.equal(L.unique, ITEMS[kit.weapon].effect);
       }
@@ -992,16 +992,18 @@ test('gnomes and goblins: every class, sex, ladder armour tier, and Barrow Epic 
   }
 });
 
-test('stepped dungeon tiers: Tier 1 is ilvl 26, Tier 2 is ilvl 34, and Tier 3 is ilvl 42', () => {
-  // Tier 1 Barrow Epic set piece & boss weapon -> ilvl 26
+test('stepped dungeon tiers: set pieces are 26, 34 and 42 by tier, and a boss weapon 4 more', () => {
+  // Tier 1 Barrow set piece 26, its boss weapon 30
   assert.equal(itemScore(ITEMS['barrowguard.helm']), 26);
-  assert.equal(itemScore(ITEMS['gravekeeper.tank']), 26);
-  // Tier 2 dungeon Epic -> ilvl 34
+  assert.equal(itemScore(ITEMS['gravekeeper.tank']), 30);
+  // Tier 2 dungeon set piece -> 34
   const tier2Helm = { ...ITEMS['barrowguard.helm'], id: 'thimble.helm', tier: 2 as const };
   assert.equal(itemScore(tier2Helm), 34);
-  // Tier 3 dungeon Epic -> ilvl 42
+  // Tier 3 dungeon boss weapon -> 46
   const tier3Weapon = { ...ITEMS['gravekeeper.tank'], id: 'moonmere.tank', tier: 3 as const };
-  assert.equal(itemScore(tier3Weapon), 42);
+  assert.equal(itemScore(tier3Weapon), 46);
+  // the long chase is where the power is: Rare to the Barrow's kit is more than Common to Rare, twice over
+  assert.ok(itemScore(ITEMS['barrowguard.helm']) - 14 >= 3 * (14 - 10));
 });
 
 

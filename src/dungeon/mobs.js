@@ -4,6 +4,7 @@ import { pick, rand, rng } from '../core/rng';
 import { S, emit } from './state.js';
 import { addThreat, aggro, banner, bits, call, dots, exposeMob, fx, fxText, hold, hurtHero, hurtMob, killMob, makeMob, pickTarget, sfx, shake, tunedDmg } from './entities.js';
 import { canStand, moveEnt, roomIndexOf, walkTo } from './world.js';
+import { tickDots } from './specs.js';
 
 export function nearestHeroTo(x, y, preferNonTank) {
   let best = null, bd = 1e9;
@@ -23,16 +24,8 @@ export function mobTick(m, dt) {
   if (!m.alive) { m.deadT += dt; return; }
   // something that isn't a fighter (a bomb) runs itself
   if (m.M.tick) { m.M.tick(m, dt); return; }
-  if (m.bleed && m.bleed.left > 0) {
-    m.bleed.left -= dt;
-    m.bleed.next -= dt;
-    if (m.bleed.next <= 0) {
-      m.bleed.next += 0.5;
-      hurtMob(m, m.bleed.per, m.bleed.src, { col: '#7CF06A', size: 16, noCrit: true, tier: 'tick', key: 'venom' });
-      dots(m.x, m.y - 38, '#7CF06A', 2, 70, { size: 4 });
-      if (!m.alive) return;
-    }
-  }
+  // venom, Burning Light's sear and Fire's Burn (specs.js)
+  if ((m.bleed || m.sear || m.burn) && tickDots(m, dt)) return;
   const st = m.st;
   st.stun = Math.max(0, st.stun - dt); st.freeze = Math.max(0, st.freeze - dt);
   st.chill = Math.max(0, (st.chill || 0) - dt); st.stagger = Math.max(0, (st.stagger || 0) - dt);

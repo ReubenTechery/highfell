@@ -11,9 +11,12 @@ import { tickPress } from './press.js';
 import { chainTick, curseTick, mobTick, nearestHeroTo, spawnMob } from './mobs.js';
 import { canStand, inWalk, moveEnt, roomIndexOf, walkTo } from './world.js';
 import { tickWalkout } from './walkout.js';
+import { frostbite, has, holyGround } from './specs.js';
+import { firestormTick } from './fire.js';
 
 /* dg: a dungeon definition (map, mobs, packs, script). opts:
-   { role, loadouts: {tank, healer, dps}, start, solo, seed, auto, quiet, testGear, heroic, noHeal (sims: an idle healer bot) } */
+   { role, loadouts: {tank, healer, dps}, start, solo, seed, auto, quiet, testGear, heroic, noHeal (sims: an idle healer bot),
+     xp (this run pays XP: a kill pops it over the mob), xpMul (its dungeon's XP multiplier) } */
 export function newGame(dg, opts) {
   setSeed(opts.seed || ((Date.now() & 0xfffffff) | 1));
   setS({
@@ -36,6 +39,10 @@ export function newGame(dg, opts) {
   for (const r of roles) S.heroes.push(makeHero(r, r === opts.role, Object.assign({}, L[r], pour)));
   S.player = S.heroes.find((h) => h.isPlayer) || S.heroes[0];
   S.player.isPlayer = true;
+  // Brittle is the whole party's (frozen and Chilled foes take more from everyone); the last boss pays the most XP
+  S.brittle = S.heroes.some((h) => has(h, 'fr.brittle'));
+  S.finalBoss = [...dg.packs].reverse().find((p) => p.boss)?.boss || null;
+  S.xpRun = 0;
   for (const def of dg.packs) {
     const p = { def, mobs: [], pulled: false, cleared: false, triggered: !def.ambush };
     if (!def.ambush) for (const [type, x, y] of def.mobs) { const m = makeMob(type, x, y, p); p.mobs.push(m); S.mobs.push(m); }
@@ -122,7 +129,7 @@ export function respawn() {
   const cp = cps[Math.min(room, cps.length - 1)];
   S.hazards = []; S.zones = []; S.thralls = []; S.projs = []; S.rings = []; S.chains = []; S.timers = []; S.ring = null; S.dark = 0; S.darkTarget = 0;
   for (const h of S.heroes) {
-    Object.assign(h, { alive: true, hp: h.maxHp, mana: h.maxMana, absorb: 0, absorbT: 0, dodgeT: 0, dash: null, cast: null, blocking: false, target: null, picked: null, holdFire: false, hots: [], ghostSaved: false, beat: 0, next: null, crush: 0, shatter: 0, points: 0, mendUp: false });
+    Object.assign(h, { alive: true, hp: h.maxHp, mana: h.maxMana, absorb: 0, absorbT: 0, dodgeT: 0, dash: null, cast: null, blocking: false, target: null, picked: null, holdFire: false, hots: [], ghostSaved: false, beat: 0, next: null, crush: 0, shatter: 0, points: 0, mendUp: false, payback: false, fury: 0, furyT: 0, stormT: 0 });
     h.st = { stun: 0, root: 0, haunt: 0, air: 0, ghost: 0, surge: 0, zeal: 0, kx: 0, ky: 0, chained: null, caged: null, curse: null };
     for (const k in h.cd) h.cd[k] = 0;
     h.bot.ignore = new Set(); h.bot.seen = new Set();
@@ -374,12 +381,15 @@ function tickZones(dt) {
   for (let i = S.zones.length - 1; i >= 0; i--) {
     const z = S.zones[i];
     z.t += dt; z.tickT -= dt;
+    // Walking Prayer: a circle that landed on a mate goes where they go
+    if (z.follow && z.follow.alive) { z.x = z.follow.x; z.y = z.follow.y; }
     if (z.tickT <= 0) {
       z.tickT = z.tick;
       // a zone that does its own thing every tick (a gadget's turret)
       if (z.fn) z.fn(z);
       else if (z.kind === 'heal') {
         for (const h of S.heroes) if (h.alive && distXY(h.x, h.y, z.x, z.y) <= z.r + h.r * 0.5) healHero(z.src, h, z.val || 36, { size: 16 });
+        if (z.src) holyGround(z);
         if (z.src && z.src.bonuses && z.src.bonuses.has('candlewake3')) {
           for (const m of S.mobs) if (isFoe(m) && !m.cage && distXY(m.x, m.y, z.x, z.y) <= z.r + m.r * 0.5) hurtMob(m, 32, z.src, { col: '#FFE08A', size: 16, noCrit: true });
         }
@@ -390,7 +400,10 @@ function tickZones(dt) {
           if (!isFoe(m) || m.cage || distXY(m.x, m.y, z.x, z.y) > z.r + m.r * 0.5) continue;
           hurtMob(m, z.val || 20, z.src, { crit: 0.06, size: 17, col: '#DDF3FF', tier: 'tick', key: 'blizzard' });
           if (m.alive && !m.isBoss) { m.st.slow = Math.max(m.st.slow, 0.4); m.st.slowT = 0.8; }
+          if (m.alive && z.src) frostbite(z, m);
         }
+      } else if (z.kind === 'firestorm') {
+        firestormTick(z);
       } else if (z.kind === 'ice') {
         for (const m of S.mobs) if (isFoe(m) && !m.cage && !m.isBoss && !m.M.wisp && !z.hit.has(m.id) && distXY(m.x, m.y, z.x, z.y) <= z.r + m.r) { z.hit.add(m.id); m.st.freeze = Math.max(m.st.freeze, 1.5); m.wind = 0; }
       }

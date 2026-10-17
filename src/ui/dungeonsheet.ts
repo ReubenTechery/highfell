@@ -29,13 +29,15 @@ import { groupOf, heroesFor, partyProblem, seats, underPowered, type PowerGap } 
 import { activeHero, heroById, roleOf, setActive, type Hero, type Profile } from '../meta/profile';
 import { doorTip, finishTip, type DoorTip } from '../meta/tips';
 import type { App } from './app';
-import { esc, fmtRate, fmtT, GLYPH } from './dom';
-import { botSprite, colourOf, heroImg, heroSprite, iconOf, nameOf, placeSprite, tile } from './art';
+import { esc, fmtN, fmtRate, fmtT, GLYPH } from './dom';
+import { botSprite, colourOf, heroImg, heroSprite, iconOf, nameOf, placeSprite, tile, XP_VIOLET } from './art';
 import { ilvl } from './hearth';
 import { SWATCH } from './lookssheet';
 import { SFX } from './sound';
 import { seatAt, stageShape, stageSvg } from './stage';
 import { warbandOpen, warbandWhy } from '../meta/warband';
+import { CLEAR_XP } from '../content/xp';
+import { chestXpLines, xpMul } from '../meta/xp';
 
 /** the sheet's pages: the door (the everyday one) and the ones a tap away, each with a back arrow */
 export type DgPage = 'door' | 'loot' | 'heroes' | 'brews' | 'list';
@@ -217,7 +219,7 @@ function lootPanel(p: Profile, dg: DungeonInfo, role: RoleId): string {
     ${drops ? `<p class="dgx-ilvl">Drops up to <b>Power ${drops}</b>${dg.heroicOf ? ` · made for <b>Power ${drops - 2}</b>` : ''}</p>` : ''}
     ${dg.heroicOf ? `<p class="dgx-ilvl">Everything Normal drops, plus a gilding kit for every piece: any seat, <b>${fmtRate(KIT_RATE)}</b> each. Same power.</p>` : ''}
     ${ach ? rewards(ach, done) : ''}
-    <div class="dgx-rows">${rows.map((r) => lootRow(p, r.label, r.role, r.drops, r.yours)).join('')}</div></div>
+    <div class="dgx-rows">${rows.map((r) => lootRow(p, r.label, r.role, r.drops, r.yours)).join('')}${xpRow(dg)}</div></div>
     <button type="button" class="btn small dgx-open" data-act="entry" data-id="${dg.id}.${dg.finalBoss}">${GLYPH.book}Open the collection log</button>`;
 }
 
@@ -356,6 +358,16 @@ function lootRow(p: Profile, label: string, role: RoleId | null, drops: DropDef[
   return `<div class="dgx-row${role ? ` r-${role}` : ''}${yours ? ' yours' : ''}"><span class="dgx-lbl">${esc(label)}${yours ? '<em class="dgx-yours">yours</em>' : ''}</span>${drops.map((d) => item(p, d)).join('')}</div>`;
 }
 
+/** every chest's XP, whoever you are: the clear's, its Lore Pages (1 to 10) and the two tomes at their rates */
+function xpRow(dg: DungeonInfo): string {
+  const k = xpMul(dg);
+  const its = chestXpLines().map((x) => {
+    const what = x.rate ? `${fmtRate(x.rate)}, +${fmtN(x.xp * k)} XP` : `1 to 10 in every chest, +${fmtN(x.xp * k)} XP each`;
+    return `<span class="dgx-it xp" style="--c: ${XP_VIOLET}" title="${esc(`${x.name}: ${what}`)}" aria-label="${esc(`${x.name}: ${what}`)}"><span class="tile" aria-hidden="true">${tile(x.icon)}</span><small>${x.rate ? fmtRate(x.rate) : '1 to 10'}</small></span>`;
+  }).join('');
+  return `<div class="dgx-row r-xp"><span class="dgx-lbl">Every chest<em class="dgx-yours">+${fmtN(CLEAR_XP * k)} XP a clear</em></span>${its}</div>`;
+}
+
 /** a drop: lit up if you have it, its drop rate if you don't */
 function item(p: Profile, d: DropDef): string {
   const have = !!p.collection[d.id];
@@ -398,7 +410,7 @@ function warbandTip(p: Profile): string {
   const any = seats(p, false).some((s) => !s.hero);
   return `<div class="dgx-tip" role="note">
     <p class="dgx-tip-h"><span class="dgx-tip-new">New</span><b>Your Warband</b>${make ? '<button type="button" class="dgx-tip-later" data-act="tipok" data-tip="warband">Later</button>' : ''}</p>
-    <p>Your other heroes fill these seats, in their own gear: better gear on them, faster runs. ${any ? 'A bot stands in until you make one.' : 'Tap a name to swap who goes in.'}</p>
+    <p>Your other heroes take these seats when their gear is at least as good as a bot’s: better gear on them, faster runs. They come to help, and the loot is all yours. ${any ? 'A bot stands in until then.' : 'Tap a name to see who goes in.'}</p>
     <div class="dgx-tip-acts${make ? ' make' : ''}">${make || '<button type="button" class="btn small gold" data-act="tipok" data-tip="warband">Got it</button>'}</div></div>`;
 }
 
@@ -409,13 +421,16 @@ const brewTip = (): string => `<div class="dgx-tip one" role="note">
     <div class="dgx-tip-acts"><button type="button" class="btn small gold" data-act="tipok" data-tip="brew">Got it</button></div></div>`;
 
 /** Who goes in: every hero by role, who you're playing and who comes along with you. Tap one to play them;
- *  for each other seat the hero of that role you played last comes along (a bot where you have none). */
+ *  for each other seat your best-geared hero of that role comes along if its gear is at least a bot's (party.ts),
+ *  or else the bot. */
 function heroesPage(p: Profile, heroic: boolean, open: boolean): string {
   // until your Warband opens (warband.ts), bots take the other seats and no more heroes can be made
-  const h = activeHero(p), room = open ? MAX_HEROES - p.roster.length : 0;
+  const h = activeHero(p), room = open ? MAX_HEROES - p.roster.length : 0, cast = seats(p, heroic);
   const groups = ORDER.map((r) => {
-    const list = heroesFor(p, r), along = !heroic && h && roleOf(h) !== r ? list[0] : null;
+    const list = heroesFor(p, r), along = !heroic && h && roleOf(h) !== r ? cast.find((c) => c.role === r)?.hero || null : null;
     const rows = list.map((x) => heroRow(p, x, r, x.id === h?.id ? 'You' : x.id === along?.id ? 'Comes along' : ''));
+    // your heroes of this role are below the bot's gear: the bot goes instead, until one is geared up
+    if (list.length && !heroic && h && roleOf(h) !== r && !along) rows.push(`<div class="dgx-hero none r-${r}"><span class="dgx-hfig" aria-hidden="true">${heroImg(botSprite(r, partyRar(p, h)), { cls: 'dgx-himg' })}</span><span class="dgx-hname"><b>${esc(ROLES[r].name)}, a bot, goes</b><small>Its gear beats your ${esc(word(r))} heroes’. Gear one up to bring them.</small></span><span class="dgx-htag">Comes along</span></div>`);
     if (!list.length) {
       rows.push(`<div class="dgx-hero none r-${r}"><span class="dgx-hfig" aria-hidden="true">${heroImg(botSprite(r, h ? partyRar(p, h) : 0), { cls: 'dgx-himg' })}</span><span class="dgx-hname"><b>No ${esc(word(r))} yet</b><small>${esc(ROLES[r].name)}, a bot, ${heroic ? 'can stand in' : 'comes along'}</small></span></div>`);
       if (room) rows.push(`<button type="button" class="dgx-hero new r-${r}" data-act="newseat" data-role="${r}"><span class="dgx-hfig" aria-hidden="true">${GLYPH.plus}</span><span class="dgx-hname"><b>Make a ${esc(word(r))}</b><small>${room} bed${room === 1 ? '' : 's'} free</small></span></button>`);
@@ -425,7 +440,7 @@ function heroesPage(p: Profile, heroic: boolean, open: boolean): string {
   const more = room && ORDER.every((r) => heroesFor(p, r).length)
     ? `<button type="button" class="dgx-hero new" data-act="newhero"><span class="dgx-hfig" aria-hidden="true">${GLYPH.plus}</span><span class="dgx-hname"><b>New hero</b><small>${room} bed${room === 1 ? '' : 's'} free</small></span></button>`
     : '';
-  const note = heroic ? 'On Heroic your other heroes stay home: friends take the seats.' : open ? 'Tap a hero to play them. The others come along.' : warbandWhy(p);
+  const note = heroic ? 'On Heroic your other heroes stay home: friends take the seats.' : open ? 'Tap a hero to play them. Your others come along when their gear is at least a bot’s, to help: they never get loot.' : warbandWhy(p);
   return `${groups}${more}<p class="dgx-note">${open || heroic ? '' : GLYPH.lock}${esc(note)}</p>`;
 }
 

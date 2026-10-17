@@ -1,14 +1,15 @@
 /**
  * Who sits where in a run: three seats, one per role, and who may go in. Normal is fully playable on
- * your own: you take your hero's seat and your own Warband heroes from your bunk room fill the others
- * (bots stand in for roles you have no hero for), or you can group up. Heroic is the group run: it needs
- * at least two real players, a bot takes the seat nobody fills, and your Warband heroes never sit in.
- * A hero short of a dungeon's recommended Power is warned first, never stopped.
+ * your own: you take your hero's seat and bots take the others, in plain gear as good as yours; one of
+ * your own Warband heroes takes a seat instead only when its gear is at least as good as the bot's, to make
+ * the run stronger and nothing else (it never gets loot: the run is your hero's). You can group up too.
+ * Heroic is the group run: it needs at least two real players, a bot takes the seat nobody fills, and your
+ * Warband heroes never sit in. A hero short of a dungeon's recommended Power is warned first, never stopped.
  */
 import { RARITY } from '../content/gear';
 import { ORDER, ROLES } from '../content/roles';
 import type { DungeonInfo, RoleId } from '../content/types';
-import { loadoutFor, wholeIlvl } from './gear';
+import { loadoutFor, partyRar, wholeIlvl } from './gear';
 import { activeHero, roleOf, setActive, type Hero, type Profile } from './profile';
 import { warbandOpen } from './warband';
 
@@ -33,10 +34,10 @@ export function partyProblem(players: Hero[], o: { heroic: boolean }): string | 
 }
 
 /** How far a hero falls short of the Power a dungeon recommends: their Power, the dungeon's, and the gap.
- *  `likely` is a whole rarity short or more (Rare against Thimblebriar's 22), where a wipe is very likely. */
+ *  `likely` is LIKELY_SHORT or more short (Rare against Thimblebriar's 22), where a wipe is very likely. */
 export interface PowerGap { have: number; want: number; short: number; likely: boolean }
-/** a whole rarity: Common 10, Uncommon 14, Rare 18, Epic 22 */
-const RARITY_STEP = RARITY[1].score - RARITY[0].score;
+/** how far short makes a wipe very likely: the whole regular ladder, Common to Rare */
+const LIKELY_SHORT = RARITY[2].score - RARITY[0].score;
 
 /** The hero against a dungeon's recommended Power (the item level the game shows, as a whole number), or null
  *  when they meet it or it recommends none (a Heroic doesn't yet). A warning, never a lock: the Barrow wants 10,
@@ -45,20 +46,24 @@ export function underPowered(p: Profile, h: Hero, dg: DungeonInfo): PowerGap | n
   const want = dg.recIlvl;
   if (!want) return null;
   const have = wholeIlvl(loadoutFor(p, h).score);
-  return have < want ? { have, want, short: want - have, likely: want - have >= RARITY_STEP } : null;
+  return have < want ? { have, want, short: want - have, likely: want - have >= LIKELY_SHORT } : null;
 }
 
 /** The three seats, tank first, for a group of real players: each sits in their own role's seat. On Normal, once your Warband is open (warband.ts),
- *  the empty seats take your own Warband heroes of those roles (the one you played last), or a stand-in
- *  bot where you have none. On Heroic the empty seats always take bots, never your Warband. */
+ *  an empty seat takes your best-geared Warband hero of its role if that hero's gear is at least as good as the
+ *  bot's (`helps`), or else the bot. On Heroic the empty seats always take bots, never your Warband. */
 export function seatsFor(p: Profile, players: Hero[], heroic: boolean): Seat[] {
+  const lead = players[0];
   return ORDER.map((role) => {
     const player = players.find((h) => roleOf(h) === role);
     if (player) return { role, hero: player, bot: null };
-    const mate = heroic || !warbandOpen(p) ? null : heroesFor(p, role)[0] || null;
+    const mate = heroic || !warbandOpen(p) || !lead ? null : heroesFor(p, role).filter((h) => helps(p, h, lead)).sort((a, b) => loadoutFor(p, b).score - loadoutFor(p, a).score)[0] || null;
     return mate ? { role, hero: mate, bot: null } : { role, hero: null, bot: ROLES[role].name };
   });
 }
+/** Would this Warband hero make your run stronger than the bot in its seat? Bots wear plain gear as good as
+ *  yours on average (partyRar), so: is its Power at least the bot's. */
+export const helps = (p: Profile, mate: Hero, lead: Hero): boolean => loadoutFor(p, mate).score >= RARITY[partyRar(p, lead)].score;
 
 /** Your seats as things are: you, then your Warband on Normal or bots on Heroic. */
 export const seats = (p: Profile, heroic = false): Seat[] => seatsFor(p, groupOf(p), heroic);

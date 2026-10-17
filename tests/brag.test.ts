@@ -18,8 +18,8 @@ const kinds = (p: Profile, l: RunLoot, unlocked: string[] = []): string[] => bra
 test('brags: a plain clear has nothing to show off; a first clear is not a best time', () => {
   const p = freshProfile(1);
   const regular: Drop = { id: 'tank.helm.1', source: 'regular', role: 'tank', slot: 'helm', rar: 1, prevRar: 0, isNew: true, dupe: false, marks: 0 };
-  const spare: Drop = { id: 'healer.chest.1', source: 'spare', role: 'healer', slot: 'chest', rar: 1, prevRar: 0, isNew: true, dupe: false, marks: 0 };
-  assert.deepEqual(bragsOf(p, run({ drops: [regular, spare], firstClear: true }), []), []);
+  const pages: Drop = { id: 'xp.pages', source: 'xp', role: 'tank', isNew: true, dupe: false, marks: 0, xp: 200, n: 2 };
+  assert.deepEqual(bragsOf(p, run({ drops: [regular, pages], firstClear: true }), []), []);
   owned(p, 'rimebone.helm');
   assert.deepEqual(bragsOf(p, run({ drops: [drop('rimebone.helm', { isNew: false, dupe: true, marks: 3 })] }), []), [], 'a duplicate set piece is not news');
 });
@@ -68,8 +68,8 @@ test('brags: Heroic finishes a gilded set with kits, and its normal pieces count
   assert.deepEqual(brags.filter((b) => b.kind === 'unique').map((b) => b.id), ['rimebone.chest', gilded('candlewake.chest')], 'the rarest first: a set piece is 1 in 25, a kit 1 in 20');
 });
 
-test('brags: best first, the pet, a whole log, a set, uniques (rarest first), a best time, then achievements', () => {
-  assert.deepEqual(BRAG_ORDER, ['pet', 'log', 'set', 'unique', 'pb', 'ach']);
+test('brags: best first, the pet, a whole log, a set, uniques (rarest first), a Grand Tome, a best time, then achievements', () => {
+  assert.deepEqual(BRAG_ORDER, ['pet', 'log', 'set', 'unique', 'tome', 'pb', 'ach']);
   const p = freshProfile(1);
   owned(p, 'shadeveil.helm', 'shadeveil.shoulders');
   const drops = [drop('trophy.rattlebones_plume', { boss: 'knight', rate: 1 / 50 }), drop('shadeveil.chest'), drop('mount.gravehound', { rate: 1 / 1000 }), drop('pet.pint_gravekeeper', { rate: 1 / 2500 })];
@@ -78,6 +78,15 @@ test('brags: best first, the pet, a whole log, a set, uniques (rarest first), a 
   assert.deepEqual(brags.filter((b) => b.kind === 'unique').map((b) => b.id), ['mount.gravehound', 'trophy.rattlebones_plume', 'shadeveil.chest'], '1 in 1,000, then 1 in 50, then 1 in 25');
   assert.deepEqual(brags[1], { kind: 'log', dungeon: 'barrow', id: 'barrow.log' });
   assert.deepEqual(achBrag('vale.first'), { kind: 'ach', dungeon: 'garden', id: 'vale.first' }, 'an achievement outside a run says where it is from');
+});
+
+test('brags: a Grand Tome is a brag, with its XP and the clear it came on; pages and a Scholar’s Tome are not', () => {
+  const p = freshProfile(1);
+  const xp = (id: string, o: Partial<Drop> = {}): Drop => ({ id, source: 'xp', role: 'tank', isNew: true, dupe: false, marks: 0, ...o });
+  assert.deepEqual(kinds(p, run({ drops: [xp('xp.pages', { xp: 500, n: 5 }), xp('xp.tome', { xp: 2500, rate: 1 / 25 })] })), [], 'a Scholar’s Tome comes 1 in 25');
+  const b = bragsOf(p, run({ drops: [xp('xp.pages', { xp: 300, n: 3 }), xp('xp.grand', { xp: 25000, rate: 1 / 500 })], newPb: true }), []);
+  assert.deepEqual(b.map((x) => x.kind), ['tome', 'pb']);
+  assert.deepEqual(b[0], { kind: 'tome', dungeon: 'barrow', id: 'xp.grand', rate: 1 / 500, xp: 25000, clears: 42 });
 });
 
 test('brags: a real run reads the same as the chest shows it', () => {

@@ -7,10 +7,11 @@
      mage    Shatter: Icicle hits a frozen foe 3× and a Chilled boss 1.5× (Comet 2× and 1.5×); an Icicle crit makes
              the next Icicle Shatter anything (h.shatter counts the ones primed)
      rogue   points (h.points, five at most): Viper Blades adds one (two on a crit), Fan of Blades one, Shadowstep
-             two; Shadowstrike spends them all, about 25 a point
+             two; Shadowstrike spends them all, 28 a point (a rogue's crits are 2.5×)
    Exposed (+35% damage taken) is every payoff's setup: Cleave Crushes, Icicle and Comet Shatter as on a Chilled
    boss, Shadowstrike hits as if you had five points, and Smite heals double.
-   heroes.js fires these (useAbility); press.js times the player's presses; bots.js picks the bots'. */
+   heroes.js fires these (useAbility); press.js times the player's presses; bots.js picks the bots'. The rogue's
+   four are rogue.js; Fire's are fire.js; what talents change in each is specs.js. */
 import { angDiff, angTo, dist } from '../core/math';
 import { rng } from '../core/rng';
 import { AB, BEAT, MEND, fillerMul } from '../content/roles';
@@ -18,23 +19,27 @@ import { RARITY } from '../content/gear';
 import { HOOKS, S } from './state.js';
 import { CHILL, CHILL_SHATTER, LAST, SHATTERLANCE_CHILL, STAGGER, addThreat, aggro, banner, bits, chillBoss, dots, fx, fxText, healHero, hold, hurtMob, say, sfx, shake, staggerBoss, stunned, taunt } from './entities.js';
 import { interruptCast, liftCurse } from './mobs.js';
-import { canStand, moveEnt } from './world.js';
-import { ambushGadgets, blockGadgets, chargeGadgets, cleaveGadgets, cometGadgets, critSpark, gearMul, icicleGadgets, mendGadgets, stepGadgets, sunburstGadgets, viperGadgets, wardGadgets } from './gadgets.js';
-import { applyBleed, autoTarget, bestCluster, bombInReach, clampRange, engaged, foesNear, heroBy, isFoe, later, loud, mostHurt, nearestFoe, spawnThrall } from './heroes.js';
+import { moveEnt } from './world.js';
+import { blockGadgets, chargeGadgets, cleaveGadgets, cometGadgets, gearMul, icicleGadgets, mendGadgets, sunburstGadgets, wardGadgets } from './gadgets.js';
+import { autoTarget, bestCluster, bombInReach, clampRange, engaged, foesNear, heroBy, isFoe, later, loud, mostHurt, nearestFoe, spawnThrall } from './heroes.js';
+import { ROGUE_BUTTONS } from './rogue.js';
+import { fireboltHit, fireCometLand } from './fire.js';
+import { axeStorm, circleFollows, deepFreeze, hailTarget, has, miracle, mendMul, onCrush, onPerfect, onSlam, overflow, paybackStun, shardburst, smiteHealTargets, smiteSear, sunlanceTarget, sunstrike, takePayback, twinWard } from './specs.js';
+export { POINT, MAX_POINTS, burnable } from './rogue.js';
 
-/** Cleave's Crush, Shadowstrike's damage a point, and the most points a rogue holds */
-export const CRUSH = 1.6, POINT = 24, MAX_POINTS = 5;
+/** Cleave's Crush */
+export const CRUSH = 1.6;
 /** each class's payoff sound, layered over the hit (sound.ts) */
 const PAYOFF = { warrior: 'crush', cleric: 'bless', mage: 'shatter', rogue: 'finish' };
 
 /** a payoff of yours lands: its word and its sound (the hit itself feels like one: entities.js FEEL) */
-function payoff(h, word, x, y, col) {
+export function payoff(h, word, x, y, col) {
   if (!h.isPlayer) return;
   fxText(x, y, word, col || '#FFE08A', 30, { dur: 0.95 });
   sfx(PAYOFF[h.cls] || 'crush', 0.9);
 }
 /** the filler's swing trail takes the weapon's rarity colour (Common keeps the class's own) */
-const trail = (h, base) => (h.weaponRar >= 1 ? RARITY[h.weaponRar].color : base);
+export const trail = (h, base) => (h.weaponRar >= 1 ? RARITY[h.weaponRar].color : base);
 
 /* ---------- the tank: Cleave, Charge, Slam, the shield ---------- */
 /** will this Cleave Crush this foe? (a primed Cleave Crushes everything it hits) */
@@ -44,32 +49,39 @@ function abCleave(h, aim) {
   const t = aim && aim.kind === 'mob' && isFoe(aim) ? aim : autoTarget(h);
   if (t && dist(h, t) < 220) h.face = angTo(h, t);
   const wide = h.traits.has('wide');
-  const hits = foesNear(h.x, h.y, 126, false).filter((m) => !m.cage && Math.abs(angDiff(h.face, angTo(h, m))) < (wide ? 1.42 : 1.25));
   const primed = h.crush > 0;
+  // Payback (a perfect block readied it): three times as hard, and it stuns; Axe Storm: a primed Cleave sweeps
+  // all the way round and its Crushes hit 15% harder
+  const back = takePayback(h), storm = axeStorm(h, primed);
+  const hits = foesNear(h.x, h.y, 126, false).filter((m) => !m.cage && (storm || Math.abs(angDiff(h.face, angTo(h, m))) < (wide ? 1.42 : 1.25)));
   if (primed) h.crush--;
   const mul = fillerMul(h.bonuses), hit = AB.tank.a1.hit;
-  let crushed = 0, critPrime = false;
+  let crushed = 0, critPrime = false, dealt = 0;
   for (const m of hits) {
-    const c = primed || stunned(m) || m.exposed > 0;
+    const c = back || primed || stunned(m) || m.exposed > 0;
+    const k = back ? 3 : c ? CRUSH * (storm ? 1.15 : 1) : 1;
     // Cleave is the tank's threat engine: 2× threat, a Crush 3×, so a mage's Comet on an Exposed boss can't take him
-    hurtMob(m, hit * mul * (c ? CRUSH : 1), h, { knock: c ? 130 : 80, crit: 0.2, threat: c ? 3 : 2, tier: c ? 'payoff' : 'filler', key: c ? 'crush' : 'cleave' });
-    if (c) crushed++;
+    const got = hurtMob(m, hit * mul * k, h, { knock: c ? 130 : 80, crit: 0.2, threat: c ? 3 : 2, tier: c ? 'payoff' : 'filler', key: back ? 'payback' : c ? 'crush' : 'cleave' });
+    if (c) { crushed++; dealt += got; }
     else if (LAST.crit) critPrime = true;
+    if (back) paybackStun(m);
   }
   // a Cleave crit primes the next Cleave's Crush (a Crush's own crit doesn't chain)
   if (critPrime) h.crush = Math.max(h.crush, 1);
+  if (crushed) onCrush(h, dealt);
   cleaveGadgets(h, hits, hit * mul * (crushed ? CRUSH : 1));
   if (hits.length > 0 && h.bonuses.has('bg_helm')) healHero(h, h, 11, { size: 17 });
   // the axe swings left, then right
   h.swingDir = (h.swingDir || 1) > 0 ? -1 : 1;
   h.lunge = 0.22; h.lungeA = h.face; h.swingT = 0.24; h.atkT = Math.max(h.atkT, 0.5); h.blocking = false;
-  fx({ type: 'cleave', x: h.x, y: h.y - 30, a: h.face, r: crushed ? 114 : 100, dur: 0.25, col: crushed ? '#F2C230' : trail(h, '#FFE08A'), wide: true, crush: crushed > 0, dir: h.swingDir });
+  if (storm) fx({ type: 'whirl', h, x: h.x, y: h.y, r: 126, dur: 0.3, col: '#F2C230' });
+  else fx({ type: 'cleave', x: h.x, y: h.y - 30, a: h.face, r: crushed ? 114 : 100, dur: 0.25, col: crushed ? '#F2C230' : trail(h, '#FFE08A'), wide: true, crush: crushed > 0, dir: h.swingDir });
   sfx('sweep', 0.8);
   if (hits.length) {
     sfx('axehit', Math.min(1, 0.55 + hits.length * 0.12));
     bits(h.x + Math.cos(h.face) * 56, h.y + Math.sin(h.face) * 34 - 24, 'shard_bone', crushed ? 6 : 3, 210);
   }
-  if (crushed) payoff(h, 'Crush!', h.x + Math.cos(h.face) * 58, h.y + Math.sin(h.face) * 35 - 112);
+  if (crushed) payoff(h, back ? 'Payback!' : storm ? 'Axe Storm!' : 'Crush!', h.x + Math.cos(h.face) * 58, h.y + Math.sin(h.face) * 35 - 112);
   if (h.unique === 'gravedigger' && ++h.cleaves % 8 === 0) gravedig(h);
   return true;
 }
@@ -101,6 +113,7 @@ function abSlam(h) {
     if (h.isPlayer) fxText(h.x, h.y - 125, 'Barrow Thralls!', '#FFE08A', 20);
   }
   h.crush = Math.max(h.crush, 1);
+  onSlam(h);
   say(h, n ? (rng() < 0.5 ? 'Oi!' : 'Over here!') : 'Oi?', 0.9);
   // an inward ring, then the whirlwind
   fx({ type: 'ring', x: h.x, y: h.y, r0: R + 12, r1: 24, col: '#F2C230', dur: 0.25, w: 9, ground: true });
@@ -110,13 +123,15 @@ function abSlam(h) {
   h.whirlDur = 0.42;
   h.whirlT = h.whirlDur;
   fx({ type: 'whirl', h, x: h.x, y: h.y, r: wR, dur: h.whirlDur, col: '#F2C230' });
+  // Spinning Axe: the whirlwind hits twice as hard
+  const spin = has(h, 'ax.spin') ? 2 : 1;
   const spinSlice = (finalSpin) => {
     if (!h.alive || S.over) return;
     sfx('sweep', 0.65);
     let hitAny = false;
     for (const m of S.mobs) {
       if (!isFoe(m) || m.cage || m.M.wisp || dist(m, h) > wR + m.r) continue;
-      hurtMob(m, 14 * chestMul, h, { noCrit: true, threat: 2, knock: finalSpin ? 55 : 25, size: 17, tier: 'tick', key: 'slam' });
+      hurtMob(m, 14 * chestMul * spin, h, { noCrit: spin === 1, threat: 2, knock: finalSpin ? 55 : 25, size: 17, tier: 'tick', key: 'slam' });
       hitAny = true;
     }
     if (hitAny) bits(h.x, h.y - 28, 'shard_bone', 4, 170);
@@ -214,6 +229,7 @@ export function onPerfectBlock(h, src) {
   }
   h.crush = Math.max(h.crush, 1);
   h.beat = 0;
+  onPerfect(h);
   if (h.bonuses.has('barrowguard2')) {
     h.absorb = Math.max(h.absorb, Math.round(150 * h.power));
     h.absorbT = 6;
@@ -238,8 +254,9 @@ export function mend(h, t) {
   // Quick Hands: Mend waits for the beat but never starts it, only its own short pause
   if (h.traits.has('quickhands')) h.gcd = MEND.quick; else h.beat = BEAT.len;
   h.mendUp = false;
-  const amt = MEND.heal * gearMul(h, 'mend') * (blessed ? 1.5 : 1);
-  healHero(h, t, amt);
+  const amt = MEND.heal * gearMul(h, 'mend') * (blessed ? 1.5 : 1) * mendMul(h, t);
+  const real = healHero(h, t, amt);
+  overflow(h, t, (LAST.healAmt || 0) - real);
   if (blessed) payoff(h, 'Blessed!', t.x, t.y - 120, '#F2C230');
   if (blessed && h.isPlayer) hold(0.07, h, t);
   mendGadgets(h, t);
@@ -259,7 +276,7 @@ function abCircle(h, aim) {
   if (aim && aim.x !== undefined && !aim.kind) p = clampRange(h, aim.x, aim.y, 520);
   else { const t = heroBy('tank'); p = t && t.alive && dist(t, h) < 520 ? { x: t.x, y: t.y } : { x: h.x, y: h.y }; }
   const chestMul = (h.bonuses.has('cw_chest') ? 1.25 : 1) * gearMul(h, 'circle');
-  S.zones.push({ kind: 'heal', x: p.x, y: p.y, r: 114, t: 0, dur: 6 + (h.bonuses.has('sb_chest') ? 1 : 0), tick: 0.5, tickT: 0.2, val: Math.round(38 * chestMul), src: h });
+  S.zones.push({ kind: 'heal', x: p.x, y: p.y, r: 114, t: 0, dur: 6 + (h.bonuses.has('sb_chest') ? 1 : 0), tick: 0.5, tickT: 0.2, val: Math.round(38 * chestMul), src: h, follow: circleFollows(h, p.x, p.y, 114) });
   sfx('circle');
   return true;
 }
@@ -273,6 +290,7 @@ function abWard(h, aim) {
   if (!t || dist(t, h) > MEND.range + 40) return false;
   const shMul = (h.bonuses.has('cw_shoulders') ? 1.3 : 1) * gearMul(h, 'ward');
   t.absorb = Math.max(t.absorb, Math.round(230 * shMul * h.power)); t.absorbT = Math.max(t.absorbT, 8 + (h.bonuses.has('sb_shoulders') ? 2 : 0)); t.wardBy = h;
+  twinWard(h, t, Math.round(230 * shMul * h.power), 8);
   wardGadgets(h, t);
   if (h.bonuses.has('cw_shoulders')) healHero(h, t, 45, { size: 17 });
   fx({ type: 'ring', x: t.x, y: t.y - 40, r0: 10, r1: 52, col: '#DDF3FF', dur: 0.3, w: 5 });
@@ -282,6 +300,8 @@ function abWard(h, aim) {
   return true;
 }
 function abSunburst(h) {
+  // Miracle: once a run, a fallen mate in reach comes back first, and gets the heal too
+  miracle(h, 470);
   for (const a of S.heroes) {
     if (!a.alive || dist(a, h) > 470) continue;
     healHero(h, a, 210, { show: true });
@@ -310,6 +330,9 @@ function shot(h, aim, kind) {
   if (!t || dist(h, t) > 520) { if (loud(h)) fxText(h.x, h.y - 100, 'No target', '#DDF3FF', 16); return false; }
   h.face = angTo(h, t); h.lunge = 0.12; h.lungeA = h.face;
   S.projs.push({ team: 'hero', kind, x: h.x + Math.cos(h.face) * 18, y: h.y + Math.sin(h.face) * 8, z: 56, sp: kind === 'smite' ? 'orb_holy' : 'bolt_frost', src: h, tgt: t, speed: kind === 'smite' ? 900 : 1100, life: 1.5, big: true, col: trail(h, kind === 'smite' ? '#FFE08A' : '#DDF3FF') });
+  // Hailstorm: a second shard, a third as strong, at another foe
+  const o = kind === 'icicle' ? hailTarget(h, t) : null;
+  if (o) S.projs.push({ team: 'hero', kind, half: true, x: h.x - Math.sin(h.face) * 14, y: h.y + Math.cos(h.face) * 8, z: 50, sp: 'bolt_frost', src: h, tgt: o, speed: 1000, life: 1.5, col: '#DDF3FF' });
   sfx(kind === 'smite' ? 'smite' : 'icicle', 0.85);
   return true;
 }
@@ -325,18 +348,25 @@ function smiteTarget(h) {
 export function projHit(p) {
   const h = p.src, t = p.tgt;
   if (t.cage) { hurtMob(t, 1, h); return; }
-  if (p.kind === 'icicle') icicleHit(h, t);
+  if (p.kind === 'icicle') icicleHit(h, t, !!p.half);
   else if (p.kind === 'smite') smiteHit(h, t);
+  else if (p.kind === 'firebolt') fireboltHit(h, t);
 }
 function smiteHit(h, t) {
   const got = hurtMob(t, AB.healer.a4.hit * fillerMul(h.bonuses), h, { col: '#FFE08A', size: 20, tier: 'filler', key: 'smite' });
   const crit = LAST.crit;
-  // it heals your most hurt mate for half what it dealt (all of it on an Exposed foe)
-  const low = mostHurt(h, null);
-  if (got > 0 && low && low.hp < low.maxHp) {
-    healHero(h, low, got * (t.exposed > 0 ? 1 : 0.5), { size: 17, raw: true });
+  // Sunlance: it goes on into one more foe, and that hit heals too
+  const o = got > 0 ? sunlanceTarget(h, t) : null;
+  const more = o ? hurtMob(o, AB.healer.a4.hit * fillerMul(h.bonuses), h, { col: '#FFE08A', size: 18, tier: 'filler', key: 'lance' }) : 0;
+  if (o) fx({ type: 'beam', x: t.x, y: t.y - 50, x2: o.x, y2: o.y - 50, col: '#FFE08A', dur: 0.2 });
+  // it heals your most hurt mate (with Twin Light the next most hurt too) for half what it dealt (all of it on an
+  // Exposed foe)
+  for (const low of got > 0 ? smiteHealTargets(h) : []) {
+    healHero(h, low, (got + more) * (t.exposed > 0 ? 1 : 0.5), { size: 17, raw: true });
     fx({ type: 'beam', x: t.x, y: t.y - 50, x2: low.x, y2: low.y - 40, col: '#FFE08A', dur: 0.22 });
   }
+  smiteSear(h, t);
+  if (crit) sunstrike(h, got);
   // it pulses your Prayer circles
   for (const z of S.zones) if (z.kind === 'heal' && z.src === h) {
     fx({ type: 'ring', x: z.x, y: z.y, r0: 24, r1: z.r, col: '#FFE08A', dur: 0.28, w: 6, ground: true });
@@ -356,12 +386,15 @@ export function icicleShatter(h, t) {
   if (own > 1 || !(h.shatter > 0)) return { k: own, primed: false };
   return { k: t.isBoss ? CHILL_SHATTER : 3, primed: true };
 }
-function icicleHit(h, t) {
-  const { k, primed } = icicleShatter(h, t), shatters = k > 1;
+function icicleHit(h, t, half = false) {
+  // Hailstorm's second shard is a third as strong, and neither uses up nor primes a Shatter
+  const sh = icicleShatter(h, t), primed = sh.primed && !half, k = half && sh.primed ? 1 : sh.k, shatters = k > 1;
   if (primed) h.shatter--;
-  const got = hurtMob(t, AB.dps.a4.hit * fillerMul(h.bonuses) * k, h, { crit: 0.25, col: shatters ? '#8FD6FF' : '#DDF3FF', tier: shatters ? 'payoff' : 'filler', shard: 'shard_ice', key: 'icicle' });
+  const got = hurtMob(t, AB.dps.a4.hit * fillerMul(h.bonuses) * k * (half ? 1 / 3 : 1), h, { crit: 0.25, col: shatters ? '#8FD6FF' : '#DDF3FF', tier: shatters ? 'payoff' : 'filler', shard: 'shard_ice', key: half ? 'hail' : 'icicle' });
+  if (half) { if (shatters) shardburst(h, t, got); bits(t.x, t.y - 40, 'shard_ice', 3, 160); return; }
   // an Icicle crit primes the next one to Shatter anything (a Shattering Icicle's own crit doesn't chain)
   if (LAST.crit && !shatters) { h.shatter = Math.max(h.shatter, 1); if (h.isPlayer) fxText(h.x, h.y - 130, 'Shatter ready', '#8FD6FF', 18, { dur: 0.9 }); }
+  if (shatters) shardburst(h, t, got);
   icicleGadgets(h, t, shatters);
   // Splinter (30% of the hit) and the Rimebone Crown (15) splash a second foe
   const o = S.mobs.find((m) => m !== t && isFoe(m) && engaged(m) && !m.cage && !m.M.thing && dist(m, t) < 200);
@@ -382,7 +415,7 @@ function abBlizzard(h, aim) {
   p = clampRange(h, p.x, p.y, 520);
   const chestMul = h.bonuses.has('rb_chest') ? 1.25 : 1;
   const rb3Mul = h.bonuses.has('rimebone3') ? 1.3 : 1;
-  S.zones.push({ kind: 'blizzard', x: p.x, y: p.y, r: 124, t: 0, dur: 5 + (h.bonuses.has('rb_chest') ? 1 : 0), tick: 0.5, tickT: 0.15, val: Math.round(20 * chestMul * rb3Mul), src: h, seed: rng() * 100 });
+  S.zones.push({ kind: 'blizzard', x: p.x, y: p.y, r: 124, t: 0, dur: 5 + (h.bonuses.has('rb_chest') ? 1 : 0), tick: 0.5, tickT: 0.15, val: Math.round(22 * chestMul * rb3Mul), src: h, seed: rng() * 100 });
   if (h.bonuses.has('rimebone3')) spawnThrall(h, 'frost', p.x, p.y + 24, 6);
   h.face = Math.atan2(p.y - h.y, p.x - h.x); h.lunge = 0.14; h.lungeA = h.face;
   sfx('blizzard');
@@ -390,7 +423,7 @@ function abBlizzard(h, aim) {
 }
 function abNova(h) {
   const R = AB.dps.a2.range;
-  const shMul = (h.bonuses.has('rb_shoulders') ? 1.4 : 1) * gearMul(h, 'nova'), longer = h.bonuses.has('as_shoulders') ? 1 : 0;
+  const deep = deepFreeze(h), shMul = (h.bonuses.has('rb_shoulders') ? 1.4 : 1) * gearMul(h, 'nova'), longer = (h.bonuses.has('as_shoulders') ? 1 : 0) + deep.freeze;
   for (const m of S.mobs) {
     if (!isFoe(m) || m.cage || dist(m, h) > R + m.r) continue;
     aggro(m, h, 0);
@@ -398,7 +431,7 @@ function abNova(h) {
     if (!m.alive || m.M.thing) continue;
     // it stops casts, a boss's too (a boss is only Chilled)
     if (m.cast) interruptCast(m, h);
-    if (m.isBoss) { m.st.slow = 0.4; m.st.slowT = 3; chillBoss(m, CHILL + longer); }
+    if (m.isBoss) { m.st.slow = 0.4; m.st.slowT = 3; chillBoss(m, CHILL + longer + deep.chill - deep.freeze); }
     else if (!m.M.wisp) { m.st.freeze = 4 + longer; m.wind = 0; }
   }
   if (h.bonuses.has('rb_shoulders')) h.cd.a3 = Math.max(0, h.cd.a3 - 1.5);
@@ -428,6 +461,7 @@ export function finishCast(h) {
   h.cd.a3 = cd;
   if (h.isPlayer) HOOKS.fired('a3');
   const t = c.target;
+  if (h.spec === 'fire') { fireCometLand(h, t, cd); return; }
   const tx = t.x, ty = t.y;
   fx({ type: 'comet', x: tx, y: ty, dur: 0.32 });
   sfx('whoosh');
@@ -436,8 +470,8 @@ export function finishCast(h) {
     const lance = h.traits.has('shatterlance');
     // 2× a frozen foe (3× with Shatterlance), 1.5× a Chilled boss or anything Exposed (2× with Shatterlance)
     const k = frozen ? (lance ? 3 : 2) : chill ? (lance ? SHATTERLANCE_CHILL : CHILL_SHATTER) : 1, shatters = k > 1;
-    if (t.alive) hurtMob(t, 330 * gearMul(h, 'comet') * k, h, { crit: 0.15, col: shatters ? '#8FD6FF' : '#DDF3FF', tier: shatters ? 'payoff' : 'hit', shard: 'shard_ice', key: 'comet' });
-    if (shatters) payoff(h, 'Shatter!', tx, ty - (t.isBoss ? 230 : 150), '#8FD6FF');
+    const got = t.alive ? hurtMob(t, AB.dps.a3.hit * gearMul(h, 'comet') * k, h, { crit: 0.15, col: shatters ? '#8FD6FF' : '#DDF3FF', tier: shatters ? 'payoff' : 'hit', shard: 'shard_ice', key: 'comet' }) : 0;
+    if (shatters) { payoff(h, 'Shatter!', tx, ty - (t.isBoss ? 230 : 150), '#8FD6FF'); shardburst(h, t, got); }
     if (shatters && h.bonuses.has('rimebone2')) h.cd.a3 = Math.min(h.cd.a3, cd / 2);
     const splash = foesNear(tx, ty, 90, false).filter((o) => o !== t && !o.cage);
     for (const o of splash) hurtMob(o, 114, h, { size: 19, key: 'comet' });
@@ -450,122 +484,10 @@ export function finishCast(h) {
   });
 }
 
-/* ---------- the rogue: Viper Blades, Shadowstrike, Fan of Blades, Shadowstep ---------- */
-function addPoints(h, n) { h.points = Math.min(MAX_POINTS, (h.points || 0) + n); }
-/** is this foe Exposed, with your one five-point Shadowstrike of the window still to come? */
-export const burnable = (h, t) => t.exposed > 0 && !(t.burned && t.burned.has(h.id));
-function rogueMeleeTarget(h, aim, maxRange) {
-  let t = aim && aim.kind === 'mob' && isFoe(aim) ? aim : autoTarget(h);
-  if (!t || dist(h, t) > h.r + t.r + maxRange) t = nearestFoe(h, maxRange, false);
-  return t && dist(h, t) <= h.r + t.r + maxRange ? t : null;
-}
-/* Viper Blades: the filler, a twin-dagger slash that poisons and adds a point (two on a crit) */
-function abViper(h, aim) {
-  const t = rogueMeleeTarget(h, aim, 78);
-  if (!t) { if (loud(h)) fxText(h.x, h.y - 100, 'Too far', '#7CF06A', 16); return false; }
-  h.face = angTo(h, t); h.lunge = 0.18; h.lungeA = h.face; h.swingT = 0.2;
-  hurtMob(t, AB.rogue.a1.hit * fillerMul(h.bonuses), h, { crit: 0.22, col: '#7CF06A', tier: 'filler', key: 'viper' });
-  const crit = LAST.crit;
-  if (t.alive) applyBleed(h, t);
-  if (!t.cage) addPoints(h, crit ? 2 : 1);
-  // the set's crit sparks, scaled for a filler (it crits far more often than Shadowstrike)
-  if (crit && h.bonuses.has('shadeveil2') && t.alive) hurtMob(t, 24, h, { col: '#B79CFF', size: 19, noCrit: true });
-  if (crit) critSpark(h, t, 24);
-  viperGadgets(h, t);
-  fx({ type: 'cleave', x: h.x, y: h.y - 30, a: h.face, r: 68, dur: 0.2, col: trail(h, '#7CF06A'), dir: (h.swingDir = -(h.swingDir || 1)) });
-  dots(t.x, t.y - 40, '#7CF06A', 6, 130);
-  sfx('sweep', 0.6); sfx('bladehit', 0.7);
-  return true;
-}
-/* Shadowstrike: spends every point on one strike (about 25 a point); on a poisoned foe it always crits and hits
-   35% harder; on an Exposed one it hits as if you had five */
-function abAmbush(h, aim) {
-  const t = rogueMeleeTarget(h, aim, 84);
-  if (!t) { if (loud(h)) fxText(h.x, h.y - 100, 'Too far', '#FF6B6B', 16); return false; }
-  // an Exposed foe takes one Shadowstrike of yours as if you had five points (one a window: it's a burn, not a loop)
-  const free = burnable(h, t);
-  const pts = free ? MAX_POINTS : h.points || 0;
-  if (pts < 1) { if (loud(h)) fxText(h.x, h.y - 100, 'No points', '#FF6B6B', 16); return false; }
-  const bleeding = !!(t.bleed && t.bleed.left > 0);
-  const full = pts >= MAX_POINTS;
-  h.face = angTo(h, t); h.lunge = 0.22; h.lungeA = h.face; h.swingT = 0.24;
-  const helmMul = (h.bonuses.has('sv_helm') ? 1.25 : 1) * gearMul(h, 'ambush');
-  const nsMul = h.nightstalkerT > 0 ? 1.3 : 1;
-  h.nightstalkerT = 0;
-  hurtMob(t, POINT * pts * helmMul * nsMul * (bleeding ? 1.35 : 1), h, { crit: bleeding ? 1 : 0.35, col: bleeding ? '#FF6B6B' : '#FFE08A', tier: full ? 'payoff' : 'hit', key: free ? 'strike_free' : 'strike' });
-  const crit = LAST.crit;
-  h.points = 0;
-  if (free) (t.burned ||= new Set()).add(h.id);
-  // Venomrush: a poisoned Shadowstrike gives a point back
-  if (bleeding && h.traits.has('arterial')) addPoints(h, 1);
-  if (crit && h.bonuses.has('sv_helm')) healHero(h, h, 25, { size: 16 });
-  if (crit && h.bonuses.has('shadeveil2') && t.alive) hurtMob(t, 55, h, { col: '#B79CFF', size: 19, noCrit: true });
-  if (crit) critSpark(h, t, 55);
-  ambushGadgets(h, t);
-  if (full) payoff(h, 'Shadowstrike!', t.x, t.y - 140, '#FF6B6B');
-  fx({ type: 'cleave', x: h.x, y: h.y - 30, a: h.face, r: 78, dur: 0.22, col: '#FF6B6B', crush: full });
-  dots(t.x, t.y - 44, '#FF6B6B', 8, 160);
-  sfx('thud', 0.8); sfx('bladehit', 0.8);
-  return true;
-}
-/* Fan of Blades: a spin round you that stops casts, refreshes venom and adds a point if it hits */
-function abFlurry(h) {
-  const R = 140 * (h.bonuses.has('gs_shoulders') ? 1.25 : 1), fanMul = gearMul(h, 'flurry');
-  h.whirlDur = 0.28; h.whirlT = 0.28;
-  let hit = false;
-  for (const m of S.mobs) {
-    if (!isFoe(m) || m.cage || dist(m, h) > R + m.r) continue;
-    aggro(m, h, 0);
-    if (m.cast) interruptCast(m, h);
-    hurtMob(m, 50 * fanMul, h, { col: '#D7DEE6', size: 18, key: 'fan' });
-    if (!m.M.thing) hit = true;
-    if (m.alive && m.bleed && m.bleed.left > 0) applyBleed(h, m);
-  }
-  if (hit) addPoints(h, 1);
-  fx({ type: 'whirl', h, x: h.x, y: h.y, r: R, dur: 0.28, col: '#B79CFF' });
-  fx({ type: 'ring', x: h.x, y: h.y - 26, r0: 18, r1: R, col: '#D7DEE6', dur: 0.24, w: 5 });
-  sfx('sweep', 0.8);
-  return true;
-}
-/* Shadowstep: blink behind your target, strike it, stop its cast, swing faster for a while, and gain two points
-   (three with the Cryptfangs, and one more with the Shadeveil Spaulders) */
-function abShadowstep(h, aim) {
-  let t = aim && aim.kind === 'mob' && isFoe(aim) ? aim : autoTarget(h);
-  if (!t || dist(h, t) > 380) t = nearestFoe(h, 380, false);
-  if (!t || dist(h, t) > 380) { if (loud(h)) fxText(h.x, h.y - 100, 'No target', '#B79CFF', 16); return false; }
-  const ox = h.x, oy = h.y;
-  const backA = (t.face || 0) + Math.PI;
-  const reach = t.r + h.r + 8;
-  let nx = t.x + Math.cos(backA) * reach, ny = t.y + Math.sin(backA) * reach;
-  if (!canStand(nx, ny, h.r)) {
-    const a2 = angTo(t, h);
-    nx = t.x + Math.cos(a2) * reach; ny = t.y + Math.sin(a2) * reach;
-  }
-  if (canStand(nx, ny, h.r)) { h.x = nx; h.y = ny; }
-  h.face = angTo(h, t); h.lunge = 0.16; h.lungeA = h.face;
-  dots(ox, oy - 30, '#B79CFF', 8, 120);
-  fx({ type: 'swipe', x: ox, y: oy - 30, x2: h.x, y2: h.y - 30, col: '#B79CFF', dur: 0.22 });
-  dots(h.x, h.y - 30, '#7CF06A', 8, 140);
-  if (t.cast) interruptCast(t, h);
-  const shMul = h.bonuses.has('sv_shoulders') ? 1.35 : 1;
-  hurtMob(t, 70 * shMul, h, { crit: 0.25, col: '#B79CFF', key: 'step' });
-  stepGadgets(h, ox, oy);
-  if (h.bonuses.has('shadeveil3')) {
-    spawnThrall(h, 'shade', h.x - Math.cos(h.face) * 28, h.y - Math.sin(h.face) * 18, 6);
-    if (h.isPlayer) fxText(h.x, h.y - 125, 'Shadow Twin!', '#B79CFF', 20);
-  }
-  h.frenzyT = 3.8;
-  if (h.traits.has('nightstalker')) h.nightstalkerT = 3.5;
-  addPoints(h, 2 + (h.unique === 'cryptfangs' ? 1 : 0) + (h.bonuses.has('sv_shoulders') ? 1 : 0));
-  h.picked = t.alive ? t : null;
-  sfx('dodge', 0.8); sfx('swing', 0.7);
-  return true;
-}
-
 /** every button by its key, for heroes.js useAbility */
 export const BUTTONS = {
   cleave: abCleave, charge: abCharge, slam: abSlam,
   circle: abCircle, ward: abWard, sunburst: abSunburst, smite: (h, aim) => shot(h, aim, 'smite'),
   blizzard: abBlizzard, nova: abNova, comet: abComet, icicle: (h, aim) => shot(h, aim, 'icicle'),
-  viper: abViper, ambush: abAmbush, flurry: abFlurry, shadowstep: abShadowstep,
+  ...ROGUE_BUTTONS,
 };

@@ -15,10 +15,10 @@ it has to be worth it: big moments, real loot, dramatic power creep that melts d
 
 **The best of two games, nothing else:**
 - From **WoW**: the trinity (tank, healer, DPS) and teamwork between them, smashing abilities and seeing
-  big crits (especially after a new weapon), the gear treadmill, dungeons with friends, a cosy
-  tavern home, lore.
-- From **OSRS**: loot with a fixed drop rate per item, every item rolled on its own, kill counts, the
-  collection log, rare pets as the flex, dry streaks that become stories, content you can grind 100+ times, and later dungeons dropping upgrade attachments that awaken older dungeon gear.
+  big crits (especially after a new weapon), the gear treadmill, talent trees with two specs a class, dungeons
+  with friends, a cosy tavern home, lore.
+- From **OSRS**: loot with a fixed drop rate per item, every item rolled on its own, kill counts, XP for every
+  kill and the long climb to 99, the collection log, rare pets as the flex, dry streaks that become stories, content you can grind 100+ times, and later dungeons dropping upgrade attachments that awaken older dungeon gear.
 
 **Dungeons are the main game. The shape is fixed: hearth → dungeon + collection log → heroic → next dungeon.**
 The hearth is home, where you show off what you found and gear up your Warband. Dungeons and their collection
@@ -37,14 +37,16 @@ looks at the same power, in a log of their own. Teamwork between roles is the he
 ## Pillars: if a change fights one of these, the change is wrong
 
 1. **Dungeons are the core loop.** About 3 to 4 minutes a run in beginner gear (about 2 when melted in full BiS),
-   all three roles needed, loot every time. Four buttons and a dodge, never more: sets and boss weapons change
-   what buttons do, they never add one. Mistakes in beginner gear are genuinely dangerous, and skilled play opens
+   all three roles needed, loot every time. Four buttons and a dodge, never more: sets, boss weapons and talents
+   change what buttons do, they never add one. Mistakes in beginner gear are genuinely dangerous, and skilled play opens
    windows to hit back harder.
 2. **Power creep you can feel, collecting that lasts.** Regular gear climbs Common → Rare in eight clears; Epic
    comes from each dungeon's 3-piece sets and boss weapons, and power climbs steeply enough that a geared party
-   melts the dungeon in roughly half the time. There are no hero levels or skill trees: gear, sets, weapon traits
-   and boss weapons drive all power and ability buffs. Beyond that, progress is sideways: collection logs, Heroic
-   gilded logs, looks, pets, mounts, titles, trophies, achievements.
+   melts the dungeon in roughly half the time. Gear, sets, weapon traits and boss weapons are most of the power.
+   Under them, XP and talents are the steady climb (the owner's call, 17 Oct): every kill pays XP, one level for
+   all your heroes, and each level a talent point in one of the class's two spec trees, whose stat talents stay
+   small and whose other talents change how a button works. Beyond that, progress is sideways: collection logs,
+   Heroic gilded logs, looks, pets, mounts, titles, trophies, achievements.
 3. **Honest OSRS loot.** Every line of a table rolls on its own at a fixed rate. No pity. Kill counts
    everywhere. The walkout tells you what's in the chest before it opens, and it never lies.
 4. **Respect the player's time.** No streaks, no daily chores, nothing lost for missing a day (things bank up),
@@ -62,21 +64,27 @@ looks at the same power, in a log of their own. Teamwork between roles is the he
 | --- | --- |
 | 4 gear slots: weapon, helm, shoulders, chest | The weapon chase stays separate from the set chase |
 | Regular gear caps at Rare; Epic comes only from dungeon sets and boss weapons | A quick ladder, then a long chase |
+| The ladder is short (Common 10, Uncommon 12, Rare 14); a set piece is 12 above Rare and a boss weapon 16 (Power 26 and 30 in the Barrow, 8 more a dungeon tier) | Forty-odd runs for a set has to feel like it (17 Oct) |
+| XP is yours, not a hero's: every kill pays it, saved the moment it comes; every chest pays the clear, Lore Pages and rare tomes; levels go to 99 | A run always gives something you can see, and alts share the climb |
+| A talent point a level from level 2 to 30 (29 points, a full tree); two specs a class, free to switch, each keeping its points; taking points back is free | A choice of how you play, never a chore or a wrong pick |
+| Talents never add a button; a full damage tree clears about a fifth faster, well under what Epic gear does (a test checks it) | Four buttons and a dodge stay; gear stays the big jump |
+| A rogue's crits are 2.5×, everyone else's 2× | The rogue's big hits keep up with the mage's (17 Oct) |
 | A steep power curve: full BiS melts a dungeon in about half the time | Grinding 100+ runs has to feel it |
 | No currency: duplicates count in the collection log, and weapon traits swap free at Rare | Nothing to grind or spend |
 | Race and class are for keeps; up to 6 heroes | Alts, like WoW, sharing the collection and kill counts |
 | Normal is fully solo with your Warband, and its collection log can always be finished solo | Nobody needs a group to finish a dungeon |
 | The Warband opens once every dungeon has been cleared once (and stays open); until then you have one hero and bots at its gear level fill the seats | You fall for one main first; alts come because you want more, not as homework |
 | Heroic is the optional group flex: at least two real players plus a bot, never your Warband | Playing together is the flex, never a wall |
-| Shared gear floor per role, capped at Rare; Epic is earned on the hero | Alts never start cold, mains still mean something |
+| Shared gear floor per role, capped at Rare, raised by your ladder in the role you play; Epic is earned on the hero | A new hero of a role you play never starts cold, mains still mean something |
+| Your Warband heroes come to help and never get loot; one sits in only when its gear is at least as good as the bot's, best-geared first | Your hero is the main character; the loot is all yours (17 Oct) |
 | Gear is never put on for you | Putting it on yourself is the dopamine |
 | The tank earns threat, and bosses crush anyone else they hit | Tanking has a real job; nobody else can facetank |
 | Beginner gear is meant to struggle: dungeons hit hard, telegraphs pierce shields | Tanking, healing, dodging and blocking matter |
 | Only the tank is caged; inside, the boss turns on someone else | The party feels the tank's absence |
 | You see only your own numbers; mates' spell effects stay | Less noise, your numbers mean more |
 | The four buttons and Mend share a one-second beat; a press made up to 0.4 s early waits and fires on time, and nothing buzzes for being early | Mashing is never wrong, as in WoW (the combat plan, `docs/combat.md`) |
-| Every class has a filler with no cooldown to press every beat (Cleave, Smite, Icicle, Viper Blades), a payoff it sets up and two cooldowns; casters have no automatic attacks, melee keep small ones | Your presses do the damage, and every beat has something worth pressing |
-| Casts stop only to interrupts (Charge, Rime burst, Fan of Blades, Shadowstep), never to damage, and an interrupt Exposes the caster; Exposed is every class's payoff setup | A job for the tank and the DPS, and burn windows the party hits together |
+| Every class has a filler with no cooldown to press every beat (Cleave, Smite, Icicle or Fire's Firebolt, Viper Blades), a payoff it sets up and two cooldowns; casters have no automatic attacks, melee keep small ones | Your presses do the damage, and every beat has something worth pressing |
+| Casts stop only to interrupts (Charge, Rime burst or Fire's Ember burst, Fan of Blades, Shadowstep), never to damage, and an interrupt Exposes the caster; Exposed is every class's payoff setup | A job for the tank and the DPS, and burn windows the party hits together |
 | The gold glow is for payoffs only; warnings keep their words without it | One glow you can't miss beats five you learn to ignore |
 | On the phone a held button repeats and the filler is the big button under the thumb; on a computer each class's buttons sit on E, Q, F and R beside WASD, a held key fires once, and Settings rebinds them, kept in the browser, never the save | The thumb can rest, your fingers never leave WASD, and bindings belong to a keyboard |
 | The first garden harvest gives the Hill Goat | Earned, and it stands in the paddock |
@@ -117,15 +125,18 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   `thimblebriar/`, dungeon 2, the same shape plus `signature.js`, its bombs), `_template/`
   (a small working dungeon to copy for a new one; its `README.md` has the rules for every new dungeon),
   `kits.ts` (gilding kits, Heroic's own drops, built from any dungeon's tables), `act1.ts` (the dungeons in the order
-  you meet them, built or still to come), `keys.ts` (each class's keys on a computer), and `vale/` (ingredients,
-  recipes, ranks, and `garden.ts`).
+  you meet them, built or still to come), `keys.ts` (each class's keys on a computer), `xp.ts` (what kills, clears
+  and the chest's pages and tomes pay, and the level curve), `levels.ts` (your level's achievements), `talents/`
+  (each class's two specs in a file, `make.ts` for stat talents, and its index: the rows and `buttonFor`, Fire's
+  buttons) and `vale/` (ingredients, recipes, ranks, and `garden.ts`).
   `house.ts` is the house's plan (each room's `main`, what a tap from far away opens, the paddock's places and the
   cellar's Hall of Doors). Register new content in `src/content/index.ts`; `checkContent()`
   and the tests catch broken ids.
 - `src/dungeon`: the engine, plain JS with no DOM: state `S`, entities, heroes, mobs, bots, the loop,
   rendering to a canvas, `walkout.js` (the lantern tells; `cuckoo.js`, Thimblebriar's clock) and `coach.js`
   (which button's moment has come, for a class's first runs). `buttons.js` is what each class's four buttons and Mend
-  do (the fillers and their payoffs), and `heroes.js` fires them. `press.js` is the beat and the press queue: every
+  do (the fillers and their payoffs; the rogue's are in `rogue.js`), and `heroes.js` fires them. `specs.js` is what
+  every talent does in a fight, by its id, and `fire.js` the Fire mage's four buttons and Burn. `press.js` is the beat and the press queue: every
   press of yours goes through it, and bots ask its `ready()` before they press. `bombs.js` is Thimblebriar's bombs as a shared
   part (any hit knocks one back, a perfect block bats one back, the Sticky Bomb) and `gadgets.js` its sets'
   bonuses and boss weapons. A dungeon's layout is data built by `layout.js` (rooms and the doors between them,
@@ -135,8 +146,9 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
 - `src/meta`: TypeScript rules for everything that lasts: the profile and its migrations (heroes live here),
   loot (and when heroic opens), gear, achievements, what the collection log gives (`logs.ts`), the hearth,
   the party's seats and the under-powered warning (`party.ts`), when your Warband opens (`warband.ts`), `vale.ts` (seeds, planter beds, harvests,
-  ranks, brewing), `tips.ts` (which first-time tip the house and the Dungeons door show) and `brag.ts` (what a
-  run had to show off, for the Share card).
+  ranks, brewing), `tips.ts` (which first-time tip the house and the Dungeons door show), `brag.ts` (what a
+  run had to show off, for the Share card), `xp.ts` (gaining XP, your level, the chest's XP) and `talents.ts`
+  (talent points, specs, the tree's rules and what a run gets from them, `talentLoadout`).
 - `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, drawn on one canvas by
   `housecanvas.ts` from pictures `housepaint.ts` makes, its bits moved by `housemotion.ts`; its drawing
   `houseart.ts`, every room in each look, the Toadstool Workshop's in `houseworkshop.ts`, the cellar's doors
@@ -144,7 +156,7 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   close-ups), the cauldron (`brew.ts`), the run (HUD and input; `runguard.ts` keeps a back swipe from leaving it; the Crypt Trial's lessons in `trial.ts`) and the reveal. Sheets over them: the dungeons
   (`dungeonsheet.ts`, its door's picture in `stage.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
   (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`, an achievement's row and card in `achcard.ts`), settings (`settingssheet.ts`; your keys on a computer in `keybinds.ts`), a hero's gear in the armoury
-  (`armoury.ts`; the card for the piece you pick in `armourycard.ts`), the satchel and the spot picker. A hero is a body wearing a layer per gear slot, put together from the save by `heroart.ts`. Toasts, sound (`sound.ts`: the embedded effects, each with its synthesised fallback) and music
+  (`armoury.ts`; the card for the piece you pick in `armourycard.ts`; its Talents tab in `talentstab.ts`), the satchel and the spot picker. A hero is a body wearing a layer per gear slot, put together from the save by `heroart.ts`. Toasts, sound (`sound.ts`: the embedded effects, each with its synthesised fallback) and music
   (`music.ts`: the streamed loops and the victory sting). The Share card (`sharecard.ts`: a moment drawn on a canvas)
   and its screen (`share.ts`: the share sheet, or the picture to save). `styles.css` is inlined by the build.
 - `audio/`: the sounds, made by `tools/audio.py` from `tools/audio_list.py`: `sfx/*.mp3` and `sfx.json` (the
@@ -159,7 +171,8 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   keys and the press queue, driven without a browser), `meta.test.ts`, `achievements.test.ts` (each says what to do, what it gives and
   where it went; every title's source; the kill count it came at), `brag.test.ts` (what a run had to show off),
   `power.test.ts` (seasons, Power and the under-powered warning), `vale.test.ts`, `tips.test.ts` (which first-time
-  tip shows when), `warband.test.ts` (when the Warband opens), `housemotion.test.ts` (how the house's bits move).
+  tip shows when), `warband.test.ts` (when the Warband opens and who sits in), `housemotion.test.ts` (how the house's bits move),
+  `xp.test.ts` (what kills and chests pay, levels, old saves' XP), `talents.test.ts` (specs, rows, pairs, points).
 
 ## Commands
 

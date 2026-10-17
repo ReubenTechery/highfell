@@ -20,6 +20,8 @@ import { GARDEN_ACHIEVEMENTS, GARDEN_COLLECTIBLES, GARDEN_PLACE, GARDEN_TITLES }
 import { FIRST_HARVEST_GIFT, GARDEN_TABLE, INGREDIENTS, PLANTS, RECIPES } from './vale';
 import { LOOKS } from './house';
 import { RACES } from './folk';
+import { LEVEL_ACHIEVEMENTS, LEVEL_PLACE, LEVEL_TITLES } from './levels';
+import { checkTalents } from './talents';
 
 /** The game's name, in one place so a rename is one line. */
 export const GAME_NAME = 'Highfell';
@@ -46,13 +48,13 @@ export const ITEMS: Record<string, ItemDef> = byId([...regularItems(), ...BARROW
 export const KITS: Record<string, KitDef> = byId([...HEROIC_KITS, ...THIMBLEBRIAR_KITS]);
 export const SETS: Record<string, SetDef> = byId([...BARROW_SETS, ...THIMBLEBRIAR_SETS]);
 export const COLLECTIBLES: Record<string, CollectibleDef> = byId([...BARROW_COLLECTIBLES, ...HEROIC_COLLECTIBLES, ...THIMBLEBRIAR_COLLECTIBLES, ...THIMBLEBRIAR_HEROIC_COLLECTIBLES, ...GARDEN_COLLECTIBLES]);
-export const TITLES: Record<string, TitleDef> = byId([...BARROW_TITLES, ...HEROIC_TITLES, ...THIMBLEBRIAR_TITLES, ...THIMBLEBRIAR_HEROIC_TITLES, ...GARDEN_TITLES]);
-export const ACHIEVEMENT_LIST: AchievementDef[] = [...BARROW_ACHIEVEMENTS, ...HEROIC_ACHIEVEMENTS, ...THIMBLEBRIAR_ACHIEVEMENTS, ...THIMBLEBRIAR_HEROIC_ACHIEVEMENTS, ...GARDEN_ACHIEVEMENTS];
+export const TITLES: Record<string, TitleDef> = byId([...BARROW_TITLES, ...HEROIC_TITLES, ...THIMBLEBRIAR_TITLES, ...THIMBLEBRIAR_HEROIC_TITLES, ...GARDEN_TITLES, ...LEVEL_TITLES]);
+export const ACHIEVEMENT_LIST: AchievementDef[] = [...BARROW_ACHIEVEMENTS, ...HEROIC_ACHIEVEMENTS, ...THIMBLEBRIAR_ACHIEVEMENTS, ...THIMBLEBRIAR_HEROIC_ACHIEVEMENTS, ...GARDEN_ACHIEVEMENTS, ...LEVEL_ACHIEVEMENTS];
 export const ACHIEVEMENTS: Record<string, AchievementDef> = byId(ACHIEVEMENT_LIST);
 /** The heroic version of a dungeon, if it has one. */
 export const heroicVersion = (id: string): DungeonInfo | undefined => Object.values(DUNGEONS).find((d) => d.heroicOf === id);
-/** Where an achievement is earned, in words: its dungeon's name, or the garden. */
-export const placeName = (id: string): string | undefined => DUNGEONS[id]?.name || (id === GARDEN_PLACE.id ? GARDEN_PLACE.name : undefined);
+/** Where an achievement is earned, in words: its dungeon's name, the garden, or your level. */
+export const placeName = (id: string): string | undefined => DUNGEONS[id]?.name || (id === GARDEN_PLACE.id ? GARDEN_PLACE.name : id === LEVEL_PLACE.id ? LEVEL_PLACE.name : undefined);
 /** The achievement a title comes from: every title has exactly one (checkContent), which says how to earn it. */
 export const titleSource = (id: string): AchievementDef | undefined => ACHIEVEMENT_LIST.find((a) => a.reward.title === id);
 /** The achievement that gives a pet, a trophy, a banner or a look, if one does (the rest are drops). */
@@ -108,6 +110,7 @@ export function checkContent(): string[] {
     if (!how || how === a.name || !/[.!?]$/.test(how) || /[.!?]\s/.test(how) || how.length > HOW_MAX || /stroke/i.test(how)) bad.push(`${a.id} how is not one plain sentence`);
     if (!placeName(a.dungeon)) bad.push(`${a.id} place ${a.dungeon}`);
   }
+  bad.push(...checkTalents());
   // every title comes from one achievement, so it can always say where it came from and how to earn it
   for (const t of Object.values(TITLES)) {
     const from = ACHIEVEMENT_LIST.filter((a) => a.reward.title === t.id).length;
