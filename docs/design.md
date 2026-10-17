@@ -278,7 +278,7 @@ Loot runs on OSRS rules: every unique has its own drop rate, rare means properly
 | Pint-sized Gravekeeper (pet) | 1/2,500 | About 145 hours | Sits by the fire at home |
 
 - Rolls are independent, OSRS style: two uniques in one clear can happen, and so can a long dry streak (1 player in 10 waits 108 clears or more for the full kit).
-- An Epic piece (3 set pieces at 1/25 + 1 weapon at 1/40) drops about once every 7 clears (~13.7% per clear). The set alone takes ~39 clears for a typical player (~2¼ hours) and ~83 for an unlucky one (1 in 10); the full 4/4 Epic kit ~53 (~3 hours) and ~108 (the last piece is the dry streak). Raised from 1/35 and 1/50 on 17 Oct: a whole set took ~3½ hours on average, two or three evenings for the player this is for. Every dungeon's set and weapon rates are `SET_RATE` and `WEAPON_RATE` in `src/content/_template/loot.ts`.
+- An Epic piece (3 set pieces at 1/25 + 1 weapon at 1/40) drops about once every 7 clears (~13.7% per clear). The set alone takes ~39 clears for a typical player (~2¼ hours) and ~83 for an unlucky one (1 in 10); the full 4/4 Epic kit ~53 (~3 hours) and ~108 (the last piece is the dry streak). Raised from 1/35 and 1/50 on 17 Oct: a whole set took ~3¾ hours on average, two or three evenings for the player this is for. Every dungeon's set and weapon rates are `SET_RATE` and `WEAPON_RATE` in `src/content/_template/loot.ts`.
 - No pity on uniques. A duplicate counts in the collection log ("Seen 3×").
 - Kill count shows on every loot screen and in the collection log ("Rimebone Chest, KC 42"), so spoons and dry streaks become stories.
 
