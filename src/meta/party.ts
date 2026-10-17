@@ -7,12 +7,12 @@
  * Warband heroes never sit in. A hero short of what a dungeon recommends (level and Power together) is warned
  * first, never stopped.
  */
-import { RARITY, powerFromScore } from '../content/gear';
+import { RARITY, SLOT_IDS, powerFromScore } from '../content/gear';
 import { ORDER, ROLES } from '../content/roles';
 import type { DungeonInfo, RoleId } from '../content/types';
 import { CLASSES, CLASS_ORDER, type ClassId } from '../content/folk';
 import { levelBonus } from '../content/xp';
-import { loadoutFor, partyRar, wholeIlvl } from './gear';
+import { loadoutFor, partyRar, wholeIlvl, worn } from './gear';
 import { activeHero, roleOf, setActive, type Hero, type Profile } from './profile';
 import { warbandOpen } from './warband';
 import { level } from './xp';
@@ -28,16 +28,21 @@ export const COMPANION_FOR: Record<ClassId, ClassId> = { warrior: 'mage', cleric
 export const companionFor = (cls: string): ClassId => COMPANION_FOR[cls as ClassId] || 'warrior';
 /** who takes the other seat on Normal: one of your own heroes, once your Warband is open, or a bot of a class */
 export interface Companion { cls: ClassId; hero: Hero | null }
+/** Your other heroes can take the other seat once your Warband is open and the hero you're playing wears Rare or
+ *  better in every slot (the owner's call, 18 Oct): a fresh hero climbs to Rare on its own, with a bot, so your
+ *  main never carries it through the start. */
+export const heroCompanionsOpen = (p: Profile, h: Hero): boolean => warbandOpen(p) && SLOT_IDS.every((s) => worn(p, h)[s].def.rar >= 2);
 /** Your companion for this hero: the one you picked (p.companion: 'cls:<class>' for a bot of a class the hero
- *  maker offers, or one of your other heroes' ids once your Warband is open), else the bot that fills the gap. */
+ *  maker offers, or one of your other heroes' ids), else the bot that fills the gap. A hero you picked comes only
+ *  once heroCompanionsOpen; before that, a bot of its class takes the seat. */
 export function companionOf(p: Profile, h: Hero): Companion {
   const c = p.companion;
   if (c && c.startsWith('cls:')) {
     const cls = c.slice(4) as ClassId;
     if (CLASSES[cls] && CLASS_ORDER.includes(cls)) return { cls, hero: null };
-  } else if (c && warbandOpen(p)) {
+  } else if (c) {
     const mate = p.roster.find((x) => x.id === c && x.id !== h.id);
-    if (mate) return { cls: mate.cls as ClassId, hero: mate };
+    if (mate) return { cls: mate.cls as ClassId, hero: heroCompanionsOpen(p, h) ? mate : null };
   }
   return { cls: companionFor(h.cls), hero: null };
 }

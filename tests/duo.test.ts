@@ -13,7 +13,7 @@ import { AB, abKey, fillerOf } from '../src/content/roles';
 import { gearKey, gearKeyOf } from '../src/content/gear';
 import { CLASSES, CLASS_ORDER } from '../src/content/folk';
 import { DEFAULT_KEYS } from '../src/content/keys';
-import { COMPANION_FOR, companionFor, companionOf, setCompanion } from '../src/meta/party';
+import { COMPANION_FOR, companionFor, companionOf, heroCompanionsOpen, setCompanion } from '../src/meta/party';
 import { PROFILE_VERSION, freshProfile, migrate } from '../src/meta/profile';
 import { newHero } from '../src/meta/gear';
 import { WARBAND_KEY } from '../src/meta/warband';
@@ -131,7 +131,7 @@ test('duo: a pair of bots runs a dungeon in the sims, each seat counted on its o
   assert.ok(r.heroes.some((h) => h.dmg > 0), 'they fight');
 });
 
-test('duo: your companion is the one you picked (a bot of a class, or one of your other heroes), else the bot that fills the gap', () => {
+test('duo: your companion is the one you picked (a bot of a class, or one of your other heroes once the hero you play has a full set of Rare), else the bot that fills the gap', () => {
   const p = freshProfile(1);
   const me = newHero(p, { name: 'Orvik Anvilsong', race: 'dwarf', cls: 'warrior' })!;
   assert.deepEqual(companionOf(p, me), { cls: 'mage', hero: null }, 'nobody picked: the bot that fills the gap');
@@ -141,10 +141,16 @@ test('duo: your companion is the one you picked (a bot of a class, or one of you
   assert.deepEqual(companionOf(p, me), { cls: 'mage', hero: null }, 'a class nobody can play yet falls back');
   setCompanion(p, 'h_gone');
   assert.deepEqual(companionOf(p, me), { cls: 'mage', hero: null }, 'a hero you no longer have falls back');
-  // your other heroes come once your Warband is open (meta/warband.ts)
+  // your other heroes come once your Warband is open (meta/warband.ts) and the hero you play wears Rare everywhere
   p.counters[WARBAND_KEY] = 1;
   const alt = newHero(p, { name: 'Lisel Brightwater', race: 'elf', cls: 'mage' })!;
   setCompanion(p, alt.id);
+  assert.equal(heroCompanionsOpen(p, me), false, 'a hero in Common climbs to Rare on its own');
+  assert.deepEqual(companionOf(p, me), { cls: 'mage', hero: null }, 'until then a bot of the class you picked');
+  for (const s of ['weapon', 'helm', 'shoulders'] as const) me.regular[s] = { rar: 2 };
+  assert.equal(heroCompanionsOpen(p, me), false, 'three Rare pieces isn\'t a full set');
+  me.regular.chest = { rar: 2 };
+  assert.equal(heroCompanionsOpen(p, me), true);
   assert.equal(companionOf(p, me).hero, alt);
   assert.equal(companionOf(p, me).cls, 'mage');
   assert.equal(companionOf(p, alt).hero, null, 'never yourself');

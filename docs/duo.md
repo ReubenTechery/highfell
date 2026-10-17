@@ -203,8 +203,10 @@ level 99 mate lifts a level 10 one. Each of you earns your own XP and rolls your
 never takes anything from you. The Dungeons sheet's warning weighs the pair, not just you.
 
 **Your companion.** Alone, the other seat takes a bot of any class at your level, and you pick which. Once your
-Warband opens (every dungeon cleared once), one of your own heroes can come instead, in its own gear, never taking
-loot. Bots do every duo mechanic, a beat slower than a sharp mate.
+Warband opens (every dungeon cleared once) and the hero you're playing has a full set of Rare, one of your own heroes
+can come instead, in its own gear, never taking loot (the owner's call, 18 Oct: your level is shared by all your
+heroes, so what's fresh about a new one is its gear, and it climbs to Rare on its own, with a bot). Bots do every duo
+mechanic, a beat slower than a sharp mate.
 
 **Playing together online** isn't built yet, and it's the biggest piece after this plan. Two ways in:
 

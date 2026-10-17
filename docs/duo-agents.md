@@ -53,7 +53,9 @@ The integrator writes these in the plumbing, before anyone else starts.
 - **Your companion.** `companionOf(p, h)` in `src/meta/party.ts` says who takes the other seat: the one you picked
   (`setCompanion(p, 'cls:mage')` for a bot of a class the hero maker offers, or one of your heroes' ids once the
   Warband is open; kept in the save as `p.companion`, v12), else `companionFor(h.cls)`, the bot that fills the gap.
-  The Duo seats switch runs with it.
+  One of your heroes comes only once `heroCompanionsOpen(p, h)`: the Warband is open and the hero you're playing
+  wears Rare or better in every slot (the owner's call, 18 Oct); before that a bot of its class takes the seat, and
+  the picker says why. The Duo seats switch runs with it.
 - **The ranger's keys.** `abKey({ cls: 'ranger' }) === 'ranger'` picks its buttons (`AB.ranger`, a placeholder to
   fill) and its default keys (`DEFAULT_KEYS.ranger`); `CLASSES.ranger` is there with `ready: false` and isn't in
   `CLASS_ORDER`, so nobody can make one until the ranger stream and its art say so. `TUT_BY_CLASS.ranger` is an empty
