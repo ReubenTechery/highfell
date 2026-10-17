@@ -7,7 +7,7 @@ import { angTo, dist } from '../core/math';
 import { AB, fillerMul } from '../content/roles';
 import { RARITY } from '../content/gear';
 import { S } from './state.js';
-import { LAST, dots, fx, fxText, healHero, hurtMob, sfx } from './entities.js';
+import { LAST, aggro, dots, fx, fxText, healHero, hurtMob, sfx } from './entities.js';
 import { interruptCast } from './mobs.js';
 import { canStand } from './world.js';
 import { ambushGadgets, critSpark, gearMul, stepGadgets, viperGadgets } from './gadgets.js';
@@ -101,6 +101,7 @@ function abFlurry(h) {
   let hit = false;
   for (const m of S.mobs) {
     if (!isFoe(m) || m.cage || dist(m, h) > R + m.r) continue;
+    aggro(m, h, 0);
     if (m.cast) interruptCast(m, h);
     hurtMob(m, 50 * fanMul, h, { col: '#D7DEE6', size: 18, key: 'fan' });
     if (!m.M.thing) hit = true;

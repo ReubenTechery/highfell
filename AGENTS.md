@@ -65,7 +65,7 @@ looks at the same power, in a log of their own. Teamwork between roles is the he
 | 4 gear slots: weapon, helm, shoulders, chest | The weapon chase stays separate from the set chase |
 | Regular gear caps at Rare; Epic comes only from dungeon sets and boss weapons | A quick ladder, then a long chase |
 | The ladder is short (Common 10, Uncommon 12, Rare 14); a set piece is 12 above Rare and a boss weapon 16 (Power 26 and 30 in the Barrow, 8 more a dungeon tier) | Forty-odd runs for a set has to feel like it (17 Oct) |
-| XP is yours, not a hero's: every kill pays it, saved the moment it comes; every chest pays the clear, Lore Pages and rare tomes; levels go to 99 | A run always gives something you can see, and alts share the climb |
+| XP is yours, not a hero's: every kill pays it, kept even if the run wipes or you leave; every chest pays the clear, Lore Pages and rare tomes; levels go to 99 | A run always gives something you can see, and alts share the climb |
 | A talent point a level from level 2 to 30 (29 points, a full tree); two specs a class, free to switch, each keeping its points; taking points back is free | A choice of how you play, never a chore or a wrong pick |
 | Talents never add a button; a full damage tree clears about a fifth faster, well under what Epic gear does (a test checks it) | Four buttons and a dodge stay; gear stays the big jump |
 | A rogue's crits are 2.5×, everyone else's 2× | The rogue's big hits keep up with the mage's (17 Oct) |

@@ -16,6 +16,7 @@ import type { RoleId } from '../content/types';
 import type { RaceId } from '../content/folk';
 import { $, fmtN, GLYPH } from './dom';
 import { levelOf } from '../content/xp';
+import { levelAchiever } from '../meta/achievements';
 import { MUSIC } from './music';
 import { SFX } from './sound';
 import { Toasts } from './toasts';
@@ -117,7 +118,13 @@ export class App {
     p.counters['xp.retro.told'] = 1;
     this.toasts.text(`Level ${levelOf(p.xp)}`, `Your past runs paid ${fmtN(xp)} XP. Spend your talent points in your hero’s Talents.`, 'Levels are here');
     SFX.play('levelup');
+    this.levelAchievements();
     this.store.save();
+  }
+  /** the level's achievements your XP has reached (Full Tree at 30, then 50 and 99), each with its toast */
+  levelAchievements(): void {
+    const h = activeHero(this.p);
+    if (h) for (const id of levelAchiever(this.p, roleOf(h)).check()) this.toasts.achievement(this.p, id);
   }
 
   private onResize(): void {

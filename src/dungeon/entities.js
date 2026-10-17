@@ -403,7 +403,8 @@ export function hurtMob(m, amt, src, o) {
 }
 export function killMob(m, src) {
   m.hp = 0; m.alive = false; m.deadT = 0; m.cast = null; m.state = 'dead';
-  const xp = killXpOf(m);
+  // a wisp that reaches you and bursts was never killed: no XP for being haunted
+  const xp = m.M.wisp && !src ? 0 : killXpOf(m);
   emit({ type: 'mob.killed', mob: m.type, boss: !!m.isBoss, undead: !!m.M.skeleton, byPlayer: !!(src && src.isPlayer), x: m.x, y: m.y, xp, ...(m.M.tally ? { tally: m.M.tally } : {}) });
   // Wildfire: a foe that dies burning passes its Burn on
   if (m.burn) onBurnDeath(m);

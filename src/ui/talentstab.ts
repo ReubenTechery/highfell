@@ -61,8 +61,11 @@ export function talentActions(x: ArmouryHost): Record<string, (el: HTMLElement) 
     tadd: () => { const s = cur(), h = hero(), spec = h ? specOf(h) : null; if (s && h && spec) add(pickedTalent(x.app.p, h, spec, s.node).id); },
     tback: () => {
       const s = cur(), h = hero(), spec = h ? specOf(h) : null;
-      if (!s?.node || !h || !spec || !takeBack(h, spec.id, s.node)) { SFX.play('nope'); return; }
+      const id = s && h && spec ? pickedTalent(x.app.p, h, spec, s.node).id : null;
+      if (!s || !h || !spec || !id || !takeBack(h, spec.id, id)) { SFX.play('nope'); return; }
       SFX.play('ui');
+      // the card stays on the talent the point came out of
+      x.open({ ...s, node: id });
       x.app.save();
     },
     treset: () => {

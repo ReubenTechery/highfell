@@ -5,7 +5,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newGame, update } from '../src/dungeon/game.js';
+import { newGame, respawn, update } from '../src/dungeon/game.js';
 import { S } from '../src/dungeon/state.js';
 import { LAST, aggro, exposeMob, healHero, hurtHero, hurtMob, pickTarget } from '../src/dungeon/entities.js';
 import { abCd, useAbility } from '../src/dungeon/heroes.js';
@@ -683,4 +683,19 @@ test('boss weapons: every boss weapon’s power is one the engine knows, and the
   assert.equal(trialWeapon('healer', 'cleric'), 'longnight');
   assert.equal(trialWeapon('dps', 'mage'), 'gravefrost');
   assert.equal(trialWeapon('dps', 'rogue'), 'cryptfangs');
+});
+
+test('wipes: a foe that was burning, poisoned, seared or marked forgets it all, so a tick can never pull it back in', () => {
+  const { s, dps } = game('dps');
+  const pack = s.packs.find((p: any) => !p.cleared && p.mobs.length);
+  const m = pack.mobs[0];
+  m.burn = { src: dps, n: 4, left: 6, next: 0.1 };
+  m.bleed = { src: dps, per: 14, n: 1, left: 5, next: 0.1 };
+  m.sear = { src: dps, per: 10, left: 4, next: 0.1 };
+  m.markBy = dps; m.markUntil = s.t + 8;
+  respawn();
+  assert.deepEqual([m.burn, m.bleed, m.sear, m.markBy], [null, null, null, null]);
+  step(1);
+  assert.equal(pack.pulled, false, 'the pack stays where it was');
+  assert.equal(m.hp, m.maxHp);
 });

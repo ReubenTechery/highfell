@@ -106,7 +106,8 @@ export class RunScene implements InputUI {
     $('pause-btn').addEventListener('click', (e) => { e.stopPropagation(); this.pause(); });
     $('intro-skip').addEventListener('click', (e) => { e.stopPropagation(); SFX.play('ui'); this.skipIntro(); });
     bindFrameSwipes($('pad')); bindFrameSwipes($('frames'));
-    document.addEventListener('visibilitychange', () => { if (document.hidden && this.active() && S && !S.paused && !S.over) this.pause(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden && this.xpTimer) this.saveXp(); if (document.hidden && this.active() && S && !S.paused && !S.over) this.pause(); });
+    window.addEventListener('pagehide', () => { if (this.xpTimer) this.saveXp(); });
   }
 
   /* ---------------------------------------------------------------- InputUI */
@@ -375,6 +376,7 @@ export class RunScene implements InputUI {
     if (intro) this.showWelcome();
   }
   stop(): void {
+    if (this.xpTimer) this.saveXp();
     this.live = false;
     this.guard.disarm();
     this.clearTut();
@@ -455,10 +457,12 @@ export class RunScene implements InputUI {
     if (!S || !this.opts) return;
     const p = this.app.p, hero = this.hero();
     if (this.ach) for (const id of this.ach.event(e)) this.unlockedNow(id);
-    // a kill's XP goes into your save as it lands; a new level saves, and may earn a level's achievement
+    // a kill's XP goes into your save as it lands, written out a few seconds later (never every kill mid-fight);
+    // a new level is written at once, and may earn a level's achievement
     if (e.type === 'mob.killed' && e.xp && !this.practice) {
       const g = this.xp.gain(p, e.xp);
-      if (g && g.to > g.from) { this.levelUp(); this.app.store.save(); }
+      if (g && g.to > g.from) { this.levelUp(); this.saveXp(); }
+      else if (g) this.saveXpSoon();
     }
     if (e.type === 'boss.killed') {
       const x = e.x ?? S.player.x, y = e.y ?? S.player.y;
@@ -506,6 +510,11 @@ export class RunScene implements InputUI {
     }
   }
   /** XP came in: any level achievement it earned */
+  /** the kills' XP not written out yet: a few seconds after the first, or at once when the run stops or the page
+   *  hides (a phone may close a tab in the background) */
+  private xpTimer = 0;
+  private saveXpSoon(): void { if (!this.xpTimer) this.xpTimer = window.setTimeout(() => this.saveXp(), 3000); }
+  private saveXp(): void { clearTimeout(this.xpTimer); this.xpTimer = 0; this.app.store.save(); }
   private levelUp(): void {
     for (const id of levelAchiever(this.app.p, this.role).check()) this.unlockedNow(id);
   }

@@ -19,7 +19,8 @@ import { SLOT_IDS } from '../content/gear';
 import { CLASSES, FOUNDERS, MAX_HEROES, canMake, cleanName, defaultSex, type ClassId, type RaceId, type SexId } from '../content/folk';
 import { DUNGEONS, KITS } from '../content';
 import { BEDS } from '../content/vale';
-import { HEROIC_XP, KILL_XP, TIER_XP } from '../content/xp';
+import { KILL_XP, levelOf } from '../content/xp';
+import { xpMul } from './xp';
 import { settleSpots } from './hearth';
 import { opened } from './logs';
 import { warbandOpen } from './warband';
@@ -239,8 +240,8 @@ const MIGRATIONS: Record<number, (raw: any) => any> = {
      what one pays now and each boss kill its own (xp.retro remembers how much, for the welcome back). Every hero
      starts with no spec and no talent points spent. */
   10: (d) => {
-    const xp = retroXp(d);
-    return { ...d, xp, counters: { ...obj(d.counters), ...(xp > 0 ? { 'xp.retro': xp } : {}) }, roster: (Array.isArray(d.roster) ? d.roster : []).map((h: unknown) => ({ ...obj(h), spec: null, talents: {} })) };
+    const xp = retroXp(d), counters = obj(d.counters);
+    return { ...d, xp, counters: { ...counters, ...(xp > 0 ? { 'xp.retro': xp, level: Math.max(num(counters.level, 0), levelOf(xp)) } : {}) }, roster: (Array.isArray(d.roster) ? d.roster : []).map((h: unknown) => ({ ...obj(h), spec: null, talents: {} })) };
   },
 };
 
@@ -251,7 +252,7 @@ const RETRO_CLEAR_XP = 1500;
  *  kill also counted on its normal boss (v9), so only the normal one's pays. */
 export function retroXp(raw: unknown): number {
   const d = obj(raw);
-  const mul = (id: string): number => { const dg = DUNGEONS[id]; return dg ? (TIER_XP[dg.tier || 1] || 1) * (dg.heroicOf ? HEROIC_XP : 1) : 0; };
+  const mul = (id: string): number => (DUNGEONS[id] ? xpMul(DUNGEONS[id]) : 0);
   let xp = 0;
   for (const [id, rec] of Object.entries(obj(d.dungeons))) xp += Math.max(0, num(obj(rec).clears, 0)) * RETRO_CLEAR_XP * mul(id);
   for (const [k, rec] of Object.entries(obj(d.bosses))) {

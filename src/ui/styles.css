@@ -2226,3 +2226,5 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .lc .stamp.xp { background: #9B6BEF; }
 .lc .lc-xp { font-family: var(--f-display); font-weight: 400; font-size: 26px; line-height: 1; color: #8A5BE0; text-shadow: 0 2px 0 rgba(30, 26, 26, 0.18); }
 .lc.r-xpgrand .lc-xp { color: #B98A1C; }
+/* the Grand Tome's moment: its picture at the size of a pet's */
+.big-moment .bm-tile { position: relative; width: min(150px, 38vw); height: min(150px, 38vw); border-radius: 24px; border-width: 4px; box-shadow: 0 5px 0 var(--ink); }

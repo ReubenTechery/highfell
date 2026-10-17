@@ -113,10 +113,14 @@ test('xp: an old save is paid for the clears and boss kills it had, once, and sa
   assert.equal(p.v, PROFILE_VERSION);
   assert.equal(p.xp, want);
   assert.equal(p.counters['xp.retro'], want, 'remembered for the welcome back');
+  assert.equal(p.counters.level, levelOf(want), 'your best level, for the level achievements');
   assert.ok(levelOf(p.xp) >= 15, `level ${levelOf(p.xp)} from 34 clears`);
   assert.deepEqual([p.roster[0].spec, p.roster[0].talents], [null, {}], 'no spec yet, nothing spent');
   // a save already on v11 keeps its XP; a fresh one starts at nothing
   assert.equal(migrate(JSON.parse(JSON.stringify(p)), T0).xp, want);
   assert.equal(freshProfile(T0).xp, 0);
   assert.equal(retroXp({}), 0);
+  // a Heroic clear pays on its dungeon's tier, half again: Thimblebriar's Heroic 1.5 x 1.5
+  assert.equal(retroXp({ dungeons: { 'thimblebriar-heroic': { clears: 10 } } }), 10 * 1500 * 1.5 * 1.5);
+  assert.equal(retroXp({ dungeons: { 'barrow-heroic': { clears: 2 } } }), 2 * 1500 * 1.5);
 });

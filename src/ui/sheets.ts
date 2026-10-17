@@ -138,7 +138,7 @@ export class Sheets {
       xpup: () => {
         const p = this.app.p, to = Math.min(MAX_LEVEL, levelOf(p.xp) + 5);
         if (gainXp(p, xpForLevel(to) - p.xp).xp <= 0) { SFX.play('nope'); return; }
-        SFX.play('levelup'); this.app.save(); this.app.toasts.text(`Level ${to}`, 'For testing: spend the points in your hero’s Talents.');
+        SFX.play('levelup'); this.app.toasts.text(`Level ${to}`, 'For testing: spend the points in your hero’s Talents.'); this.app.levelAchievements(); this.app.save();
       },
       lookpick: (el) => { this.lookPick = el.dataset.id || null; SFX.play('ui'); this.refresh(); },
       lookput: (el) => {
