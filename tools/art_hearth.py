@@ -467,43 +467,6 @@ def larder():
     sprite('larder', (-100, -238, 200, 242), o)
 
 
-def barrow_door():
-    """The way down to the Barrow: a stone arch, an old door, green light round its edges."""
-    o = [halo(0, -170, 200, GRN, 0.2)]
-    o.append(s('M-160 0 V-226 C-160 -330 160 -330 160 -226 V0 Z', STONE, 5))
-    for y in (-50, -100, -150, -200):
-        o.append(ln(f'M-160 {y} H-120 M120 {y} H160', STONE_D, 3))
-    for k in range(1, 7):
-        a = math.pi * k / 7
-        o.append(ln(f'M{f(-120 * math.cos(a))} {f(-222 - 78 * math.sin(a))} L{f(-160 * math.cos(a))} {f(-226 - 104 * math.sin(a))}', STONE_D, 3))
-    o.append(s('M-120 0 V-222 C-120 -300 120 -300 120 -222 V0 Z', '#22301F', 4))
-    o.append(s('M-114 0 V-220 C-114 -292 114 -292 114 -220 V0 Z', GRN, 0))
-    o.append(s('M-104 0 V-218 C-104 -282 104 -282 104 -218 V0 Z', '#5E4A3A', 4))
-    for x in (-52, 0, 52):
-        o.append(ln(f'M{x} -6 V{-262 if x == 0 else -252}', '#4A3A2E', 3))
-    o.append(s('M-104 -74 H104 V-58 H-104 Z', '#4A4458', 3.5) + s('M-104 -200 H104 V-184 H-104 Z', '#4A4458', 3.5))
-    for x in (-80, -28, 28, 80):
-        o.append(c(x, -66, 3.4, STEEL, 2) + c(x, -192, 3.4, STEEL, 2))
-    o.append(ln('M44 -124 C44 -142 68 -142 68 -124 C68 -106 44 -106 44 -124', K, 7) + ln('M44 -124 C44 -142 68 -142 68 -124 C68 -106 44 -106 44 -124', STEEL, 3.5))
-    o.append(s('M-40 -334 H40 L32 -284 H-32 Z', STONE_T, 4))
-    o.append(A.skull(0, -314, 1.5, GRN))
-    for (x, y, sx) in ((-160, -180, 1), (160, -96, -1), (-160, -40, 1)):
-        o.append(s(f'M{x} {y} C{x + sx * 12} {y - 10} {x + sx * 20} {y + 6} {x + sx * 30} {y - 2} C{x + sx * 30} {y + 12} {x + sx * 16} {y + 18} {x} {y + 16} Z', '#5E8A4E', 3))
-    sprite('barrow_door', (-172, -346, 344, 350), o)
-
-
-def bricked_arch():
-    """A dungeon still to come: an arch bricked up, with a chalk mark."""
-    o = [s('M-110 0 V-168 C-110 -240 110 -240 110 -168 V0 Z', STONE, 4.5)]
-    o.append(s('M-80 0 V-166 C-80 -218 80 -218 80 -166 V0 Z', '#5E5470', 4))
-    for i, y in enumerate(range(-26, -170, -26)):
-        o.append(ln(f'M-80 {y} H80', '#4A4060', 3))
-        for x in range(-60 if i % 2 else -40, 80, 40):
-            o.append(ln(f'M{x} {y} V{y + 26}', '#4A4060', 3))
-    o.append(ln('M-12 -124 C-12 -142 14 -142 14 -126 C14 -112 0 -112 0 -98 M0 -84 V-82', '#E9E4D8', 5))
-    sprite('bricked_arch', (-116, -238, 232, 242), o)
-
-
 def bunk(name, top, low):
     """A bunk bed: two beds, one above the other, for two of your heroes."""
     o = [s('M-84 0 V-278 H-70 V0 Z', WOOD_D, 4), s('M70 0 V-278 H84 V0 Z', WOOD_D, 4)]
@@ -591,7 +554,7 @@ def heroic_drops():
 
 
 def house_props():
-    lectern(); armor_stand(); weapon_rack(); larder(); barrow_door(); bricked_arch(); signpost()
+    lectern(); armor_stand(); weapon_rack(); larder(); signpost()
     bunk('bunk_a', BLUE, RED); bunk('bunk_b', '#4E9A4A', GOLD_D); bunk('bunk_c', PURP, '#2F8F8F')
 
 
@@ -599,6 +562,8 @@ def build():
     lanterns(); pets(); hound(); trophies(); fireplace(); fire(); rug(); paddock_props(); workbench(); window(); door(); furniture(); house_props(); heroic_drops()
     import art_hearth_tb  # Thimblebriar Hollow's pets, mount, trophies and dye (here: it imports art_sprites' helpers)
     art_hearth_tb.build(sprite, icon)
+    import art_doors  # the cellar's Hall of Doors: every dungeon's door in each state, and the arch for one still to come
+    art_doors.build(sprite)
     return SP
 
 

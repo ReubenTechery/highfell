@@ -363,7 +363,6 @@ const hallThings = (): string => hallFurniture() + [384, 816].map((x) => glow(x,
 /** the brewing room's doorway out to the garden, with the barn door swung open */
 const barnDoor = (): string => R(-WALL - 4, -336, WALL + 8, 336, '#3A2A2C', 0)
   + P('M-30 -334 L-176 -360 L-176 -16 L-30 0 Z', T.trim, 4) + L('M-62 -330 L-62 -6 M-98 -336 L-98 -10 M-134 -342 L-134 -12', T.timber, 3) + beam('M-40 -60 L-166 -300', T.timber, 6);
-const arches = (): string => placeSprite('bricked_arch', 600, CW, { k: 0.85 }) + placeSprite('bricked_arch', 806, CW, { k: 0.85 });
 /** the brewing room's far end, where the stable was: the bench, herbs drying on a pole over it, and
  *  (in the tavern) two barrels by the garden door */
 function brewLeft(trim: string, barrels: boolean): string {
@@ -443,9 +442,9 @@ const TAVERN: Record<string, RoomArt> = {
   },
   cellar: {
     wall: () => R(0, CC, W, CW - CC, T.cellar, 0) + blocks(0, CC, W, CW, T.cellarLine, 58, 120) + boards(0, W, FLOORS.cellar, T.cellarFloor, '#4E4660'),
-    // two arches for dungeons still to come, candles and bones
-    furnish: () => arches() + placeSprite('candles', 82, FLOORS.cellar - 22) + placeSprite('skullpile', 924, FLOORS.cellar - 22),
-    light: () => glow(300, 280, 460, 'h-green', 0.85) + glow(82, 430, 120, 'h-warm', 0.8),
+    // candles and bones either side of the Hall of Doors (the doors, and the light round a lit one: halldoors.ts)
+    furnish: () => placeSprite('candles', 82, FLOORS.cellar - 22) + placeSprite('skullpile', 924, FLOORS.cellar - 22),
+    light: () => glow(82, 430, 120, 'h-warm', 0.8),
   },
 };
 
@@ -536,8 +535,8 @@ function crypt(c: Crypt): Record<string, RoomArt> {
     },
     cellar: {
       wall: () => brick(0, CC, W, CW) + flags(0, W, FLOORS.cellar),
-      furnish: () => arches() + candles(82, FLOORS.cellar) + placeSprite('skullpile', 924, FLOORS.cellar - 22),
-      light: () => green(300, 280, 460, 0.95),
+      furnish: () => candles(82, FLOORS.cellar) + placeSprite('skullpile', 924, FLOORS.cellar - 22),
+      light: () => green(430, 260, 520, 0.6),
       // wisps drift under the ceiling
       bits: () => [spriteBit('wisp', 560, 190, { cls: 'bob' }), spriteBit('wisp', 1000, 240, { k: 0.8, cls: 'bob' })].filter((b): b is Bit => !!b),
     },
@@ -546,7 +545,7 @@ function crypt(c: Crypt): Record<string, RoomArt> {
 
 /** what a look drawn in its own file borrows from here: the furniture every look keeps in its place, and where
  *  each room's walls are (Toadstool Workshop: houseworkshop.ts) */
-const KIT = { gable, shelves, cushion, bunks, hearthFire, fireBits, hallFurniture, brewLeft, barnDoor, arches, GABLE, STRIP, LW, UP, UW, HC, HW, GC, GW, CC, CW };
+const KIT = { gable, shelves, cushion, bunks, hearthFire, fireBits, hallFurniture, brewLeft, barnDoor, GABLE, STRIP, LW, UP, UW, HC, HW, GC, GW, CC, CW };
 export type Kit = typeof KIT;
 
 const ROOM_ART: Record<string, Record<string, RoomArt>> = {

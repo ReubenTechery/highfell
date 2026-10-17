@@ -13,7 +13,8 @@ import type { Rar } from '../src/content/types';
 import { equip, loadoutFor, newHero, wholeIlvl } from '../src/meta/gear';
 import { underPowered } from '../src/meta/party';
 import { freshProfile, setActive, type Hero, type Profile } from '../src/meta/profile';
-import { ACT1_DUNGEONS, dungeonActions, dungeonSheet, type DungeonPick } from '../src/ui/dungeonsheet';
+import { ACT1_DUNGEONS } from '../src/content/act1';
+import { dungeonActions, dungeonSheet, type DungeonPick } from '../src/ui/dungeonsheet';
 import type { App } from '../src/ui/app';
 import { WARBAND_KEY } from '../src/meta/warband';
 /** a save whose Warband is open: these tests are about other rules and make more than one hero (warband.ts) */

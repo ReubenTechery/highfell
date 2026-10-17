@@ -30,7 +30,8 @@ import { settingsSheet } from './settingssheet';
 import { ARMOURY_TABS, armouryActions, armourySheet, countUp, leftSlot, settle, type ArmouryTab, type ArmouryView } from './armoury';
 
 export type SheetSpec =
-  | { kind: 'dungeon' }
+  /** the Dungeons, on that dungeon's door when it says (a door in the house's cellar) */
+  | { kind: 'dungeon'; dungeon?: string }
   | { kind: 'satchel' }
   | { kind: 'hero'; hero: string }
   | { kind: 'gear'; hero: string; slot?: SlotId; pick?: string; tab?: ArmouryTab }
@@ -46,7 +47,8 @@ export function normSpec(x: unknown): SheetSpec | null {
   const s = x as Record<string, any> | null;
   if (!s || typeof s !== 'object') return null;
   switch (s.kind) {
-    case 'dungeon': case 'settings': case 'satchel': case 'looks': case 'heroes': case 'mounts': return { kind: s.kind };
+    case 'dungeon': return typeof s.dungeon === 'string' ? { kind: 'dungeon', dungeon: s.dungeon } : { kind: 'dungeon' };
+    case 'settings': case 'satchel': case 'looks': case 'heroes': case 'mounts': return { kind: s.kind };
     case 'hero': return typeof s.hero === 'string' ? { kind: 'hero', hero: s.hero } : null;
     case 'gear': return typeof s.hero === 'string' ? { kind: 'gear', hero: s.hero, ...(SLOT_IDS.includes(s.slot) ? { slot: s.slot } : {}), ...(typeof s.pick === 'string' && ITEMS[s.pick] ? { pick: s.pick } : {}), ...(ARMOURY_TABS.includes(s.tab) ? { tab: s.tab } : {}) } : null;
     case 'logs': return { kind: 'logs', tab: LOG_TABS.includes(s.tab) ? s.tab : 'collection', ...(typeof s.entry === 'string' ? { entry: s.entry } : {}) };
@@ -161,8 +163,14 @@ export class Sheets {
     const spec = to.kind === 'gear' ? settle(this.app.p, to) : to;
     // the dungeon picker starts fresh when it opens, but not when you come back to it from one of its drops
     const inDungeon = (s: SheetSpec | null): boolean => !!s && (s.kind === 'dungeon' || (s.kind === 'item' && s.back?.kind === 'dungeon'));
-    // the sheet opens on the door of a dungeon you can go into
-    if (spec.kind === 'dungeon' && !inDungeon(this.spec)) { this.pick.page = 'door'; this.pick.warn = false; if (!DUNGEONS[this.pick.dungeon || '']) this.pick.dungeon = 'barrow'; }
+    // the sheet opens on the door of a dungeon you can go into, or the one whose door you tapped in the cellar (one
+    // still to come shows what it will ask of you)
+    if (spec.kind === 'dungeon' && !inDungeon(this.spec)) {
+      this.pick.page = 'door';
+      this.pick.warn = false;
+      if (spec.dungeon) { this.pick.dungeon = spec.dungeon; this.pick.heroic = false; }
+      else if (!DUNGEONS[this.pick.dungeon || '']) this.pick.dungeon = 'barrow';
+    }
     if (spec.kind === 'hero' && !(this.spec && this.spec.kind === 'hero' && this.spec.hero === spec.hero)) { clearTimeout(this.heroTimer); this.heroSt = { delArmed: false, renaming: false, err: '' }; }
     if (spec.kind !== 'logs' && spec.kind !== 'item') this.logView.peek = null;
     // an achievement asked for by its id opens its card, over its place's page; anything else closes it

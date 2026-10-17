@@ -4,14 +4,15 @@
  * your first seed, your first ready bed and your first herbs. Each step is a room, what it points at, where its
  * pin stands and its words; the hearth draws them.
  */
-import { BUNK_SLOTS, HERO_AT, THINGS } from '../content/house';
+import { BUNK_SLOTS, HALL, HERO_AT, THINGS } from '../content/house';
 import type { Profile } from '../meta/profile';
 import type { HouseTip } from '../meta/tips';
 import { bedPhase } from '../meta/vale';
 import { warbandOpen } from '../meta/warband';
 
-/** a step of a guided tour of the house: its room, what it points at (a thing's id, 'me' for your hero by
- *  the fire, 'newhero' for the empty bed), where its pin stands and, if not over the pin, where the camera looks */
+/** a step of a guided tour of the house: its room, what it points at (a thing's id, 'door.<dungeon>' for a door in the
+ *  cellar, 'me' for your hero by the fire, 'newhero' for the empty bed), where its pin stands and, if not over the pin,
+ *  where the camera looks */
 export interface TourStep { room: string; thing?: string; at: [number, number]; cam?: number; callout: string; step: string; title: string; sub: string; next: string }
 
 /** the 3-step guided tour shown after making your first hero: points directly at the object in each room */
@@ -40,8 +41,9 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     room: 'cellar',
-    thing: 'barrow',
-    at: [300, 140],
+    thing: 'door.barrow',
+    at: [HALL.x0, 140],
+    cam: 430,
     callout: 'Tap Door · Enter Dungeon',
     step: '3 / 3',
     title: 'Dungeons',

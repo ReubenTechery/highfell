@@ -53,7 +53,10 @@ not in the game. Its names, numbers and art are stand-ins.
 4. Write the signature, the new enemy types, the packs and the two bosses.
 5. Register it in `src/content/index.ts` (`DUNGEONS`, `DUNGEON_ENGINES`, `ITEMS`, `SETS`, `COLLECTIBLES`,
    `TITLES`, `ACHIEVEMENTS`, and its Heroic's `KITS`). `checkContent()` and the tests catch broken ids.
-   Draw its door in `stage.ts` (`tests/meta.test.ts` checks there's room for the heroes).
+   Draw its door in `stage.ts` (`tests/meta.test.ts` checks there's room for the heroes), and its door in the
+   house's cellar: name it `houseDoor` in `index.ts` and draw it in `tools/art_doors.py` in its four states (plain,
+   lit, a gold trim, gilded; `tests/house.test.ts` checks). It takes its place in the Hall of Doors by its place in
+   the Act 1 list (`src/content/act1.ts`).
 6. Give it its own walkout tell: name it in the engine def (`walkout`), on the same clock as the Barrow's
    lantern (`src/dungeon/walkout.js`). Thimblebriar's cuckoo clock (`src/dungeon/cuckoo.js`) is the example,
    and `TELL_SPRITES` in walkout.js is what the reveal shows beside the chest.

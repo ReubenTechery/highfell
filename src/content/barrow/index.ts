@@ -32,4 +32,5 @@ export const BARROW: DungeonInfo = {
   bonus: ['dye.ghostly', 'mount.gravehound', 'pet.pint_gravekeeper'],
   achievements: BARROW_ACHIEVEMENTS.map((a) => a.id),
   stage: BARROW_STAGE,
+  houseDoor: 'door_barrow',
 };
