@@ -1,15 +1,16 @@
 /// <reference types="node" />
 /**
  * XP and your level: every kill pays, the clear and the chest's pages and tomes pay more, a harder dungeon and
- * Heroic pay more again, and old saves are paid for the runs they had, once. Levels climb to 99.
+ * Heroic pay more again, and old saves are paid for the runs they had, once. Levels climb to 99 and on past it,
+ * and every level makes the whole party stronger.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DUNGEONS } from '../src/content';
 import { BARROW } from '../src/content/barrow';
-import { CLEAR_XP, KILL_XP, MAX_LEVEL, PAGE_ROLLS, PAGE_XP, TOMES, killXp, levelNeed, levelOf, xpForLevel } from '../src/content/xp';
+import { CLEAR_XP, KILL_XP, LEVEL_BONUS, PAGE_ROLLS, PAGE_XP, TOMES, TOP_LEVEL, bonusText, killXp, levelBonus, levelNeed, levelOf, xpForLevel } from '../src/content/xp';
 import { makeRng } from '../src/core/rng';
-import { chestXp, gainXp, levelProgress, rollPages, xpMul } from '../src/meta/xp';
+import { chestXp, gainXp, levelProgress, partyBonus, rollPages, xpMul } from '../src/meta/xp';
 import { freshProfile, migrate, retroXp, PROFILE_VERSION } from '../src/meta/profile';
 import { newHero } from '../src/meta/gear';
 import { resolveRun } from '../src/meta/loot';
@@ -17,17 +18,24 @@ import { levelAchiever } from '../src/meta/achievements';
 
 const T0 = Date.UTC(2026, 9, 17, 9);
 
-test('xp: levels climb from 1 to 99, each a little more than the last', () => {
+test('xp: levels climb from 1 to 99 and on past it, each a little more than the last', () => {
   assert.equal(levelOf(0), 1);
+  assert.equal(levelOf(-5), 1);
+  assert.equal(levelOf(NaN), 1);
   assert.equal(levelOf(999), 1);
   assert.equal(levelOf(1000), 2, 'level 2 at 1,000');
-  for (let l = 2; l < MAX_LEVEL; l++) {
+  assert.equal(xpForLevel(1), 0);
+  for (let l = 2; l < 400; l++) {
     assert.equal(xpForLevel(l + 1) - xpForLevel(l), levelNeed(l));
+    assert.ok(Number.isInteger(xpForLevel(l)));
     assert.ok(levelNeed(l) > levelNeed(l - 1), 'each level needs more than the last');
     assert.equal(levelOf(xpForLevel(l)), l);
     assert.equal(levelOf(xpForLevel(l + 1) - 1), l);
   }
-  assert.equal(levelOf(1e12), MAX_LEVEL, 'and stops at 99');
+  assert.ok(levelOf(xpForLevel(TOP_LEVEL) + levelNeed(TOP_LEVEL)) === TOP_LEVEL + 1, 'there is a level 100');
+  assert.ok(levelOf(1e12) > 1000, 'and no top');
+  // past 99 a level is about 30 runs of the later dungeons (a Thimblebriar clear pays about 4,500)
+  assert.ok(levelNeed(TOP_LEVEL) / 4500 > 25 && levelNeed(TOP_LEVEL) / 4500 < 40, `a level past 99 in ${Math.round(levelNeed(TOP_LEVEL) / 4500)} runs`);
   // the pace: about one level a run at first, the full tree (level 30) in about 90 Barrow runs
   const run = 2850;
   assert.ok(levelOf(run) >= 3, 'a first Barrow run is two levels');
@@ -36,7 +44,25 @@ test('xp: levels climb from 1 to 99, each a little more than the last', () => {
   assert.ok(xpForLevel(99) / run > 1200, 'level 99 is the long climb');
   const pr = levelProgress(xpForLevel(5) + levelNeed(5) / 2);
   assert.deepEqual([pr.level, pr.into, pr.need], [5, levelNeed(5) / 2, levelNeed(5)]);
-  assert.equal(levelProgress(1e12).k, 1);
+  const top = levelProgress(xpForLevel(TOP_LEVEL) + 10);
+  assert.deepEqual([top.level, top.into, top.need], [TOP_LEVEL, 10, levelNeed(TOP_LEVEL)], 'at 99 there is still a next level');
+  assert.ok(top.k < 1);
+});
+
+test('xp: every level makes the whole party stronger, a lot to 99 and a little after', () => {
+  assert.equal(levelBonus(1), 1);
+  assert.equal(levelBonus(0), 1);
+  assert.ok(Math.abs(levelBonus(2) - (1 + LEVEL_BONUS.per)) < 1e-9);
+  assert.ok(Math.abs(levelBonus(TOP_LEVEL) - 3.45) < 1e-9, 'level 99: three and a half times as strong as level 1');
+  assert.ok(Math.abs(levelBonus(TOP_LEVEL + 1) - levelBonus(TOP_LEVEL) - LEVEL_BONUS.past) < 1e-9, 'past 99 a level is worth less');
+  for (let l = 2; l < 300; l++) assert.ok(levelBonus(l) > levelBonus(l - 1), `level ${l} is stronger than ${l - 1}`);
+  assert.equal(bonusText(1), '+0%');
+  assert.equal(bonusText(23), '+55%');
+  assert.equal(bonusText(100), '+245.5%');
+  const p = freshProfile(T0);
+  assert.equal(partyBonus(p), 1);
+  gainXp(p, xpForLevel(23));
+  assert.ok(Math.abs(partyBonus(p) - 1.55) < 1e-9);
 });
 
 test('xp: a kill pays by what it was; bombs pay nothing; the final boss most', () => {

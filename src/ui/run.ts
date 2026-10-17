@@ -16,7 +16,7 @@ import { ownKeys } from './keybinds';
 import type { Rar, RoleId } from '../content/types';
 import { newGame, respawn, update } from '../dungeon/game.js';
 import { S, setHooks } from '../dungeon/state.js';
-import { banner, exposeMob } from '../dungeon/entities.js';
+import { banner, exposeMob, strengthen } from '../dungeon/entities.js';
 import { abCd, abMana, doDodge, heroBy, isFoe, useAbility } from '../dungeon/heroes.js';
 import { press } from '../dungeon/press.js';
 import { MAX_POINTS, burnable, crushes, icicleShatter } from '../dungeon/buttons.js';
@@ -46,7 +46,8 @@ import { openWarband } from '../meta/warband';
 import { RunGuard } from './runguard';
 import { TUT_BY_CLASS, type TutStep } from './trial';
 import { RunXp } from './runxp';
-import { xpMul } from '../meta/xp';
+import { partyBonus, xpMul } from '../meta/xp';
+import { levelBonus } from '../content/xp';
 import { talentLoadout } from '../meta/talents';
 import { BURN, buttonFor } from '../content/talents';
 import { burnOf } from '../dungeon/fire.js';
@@ -346,7 +347,7 @@ export class RunScene implements InputUI {
       onChest: () => this.finish(),
       playerIntent,
     });
-    newGame(engine, { role, loadouts, start: o.start, seed: (Math.random() * 0x7fffffff) | 1, looks, ghostly, gilded, sporeglow, testGear: test, heroic: !!o.heroic, swipeHint: this.swipeHint, xp: !this.practice, xpMul: xpMul(dg), ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) });
+    newGame(engine, { role, loadouts, start: o.start, seed: (Math.random() * 0x7fffffff) | 1, looks, ghostly, gilded, sporeglow, testGear: test, heroic: !!o.heroic, swipeHint: this.swipeHint, xp: !this.practice, xpMul: xpMul(dg), might: partyBonus(p), ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) });
     S.startedAt = S.t;
     // a heroic run counts for the Barrow's own achievements
     this.ach = this.practice ? null : new Achiever(p, { dungeon: dg.heroicOf || dg.id, role, practice: false, testGear: false });
@@ -461,7 +462,8 @@ export class RunScene implements InputUI {
     // a new level is written at once, and may earn a level's achievement
     if (e.type === 'mob.killed' && e.xp && !this.practice) {
       const g = this.xp.gain(p, e.xp);
-      if (g && g.to > g.from) { this.levelUp(); this.saveXp(); }
+      // a new level makes the whole party stronger at once, not from the next run
+      if (g && g.to > g.from) { strengthen(levelBonus(g.to) / levelBonus(g.from)); this.levelUp(); this.saveXp(); }
       else if (g) this.saveXpSoon();
     }
     if (e.type === 'boss.killed') {
@@ -509,12 +511,12 @@ export class RunScene implements InputUI {
       this.app.store.save();
     }
   }
-  /** XP came in: any level achievement it earned */
   /** the kills' XP not written out yet: a few seconds after the first, or at once when the run stops or the page
    *  hides (a phone may close a tab in the background) */
   private xpTimer = 0;
   private saveXpSoon(): void { if (!this.xpTimer) this.xpTimer = window.setTimeout(() => this.saveXp(), 3000); }
   private saveXp(): void { clearTimeout(this.xpTimer); this.xpTimer = 0; this.app.store.save(); }
+  /** XP came in: any level achievement it earned */
   private levelUp(): void {
     for (const id of levelAchiever(this.app.p, this.role).check()) this.unlockedNow(id);
   }

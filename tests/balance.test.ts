@@ -9,7 +9,9 @@ import { simRun, type SimResult } from '../src/sim/run';
 import { newHero, plainLoadout } from '../src/meta/gear';
 import type { Rar, RoleId } from '../src/content/types';
 import { SPECS } from '../src/content/talents';
-import { xpForLevel } from '../src/content/xp';
+import { levelBonus, xpForLevel } from '../src/content/xp';
+/** Heroic Barrow is made for level 20 in full Epic: that level's bonus, for every seat */
+const L20 = levelBonus(20);
 import { freshProfile } from '../src/meta/profile';
 import { addPoint, pickSpec, talentLoadout, type TalentLoadout } from '../src/meta/talents';
 
@@ -97,9 +99,9 @@ test('balance: a Glowcap Draught for the party makes a run clearly quicker, Norm
   // one heroic seed swings a few seconds either way on its own, so take three. (About one heroic run in thirty still
   // wipes, mostly a bot tank missing its block on the Shovel Smash, so these are three that don't.)
   let hPlain = 0, hBrewed = 0;
-  for (const [role, seed] of [['tank', 707], ['healer', 828], ['dps', 909]] as [RoleId, number][]) {
-    const a = simRun({ role, seed, heroic: true, loadouts: gear(3) });
-    const b = simRun({ role, seed, heroic: true, loadouts: gear(3), brew: 'glow' });
+  for (const [role, seed] of [['tank', 708], ['healer', 828], ['dps', 909]] as [RoleId, number][]) {
+    const a = simRun({ role, seed, heroic: true, loadouts: gear(3), might: L20 });
+    const b = simRun({ role, seed, heroic: true, loadouts: gear(3), brew: 'glow', might: L20 });
     assert.equal(b.over, 'victory', `${role} seed ${seed} did not clear with the Draught`);
     assert.equal(b.wipes, 0, `${role} seed ${seed} wiped with the Draught`);
     hPlain += a.clear!; hBrewed += b.clear!;
@@ -118,12 +120,12 @@ test('balance: every trait, set bonus and unique effect runs in a real clear', (
   assert.equal(r.wipes, 0);
 });
 
-test('balance: heroic in full Epic clears in about four minutes without wiping', () => {
+test('balance: heroic at level 20 in full Epic clears in about four minutes without wiping', () => {
   // about one heroic run in four still wipes once in full plain Epic (a bot tank missing its block on the Shovel
   // Smash with the healer out of mana); these three seeds don't. Which seeds those are moves whenever the fight's
   // rolls change (the beat did, and talents and Fire did: 23 of 90 wiped once after, 26 of 90 before).
   for (const [role, seed] of [['tank', 902], ['healer', 808], ['dps', 910]] as [RoleId, number][]) {
-    const r = simRun({ role, seed, heroic: true, loadouts: gear(3) });
+    const r = simRun({ role, seed, heroic: true, loadouts: gear(3), might: L20 });
     assert.equal(r.over, 'victory', `${role} seed ${seed} did not clear`);
     assert.equal(r.wipes, 0, `${role} seed ${seed} wiped`);
     assert.ok(r.clear! > 205 && r.clear! < 275, `${role} seed ${seed} cleared heroic in ${r.clear}s`);

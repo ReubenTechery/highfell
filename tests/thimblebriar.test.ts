@@ -25,7 +25,10 @@ import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, checkContent } from '../sr
 import { KIT_RATE, gilded } from '../src/content/kits';
 import { Achiever } from '../src/meta/achievements';
 import { freshProfile, setActive } from '../src/meta/profile';
-import { loadoutOf, newHero, plainLoadout } from '../src/meta/gear';
+import { itemScore, loadoutOf, newHero, plainLoadout } from '../src/meta/gear';
+import { levelBonus } from '../src/content/xp';
+/** what Thimblebriar recommends: level 15 (its bonus for every seat) */
+const L15 = levelBonus(15);
 import { ART, heroSprite } from '../src/ui/art';
 import { simRun } from '../src/sim/run';
 import type { RoleId } from '../src/content/types';
@@ -44,8 +47,8 @@ test('thimblebriar: registered, its content holds together, and its log gives th
   assert.equal(THIMBLEBRIAR.tier, 2);
   assert.equal(THIMBLEBRIAR.collection.length, 20);
   assert.deepEqual(THIMBLEBRIAR.bonus, ['dye.sporeglow', 'mount.clockwork_beetle', 'pet.pint_tinker']);
-  // every set piece and boss weapon is Tier 2 (item level 34)
-  for (const it of THIMBLEBRIAR_ITEMS) assert.equal(it.tier, 2, it.id);
+  // every set piece and boss weapon is Tier 2 (it pays more XP), at the season's Power: 26 a set piece, 30 a weapon
+  for (const it of THIMBLEBRIAR_ITEMS) { assert.equal(it.tier, 2, it.id); assert.equal(itemScore(it), it.slot === 'weapon' ? 30 : 26, it.id); }
   const log = ACHIEVEMENTS['thimblebriar.log'];
   assert.equal(log.reward.race, 'gnome');
   assert.equal(log.reward.look, 'workshop');
@@ -202,7 +205,7 @@ test('thimblebriar: only the healer lifts a Sticky Bomb; missed, it drops its he
 });
 
 test('thimblebriar: bombs come from its trash and both bosses, and the bots knock them back', () => {
-  const r = simRun({ dungeon: 'thimblebriar', role: 'tank', seed: 31, loadouts: gear(3) });
+  const r = simRun({ dungeon: 'thimblebriar', role: 'tank', seed: 31, loadouts: gear(3), might: L15 });
   assert.equal(r.over, 'victory');
   for (const by of ['trash', 'toadstool', 'tinker']) assert.ok(r.stats['bombs.' + by] > 0, `bombs from the ${by}`);
   assert.ok(r.stats.knocked > 10, `knocked back ${r.stats.knocked}`);
@@ -228,13 +231,13 @@ test('thimblebriar: two bosses of three moves, a job for each role and the bombs
   assert.ok(s.heroes.every((h: any) => h.role !== 'tank' || !h.st.curse), 'never the tank');
 });
 
-test('thimblebriar: in the Barrow’s epics (power 1.72) the bots clear in 3:20 to 4:10 without wiping; Old Toadstool takes about 45 seconds and the Tinker King about 80', () => {
+test('thimblebriar: at what it recommends (level 15, plain Epic) the bots clear in 3:15 to 4:10 without wiping; Old Toadstool takes about 45 seconds and the Tinker King about 80', () => {
   const runs: ReturnType<typeof simRun>[] = [];
   for (const [role, seed] of [['tank', 101], ['healer', 202], ['dps', 303]] as [RoleId, number][]) {
-    const r = simRun({ dungeon: 'thimblebriar', role, seed, loadouts: gear(3) });
+    const r = simRun({ dungeon: 'thimblebriar', role, seed, loadouts: gear(3), might: L15 });
     assert.equal(r.over, 'victory', `${role} seed ${seed} did not clear`);
     assert.equal(r.wipes, 0, `${role} seed ${seed} wiped`);
-    assert.ok(r.clear! > 200 && r.clear! < 250, `${role} seed ${seed} cleared in ${r.clear}s`);
+    assert.ok(r.clear! > 195 && r.clear! < 250, `${role} seed ${seed} cleared in ${r.clear}s`);
     runs.push(r);
   }
   // the combat plan's bands, on average: one fight with the bombs swings ten seconds either way
@@ -243,32 +246,32 @@ test('thimblebriar: in the Barrow’s epics (power 1.72) the bots clear in 3:20 
   assert.ok(fight('G') > 70 && fight('G') < 90, `the Tinker King took ${fight('G').toFixed(1)}s`);
 });
 
-test('thimblebriar: in Rare gear (power 1.24) the bots wipe at least once in most runs, mostly at the Tinker King', () => {
+test('thimblebriar: in Rare gear (power 1.24) at level 15 the bots wipe at least once in most runs, mostly at the Tinker King', () => {
   let wiped = 0, atKing = 0;
   // the balance table's own seeds (npm run sim: s * 7919, plus 1 to 3 for the seat)
   const seeds: [RoleId, number][] = [1, 2, 3].flatMap((s) => (['tank', 'healer', 'dps'] as RoleId[]).map((r, i): [RoleId, number] => [r, s * 7919 + i + 1]));
   for (const [role, seed] of seeds) {
-    const r = simRun({ dungeon: 'thimblebriar', role, seed, loadouts: gear(2), maxWipes: 1 });
+    const r = simRun({ dungeon: 'thimblebriar', role, seed, loadouts: gear(2), maxWipes: 1, might: L15 });
     if (r.wipes) { wiped++; if (r.packs.some((p) => p.id === 'G')) atKing++; }
   }
   assert.ok(wiped >= 5, `only ${wiped} of ${seeds.length} Rare runs wiped`);
   assert.ok(atKing >= wiped - 1, `${atKing} of the ${wiped} wipes were at the Tinker King`);
 });
 
-test('thimblebriar: its own full kit (power 2.54) melts it in about half the time of power 1.72', () => {
+test('thimblebriar: its own full kit at level 35 melts it in about half the time of what it recommends', () => {
   const W = (id: string, slot: 'helm' | 'shoulders' | 'chest' | 'weapon', trait?: string) => ({ slot, def: ITEMS[id], trait, unique: true });
   const kit = (set: string, weapon: string, trait: string) => loadoutOf([W(`${set}.helm`, 'helm'), W(`${set}.shoulders`, 'shoulders'), W(`${set}.chest`, 'chest'), W(weapon, 'weapon', trait)]);
   const own = { tank: kit('clockguard', 'tinker.tank', 'wide'), healer: kit('sporebloom', 'tinker.healer', 'sunflare'), dps: kit('arcspark', 'tinker.dps', 'shatterlance') };
-  assert.ok(Math.abs(own.tank.power - 2.536) < 0.01, `power ${own.tank.power}`);
+  assert.ok(Math.abs(own.tank.power - 2.056) < 0.01, `power ${own.tank.power}: the season's Epic, the same as the Barrow's`);
   // over three seeds: one run swings a few percent either way
   let epicT = 0, bisT = 0;
   for (const seed of [404, 505, 606]) {
-    const epic = simRun({ dungeon: 'thimblebriar', role: 'dps', seed, loadouts: gear(3) });
-    const bis = simRun({ dungeon: 'thimblebriar', role: 'dps', seed, loadouts: own });
+    const epic = simRun({ dungeon: 'thimblebriar', role: 'dps', seed, loadouts: gear(3), might: L15 });
+    const bis = simRun({ dungeon: 'thimblebriar', role: 'dps', seed, loadouts: own, might: levelBonus(35) });
     assert.equal(bis.over, 'victory');
     epicT += epic.clear!; bisT += bis.clear!;
   }
-  assert.ok(bisT < epicT * 0.62, `full kit ${bisT.toFixed(0)}s against ${epicT.toFixed(0)}s`);
+  assert.ok(bisT < epicT * 0.62, `full kit at level 35 ${bisT.toFixed(0)}s against ${epicT.toFixed(0)}s at level 15`);
 });
 
 test('thimblebriar: the cuckoo clock tells the chest the same way the lantern does: two gold pops and two knocks for a unique', () => {

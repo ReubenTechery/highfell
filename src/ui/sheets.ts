@@ -33,7 +33,7 @@ import { gearKey } from '../content/gear';
 import { CLASSES } from '../content/folk';
 import { ARMOURY_TABS, armouryActions, armourySheet, countUp, leftSlot, settle, type ArmouryTab, type ArmouryView } from './armoury';
 import { TALENTS } from '../content/talents';
-import { MAX_LEVEL, levelOf, xpForLevel } from '../content/xp';
+import { levelOf, xpForLevel } from '../content/xp';
 import { gainXp } from '../meta/xp';
 import { specOf } from '../meta/talents';
 
@@ -136,7 +136,7 @@ export class Sheets {
       vluck: () => { this.app.setDev({ valeLuck: !this.app.dev.valeLuck }); SFX.play('ui'); this.app.refresh(); },
       allopen: () => { this.app.setDev({ allOpen: !this.app.dev.allOpen }); SFX.play('ui'); this.app.refresh(); },
       xpup: () => {
-        const p = this.app.p, to = Math.min(MAX_LEVEL, levelOf(p.xp) + 5);
+        const p = this.app.p, to = levelOf(p.xp) + 5;
         if (gainXp(p, xpForLevel(to) - p.xp).xp <= 0) { SFX.play('nope'); return; }
         SFX.play('levelup'); this.app.toasts.text(`Level ${to}`, 'For testing: spend the points in your hero’s Talents.'); this.app.levelAchievements(); this.app.save();
       },

@@ -25,7 +25,11 @@ not in the game. Its names, numbers and art are stand-ins.
    `src/dungeon/layout.js`): any number of rooms, doors on any side, branches, side rooms, round rooms.
 5. **No puzzle on Normal.** The three-seat seal is a Heroic-only hook (`seal` in `script.js`). Normal never
    gets one.
-6. **A run is about 3 to 4 minutes** for bots in Common gear, and melts toward half that in full Epic.
+6. **A run is about 3 to 4 minutes at the door.** The first dungeon of a season is made for Common gear at level
+   1; each later one recommends a level and a Power (`recLevel`, `recIlvl` in `index.ts`) and is tuned so bots at
+   that level, in plain gear of that Power, clear it in 3 to 4 minutes (Thimblebriar: level 15, Power 22; its
+   tune is the old one times level 15's bonus, `levelBonus(15)`). Its gear is the season's Power (26 a set
+   piece, 30 a boss weapon), never more: its sets and weapons are different, and levels do the climbing.
 7. **The art is the main cost.** Every dungeon needs its 3-piece sets, its boss weapons and the armour stands
    that show them in the collection log (`tools/art_wardrobe.py`). Then the two bosses, the one or two new
    enemies, the props and the theme. Spend the art there; reuse the rest.

@@ -213,10 +213,13 @@ export interface DungeonInfo {
   blurb: string;
   /** the season it came in (its name is in SEASONS): the first three dungeons are Season 0 */
   season: number;
-  /** Stepped progression tier (1 = Barrow, 2 = Thimblebriar, 3 = Moonmere). */
+  /** Which of its season's dungeons it is (1 = Barrow, 2 = Thimblebriar, 3 = Moonmere): a later one is harder and
+   *  pays more XP. Its gear has the same Power as the season's others. */
   tier?: 1 | 2 | 3;
-  /** Recommended entry item level for this dungeon. */
+  /** The Power it recommends coming in with (party.ts underPowered: Power and level together). */
   recIlvl?: number;
+  /** The level it recommends coming in at (1 when left out). */
+  recLevel?: number;
   /** The most Power this dungeon's drops have: its boss weapons' (its set pieces are 4 less). */
   dropsIlvl?: number;
   bosses: BossInfo[];

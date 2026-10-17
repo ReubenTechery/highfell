@@ -6,9 +6,9 @@
  * meta/talents.ts; what each talent does in a run is dungeon/specs.js.
  */
 import { AB, MEND, abKey } from '../content/roles';
-import { ROW_NEED, ROWS, TALENTS, TALENT_STATS, buttonFor, statLine } from '../content/talents';
+import { ROW_NEED, ROWS, TALENTS, TALENT_STATS, TREE_POINTS, buttonFor, statLine } from '../content/talents';
 import type { SpecDef, TalentDef, TalentStat } from '../content/types';
-import { MAX_LEVEL } from '../content/xp';
+import { bonusText } from '../content/xp';
 import { addPoint, addProblem, canTakeBack, pickSpec, pointsAt, pointsOf, rankOf, resetSpec, rowOpen, specOf, specsOf, spentIn, takeBack, talentLoadout, unspent } from '../meta/talents';
 import { levelProgress } from '../meta/xp';
 import { heroById, type Hero, type Profile } from '../meta/profile';
@@ -95,11 +95,12 @@ export function talentsTab(p: Profile, h: Hero, node: string | undefined, view: 
 /** your level, how far into it, the points it gives and how many this hero has left to spend */
 function levelLine(p: Profile, h: Hero): string {
   const pr = levelProgress(p.xp), pts = pointsOf(p), left = unspent(p, h);
-  const next = pr.level >= MAX_LEVEL ? 'The top level' : `${fmtN(pr.into)} / ${fmtN(pr.need)} XP to level ${pr.level + 1}`;
+  const next = `${fmtN(pr.into)} / ${fmtN(pr.need)} XP to level ${pr.level + 1}`;
   return `<div class="tn-lv">
     <span class="tn-lvn"><small>Level</small><b>${pr.level}</b></span>
     <span class="tn-lvx"><span class="tn-bar" aria-hidden="true"><i style="width: ${(pr.k * 100).toFixed(1)}%"></i></span><small>${next}</small></span>
-    <span class="tn-pts${left ? ' on' : ''}"><b>${left}</b><small>${pts ? 'to spend' : 'points'}</small></span></div>`;
+    <span class="tn-pts${left ? ' on' : ''}"><b>${left}</b><small>${pts ? 'to spend' : 'points'}</small></span></div>
+    <p class="tn-bonus"><b>${bonusText(pr.level)}</b> Your level makes your whole party stronger: hits, heals and health. Every level adds more.</p>`;
 }
 
 /** no spec yet: the two, big, each with what it's like */
@@ -182,7 +183,7 @@ function card(p: Profile, h: Hero, spec: SpecDef, t: TalentDef): string {
   const pair = t.choice ? spec.talents.find((x) => x !== t && x.choice === t.choice) : undefined;
   const tag = t.capstone ? 'The top of the tree' : pair ? `Or ${pair.name}: one of the two` : `Row ${t.row}`;
   const left = unspent(p, h);
-  const whyText = why === 'No points left' ? (pointsOf(p) >= pointsAt(MAX_LEVEL) ? 'Every point is in' : `No points left · more at level ${levelProgress(p.xp).level + 1}`) : why;
+  const whyText = why === 'No points left' ? (pointsOf(p) >= TREE_POINTS ? 'Every point is in' : `No points left · more at level ${levelProgress(p.xp).level + 1}`) : why;
   return `<div class="tn-card${t.capstone ? ' cap' : ''}" style="--sc: ${spec.color}">
       <span class="tile">${tile(t.icon)}</span>
       <div class="tn-cx"><p class="tn-ch"><b>${esc(t.name)}</b><i>${n}/${t.ranks}</i></p><p class="tn-cd">${esc(t.desc)}</p><small>${esc(tag)}${what ? ` · ${esc(what)}` : ''}</small></div></div>

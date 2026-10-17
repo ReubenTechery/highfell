@@ -12,8 +12,8 @@ import type { RoleId } from '../content/types';
 const ENGINES: Record<string, unknown> = { ...DUNGEON_ENGINES, template: TEMPLATE_ENGINE };
 
 export const STEP = 1 / 60;
-/** dungeon: which one (Barrow Crypt unless given); brew: a recipe id poured for the whole party at the door; noHeal: the healer bot does none of its job (no heals, no lifts), it only follows and auto-attacks */
-export interface SimOpts { role: RoleId; seed: number; dungeon?: string; start?: string; solo?: boolean; heroic?: boolean; loadouts?: Record<string, unknown>; maxT?: number; maxWipes?: number; events?: boolean; brew?: string; noHeal?: boolean }
+/** dungeon: which one (Barrow Crypt unless given); brew: a recipe id poured for the whole party at the door; noHeal: the healer bot does none of its job (no heals, no lifts), it only follows and auto-attacks; might: the level's bonus for every seat (content/xp.ts levelBonus; 1, level 1, unless given) */
+export interface SimOpts { role: RoleId; seed: number; dungeon?: string; start?: string; solo?: boolean; heroic?: boolean; loadouts?: Record<string, unknown>; maxT?: number; maxWipes?: number; events?: boolean; brew?: string; noHeal?: boolean; might?: number }
 export interface PackTime { id: string; pulled: number; cleared: number | null }
 export interface SimResult {
   role: RoleId; seed: number; over: string; t: number; clear: number | null; wipes: number;
@@ -26,7 +26,7 @@ export interface SimResult {
 }
 
 export function simRun(o: SimOpts): SimResult {
-  newGame(ENGINES[o.dungeon || 'barrow'], { role: o.role, seed: o.seed, start: o.start || 'entrance', solo: !!o.solo, heroic: !!o.heroic, auto: true, quiet: true, noEvents: !o.events, loadouts: o.loadouts || {}, ...(o.brew ? { brew: o.brew } : {}), ...(o.noHeal ? { noHeal: true } : {}) });
+  newGame(ENGINES[o.dungeon || 'barrow'], { role: o.role, seed: o.seed, start: o.start || 'entrance', solo: !!o.solo, heroic: !!o.heroic, auto: true, quiet: true, noEvents: !o.events, loadouts: o.loadouts || {}, ...(o.brew ? { brew: o.brew } : {}), ...(o.noHeal ? { noHeal: true } : {}), ...(o.might ? { might: o.might } : {}) });
   const s = S as any;
   s.startedAt = s.t;
   const maxT = o.maxT ?? 1500, maxWipes = o.maxWipes ?? 6;

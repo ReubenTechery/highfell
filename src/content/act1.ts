@@ -3,8 +3,9 @@
  * Dungeons sheet steps through them and lists them, and the house's cellar has a door for each.
  */
 
-/** Act 1 stepped dungeon progression ladder (Tier I -> II -> III: ilvl 26 -> 34 -> 42), shown as Season 0.
- *  When a dungeon is registered in DUNGEONS, it uses its live content & engine; otherwise it displays its Act 1 preview card. */
+/** Act 1, shown as Season 0: three dungeons, each harder than the last and asking a higher level, all dropping gear
+ *  of the same Power (26 a set piece, 30 a boss weapon). When a dungeon is registered in DUNGEONS, it uses its live
+ *  content & engine; otherwise it displays its Act 1 preview card. */
 export interface Act1DungeonMeta {
   id: string;
   /** a dungeon still being built: the season it comes in (a built one's is on its DungeonInfo) */
@@ -14,6 +15,8 @@ export interface Act1DungeonMeta {
   name: string;
   blurb: string;
   recIlvl: number;
+  /** the level it recommends coming in at */
+  recLevel: number;
   dropsIlvl: number;
   prizeName: string;
   prizeDesc: string;
@@ -33,6 +36,7 @@ export const ACT1_DUNGEONS: Act1DungeonMeta[] = [
     name: 'Barrow Crypt',
     blurb: 'A drowned hill-tomb of restless bone and lantern-fire beneath the mist.',
     recIlvl: 10,
+    recLevel: 1,
     dropsIlvl: 30,
     prizeName: 'The Risen',
     prizeDesc: 'A new kind of hero',
@@ -50,7 +54,8 @@ export const ACT1_DUNGEONS: Act1DungeonMeta[] = [
     name: 'Thimblebriar Hollow',
     blurb: 'A gnome burrow of mushrooms and brass, where the inventions went wrong.',
     recIlvl: 22,
-    dropsIlvl: 38,
+    recLevel: 15,
+    dropsIlvl: 30,
     prizeName: 'The Gnomes',
     prizeDesc: 'A new kind of hero',
     prizeIcon: 'c_gnome',
@@ -67,8 +72,9 @@ export const ACT1_DUNGEONS: Act1DungeonMeta[] = [
     roman: 'III',
     name: 'Moonmere Sanctum',
     blurb: 'A silver-lit woodland lake shrine where starlight weavers guard the sunken weirwood.',
-    recIlvl: 30,
-    dropsIlvl: 46,
+    recIlvl: 26,
+    recLevel: 30,
+    dropsIlvl: 30,
     prizeName: 'Starlight Conservatory',
     prizeDesc: 'A moonlit sanctum look & astral mount for your house',
     prizeIcon: 'c_elf',

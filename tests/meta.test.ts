@@ -992,17 +992,18 @@ test('gnomes and goblins: every class, sex, ladder armour tier, and Barrow Epic 
   }
 });
 
-test('stepped dungeon tiers: set pieces are 26, 34 and 42 by tier, and a boss weapon 4 more', () => {
-  // Tier 1 Barrow set piece 26, its boss weapon 30
+test('one Power a season: every set piece is 26 and every boss weapon 30, whichever dungeon it drops in', () => {
   assert.equal(itemScore(ITEMS['barrowguard.helm']), 26);
   assert.equal(itemScore(ITEMS['gravekeeper.tank']), 30);
-  // Tier 2 dungeon set piece -> 34
-  const tier2Helm = { ...ITEMS['barrowguard.helm'], id: 'thimble.helm', tier: 2 as const };
-  assert.equal(itemScore(tier2Helm), 34);
-  // Tier 3 dungeon boss weapon -> 46
+  // Thimblebriar's are the same: its gear is different, never more
+  assert.equal(itemScore(ITEMS['clockguard.helm']), 26);
+  assert.equal(itemScore(ITEMS['tinker.tank']), 30);
+  for (const it of Object.values(ITEMS)) if (it.kind === 'set') assert.equal(itemScore(it), 26, it.id);
+  for (const it of Object.values(ITEMS)) if (it.kind === 'unique' && it.slot === 'weapon' && !it.id.endsWith('.gilded')) assert.equal(itemScore(it), 30, it.id);
+  // a later dungeon's tier pays more XP, never more Power
   const tier3Weapon = { ...ITEMS['gravekeeper.tank'], id: 'moonmere.tank', tier: 3 as const };
-  assert.equal(itemScore(tier3Weapon), 46);
-  // the long chase is where the power is: Rare to the Barrow's kit is more than Common to Rare, twice over
+  assert.equal(itemScore(tier3Weapon), 30);
+  // the long chase is where the gear's power is: Rare to the Barrow's kit is more than Common to Rare, twice over
   assert.ok(itemScore(ITEMS['barrowguard.helm']) - 14 >= 3 * (14 - 10));
 });
 

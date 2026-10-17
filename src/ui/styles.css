@@ -2142,6 +2142,8 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .tn-pts b { font-family: var(--f-display); font-weight: 400; font-size: 24px; color: #FFF8EC; }
 .tn-pts.on { border-color: var(--ink); background: var(--gold); box-shadow: 0 2px 0 var(--ink); }
 .tn-pts.on b, .tn-pts.on small { color: var(--ink); }
+.tn-bonus { margin: -2px 4px 0; font-size: 13px; line-height: 1.35; }
+.tn-bonus b { margin-right: 4px; font-family: var(--f-display); font-weight: 400; font-size: 18px; color: #7A4FD0; }
 .tn-picks { display: grid; gap: 10px; }
 .tn-big { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: start; gap: 12px; padding: 12px; border: 3px solid var(--ink); border-radius: 16px; background: color-mix(in srgb, var(--sc) 16%, var(--panel)); color: var(--ink); box-shadow: 0 3px 0 var(--ink), inset 6px 0 0 var(--sc); font: inherit; text-align: left; cursor: pointer; }
 .tn-big:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink), inset 6px 0 0 var(--sc); }

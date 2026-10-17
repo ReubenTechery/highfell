@@ -30,7 +30,10 @@ export const BREW_FX = {
 export const brewFx = (id) => (id && BREW_FX[id]) || {};
 
 /* loadout: what the meta layer worked out from the hero's gear and talents.
-   { power, traits: Set, bonuses: Set, weaponRar, unique, name?, sprite?, fit?, brew?, brewCol?, spec?, tal?, ts? }
+   { power, might?, traits: Set, bonuses: Set, weaponRar, unique, name?, sprite?, fit?, brew?, brewCol?, spec?, tal?, ts? }
+   might is your level's bonus (content/xp.ts levelBonus), the same for every seat: it multiplies the gear's power
+   (so hits, heals and shields grow with your level) and your health, all by the same amount. Crit chance comes from
+   the gear alone (gearPower).
    spec is the hero's spec (Fire changes the buttons), tal the talents it has that change a button, ts its talent
    stats added up (meta/talents.ts talentLoadout; specs.js turns them into multipliers). Bots have none.
    name is your hero's (a bot's is its role's); sprite is the hero's picture for this run, composed in layers by the
@@ -40,13 +43,13 @@ export function makeHero(role, isPlayer, loadout) {
   const L = loadout || {};
   const cls = L.cls || (role === 'tank' ? 'warrior' : role === 'healer' ? 'cleric' : 'mage');
   const isRogue = cls === 'rogue';
-  const power = L.power || 1;
+  const gearPower = L.power || 1, might = L.might || 1, power = gearPower * might;
   const ts = talentStats(L.ts);
-  const maxHp = Math.round(R.hp * hpMultiplier(power) * ts.hp);
+  const maxHp = Math.round(R.hp * hpMultiplier(gearPower) * might * ts.hp);
   const B = brewFx(L.brew);
   return {
     id: 'h_' + role, kind: 'hero', role, cls, name: L.name || R.name, sprite: L.sprite || '', fit: L.fit || null, isPlayer, x: 0, y: 0, r: R.r,
-    face: -Math.PI / 2, back: true, flip: false, hp: maxHp, maxHp, armor: R.armor, power,
+    face: -Math.PI / 2, back: true, flip: false, hp: maxHp, maxHp, armor: R.armor, power, gearPower, might,
     traits: new Set(L.traits || []), bonuses: new Set(L.bonuses || []), unique: L.unique || null,
     spec: L.spec || null, tal: new Set(L.tal || []), ts,
     weaponRar: L.weaponRar || 0, threatMod: R.threat * (B.threat || 1) * ts.threat, speed: R.speed * (isRogue ? 1.1 : 1) * (B.speed || 1), alive: true,
@@ -71,6 +74,19 @@ export function makeHero(role, isPlayer, loadout) {
     bot: { think: 0, react: rand(0.18, 0.34), skill: isPlayer ? 0.97 : 0.93, goal: null, lastPos: null, waitT: 0, blockFor: null, cutAt: 0, side: rng() < 0.5 ? -1 : 1, dodged: new Set() },
     stats: { dmg: 0, heal: 0, taken: 0, dodges: 0, blocks: 0, perfect: 0, deaths: 0, overheal: 0 },
   };
+}
+
+/** A level came in mid-run: every hero is `k` times as strong from now on (hits, heals, shields and health), keeping
+ *  the health they'd lost. */
+export function strengthen(k) {
+  if (!(k > 0) || k === 1) return;
+  for (const h of S.heroes) {
+    h.might = (h.might || 1) * k;
+    h.power = (h.gearPower || 1) * h.might;
+    const max = Math.round(ROLES[h.role].hp * hpMultiplier(h.gearPower || 1) * h.might * h.ts.hp);
+    if (h.alive) h.hp = Math.max(1, h.hp + max - h.maxHp);
+    h.maxHp = max;
+  }
 }
 
 /** how hard a mob of this type swings for this dungeon's tuning (tune.dmg names a mob's own, on top of `hit` for
@@ -328,7 +344,8 @@ export function killHero(h) {
 /** the crit chance gear, talents and Lantern Zeal add to a hero's own (up to +14% from Power, +10% in the Zeal) */
 export function critBonus(src) {
   if (!src || src.kind !== 'hero') return 0;
-  return (src.power > 1 ? Math.min(0.14, (src.power - 1) * 0.14) : 0) + (src.st && src.st.zeal > 0 ? 0.1 : 0) + (src.ts ? src.ts.crit : 0);
+  const gp = src.gearPower ?? src.power;
+  return (gp > 1 ? Math.min(0.14, (gp - 1) * 0.14) : 0) + (src.st && src.st.zeal > 0 ? 0.1 : 0) + (src.ts ? src.ts.crit : 0);
 }
 /** A hit on a mob. o: { raw (no Power), crit (its chance; 1 always), noCrit, shatter / chillShatter (Shatter
  *  multipliers), knock, threat (×), tier (how it feels: FEEL), auto (an automatic swing, counted apart), col,

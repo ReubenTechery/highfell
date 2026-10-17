@@ -4,14 +4,17 @@
  * your own Warband heroes takes a seat instead only when its gear is at least as good as the bot's, to make
  * the run stronger and nothing else (it never gets loot: the run is your hero's). You can group up too.
  * Heroic is the group run: it needs at least two real players, a bot takes the seat nobody fills, and your
- * Warband heroes never sit in. A hero short of a dungeon's recommended Power is warned first, never stopped.
+ * Warband heroes never sit in. A hero short of what a dungeon recommends (level and Power together) is warned
+ * first, never stopped.
  */
-import { RARITY } from '../content/gear';
+import { RARITY, powerFromScore } from '../content/gear';
 import { ORDER, ROLES } from '../content/roles';
 import type { DungeonInfo, RoleId } from '../content/types';
+import { levelBonus } from '../content/xp';
 import { loadoutFor, partyRar, wholeIlvl } from './gear';
 import { activeHero, roleOf, setActive, type Hero, type Profile } from './profile';
 import { warbandOpen } from './warband';
+import { level } from './xp';
 
 export interface Seat { role: RoleId; hero: Hero | null; bot: string | null }
 
@@ -33,20 +36,26 @@ export function partyProblem(players: Hero[], o: { heroic: boolean }): string | 
   return null;
 }
 
-/** How far a hero falls short of the Power a dungeon recommends: their Power, the dungeon's, and the gap.
- *  `likely` is LIKELY_SHORT or more short (Rare against Thimblebriar's 22), where a wipe is very likely. */
-export interface PowerGap { have: number; want: number; short: number; likely: boolean }
-/** how far short makes a wipe very likely: the whole regular ladder, Common to Rare */
-const LIKELY_SHORT = RARITY[2].score - RARITY[0].score;
+/** How the hero you play measures up to a dungeon: your level and Power, and the ones it recommends. You're short
+ *  when the two together are: your strength is your gear's power times your level's bonus, so a higher level makes
+ *  up for weaker gear and the other way round. `likely`: short by LIKELY_SHORT of it or more, where a wipe is very
+ *  likely (Rare at level 15 against Thimblebriar's level 15 and Power 22). */
+export interface PowerGap { level: number; power: number; wantLevel: number; wantPower: number; likely: boolean }
+/** short by this share of the strength a dungeon wants makes a wipe very likely */
+const LIKELY_SHORT = 0.2;
 
-/** The hero against a dungeon's recommended Power (the item level the game shows, as a whole number), or null
- *  when they meet it or it recommends none (a Heroic doesn't yet). A warning, never a lock: the Barrow wants 10,
- *  so a fresh hero is never warned there. */
+/** a hero's strength in a run: the gear's power times the level's bonus (what every hit and heal is multiplied by) */
+export const strengthOf = (p: Profile, h: Hero): number => loadoutFor(p, h).power * levelBonus(level(p));
+/** the strength a dungeon recommends: its Power at its level (1 when it names none) */
+export const wantStrength = (dg: Pick<DungeonInfo, 'recIlvl' | 'recLevel'>): number => powerFromScore(dg.recIlvl || RARITY[0].score) * levelBonus(dg.recLevel || 1);
+
+/** The hero against a dungeon's recommendation, or null when they meet it or it recommends nothing (a Heroic
+ *  doesn't yet). A warning, never a lock: the Barrow wants level 1 and Power 10, so a fresh hero is never warned. */
 export function underPowered(p: Profile, h: Hero, dg: DungeonInfo): PowerGap | null {
-  const want = dg.recIlvl;
-  if (!want) return null;
-  const have = wholeIlvl(loadoutFor(p, h).score);
-  return have < want ? { have, want, short: want - have, likely: want - have >= LIKELY_SHORT } : null;
+  if (!dg.recIlvl && !dg.recLevel) return null;
+  const have = strengthOf(p, h), want = wantStrength(dg);
+  if (have >= want - 1e-9) return null;
+  return { level: level(p), power: wholeIlvl(loadoutFor(p, h).score), wantLevel: dg.recLevel || 1, wantPower: dg.recIlvl || RARITY[0].score, likely: have < want * (1 - LIKELY_SHORT) };
 }
 
 /** The three seats, tank first, for a group of real players: each sits in their own role's seat. On Normal, once your Warband is open (warband.ts),

@@ -699,3 +699,24 @@ test('wipes: a foe that was burning, poisoned, seared or marked forgets it all, 
   assert.equal(pack.pulled, false, 'the pack stays where it was');
   assert.equal(m.hp, m.maxHp);
 });
+
+test('levels: your level makes every seat stronger, from the first hit, and a level mid-run grows the party at once', async () => {
+  const { strengthen } = await import('../src/dungeon/entities.js');
+  newGame(BARROW_ENGINE, { role: 'dps', seed: 99, start: 'entrance', auto: false, quiet: true, noEvents: true, loadouts: { dps: { power: 1.5 } } });
+  const plain = (S as any).heroes.map((h: any) => ({ role: h.role, power: h.power, maxHp: h.maxHp }));
+  newGame(BARROW_ENGINE, { role: 'dps', seed: 99, start: 'entrance', auto: false, quiet: true, noEvents: true, loadouts: { dps: { power: 1.5 } }, might: 2 });
+  const s = S as any;
+  for (const h of s.heroes) {
+    const was = plain.find((x: any) => x.role === h.role);
+    assert.ok(Math.abs(h.power - was.power * 2) < 1e-9, `${h.role}: twice the power`);
+    assert.ok(h.maxHp > was.maxHp, `${h.role}: more health`);
+  }
+  // a level in the middle of a fight: hits grow, health grows and keeps what was lost
+  const dps = s.heroes.find((h: any) => h.role === 'dps');
+  dps.hp = dps.maxHp - 100;
+  const power = dps.power, max = dps.maxHp;
+  strengthen(1.1);
+  assert.ok(Math.abs(dps.power - power * 1.1) < 1e-9);
+  assert.ok(dps.maxHp > max);
+  assert.equal(dps.maxHp - dps.hp, 100, 'what was lost stays lost');
+});

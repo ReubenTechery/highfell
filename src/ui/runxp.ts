@@ -4,7 +4,7 @@
  * it (meta/xp.ts), so a wipe or leaving the run keeps it. The engine pops each kill's number over the mob. A run
  * that doesn't count (the Crypt Trial, test gear) shows no bar and pays nothing.
  */
-import { MAX_LEVEL } from '../content/xp';
+import { levelBonus } from '../content/xp';
 import { gainXp, levelProgress, type XpGain } from '../meta/xp';
 import { pointsAt } from '../meta/talents';
 import type { Profile } from '../meta/profile';
@@ -31,7 +31,7 @@ export class RunXp {
     if (!fr || !on) return;
     const pr = levelProgress(p.xp);
     fr.querySelector('.fr-top')?.insertAdjacentHTML('beforeend', `<b class="xb-lv" title="Your level">${pr.level}</b>`);
-    fr.insertAdjacentHTML('beforeend', `<span class="xb-track" title="${esc(pr.level >= MAX_LEVEL ? 'Level 99' : `${fmtN(pr.into)} / ${fmtN(pr.need)} XP`)}"><i class="xb-fill" style="width: ${(pr.k * 100).toFixed(1)}%"></i></span>`);
+    fr.insertAdjacentHTML('beforeend', `<span class="xb-track" title="${esc(`${fmtN(pr.into)} / ${fmtN(pr.need)} XP`)}"><i class="xb-fill" style="width: ${(pr.k * 100).toFixed(1)}%"></i></span>`);
   }
 
   /** a kill paid XP: into your save, onto the bar, and a burst for a new level. Returns what it did. */
@@ -50,7 +50,7 @@ export class RunXp {
     const fill = bar?.querySelector<HTMLElement>('.xb-fill'), lv = bar?.querySelector('.xb-lv'), track = bar?.querySelector('.xb-track');
     if (!bar || !fill || !lv || !track) return;
     bar.classList.remove('xp-bump'); void bar.offsetWidth; bar.classList.add('xp-bump');
-    track.setAttribute('title', pr.level >= MAX_LEVEL ? 'Level 99' : `${fmtN(pr.into)} / ${fmtN(pr.need)} XP`);
+    track.setAttribute('title', `${fmtN(pr.into)} / ${fmtN(pr.need)} XP`);
     if (g.to > g.from) {
       fill.style.width = '100%';
       setTimeout(() => { fill.style.transition = 'none'; fill.style.width = '0%'; void fill.offsetWidth; fill.style.transition = ''; fill.style.width = `${(pr.k * 100).toFixed(1)}%`; }, 360);
@@ -59,13 +59,15 @@ export class RunXp {
     } else fill.style.width = `${(pr.k * 100).toFixed(1)}%`;
   }
 
-  /** a new level, right there in the fight: its number big and gold, and the talent point it brings */
+  /** a new level, right there in the fight: its number big and gold, the talent point it brings and how much
+   *  stronger it makes the party (the next fight's heroes feel it; this one's are already in) */
   private burst(g: XpGain): void {
     const pts = pointsAt(g.to) - pointsAt(g.from);
+    const more = `+${Math.round((levelBonus(g.to) - levelBonus(g.from)) * 1000) / 10}% to your party`;
     const el = document.createElement('div');
     el.className = 'lvl-up';
     el.setAttribute('role', 'status');
-    el.innerHTML = `<span class="lu-rays" aria-hidden="true"></span><span class="lu-tile" aria-hidden="true">${tile('xp')}</span><b>Level ${g.to}!</b>${pts > 0 ? `<small>+${pts} talent point${pts === 1 ? '' : 's'}</small>` : ''}`;
+    el.innerHTML = `<span class="lu-rays" aria-hidden="true"></span><span class="lu-tile" aria-hidden="true">${tile('xp')}</span><b>Level ${g.to}!</b><small>${pts > 0 ? `+${pts} talent point${pts === 1 ? '' : 's'} · ` : ''}${more}</small>`;
     this.host.appendChild(el);
     SFX.play('levelup');
     setTimeout(() => el.remove(), 2200);

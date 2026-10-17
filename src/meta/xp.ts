@@ -6,17 +6,19 @@
  */
 import type { DungeonInfo } from '../content/types';
 import { DUNGEONS } from '../content';
-import { CLEAR_XP, HEROIC_XP, MAX_LEVEL, PAGES, PAGE_ROLLS, PAGE_XP, TIER_XP, TOMES, levelNeed, levelOf, xpForLevel } from '../content/xp';
+import { CLEAR_XP, HEROIC_XP, PAGES, PAGE_ROLLS, PAGE_XP, TIER_XP, TOMES, levelBonus, levelNeed, levelOf, xpForLevel } from '../content/xp';
 import type { Rng } from '../core/rng';
 import type { Profile } from './profile';
 
 /** your level now */
 export const level = (p: Profile): number => levelOf(p.xp);
-/** where you are in your level: the level, XP into it and what it needs, and how far along (0 to 1; 1 at the top) */
+/** what your level adds to your whole party in a run (every seat: you, your Warband, the bots), as a multiplier */
+export const partyBonus = (p: Profile): number => levelBonus(level(p));
+/** where you are in your level: the level, XP into it and what the next one needs, and how far along (0 to 1).
+ *  There's always a next level. */
 export function levelProgress(xp: number): { level: number; into: number; need: number; k: number } {
   const lv = levelOf(xp);
-  if (lv >= MAX_LEVEL) return { level: lv, into: 0, need: 0, k: 1 };
-  const into = xp - xpForLevel(lv), need = levelNeed(lv);
+  const into = Math.max(0, xp - xpForLevel(lv)), need = levelNeed(lv);
   return { level: lv, into, need, k: into / need };
 }
 

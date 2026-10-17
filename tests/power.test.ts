@@ -12,6 +12,7 @@ import { SLOT_IDS } from '../src/content/gear';
 import type { Rar } from '../src/content/types';
 import { equip, loadoutFor, newHero, wholeIlvl } from '../src/meta/gear';
 import { underPowered } from '../src/meta/party';
+import { xpForLevel } from '../src/content/xp';
 import { freshProfile, setActive, type Hero, type Profile } from '../src/meta/profile';
 import { ACT1_DUNGEONS } from '../src/content/act1';
 import { dungeonActions, dungeonSheet, type DungeonPick } from '../src/ui/dungeonsheet';
@@ -59,29 +60,38 @@ test('power: the game shows Power as a whole number, the weighted item level rou
   assert.equal(wholeIlvl(loadoutFor(rare.p, rare.h).score), 20);
 });
 
-test('power: a hero short of a dungeon’s recommended Power is warned, by how much; never on the Barrow in fresh gear', () => {
+test('power: a hero short of what a dungeon recommends (level and Power together) is warned; never on the Barrow', () => {
   const barrow = DUNGEONS.barrow, hollow = DUNGEONS.thimblebriar;
   assert.equal(barrow.recIlvl, 10);
-  assert.equal(hollow.recIlvl, 22, 'Thimblebriar is made for the Barrow’s epics: Power 22 (power 1.72)');
+  assert.equal(barrow.recLevel ?? 1, 1);
+  assert.equal(hollow.recIlvl, 22, 'Thimblebriar wants a few of the Barrow’s epics: Power 22');
+  assert.equal(hollow.recLevel, 15, 'and level 15');
   const fresh = tankIn(0);
   assert.equal(underPowered(fresh.p, fresh.h, barrow), null, 'no warning for the Barrow on a fresh hero');
-  assert.deepEqual(underPowered(fresh.p, fresh.h, hollow), { have: 10, want: 22, short: 12, likely: true });
-  // Rare is the whole ladder short: the bots in Rare wipe there in most runs
+  assert.deepEqual(underPowered(fresh.p, fresh.h, hollow), { level: 1, power: 10, wantLevel: 15, wantPower: 22, likely: true });
+  // Rare at level 1: very likely wiped
   const rare = tankIn(2);
-  assert.deepEqual(underPowered(rare.p, rare.h, hollow), { have: 14, want: 22, short: 8, likely: true });
-  // a Barrow weapon gets it to 20: still short, but a wipe is no longer very likely
+  assert.equal(underPowered(rare.p, rare.h, hollow)?.likely, true);
+  // levels make up for gear: Rare at level 22 is short, but a wipe isn't very likely; at level 40 it's enough
+  rare.p.xp = xpForLevel(22);
+  assert.deepEqual(underPowered(rare.p, rare.h, hollow), { level: 22, power: 14, wantLevel: 15, wantPower: 22, likely: false });
+  rare.p.xp = xpForLevel(40);
+  assert.equal(underPowered(rare.p, rare.h, hollow), null);
+  // and gear makes up for levels: a Barrow weapon on Rare at level 15 is short but not by much
+  rare.p.xp = xpForLevel(15);
   withBarrowWeapon(rare.p, rare.h);
-  assert.deepEqual(underPowered(rare.p, rare.h, hollow), { have: 20, want: 22, short: 2, likely: false });
-  // plain Epic everywhere meets it
+  assert.equal(underPowered(rare.p, rare.h, hollow)?.likely, false);
+  // plain Epic everywhere at level 15 meets it
   const epic = tankIn(3);
+  epic.p.xp = xpForLevel(15);
   assert.equal(underPowered(epic.p, epic.h, hollow), null);
-  // a Heroic has no recommended Power yet, so it never warns
+  // a Heroic has no recommendation yet, so it never warns
   assert.equal(underPowered(fresh.p, fresh.h, heroicVersion('barrow')!), null);
   assert.equal(underPowered(fresh.p, fresh.h, heroicVersion('thimblebriar')!), null);
-  // it's about the hero you pass in: another hero in the same save gets their own answer
+  // it's about the hero you pass in: another hero in the same save gets their own answer (the level is shared)
   const healer = newHero(epic.p, { name: 'Wren Ashby', race: 'human', cls: 'cleric' })!;
   assert.equal(underPowered(epic.p, epic.h, hollow), null);
-  assert.equal(underPowered(epic.p, healer, hollow)?.have, 10);
+  assert.deepEqual(underPowered(epic.p, healer, hollow), { level: 15, power: 10, wantLevel: 15, wantPower: 22, likely: true });
 });
 
 /** the Dungeons sheet's buttons, on a stand-in app that counts the runs it starts */
@@ -103,7 +113,7 @@ test('dungeons sheet: Enter warns an under-powered hero once per tap, Back keeps
   assert.match(s.foot(), /Enter the Thimblebriar/);
   s.tap('go');
   assert.equal(s.runs.length, 0, 'the warning comes first');
-  assert.match(s.foot(), /You’re Power 10\. Thimblebriar wants Power 22\. You’ll very likely be wiped\./);
+  assert.match(s.foot(), /You’re level 1 with Power 10\. Thimblebriar wants level 15 and Power 22\. You’ll very likely be wiped\./);
   assert.match(s.foot(), /Go anyway/);
   assert.match(s.foot(), /Back/);
   s.tap('warnback');
@@ -124,11 +134,12 @@ test('dungeons sheet: no warning on the Barrow for a fresh hero, a gentler one w
   s.tap('go');
   assert.equal(s.runs.length, 1, 'straight in');
   const rare = tankIn(2);
+  rare.p.xp = xpForLevel(15);
   withBarrowWeapon(rare.p, rare.h);
   const t = sheet(rare.p, 'thimblebriar');
   t.tap('go');
   assert.equal(t.runs.length, 0);
-  assert.match(t.foot(), /You’re Power 20\. Thimblebriar wants Power 22\. You might be wiped\./);
+  assert.match(t.foot(), /You’re level 15 with Power 20\. Thimblebriar wants level 15 and Power 22\. You might be wiped\./);
   // moving to another page puts the warning away
   t.tap('dglist');
   t.tap('dgback');
@@ -144,7 +155,9 @@ test('dungeons sheet: All dungeons is grouped by season, and the door wears a Se
   assert.match(list, /Season 0/);
   assert.doesNotMatch(list, /Act 1/);
   for (const name of ['Barrow Crypt', 'Thimblebriar Hollow', 'Moonmere Sanctum']) assert.match(list, new RegExp(name));
-  assert.match(list, /Recommended <b>Power 30<\/b>/);
+  assert.match(list, /Recommended <b>level 30, Power 26<\/b>/, 'Moonmere');
+  assert.match(list, /Recommended <b>level 15, Power 22<\/b>/, 'Thimblebriar');
+  assert.doesNotMatch(list, /Power (34|38|42|46)\b/, 'every dungeon of the season drops the same Power');
   assert.doesNotMatch(seen(list), /ilvl|item level/i);
   for (const dungeon of ['barrow', 'thimblebriar', 'moonmere']) {
     const door = dungeonSheet(p, { dungeon, page: 'door', heroic: false }, false);

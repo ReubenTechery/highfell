@@ -8,11 +8,12 @@ import { THIMBLEBRIAR_STAGE } from './stage';
 export const THIMBLEBRIAR: DungeonInfo = {
   id: 'thimblebriar',
   name: 'Thimblebriar Hollow',
-  blurb: 'A gnome burrow of mushrooms and brass, where the inventions went wrong. Knock their bombs back at them. About three and a half minutes in Barrow epics.',
+  blurb: 'A gnome burrow of mushrooms and brass, where the inventions went wrong. Knock their bombs back at them. About three and a half minutes at level 15 in a few Barrow epics.',
   season: 0,
   tier: 2,
   recIlvl: 22,
-  dropsIlvl: 38,
+  recLevel: 15,
+  dropsIlvl: 30,
   bosses: [
     { id: 'toadstool', name: 'Old Toadstool', phases: 2, enrage: 120, room: 4 },
     { id: 'tinker', name: 'The Tinker King', phases: 2, enrage: 210, room: 6 },

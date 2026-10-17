@@ -1,8 +1,9 @@
 /**
  * Gear. Power climbs Common to Epic and stops there. The weapon carries 40% of it, so a new weapon
  * is the upgrade you feel. The regular ladder is a short climb (Common 10 to Rare 14 in eight clears); the
- * long chase is where the power is: a set piece is 12 more than Rare, a boss weapon 16 (the owner's call, 17
- * Oct: forty-odd runs for a set has to feel like it). After that, gear goes sideways: traits, set bonuses, looks.
+ * long chase is where gear's power is: a set piece is 12 more than Rare, a boss weapon 16 (the owner's call, 17
+ * Oct: forty-odd runs for a set has to feel like it), the same in every dungeon of a season (18 Oct). After that,
+ * gear goes sideways: which set, which weapon, which trait, and looks. Your level does the climbing.
  */
 import type { GearKey, RarityDef, RoleId, RoleSlotDef, SlotDef, SlotId, TraitDef, ItemDef, Rar } from './types';
 import { CLASSES, type ClassId } from './folk';

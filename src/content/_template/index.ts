@@ -30,8 +30,11 @@ export const TEMPLATE_DUNGEON: DungeonInfo = {
   // the season it comes in: a new dungeon names the season it's built for (SEASONS in src/content/index.ts)
   season: 0,
   tier: 2,
-  recIlvl: 22,
-  dropsIlvl: 38,
+  // what it's made for (engine.ts tune): a dungeon after the first recommends a level and Power, and is tuned so
+  // the bots at that level, in plain gear of that Power, clear in about 3 to 4 minutes (Thimblebriar: level 15, 22)
+  recIlvl: 10,
+  recLevel: 1,
+  dropsIlvl: 30,
   bosses: [
     { id: 'warden', name: 'Mini-Boss Warden', phases: 2, enrage: 120, room: 5 },
     { id: 'sovereign', name: 'The Sovereign', phases: 2, enrage: 210, room: 6 },

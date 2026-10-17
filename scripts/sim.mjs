@@ -9,6 +9,7 @@
  *   npm run sim -- --heroic --gear 3 heroic, in full Epic (what it's made for)
  *   npm run sim -- --brew glow       the whole party drinks a brew (glow, elixir, tonic, fizz)
  *   npm run sim -- --rogue           the DPS seat is a rogue (a mage otherwise)
+ *   npm run sim -- --level 22        the party at that level (its bonus for every seat; level 1 otherwise)
  *   npm run sim -- --json out.json   also write every run to a file
  */
 import * as esbuild from 'esbuild';
@@ -37,15 +38,18 @@ const seeds = +opt('seeds', 12), gear = +opt('gear', 0), solo = !!opt('solo', fa
 const brew = opt('brew', null);
 const rogue = !!opt('rogue', false);
 const dungeon = opt('dungeon', 'barrow');
+const level = +opt('level', 1);
 const roles = solo ? ['dps'] : (opt('roles', 'tank,healer,dps') + '').split(',');
 
 fs.mkdirSync(ROOT + '.cache', { recursive: true });
 await esbuild.build({ entryPoints: [ROOT + 'src/sim/run.ts'], bundle: true, format: 'esm', platform: 'node', outfile: OUT, logLevel: 'warning' });
-fs.writeFileSync(ROOT + '.cache/sim-gear.ts', `import { plainLoadout } from '../src/meta/gear';\nexport const loadout = (role: any, rar: any, cls?: any) => { const l = plainLoadout(cls === 'rogue' ? 'rogue' : role, rar); return { ...l, traits: l.traits, bonuses: l.bonuses, ...(cls ? { cls } : {}) }; };\n`);
+fs.writeFileSync(ROOT + '.cache/sim-gear.ts', `import { plainLoadout } from '../src/meta/gear';\nexport { levelBonus } from '../src/content/xp';\nexport const loadout = (role: any, rar: any, cls?: any) => { const l = plainLoadout(cls === 'rogue' ? 'rogue' : role, rar); return { ...l, traits: l.traits, bonuses: l.bonuses, ...(cls ? { cls } : {}) }; };\n`);
 await esbuild.build({ entryPoints: [ROOT + '.cache/sim-gear.ts'], bundle: true, format: 'esm', platform: 'node', outfile: ROOT + '.cache/sim-gear.mjs', logLevel: 'warning' });
 
+const { levelBonus } = await import(pathToFileURL(ROOT + '.cache/sim-gear.mjs').href);
+const might = levelBonus(level);
 const jobs = [];
-for (const role of roles) for (let s = 1; s <= seeds; s++) jobs.push({ role, seed: s * 7919 + (role === 'tank' ? 1 : role === 'healer' ? 2 : 3), solo, heroic, gear, ...(brew ? { brew } : {}), ...(dungeon !== 'barrow' ? { dungeon } : {}), ...(rogue ? { rogue } : {}) });
+for (const role of roles) for (let s = 1; s <= seeds; s++) jobs.push({ role, seed: s * 7919 + (role === 'tank' ? 1 : role === 'healer' ? 2 : 3), solo, heroic, gear, ...(brew ? { brew } : {}), ...(dungeon !== 'barrow' ? { dungeon } : {}), ...(rogue ? { rogue } : {}), ...(might > 1 ? { might } : {}) });
 const n = Math.max(1, Math.min(os.cpus().length, jobs.length));
 const t0 = Date.now();
 const results = await new Promise((done, fail) => {
@@ -62,7 +66,7 @@ const mmss = (t) => { if (t == null) return '  -  '; const r = Math.round(t); re
 const avg = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
 const pct = (a, q) => { const b = [...a].sort((x, y) => x - y); return b[Math.min(b.length - 1, Math.floor(q * b.length))]; };
 
-console.log(`\n${results.length} runs${dungeon !== 'barrow' ? ' of ' + dungeon : ''}${heroic ? ', heroic' : ''}${brew ? `, brew ${brew}` : ''}, gear ${['Common', 'Uncommon', 'Rare', 'Epic'][gear]}${solo ? ', solo DPS' : ''}${rogue ? ', a rogue in the DPS seat' : ''}, ${((Date.now() - t0) / 1000).toFixed(1)}s\n`);
+console.log(`\n${results.length} runs${dungeon !== 'barrow' ? ' of ' + dungeon : ''}${heroic ? ', heroic' : ''}${brew ? `, brew ${brew}` : ''}, gear ${['Common', 'Uncommon', 'Rare', 'Epic'][gear]}${solo ? ', solo DPS' : ''}${rogue ? ', a rogue in the DPS seat' : ''}${level > 1 ? `, level ${level}` : ''}, ${((Date.now() - t0) / 1000).toFixed(1)}s\n`);
 if (solo) {
   for (const r of results) console.log(`  seed ${r.seed}: ${r.over} at ${r.t}s, packs cleared ${r.packs.filter((p) => p.cleared).length}`);
 } else {

@@ -36,7 +36,8 @@ export function newGame(dg, opts) {
   // one bottle poured at the door: the whole party drinks it (opts.brew, a recipe id; see BREW_FX)
   const pour = opts.brew ? { brew: opts.brew, brewCol: opts.brewCol || null } : {};
   S.brewArea = brewFx(opts.brew).area || 1;
-  for (const r of roles) S.heroes.push(makeHero(r, r === opts.role, Object.assign({}, L[r], pour)));
+  // your level's bonus is the whole party's (opts.might, 1 at level 1): every seat gets it
+  for (const r of roles) S.heroes.push(makeHero(r, r === opts.role, Object.assign({}, L[r], pour, { might: opts.might || 1 })));
   S.player = S.heroes.find((h) => h.isPlayer) || S.heroes[0];
   S.player.isPlayer = true;
   // Brittle is the whole party's (frozen and Chilled foes take more from everyone); the last boss pays the most XP

@@ -25,7 +25,8 @@ import { RECIPES, RECIPE_ORDER } from '../content/vale';
 import { loadoutFor, partyRar, wholeIlvl } from '../meta/gear';
 import { heroicOpen, heroicProgress, lootFor } from '../meta/loot';
 import { logAchievement, logProgress } from '../meta/logs';
-import { groupOf, heroesFor, partyProblem, seats, underPowered, type PowerGap } from '../meta/party';
+import { groupOf, heroesFor, partyProblem, seats, strengthOf, underPowered, wantStrength, type PowerGap } from '../meta/party';
+import { level } from '../meta/xp';
 import { activeHero, heroById, roleOf, setActive, type Hero, type Profile } from '../meta/profile';
 import { doorTip, finishTip, type DoorTip } from '../meta/tips';
 import type { App } from './app';
@@ -133,14 +134,15 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
 /** All dungeons, season by season: each one's picture, its log and how close its Heroic is (tap one to go to
  *  its door), and for the ones still coming, the Power they'll ask of you and what they drop. */
 function dungeonList(p: Profile, current: string): string {
-  const h = activeHero(p), mine = h ? +ilvl(loadoutFor(p, h).score) : 10;
+  const h = activeHero(p), mine = h ? mineWords(p, h) : 'level 1, Power 10', strength = h ? strengthOf(p, h) : 1;
   const bar = (k: number): string => `<i class="dgx-bar" aria-hidden="true"><i style="width: ${(Math.min(1, k) * 100).toFixed(1)}%"></i></i>`;
   const card = (m: Act1DungeonMeta): string => {
     const live = DUNGEONS[m.id];
     const name = `<span class="dgx-card-name"><span class="dgx-num">${m.roman}</span>${esc(live?.name || m.name)}</span>`;
+    const k = strength / wantStrength(m), who = esc(h ? h.name.split(' ')[0] : 'you');
     if (!live) {
       return `<button type="button" class="dgx-card soon${m.id === current ? ' on' : ''}" data-act="dgpick" data-id="${esc(m.id)}" style="--dc: ${m.themeLight}" aria-label="${esc(m.name)}, coming soon"><span class="dgx-card-art">${banner(false, m.id)}<span class="dgx-soon">Soon</span>${name}</span>
-        <span class="dgx-card-info"><span class="dgx-card-line${mine < m.recIlvl ? ' low' : ''}"><span>Recommended <b>Power ${m.recIlvl}</b> · ${esc(h ? h.name.split(' ')[0] : 'you')} <b class="mine">${mine}</b></span>${bar(mine / m.recIlvl)}</span>
+        <span class="dgx-card-info"><span class="dgx-card-line${k < 1 ? ' low' : ''}"><span>Recommended <b>${recWords(m)}</b> · ${who} <b class="mine">${mine}</b></span>${bar(k)}</span>
           <span class="dgx-card-sub">Drops up to <b>Power ${m.dropsIlvl}</b> · its log gives <b>${esc(m.prizeName)}</b></span></span></button>`;
     }
     const { have, need } = logProgress(p, live.id), hp = heroicProgress(p, live.id);
@@ -149,7 +151,7 @@ function dungeonList(p: Profile, current: string): string {
     return `<button type="button" class="dgx-card${live.id === current ? ' on' : ''}" data-act="dgpick" data-id="${esc(live.id)}" style="--dc: ${m.themeLight}" aria-label="${esc(live.name)}, log ${have} of ${need}">
       <span class="dgx-card-art">${banner(false, m.id)}${name}</span>
       <span class="dgx-card-info"><span class="dgx-card-line"><span>Log <b>${have}/${need}</b></span>${bar(have / Math.max(1, need))}${main ? `<span class="dgx-prize${done ? ' got' : ''}" aria-hidden="true">${tile(main.icon)}</span>` : ''}</span>
-        <span class="dgx-card-sub${mine < m.recIlvl ? ' low' : ''}">Recommended <b>Power ${m.recIlvl}</b> · ${esc(h ? h.name.split(' ')[0] : 'you')} <b class="mine">${mine}</b></span>
+        <span class="dgx-card-sub${k < 1 ? ' low' : ''}">Recommended <b>${recWords(m)}</b> · ${who} <b class="mine">${mine}</b></span>
         <span class="dgx-card-sub">${clears ? `<b>${clears}</b> clear${clears === 1 ? '' : 's'} · ` : ''}Heroic ${heroicOpen(p, live.id) ? '<b>open</b>' : `<b>${hp.have}/${hp.need}</b> log pieces`}</span></span></button>`;
   };
   // each season under its own name, its dungeons in their order
@@ -168,14 +170,14 @@ function steps(id: string): string {
 /** A dungeon still being built: its picture marked Soon, the Power it will want against your hero's, and
  *  what finishing its log will give. The gold button stays locked. */
 function soonSheet(p: Profile, m: Act1DungeonMeta): { head: string; body: string; foot: string } {
-  const h = activeHero(p), mine = h ? +ilvl(loadoutFor(p, h).score) : 10;
+  const h = activeHero(p), mine = h ? mineWords(p, h) : 'level 1, Power 10', k = (h ? strengthOf(p, h) : 1) / wantStrength(m);
   const rw = (pic: string, name: string, cls = ''): string => `<div class="dgx-rw ${cls}"><span class="dgx-rw-pic" aria-hidden="true">${pic}</span><span><b>${esc(name)}</b></span></div>`;
   const head = `<h2><button type="button" class="dgx-namebtn" data-act="dglist" aria-label="${esc(m.name)}. All dungeons">${esc(m.name)}${GLYPH.down}</button></h2><p>${seasonTag(seasonOf(m))}Tier ${m.roman} · coming soon</p>`;
   const body = `<div class="dgx soon-dg">
     <div class="dgx-door"><div class="dgx-stage soon" style="--stage-bg: ${m.themeBg}; --stage-shape: 448 / 456; --stage-k: 1.0179">${banner(false, m.id)}<span class="dgx-soon">Soon</span>${steps(m.id)}</div></div>
     <div class="dgx-you">
-      <div class="dgx-ready"><p class="dgx-gh">Recommended Power ${m.recIlvl}</p>
-        <span class="dgx-card-line"><span>${esc(h ? h.name.split(' ')[0] : 'You')} <b>${mine}</b> · drops up to <b>Power ${m.dropsIlvl}</b></span><i class="dgx-bar" aria-hidden="true"><i style="width: ${(Math.min(1, mine / m.recIlvl) * 100).toFixed(1)}%"></i></i></span></div>
+      <div class="dgx-ready"><p class="dgx-gh">Recommended ${recWords(m)}</p>
+        <span class="dgx-card-line"><span>${esc(h ? h.name.split(' ')[0] : 'You')} <b>${mine}</b> · drops up to <b>Power ${m.dropsIlvl}</b></span><i class="dgx-bar" aria-hidden="true"><i style="width: ${(Math.min(1, k) * 100).toFixed(1)}%"></i></i></span></div>
       <div class="dgx-rewards"><p class="dgx-rw-h">Finish its log to earn</p>
         ${rw(tile(m.prizeIcon), m.prizeName, 'main')}${rw(`<span class="dgx-ttl">${GLYPH.home}</span>`, m.lookName)}${rw(`<span class="dgx-ttl">${GLYPH.pen}</span>`, m.titleText)}</div>
     </div>
@@ -319,17 +321,24 @@ function goIn(d: DungeonHost, anyway: boolean): void {
   app.startRun({ dungeon: dg.heroicOf || dg.id, start: 'entrance', testRar: null, heroic: pr.heroic });
 }
 
-/** over the gold button: the Power the dungeon wants and yours, green once you have it (a Heroic has none yet) */
+/** what a dungeon recommends, in words: "level 15, Power 22", or just the Power when it asks no level */
+const recWords = (m: { recIlvl?: number; recLevel?: number }): string => (m.recLevel && m.recLevel > 1 ? `level ${m.recLevel}, Power ${m.recIlvl ?? 10}` : `Power ${m.recIlvl ?? 10}`);
+/** a hero's level and Power, in the same words */
+const mineWords = (p: Profile, h: Hero): string => `level ${level(p)}, Power ${wholeIlvl(loadoutFor(p, h).score)}`;
+
+/** over the gold button: what the dungeon recommends and what you have, green once the two together meet it (a
+ *  higher level makes up for weaker gear, and the other way round; a Heroic recommends nothing yet) */
 function powerLine(p: Profile, h: Hero, dg: DungeonInfo): string {
-  if (!dg.recIlvl) return '';
-  const mine = wholeIlvl(loadoutFor(p, h).score), ok = mine >= dg.recIlvl;
-  return `<p class="dgx-power${ok ? ' ok' : ''}">${ok ? GLYPH.check : ''}Recommended <b>Power ${dg.recIlvl}</b> · ${esc(h.name.split(' ')[0])} <b class="mine">${mine}</b></p>`;
+  if (!dg.recIlvl && !dg.recLevel) return '';
+  const ok = strengthOf(p, h) >= wantStrength(dg) - 1e-9;
+  return `<p class="dgx-power${ok ? ' ok' : ''}">${ok ? GLYPH.check : ''}Recommended <b>${recWords(dg)}</b> · ${esc(h.name.split(' ')[0])} <b class="mine">${mineWords(p, h)}</b></p>`;
 }
 
-/** the warning in the gold button's place: your Power against what the dungeon wants, how likely a wipe is,
- *  and the two ways on. A warning, never a lock. */
+/** the warning in the gold button's place: your level and Power against what the dungeon wants, how likely a wipe
+ *  is, and the two ways on. A warning, never a lock. */
 function warning(base: DungeonInfo, g: PowerGap): string {
-  return `<div class="dgx-warn" role="alert"><p>${GLYPH.warn}<span>You’re Power ${g.have}. ${esc(base.name.split(' ')[0])} wants Power ${g.want}. <b>${g.likely ? 'You’ll very likely be wiped.' : 'You might be wiped.'}</b></span></p>
+  const want = g.wantLevel > 1 ? `level ${g.wantLevel} and Power ${g.wantPower}` : `Power ${g.wantPower}`;
+  return `<div class="dgx-warn" role="alert"><p>${GLYPH.warn}<span>You’re level ${g.level} with Power ${g.power}. ${esc(base.name.split(' ')[0])} wants ${want}. <b>${g.likely ? 'You’ll very likely be wiped.' : 'You might be wiped.'}</b></span></p>
     <div class="dgx-warn-acts"><button type="button" class="btn small" data-act="warnback">Back</button><button type="button" class="btn small gold" data-act="goanyway">Go anyway</button></div></div>`;
 }
 
