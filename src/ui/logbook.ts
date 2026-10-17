@@ -15,11 +15,14 @@ import { ROLES } from '../content/roles';
 import type { AchievementDef, DungeonInfo, RoleId } from '../content/types';
 import { GARDEN_TABLE } from '../content/vale';
 import { logAchievement, logDone, logProgress, shelfOf, standPieces, standsOf, type Stand } from '../meta/logs';
-import type { Profile } from '../meta/profile';
+import { activeHero, type Profile } from '../meta/profile';
+import { wearerOf } from '../meta/gear';
+import { dungeonSet, setState } from '../meta/sets';
 import { esc, fmtDate, fmtN, fmtRate, fmtT, GLYPH } from './dom';
 import { iconOf, nameOf, prizeSprite, rarLook, spriteURL, standSvg, tile } from './art';
 import { mainReward } from './dungeonsheet';
 import { SWATCH } from './lookssheet';
+import { setShow, setWords } from './setcard';
 
 /** what the page remembers while it's open: Try it on, on a set's page, the slot it's taking a closer look at,
  *  whether this draw is the one just after the Normal or Heroic toggle flipped (its thumb slides over), and
@@ -43,7 +46,7 @@ export function collectionLog(p: Profile, entry: string | undefined, heroicWas: 
   const pg = pageOf(p, entry, heroicWas);
   const heroic = pg.kind === 'dungeon' || pg.kind === 'set' ? !!pg.dg.heroicOf : heroicWas;
   const body = pg.kind === 'set' ? setPage(p, pg.dg, pg.stand, view)
-    : chips(p, pg, heroic) + (pg.kind === 'dungeon' ? prize(p, pg.dg, view.flip) + wardrobe(p, pg.dg, view.peek) + shelf(p, pg.dg) : pg.kind === 'garden' ? gardenPage(p) : otherPage(p));
+    : chips(p, pg, heroic) + (pg.kind === 'dungeon' ? prize(p, pg.dg, view.flip) + yourSet(p, pg.dg) + wardrobe(p, pg.dg, view.peek) + shelf(p, pg.dg) : pg.kind === 'garden' ? gardenPage(p) : otherPage(p));
   const gilt = (pg.kind === 'dungeon' || pg.kind === 'set') && heroic;
   return { html: `<div class="lb${gilt ? ' gilt' : ''}">${body}</div>`, heroic };
 }
@@ -114,6 +117,15 @@ function prizeRewards(a: AchievementDef): string {
     + (title ? rw(`<span class="lb-ttl">${GLYPH.pen}</span>`, title.text, 'Title') : '');
 }
 
+/** On a dungeon's Normal page, the set it drops for the hero you're playing, as the Dungeons door's Your set page
+ *  shows it: on your hero, its pieces (a tap takes a closer look), its two bonuses and where it drops. */
+function yourSet(p: Profile, dg: DungeonInfo): string {
+  const h = dg.heroicOf ? null : activeHero(p), sd = h ? dungeonSet(h, dg.id) : undefined, st = h && sd ? setState(p, h, sd.id) : null;
+  if (!h || !st) return '';
+  return `<section class="lb-sec lb-yours"><header class="lb-h"><h3>Your set</h3><small>for ${esc(h.name.split(' ')[0])}</small></header>
+    ${setShow(p, h, st, { eyebrow: dg.name, where: true, act: 'peek' })}</section>`;
+}
+
 /** the wardrobe: every set of the dungeon on its stand */
 function wardrobe(p: Profile, dg: DungeonInfo, peek: string | null): string {
   const stands = standsOf(dg.id);
@@ -127,8 +139,9 @@ function wardrobe(p: Profile, dg: DungeonInfo, peek: string | null): string {
 /** a stand's card: the stand (it opens the set's page) with its role's badge in the corner, its name and
  *  count, and a tile for each piece that opens a closer look at it */
 function standCard(p: Profile, dg: DungeonInfo, s: Stand, peek: string | null): string {
-  const ids = standPieces(s), have = ids.filter((id) => p.collection[id]).length;
-  const fresh = ids.some((id) => p.collection[id] && !p.seen[id]), done = have === ids.length;
+  // the set is its 3 pieces: the boss weapon leans on the stand with a tile of its own, but isn't counted
+  const ids = standPieces(s), have = s.pieces.filter((id) => p.collection[id]).length;
+  const fresh = ids.some((id) => p.collection[id] && !p.seen[id]), done = have === s.pieces.length;
   const who = whoOf(s.set.role, s.set.cls);
   const pips = ids.map((id) => {
     const got = !!p.collection[id], rate = fmtRate(dropOf(dg, id).rate);
@@ -136,9 +149,9 @@ function standCard(p: Profile, dg: DungeonInfo, s: Stand, peek: string | null): 
       <span class="tile" aria-hidden="true">${iconOf(id)}</span><small aria-hidden="true">${got ? GLYPH.check : rate}</small></button>`;
   }).join('');
   return `<div class="lb-st${done ? ' done' : ''}${fresh ? ' new' : ''}">
-    <button type="button" class="lb-st-go" data-act="entry" data-id="${esc(dg.id)}.set.${esc(s.set.id)}" aria-label="${esc(`${s.set.name}, the ${who} set: ${have} of ${ids.length}. Open it`)}">
+    <button type="button" class="lb-st-go" data-act="entry" data-id="${esc(dg.id)}.set.${esc(s.set.id)}" aria-label="${esc(`${s.set.name}, the ${who} set: ${have} of ${s.pieces.length}. Open it`)}">
       <span class="lb-stg">${roleBadge(s)}${fresh ? '<i class="lb-rib new">New</i>' : done ? '<i class="lb-rib done">Set done</i>' : ''}${standSvg(ids, (id) => !!p.collection[id])}</span>
-      <span class="lb-foot"><b>${esc(s.set.name)}</b><span class="lb-n">${have}<small>/${ids.length}</small></span></span></button>
+      <span class="lb-foot"><b>${esc(s.set.name)}</b><span class="lb-n">${have}<small>/${s.pieces.length}</small></span></span></button>
     <div class="lb-pips">${pips}</div></div>`;
 }
 
@@ -167,17 +180,18 @@ function shelf(p: Profile, dg: DungeonInfo): string {
 
 /** a set's own page: its stand big, Try it on, its bonuses, and a row for every piece */
 function setPage(p: Profile, dg: DungeonInfo, s: Stand, view: LogView): string {
-  // the bonuses light by the pieces you have (a heroic stand's kits gild them, they don't add to them)
-  const ids = standPieces(s), have = ids.filter((id) => p.collection[id]).length, worn = s.set.pieces.filter((id) => p.collection[id]).length;
+  // the bonuses light by the pieces you have and wear (a heroic stand's kits gild them, they don't add to them)
+  const ids = standPieces(s), have = ids.filter((id) => p.collection[id]).length, found = s.pieces.filter((id) => p.collection[id]).length;
+  const st = setState(p, wearerOf(p, ITEMS[s.set.pieces[0]]), s.set.id);
   const who = whoOf(s.set.role, s.set.cls), base = dg.heroicOf ? DUNGEONS[dg.heroicOf] : dg;
   const tryOn = view.tryOn && have < ids.length;
   const rows = ids.map((id) => pieceRow(p, dg, id)).join('');
   return `<button type="button" class="btn small lb-back" data-act="entry" data-id="${esc(dg.id)}.log">${GLYPH.left}${esc(`${dg.heroicOf ? 'Heroic ' : ''}${base.name.split(' ')[0]} log`)}</button>
     <section class="lb-set${tryOn ? ' try' : ''}">${tryOn ? '<i class="lb-stamp">Preview</i>' : ''}
       <div class="lb-set-stg">${roleBadge(s)}${standSvg(ids, (id) => tryOn || !!p.collection[id])}</div>
-      <div class="lb-set-cap"><div><h3>${esc(s.set.name)}</h3><p><i class="rdot ${s.set.role}"></i>${who} · ${have} of ${ids.length}</p></div>
+      <div class="lb-set-cap"><div><h3>${esc(s.set.name)}</h3><p><i class="rdot ${s.set.role}"></i>${who} · ${found} of ${s.pieces.length}</p></div>
         ${have < ids.length ? `<button type="button" class="btn small" data-act="tryon" aria-pressed="${tryOn}">${GLYPH.eye}${tryOn ? 'Back to yours' : 'Try it on'}</button>` : ''}</div></section>
-    <div class="lb-bonus"><p class="${worn >= 2 ? 'on' : ''}"><i>2</i><span><b>2 pieces:</b> ${esc(s.set.bonus2.desc)}</span></p><p class="${worn >= 3 ? 'on' : ''}"><i>3</i><span><b>3 pieces:</b> ${esc(s.set.bonus3.desc)}</span></p></div>
+    ${st ? `<div class="sw-box">${setWords(st)}</div>` : ''}
     <section class="lb-sec"><header class="lb-h"><h3>The pieces</h3><small>Tap one for a closer look</small></header><div class="lb-pieces">${rows}</div></section>`;
 }
 

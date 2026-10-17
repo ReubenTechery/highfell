@@ -1,19 +1,21 @@
 /**
  * The armoury: a hero's gear, in three tabs. Gear: the hero, their four slots in a row, every piece they have
- * for the picked slot with the uniques still to find dimmed at the end, the card that says what putting the
- * picked piece on would change (armourycard.ts), and one Put it on at the bottom (a second tap on the picked
+ * for the picked slot with the uniques still to find dimmed at the end, in a set's slot the set big (your hero
+ * in the whole set, its pieces and its two bonuses, each saying what putting the picked piece on would do:
+ * setcard.ts), the card that says what putting the picked piece on would change (armourycard.ts), and one Put
+ * it on at the bottom (a second tap on the picked
  * piece does the same, and only your next tap moves: a new piece's Put it on glows). Abilities: the four buttons
  * and what the gear does to them. Looks: the title and the looks. Your other heroes are a tap away in the
  * corner. Its buttons (armouryActions), the moment a piece goes on (the burst, the item level counting up)
  * and looking clearing New (leftSlot) live here too; the sheets open and close it.
  */
-import { COLLECTIBLES, ITEMS, SETS, TITLES, placeName } from '../content';
+import { COLLECTIBLES, DUNGEONS, ITEMS, SETS, TITLES, placeName } from '../content';
 import { AB, ROLES, SLOTS_AB, abKey } from '../content/roles';
 import { ROLE_SLOTS, SLOT_IDS, gearKey } from '../content/gear';
 import { CLASSES, RACES, type ClassId, type RaceId } from '../content/folk';
 import type { AbilitySlot, RoleId, SlotId } from '../content/types';
 import { activeHero, heroById, roleOf, setActive, type Hero, type Profile } from '../meta/profile';
-import { betterFor, buyTrait, compareOn, effectsOf, healthPct, itemScore, loadoutFor, lookId, powerPct, seenSlot, shelfFor, waiting, waitingFor, wear, worn, type ShelfPiece, type Worn } from '../meta/gear';
+import { betterFor, buyTrait, compareOn, effectsOf, healthPct, itemScore, loadoutFor, lookId, powerPct, seenSlot, setChange, shelfFor, waiting, waitingFor, wear, worn, type ShelfPiece, type Worn } from '../meta/gear';
 import { titleRows, wearTitle } from '../meta/achievements';
 import type { App } from './app';
 import { cap, esc, fmtRate, GLYPH } from './dom';
@@ -25,6 +27,8 @@ import { dropSource } from './logpeek';
 import { pieceCard, traitRow } from './armourycard';
 import type { SheetSpec } from './sheets';
 import { progressHtml } from './achcard';
+import { chaseSet, setState } from '../meta/sets';
+import { setShow } from './setcard';
 
 export type ArmouryTab = 'gear' | 'abilities' | 'looks';
 export const ARMOURY_TABS: ArmouryTab[] = ['gear', 'abilities', 'looks'];
@@ -162,7 +166,10 @@ function gear(p: Profile, h: Hero, s: GearSpec, view: ArmouryView): { body: stri
   const pieces = `<section class="ar-row" aria-label="${esc(ROLE_SLOTS[gk][slot].name)}: what ${esc(first)} has">
     <p class="ar-row-h"><b>${esc(ROLE_SLOTS[gk][slot].name)}</b><small>${found} yours${toFind ? ` · ${toFind} to find` : ''}</small></p>
     <div class="ar-pcs">${row.map((x) => pieceTile(p, x, x === picked)).join('')}</div></section>`;
-  const body = `<div class="ar">${stage}${slots}${pieces}${pieceCard(p, h, picked)}${slot === 'weapon' ? traitRow(p, h) : ''}</div>`;
+  // in a set's slot, the set, big: the one the picked piece joins or breaks, or else the one you're on
+  const sid = slot === 'weapon' ? null : setChange(w, picked.def)?.id || chaseSet(p, h), st = sid ? setState(p, h, sid, { trying: picked.found ? picked.def : undefined }) : null;
+  const show = st ? setShow(p, h, st, { eyebrow: DUNGEONS[st.set.dungeon]?.name, act: 'gearat' }) : '';
+  const body = `<div class="ar">${stage}${slots}${pieces}${show}${pieceCard(p, h, picked)}${slot === 'weapon' ? traitRow(p, h) : ''}</div>`;
   return { body, foot: foot(p, h, slot, picked, j) };
 }
 
@@ -220,7 +227,7 @@ function abilities(p: Profile, h: Hero): string {
   const always = fx.filter((e) => e.kind === 'set' || e.kind === 'trait');
   return `<h3 class="section-title">Your four buttons<small>with your gear</small></h3><div class="at-list">${cards}</div>
     <h3 class="section-title">Always on<small>sets and the weapon trait</small></h3>
-    ${always.length ? `<div class="ar-always">${always.map((e) => `<p><b>${esc(e.kind === 'trait' ? `${e.name} trait` : e.name)}</b> ${esc(e.desc)}</p>`).join('')}</div>` : '<p class="fine">Wear two pieces of a set, or a Rare weapon with a trait, to switch one on.</p>'}`;
+    ${always.length ? `<div class="ar-always">${always.map((e) => `<p><b>${esc(e.kind === 'trait' ? `${e.name} trait` : e.name)}</b> ${esc(e.desc)}</p>`).join('')}</div>` : '<p class="fine">Wear 2 of a set, or a Rare weapon with a trait, to switch one on.</p>'}`;
 }
 
 /** the Looks tab: every title (the ones you have to wear with a tap, and where each came from; the rest with

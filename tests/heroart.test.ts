@@ -12,7 +12,7 @@ import { gilded } from '../src/content/kits';
 import type { SlotId } from '../src/content/types';
 import { equip, fitsHero, newHero } from '../src/meta/gear';
 import { freshProfile } from '../src/meta/profile';
-import { HERO_ART_DATA as H, bodyId, composeLook, fitOfLook, layerOf, plainSlots, regionFn, warp, type Look } from '../src/ui/heroart';
+import { HERO_ART_DATA as H, bodyId, composeLook, fitOfLook, ghostPiece, layerOf, lookName, plainSlots, regionFn, warp, type Look } from '../src/ui/heroart';
 import { ART, heroSprite } from '../src/ui/art';
 import { ART as RUN_ART } from '../src/dungeon/assets.js';
 import { SPR, addHeroes, dropHeroes } from '../src/dungeon/art.js';
@@ -101,6 +101,28 @@ test('heroes in layers: what you wear in each slot is what you see, and a gilded
   // a hero being made wears the warband's regular pieces
   const maker = heroSprite({ race: 'dwarf', cls: 'warrior', sex: 'f', regular: p.warband.tank }, 'tank', p);
   assert.equal(ART[`${maker}_f`].svg, composeLook({ body: 'dwarf.warrior.f', gold: [], slots: plainSlots('tank', 'warrior', p.warband.tank) }, 'f')!.svg);
+});
+
+test('heroes in layers: a set preview draws a piece not found yet as a ghost, and the piece that just came falls into place', () => {
+  const look: Look = { body: 'dwarf.warrior.m', gold: [], slots: { weapon: 'gear.tank.weapon.2', helm: 'barrowguard.helm', shoulders: 'barrowguard.shoulders', chest: 'barrowguard.chest' } };
+  // the chest is drawn in several bands; as a ghost its parts come together, so one dashed line goes round all of it
+  assert.ok(new Set(H.layers['barrowguard.chest'].f.map((f) => f[0])).size > 1);
+  const ghost = composeLook({ ...look, ghost: ['chest'] }, 'f')!.svg;
+  assert.equal(ghost.split('class="ghost"').length - 1, 1, 'one ghost, for the chest');
+  assert.equal(composeLook({ ...look, ghost: ['chest', 'shoulders'] }, 'f')!.svg.split('class="ghost"').length - 1, 2);
+  // a ghost keeps none of the piece's own colours: one pale colour and a paler ink, inside a dashed line
+  const one = ghostPiece(H.layers['barrowguard.chest'].f.map((f) => f[2]), H.bodies['dwarf.warrior.m'].f.vb);
+  assert.match(one, /<mask /);
+  assert.match(one, /stroke-dasharray/);
+  assert.deepEqual([...new Set([...one.matchAll(/fill: (#[0-9A-Fa-f]{6})/g)].map((m) => m[1].toUpperCase()))].sort(), ['#8C84B8', '#C9C2E8']);
+  assert.equal(ghostPiece(['<path d="M0 0 L4 4" style="fill: none; stroke: #1E1A1A"/>'], [0, 0, 10, 10]), '', 'a part with nothing filled has no ghost');
+  // the piece that just came is drawn whole, ready to fall into place
+  const drop = composeLook({ ...look, ghost: ['chest'], drop: 'helm' }, 'f')!.svg;
+  assert.match(drop, /<g class="drop">/);
+  // a preview is its own look, and an everyday look keeps its name
+  assert.equal(lookName(look), lookName({ ...look, ghost: [] }));
+  assert.notEqual(lookName(look), lookName({ ...look, ghost: ['chest'] }));
+  assert.notEqual(lookName({ ...look, ghost: ['chest'] }), lookName({ ...look, ghost: ['chest'], drop: 'helm' }));
 });
 
 test('heroes in layers: the ink keeps its weight on every body, and a layered hero knows where its weapon is and how tall it stands', () => {

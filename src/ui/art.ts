@@ -12,7 +12,7 @@ import { RARITY, ROLE_SLOTS, gearKey } from '../content/gear';
 import { FOUNDERS, defaultSex } from '../content/folk';
 import type { Rar, RoleId, SlotId } from '../content/types';
 import { gildedOn, worn } from '../meta/gear';
-import type { Hero, Profile } from '../meta/profile';
+import { roleOf, type Hero, type Profile } from '../meta/profile';
 import { bodyId, composeLook, fitOfLook, layerOf, lookName, plainSlots, weaponByEffect, type HeroFitOut, type Look } from './heroart';
 
 type Sprite = { svg: string; vb: number[] };
@@ -189,6 +189,31 @@ function heroLook(h: HeroLike, role: RoleId, p?: Profile): Look {
 }
 /** The sprite a hero is drawn with: their body and what they wear in each slot, in layers. */
 export const heroSprite = (h: HeroLike, role: RoleId, p?: Profile): string => lookSprite(heroLook(h, role, p));
+const SET_LOOKS = new Map<string, string>();
+/** A hero in a whole set, as inline SVG: the pieces you have on them (gilded once their kit is yours), the rest
+ *  as ghosts, and the weapon they wear now. `drop` is the piece that has just come: it is drawn whole and falls
+ *  into place (styles.css). */
+export function setLookSvg(p: Profile, h: Hero, pieces: string[], o: { drop?: string } = {}): string {
+  const look = heroLook(h, roleOf(h), p), ghost: SlotId[] = [];
+  let drop: SlotId | undefined;
+  for (const id of pieces) {
+    const d = ITEMS[id];
+    if (!d) continue;
+    look.slots[d.slot] = layerOf(d);
+    look.gold = look.gold.filter((s) => s !== d.slot);
+    if (p.collection[id] && gildedOn(p, id)) look.gold.push(d.slot);
+    if (id === o.drop) drop = d.slot;
+    else if (!p.collection[id]) ghost.push(d.slot);
+  }
+  // composed once per look (a sheet redraws often), the last few kept
+  const full: Look = { ...look, ghost, drop }, key = lookName(full);
+  if (SET_LOOKS.has(key)) return SET_LOOKS.get(key) as string;
+  const pic = composeLook(full, 'f');
+  const svg = pic ? pic.svg.replace(/^<svg [^>]*?viewBox="([^"]+)"[^>]*>/, '<svg class="setlook" viewBox="$1" aria-hidden="true">') : '';
+  SET_LOOKS.set(key, svg);
+  if (SET_LOOKS.size > 12) SET_LOOKS.delete(SET_LOOKS.keys().next().value as string);
+  return svg;
+}
 /** A hero in plain gear at one rarity (test runs, the Crypt Trial), holding a boss weapon when the run hands
  *  one out (by its effect). */
 export function plainSprite(h: { race: string; cls: string; sex?: string }, role: RoleId, rar: Rar, unique?: string | null): string {

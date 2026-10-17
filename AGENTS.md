@@ -126,7 +126,8 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   and `emit`.
 - `src/meta`: TypeScript rules for everything that lasts: the profile and its migrations (heroes live here),
   loot (and when heroic opens), gear, achievements, what the collection log gives (`logs.ts`), the hearth,
-  the party's seats and the under-powered warning (`party.ts`), when your Warband opens (`warband.ts`), `vale.ts` (seeds, planter beds, harvests,
+  the party's seats and the under-powered warning (`party.ts`), when your Warband opens (`warband.ts`), a set's state for the screens
+  (`sets.ts`: pieces found and worn, each bonus's tag, which set a door and the armoury show), `vale.ts` (seeds, planter beds, harvests,
   ranks, brewing), `tips.ts` (which first-time tip the house and the Dungeons door show) and `brag.ts` (what a
   run had to show off, for the Share card).
 - `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, drawn on one canvas by
@@ -134,7 +135,8 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   `houseart.ts`, every room in each look, the Toadstool Workshop's in `houseworkshop.ts`, the cellar's doors
   `halldoors.ts`, your hero's name tag `nametag.ts`, its tour and tips as data `tours.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
   close-ups), the cauldron (`brew.ts`), the run (HUD and input; `runguard.ts` keeps a back swipe from leaving it) and the reveal. Sheets over them: the dungeons
-  (`dungeonsheet.ts`, its door's picture in `stage.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
+  (`dungeonsheet.ts`, its door's picture in `stage.ts`), a set drawn and said the same way everywhere (`setcard.ts`: the door's
+  Your set row and page, the log, the armoury, the chest), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
   (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`, an achievement's row and card in `achcard.ts`), settings (`settingssheet.ts`), a hero's gear in the armoury
   (`armoury.ts`; the card for the piece you pick in `armourycard.ts`), the satchel and the spot picker. A hero is a body wearing a layer per gear slot, put together from the save by `heroart.ts`. Toasts, sound (`sound.ts`: the embedded effects, each with its synthesised fallback) and music
   (`music.ts`: the streamed loops and the victory sting). The Share card (`sharecard.ts`: a moment drawn on a canvas)
@@ -151,7 +153,8 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   driven without a browser), `meta.test.ts`, `achievements.test.ts` (each says what to do, what it gives and
   where it went; every title's source; the kill count it came at), `brag.test.ts` (what a run had to show off),
   `power.test.ts` (seasons, Power and the under-powered warning), `vale.test.ts`, `tips.test.ts` (which first-time
-  tip shows when), `warband.test.ts` (when the Warband opens), `housemotion.test.ts` (how the house's bits move).
+  tip shows when), `warband.test.ts` (when the Warband opens), `housemotion.test.ts` (how the house's bits move), `sets.test.ts`
+  (a set's pieces found and worn, its bonuses' tags, which set a door and the armoury show).
 
 ## Commands
 

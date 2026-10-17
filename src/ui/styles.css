@@ -201,11 +201,13 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
    under it (it opens the Loot page: what finishing the log gives and what each role can get), then your
    brew. On desktop the loot has its own column instead of a page. */
 .dgx { display: grid; gap: 14px; grid-template-areas: "pic" "log" "you"; }
-.dgx > .dgx-art, .dgx > .dgx-door { grid-area: pic; } .dgx > .dgx-logbar { grid-area: log; } .dgx > .dgx-you { grid-area: you; }
+.dgx.has-set { grid-template-areas: "pic" "log" "set" "you"; }
+.dgx > .dgx-art, .dgx > .dgx-door { grid-area: pic; } .dgx > .dgx-logbar { grid-area: log; } .dgx > .dgx-setbar { grid-area: set; } .dgx > .dgx-you { grid-area: you; }
 .dgx-lootcol { grid-area: loot; display: none; }
 .dgx-you { display: grid; gap: 14px; align-content: start; min-width: 0; }
 @media (min-width: 820px) {
   .dgx { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto auto; grid-template-areas: "pic loot" "log loot" "you loot"; gap: 14px 22px; align-items: start; }
+  .dgx.has-set { grid-template-rows: auto auto auto auto; grid-template-areas: "pic loot" "log loot" "set loot" "you loot"; }
   /* the log's line stays under the picture, as a line rather than a way in: the loot is right beside it */
   .dgx.soon-dg { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto; grid-template-areas: "pic you"; }
   .dgx > .dgx-logbar { border-color: transparent; background: var(--panel-2); box-shadow: none; pointer-events: none; }
@@ -250,13 +252,16 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .r-healer { --rc: #6FBF4A; } .r-dps { --rc: #E04A3F; }
 .k-dungeon .sheet-head p b { color: var(--ink); font-weight: 500; }
 /* The door: your party at the dungeon's door. The inner box keeps the picture's shape, so each name plate
-   sits under its hero at any size; a short phone gets a shorter door rather than a scroll. */
+   sits under its hero at any size (on a short door it rises over their feet rather than hang out of the
+   picture); a short phone gets a shorter door rather than a scroll. */
 .dgx-door { display: grid; gap: 10px; min-width: 0; }
-.dgx-stage { position: relative; display: flex; justify-content: center; align-items: flex-end; height: clamp(240px, calc(100vh - 386px - var(--note, 0px)), calc((100vw - 46px) * var(--stage-k))); border: 3px solid var(--ink); border-radius: 18px; overflow: hidden; background: var(--stage-bg, #241C33); }
-@supports (height: 100svh) { .dgx-stage { height: clamp(240px, calc(100svh - 386px - var(--note, 0px)), calc((100vw - 46px) * var(--stage-k))); } }
+.dgx-stage { position: relative; display: flex; justify-content: center; align-items: flex-end; height: clamp(240px, calc(100vh - 386px - var(--note, 0px) - var(--set, 0px)), calc((100vw - 46px) * var(--stage-k))); border: 3px solid var(--ink); border-radius: 18px; overflow: hidden; background: var(--stage-bg, #241C33); }
+@supports (height: 100svh) { .dgx-stage { height: clamp(240px, calc(100svh - 386px - var(--note, 0px) - var(--set, 0px)), calc((100vw - 46px) * var(--stage-k))); } }
+/* the set's row under the log's line comes out of the door's height too */
+.dgx.has-set .dgx-door { --set: 66px; }
 /* Heroic's line under the door comes out of the door's height, so a short screen still fits */
 .dgx-door.heroic { --note: 30px; }
-@media (min-width: 820px) { .dgx-stage { height: auto; aspect-ratio: var(--stage-shape); min-height: 240px; max-height: calc(100vh - 426px - var(--note, 0px)); } }
+@media (min-width: 820px) { .dgx-stage { height: auto; aspect-ratio: var(--stage-shape); min-height: 240px; max-height: calc(100vh - 426px - var(--note, 0px) - var(--set, 0px)); } }
 .dgx-stage.heroic { box-shadow: 0 0 0 4px var(--gold); }
 .dgx-stage-in { position: relative; height: 100%; max-width: 100%; aspect-ratio: var(--stage-shape); }
 .dgx-stage-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -275,7 +280,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-ready .dgx-card-line { grid-template-columns: auto minmax(30px, 1fr); }
 .dgx-ready .dgx-bar > i { background: #E08A2C; }
 /* a hero's name plate sits under their feet; its button reaches up over the hero, so the hero is tappable too */
-.dgx-seat { position: absolute; top: calc(var(--feet) - 30%); width: 31%; height: calc(30% + 46px); translate: -50% 0; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; cursor: pointer; }
+.dgx-seat { position: absolute; top: calc(var(--feet) - 30%); width: 31%; height: min(calc(30% + 46px), calc(130% - var(--feet))); translate: -50% 0; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; cursor: pointer; }
 .dgx-plate { position: absolute; left: 50%; bottom: 5px; translate: -50% 0; max-width: 100%; box-sizing: border-box; min-height: 34px; padding: 0 9px; border: 3px solid var(--ink); border-radius: 999px; background: var(--rc); box-shadow: 0 3px 0 var(--ink); font-family: var(--f-display); font-size: 17px; line-height: 28px; color: #FFFFFF; text-shadow: 0 2px 0 var(--ink), 1px 0 0 var(--ink), -1px 0 0 var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dgx-seat.me .dgx-plate { box-shadow: 0 0 0 3px var(--gold), 0 3px 0 var(--ink); }
 .dgx-seat:active .dgx-plate { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
@@ -363,6 +368,46 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-go { display: grid; width: 24px; height: 24px; }
 .dgx-go svg { width: 100%; height: 100%; }
 .dgx-logbar.still { grid-template-columns: auto auto minmax(40px, 1fr) auto; border-color: transparent; background: var(--panel); box-shadow: none; cursor: default; }
+/* the set this dungeon drops for you, in a row as tall as the log's: its three pieces small (found ones lit,
+   missing ones dashed), "Your set" over its name, how many you have or a tick. It opens the Your set page. */
+.dgx-setbar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; min-height: 52px; padding: 4px 8px 4px 8px; border: 3px solid var(--ink); border-radius: 14px; background: var(--panel-2); box-shadow: 0 3px 0 var(--ink); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.dgx-setbar:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.dgx-set-pcs { display: flex; gap: 4px; }
+.dgx-set-pcs .tile { width: 32px; height: 32px; box-sizing: border-box; border: 2.5px solid var(--rc); outline: 2px solid var(--ink); border-radius: 8px; box-shadow: none; }
+.dgx-set-pcs .tile.miss { border-style: dashed; background: var(--panel-3); }
+.dgx-set-pcs .tile.miss svg { filter: grayscale(0.85); opacity: 0.45; }
+.dgx-set-name { display: grid; min-width: 0; line-height: 1.1; }
+.dgx-set-name small { font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.04em; color: var(--dim); }
+.dgx-set-name b { font-family: var(--f-display); font-weight: 400; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dgx-set-n { font-family: var(--f-mono); font-weight: 500; font-size: 12px; }
+.dgx-set-n.done { display: grid; place-items: center; width: 26px; height: 26px; border: 2px solid var(--ink); border-radius: 50%; background: #3E9B3A; color: #FFFFFF; }
+.dgx-set-n.done svg { width: 15px; height: 15px; }
+.dgx-setbar.done .dgx-set-pcs .tile { box-shadow: 0 0 0 2px var(--gold); }
+.dgx-setpage { display: grid; gap: 12px; min-width: 0; }
+/* A short phone: the log's line and the set's row share one row, so the door keeps its height and nothing
+   scrolls that didn't before. Each half says what it is in small letters over its picture; the set gets the
+   wider half, for its three pieces and its name. */
+@media (max-width: 819px) and (max-height: 760px) {
+  .dgx.has-set { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-areas: "pic pic" "log set" "you you"; column-gap: 10px; }
+  .dgx.has-set .dgx-door { --set: 0px; }
+  .dgx.has-set > .dgx-logbar, .dgx.has-set > .dgx-setbar { grid-template-rows: auto auto; align-content: center; gap: 4px 6px; padding: 4px 8px; }
+  .dgx.has-set > .dgx-logbar > span:first-child, .dgx-setbar .dgx-set-name small { font-family: var(--f-mono); font-size: 12px; line-height: 1.2; letter-spacing: 0.04em; text-transform: uppercase; color: var(--dim); white-space: nowrap; }
+  .dgx.has-set > .dgx-logbar { grid-template-columns: minmax(0, 1fr) auto; }
+  .dgx.has-set > .dgx-logbar > span:first-child { grid-area: 1 / 1 / 2 / 3; overflow: hidden; text-overflow: ellipsis; }
+  .dgx.has-set > .dgx-logbar > i { grid-area: 2 / 1 / 3 / 2; height: 10px; }
+  .dgx.has-set > .dgx-logbar > b { grid-area: 2 / 2 / 3 / 3; }
+  .dgx.has-set > .dgx-logbar > .dgx-prize, .dgx.has-set > .dgx-logbar > .dgx-go, .dgx.has-set > .dgx-setbar > .dgx-go { display: none; }
+  .dgx-setbar { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .dgx-setbar .dgx-set-name { display: contents; }
+  .dgx-setbar .dgx-set-name small { grid-area: 1 / 1 / 2 / 3; }
+  .dgx-setbar .dgx-set-n { grid-area: 1 / 3 / 2 / 4; justify-self: end; }
+  .dgx-setbar .dgx-set-n.done { width: 20px; height: 20px; }
+  .dgx-setbar .dgx-set-n.done svg { width: 12px; height: 12px; }
+  .dgx-setbar .dgx-set-pcs { grid-area: 2 / 1 / 3 / 2; gap: 3px; }
+  .dgx-setbar .dgx-set-pcs .tile { width: 20px; height: 20px; border-width: 2px; outline-width: 1.5px; border-radius: 6px; }
+  .dgx-setbar .dgx-set-name b { grid-area: 2 / 2 / 3 / 4; font-size: 14px; line-height: 20px; }
+}
+}
 .dgx-ilvl { margin: 0; font-family: var(--f-mono); font-size: 12px; color: var(--soft); }
 .dgx-ilvl b { color: var(--ink); font-weight: 500; }
 /* Normal or Heroic, on the picture; Heroic turns the picture's light gold */
@@ -416,11 +461,6 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-it small svg { width: 15px; height: 15px; }
 
 /* items, gear */
-.setbox { display: grid; gap: 6px; }
-.setline { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; align-items: start; font-size: 14px; line-height: 1.35; color: var(--soft); }
-.setline i { font-style: normal; font-family: var(--f-mono); font-size: 12px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--ink); display: grid; place-items: center; background: var(--panel); }
-.setline.on i { background: var(--green); color: #FFFFFF; }
-.setline.later { opacity: 0.6; }
 
 /* logs */
 .detail { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 12px; align-items: start; }
@@ -1259,22 +1299,6 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .ar-kind .gild-sw .sg { min-height: 34px; padding: 0 11px; font-size: 14px; box-shadow: 0 2px 0 var(--ink); }
 .ar-drop { margin: 0; padding: 3px 12px 0; font-family: var(--f-mono); font-size: 12px; line-height: 1.45; color: #6A4A8A; }
 .ar-card .pk-ss { border-bottom: 2px dashed var(--panel-3); }
-.ar-set { display: grid; gap: 7px; padding: 10px 12px; border-bottom: 2px dashed var(--panel-3); }
-.ar-set-h { display: flex; align-items: center; gap: 8px; margin: 0; }
-.ar-set-h b { font-family: var(--f-display); font-weight: 400; font-size: 15px; }
-.ar-set-h small { margin-left: auto; font-family: var(--f-mono); font-size: 12px; color: var(--soft); white-space: nowrap; }
-.ar-set-pcs { display: flex; gap: 5px; }
-.ar-set-pcs .tile { width: 30px; height: 30px; box-sizing: border-box; border: 2.5px solid var(--rc); border-radius: 8px; box-shadow: 0 0 0 2px var(--ink); }
-.ar-set-pcs .tile.off svg { filter: grayscale(1) brightness(0.55); opacity: 0.55; }
-.ar-set-pcs .tile.in { box-shadow: 0 0 0 2px var(--ink), 0 0 0 5px var(--gold); }
-.ar-set-pcs .tile.out { box-shadow: 0 0 0 2px var(--ink), 0 0 0 5px var(--red); }
-.ar-b { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; align-items: start; margin: 0; font-size: 15px; line-height: 1.35; color: var(--soft); }
-.ar-b > i { display: grid; place-items: center; width: 24px; height: 24px; border: 2px solid var(--ink); border-radius: 50%; background: var(--panel); font: normal 400 12px var(--f-mono); }
-.ar-b em { display: inline-block; margin-right: 6px; padding: 0 6px; border: 2px solid var(--ink); border-radius: 999px; background: var(--panel-2); color: var(--soft); font: normal 500 11px/16px var(--f-mono); letter-spacing: 0.04em; text-transform: uppercase; vertical-align: 1px; }
-.ar-b.on > i { background: #3E9B3A; color: #FFFFFF; } .ar-b.on em { background: #E8F6DF; color: #2E6B2A; }
-.ar-b.turnon { color: var(--ink); } .ar-b.turnon > i, .ar-b.turnon em { background: var(--gold); color: var(--ink); }
-.ar-b.turnoff { color: #A3302A; } .ar-b.turnoff > i, .ar-b.turnoff em { background: var(--red); color: #FFFFFF; }
-.ar-b.off, .ar-b.later { opacity: 0.75; }
 .ar-fx { display: grid; gap: 7px; margin: 0; padding: 10px 12px; list-style: none; border-bottom: 2px dashed var(--panel-3); }
 .ar-fx li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; align-items: start; font-size: 15px; line-height: 1.35; color: var(--soft); }
 .ar-fx li > i { display: grid; place-items: center; width: 24px; height: 24px; border: 2px solid var(--ink); border-radius: 50%; color: #FFFFFF; font: normal 400 15px/1 var(--f-display); }
@@ -1524,11 +1548,6 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .lb-set-cap .btn svg { width: 18px; height: 18px; }
 .lb-stamp { position: absolute; z-index: 2; top: 12px; right: 12px; padding: 3px 10px; border: 2px solid var(--ink); border-radius: 8px; background: #D8FFB8; color: var(--ink); font: normal 400 15px var(--f-display); transform: rotate(4deg); box-shadow: 0 2px 0 var(--ink); }
 .lb-look { margin: -6px 2px 0; font-style: italic; font-size: 15px; line-height: 1.35; color: var(--soft); }
-.lb-bonus { display: grid; gap: 8px; padding: 12px; border: 3px solid var(--ink); border-radius: 16px; background: var(--panel-2); }
-.lb-bonus p { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px; align-items: start; margin: 0; font-size: 15px; line-height: 1.35; color: var(--soft); }
-.lb-bonus p.on { color: var(--ink); }
-.lb-bonus i { display: grid; place-items: center; width: 28px; height: 28px; border: 2.5px solid var(--ink); border-radius: 50%; background: var(--panel); color: var(--ink); font: normal 400 14px var(--f-display); }
-.lb-bonus p.on i { background: var(--gold); }
 .lb-pieces { display: grid; gap: 8px; }
 .lb-pc { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 10px 12px 8px; border: 3px solid var(--ink); border-radius: 14px; background: var(--panel); color: var(--ink); box-shadow: 0 3px 0 var(--ink); text-align: left; cursor: pointer; }
 .lb-pc.miss { border-style: dashed; background: var(--panel-2); box-shadow: none; }
@@ -1587,12 +1606,6 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .pk-s .cmp-d { margin-top: 2px; font-size: 12px; padding: 1px 7px; }
 .pk-fx { margin: 0; font-size: 15px; line-height: 1.4; color: var(--soft); }
 .pk-fx b { margin-right: 4px; font-family: var(--f-display); font-weight: 400; font-size: 16px; color: var(--ink); }
-.pk-set { gap: 6px; padding: 9px 11px; }
-.pk-set p { grid-template-columns: 24px minmax(0, 1fr); font-size: 14px; line-height: 1.32; }
-.pk-set i { width: 24px; height: 24px; font-size: 13px; }
-.pk-set .pk-set-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.pk-set-h b { font-family: var(--f-display); font-weight: 400; font-size: 16px; color: var(--ink); }
-.pk-set-h small { font-family: var(--f-mono); font-size: 11px; color: var(--dim); }
 .pk-desc { margin: 0; font-size: 16px; line-height: 1.45; color: var(--soft); }
 .pk-home { margin: 0; font-family: var(--f-mono); font-size: 12px; color: #2E6B2A; }
 .pk-acts { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -2060,3 +2073,89 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .lc-tap { margin-top: auto; padding: 2px 8px; border-radius: 999px; background: rgba(30, 26, 26, 0.08); border: 1.5px solid rgba(30, 26, 26, 0.22); font-family: var(--f-mono); font-size: 10px; font-weight: 600; color: var(--soft); }
 .lc.up:hover .front { transform: rotateY(180deg) translateY(-2px); }
 
+/* A set, the same everywhere (setcard.ts): its name, a set of 3, and its two bonuses, each with its tag (On, Put
+   them on, Turns on, Turns off, or how many more). On a light panel by default; on the dark stage on desktop. */
+.sw { display: grid; gap: 8px; }
+.sw .sw-h { margin: 0; font-family: var(--f-body); font-size: 16px; line-height: 1.3; color: var(--ink); }
+.sw .sw-h b { font-family: var(--f-display); font-weight: 400; font-size: 18px; }
+.sw-n { display: inline-block; margin-left: 4px; padding: 0 8px; border: 2px solid var(--ink); border-radius: 999px; background: var(--panel); font: normal 500 12px/18px var(--f-mono); vertical-align: 2px; }
+.sw .sw-b { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; align-items: start; margin: 0; font-family: var(--f-body); font-size: 15px; line-height: 1.35; color: var(--soft); }
+.sw-b > i { display: grid; place-items: center; width: 28px; height: 28px; box-sizing: border-box; border: 2.5px solid var(--ink); border-radius: 50%; background: var(--panel); color: var(--ink); font: normal 400 14px var(--f-display); }
+.sw-b b { color: var(--ink); font-weight: 600; }
+.sw-b > em { align-self: center; padding: 0 7px; border: 2px solid var(--ink); border-radius: 999px; background: var(--panel-2); color: var(--soft); font: normal 500 12px/18px var(--f-mono); letter-spacing: 0.02em; text-transform: uppercase; white-space: nowrap; }
+.sw .sw-b.on, .sw .sw-b.turnon { color: var(--ink); }
+.sw-b.on > i { background: var(--gold); }
+.sw-b.on > em { background: #3E9B3A; color: #FFFFFF; }
+.sw-b.ready > i, .sw-b.ready > em { background: #FFE08A; color: var(--ink); }
+.sw-b.turnon > i, .sw-b.turnon > em { background: var(--gold); color: var(--ink); }
+.sw .sw-b.turnoff { color: #A3302A; }
+.sw-b.turnoff > i, .sw-b.turnoff > em { background: var(--red); color: #FFFFFF; }
+.sw .sw-b.later { opacity: 0.6; }
+/* the words in a light box of their own (a set's page in the log, the closer look) */
+.sw-box { padding: 12px; border: 3px solid var(--ink); border-radius: 16px; background: var(--panel-2); }
+.sw-box.pk-set { padding: 9px 11px; }
+.pk-set .sw .sw-b { font-size: 14px; line-height: 1.32; }
+/* its three pieces: a found one lit and ticked (ringed gold while worn), a missing one dashed with its rate */
+.st-pcs { display: flex; gap: 8px; }
+.st-pc { display: grid; justify-items: center; gap: 4px; padding: 0; border: 0; background: none; color: inherit; font: inherit; }
+button.st-pc { cursor: pointer; }
+button.st-pc:active .tile { transform: scale(0.92); }
+.st-pc .tile { width: 40px; height: 40px; box-sizing: border-box; border: 2.5px dashed var(--rc); outline: 2px solid var(--ink); border-radius: 8px; background: var(--panel-3); }
+.st-pc .tile svg { filter: grayscale(0.85); opacity: 0.5; }
+.st-pc.got .tile { border-style: solid; background: none; }
+.st-pc.got .tile svg { filter: none; opacity: 1; }
+.st-pc.on .tile { box-shadow: 0 0 0 4px var(--gold); }
+.st-pc.new .tile { box-shadow: 0 0 0 4px #FFE08A, 0 0 14px 4px rgba(255, 224, 138, 0.6); }
+.st-pc small { font: normal 500 12px/1 var(--f-mono); color: var(--dim); }
+.st-pc.got small { color: #2E6B2A; }
+.st-pc small svg { width: 13px; height: 13px; }
+/* The big one: your hero in the whole set on a dark stage, the pieces you haven't found as ghosts; beside it its
+   name, how many you have and its pieces; under it the words and where the pieces drop. */
+.ss { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); grid-template-areas: 'stage side' 'words words' 'where where'; border: 3px solid var(--ink); border-radius: 16px; overflow: hidden; background: #2E2A55; box-shadow: 0 3px 0 var(--ink); }
+.ss.done { box-shadow: 0 0 0 3px var(--gold), 0 3px 0 var(--ink); }
+.ss-stage { grid-area: stage; position: relative; display: grid; place-items: end center; height: 190px; background: radial-gradient(ellipse 60% 22% at 50% 93%, rgba(242, 194, 48, 0.3) 0, rgba(242, 194, 48, 0) 100%), radial-gradient(circle at 50% 45%, rgba(143, 214, 255, 0.16) 0, rgba(143, 214, 255, 0) 60%); }
+.ss-stage .setlook { position: relative; z-index: 1; display: block; height: 172px; width: auto; max-width: 100%; margin-bottom: 8px; overflow: visible; filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.3)); }
+.ss-floor { position: absolute; left: 50%; bottom: 6px; width: 110px; height: 14px; transform: translateX(-50%); border-radius: 50%; background: rgba(0, 0, 0, 0.32); }
+.ss-stamp { position: absolute; z-index: 2; top: 10px; left: 10px; padding: 1px 8px; border: 2px solid var(--ink); border-radius: 8px; background: #D8FFB8; color: var(--ink); font: normal 400 14px/1.3 var(--f-display); transform: rotate(-4deg); box-shadow: 0 2px 0 var(--ink); }
+.ss-side { grid-area: side; display: grid; align-content: center; justify-items: start; gap: 6px; min-width: 0; padding: 12px 12px 12px 4px; color: #FFF8EC; }
+.ss .ss-eye { margin: 0; font: normal 500 12px/1.3 var(--f-mono); letter-spacing: 0.04em; text-transform: uppercase; color: #CFC3DD; }
+.ss-side h3 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 26px; line-height: 1; color: #FFFFFF; overflow-wrap: anywhere; }
+.ss .ss-n { display: flex; align-items: baseline; gap: 6px; margin: 0; font-family: var(--f-mono); font-size: 14px; color: #E9DDCB; }
+.ss-n b { font-family: var(--f-display); font-weight: 400; font-size: 23px; color: var(--gold); }
+.ss-n svg { width: 16px; height: 16px; align-self: center; color: #9BE15D; }
+.ss-side .st-pc small { color: #CFC3DD; }
+.ss-side .st-pc.got small { color: #9BE15D; }
+.ss > .sw { grid-area: words; padding: 12px 12px 10px; border-top: 3px solid var(--ink); background: var(--panel-2); }
+.ss .ss-where { grid-area: where; margin: 0; padding: 0 12px 12px; background: var(--panel-2); font: normal 400 12px/1.4 var(--f-mono); color: var(--dim); }
+/* without its stage (the chest draws your hero big above it): a light card, its pieces and count in a row */
+.ss.flat { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'side' 'words' 'where'; background: var(--panel); }
+.ss.flat .ss-side { grid-auto-flow: column; justify-content: space-between; align-items: center; padding: 10px 12px 0; color: var(--ink); }
+.ss.flat .ss-n { color: var(--soft); }
+.ss.flat .ss-n b { color: var(--ink); }
+.ss.flat .ss-n svg { color: #3E9B3A; }
+.ss.flat .st-pc small { color: var(--dim); } .ss.flat .st-pc.got small { color: #2E6B2A; }
+.ss.flat > .sw { border-top: 0; background: none; }
+@media (min-width: 700px) {
+  .ss:not(.flat) { grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: auto auto 1fr; grid-template-areas: 'stage side' 'stage words' 'stage where'; }
+  .ss-stage { height: 100%; min-height: 250px; border-right: 3px solid var(--ink); }
+  .ss-stage .setlook { height: 220px; }
+  .ss-side { padding: 14px 14px 6px; }
+  /* the words on the dark stage: light, and every line as clear as the next */
+  .ss:not(.flat) > .sw { border-top: 0; background: none; padding: 4px 14px 8px; }
+  .ss:not(.flat) .sw .sw-h, .ss:not(.flat) .sw-b b { color: #FFFFFF; }
+  .ss:not(.flat) .sw .sw-b { color: #E9DDCB; }
+  .ss:not(.flat) .sw .sw-b.turnoff { color: #FFB4A8; }
+  .ss:not(.flat) .sw-b.off > i, .ss:not(.flat) .sw-b.off > em { border-color: #CFC3DD; background: transparent; color: #E9DDCB; }
+  .ss:not(.flat) .ss-where { align-self: end; padding: 0 14px 14px; background: none; color: #CFC3DD; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .setlook .drop { animation: standdrop 1s cubic-bezier(0.2, 1.4, 0.4, 1) 0.35s both; }
+}
+.slot-moment .sm-art.hero { aspect-ratio: auto; width: auto; height: min(210px, 26vh); }
+.slot-moment .sm-art.hero .setlook { display: block; height: 100%; width: auto; overflow: visible; filter: drop-shadow(0 5px 0 rgba(0, 0, 0, 0.35)); }
+.slot-moment .ss { position: relative; width: 100%; box-sizing: border-box; text-align: left; box-shadow: 0 4px 0 var(--ink); }
+/* a set piece's moment says more, so on a short screen your hero is drawn a little smaller, and if it still
+   doesn't fit the moment scrolls (from its top) rather than cut its ends off */
+.slot-moment { overflow-y: auto; place-items: safe center; }
+.slot-moment .rays { position: fixed; }
+@media (max-height: 760px) { .slot-moment .sm-art.hero { height: min(170px, 21vh); } .slot-moment .bm { gap: 6px; } }
