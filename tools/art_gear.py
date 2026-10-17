@@ -286,32 +286,64 @@ def pair_scale(svg, k, px, py):
 # ---------------------------------------------------------------- art/heroes.json
 def class_modules():
     """each class drawn in layers, and the tool that draws its gear"""
-    import art_gear_tank, art_gear_healer, art_gear_mage, art_gear_rogue
-    return {'warrior': art_gear_tank, 'cleric': art_gear_healer, 'mage': art_gear_mage, 'rogue': art_gear_rogue}
+    import art_gear_tank, art_gear_healer, art_gear_mage, art_gear_rogue, art_gear_ranger
+    return {'warrior': art_gear_tank, 'cleric': art_gear_healer, 'mage': art_gear_mage, 'rogue': art_gear_rogue,
+            'ranger': art_gear_ranger}
+
+
+def all_bodies():
+    """every body, by id: a race, class and sex (dwarf.warrior.m), and a pose's own (dwarf.warrior.m@greataxe)"""
+    import art_bodies, art_bodies_ranger
+    return {**art_bodies.BODIES, **art_bodies_ranger.BODIES}
+
+
+def pose_of(bid):
+    """the pose a body stands in (the warrior's Greataxe), or None"""
+    return bid.split('@')[1] if '@' in bid else None
 
 
 def classes():
-    """every class's gear, by look id; each layer knows its class"""
+    """every class's gear, by look id; each layer knows its class. A look two classes wear (the ranger wears what
+    the code calls healer gear, while the cleric still does) is kept once for each: the first class's under the
+    look id, the later one's under <look id>@<class>. A pose's own layers for the slots it changes (the
+    warrior's Greataxe: the axe in both hands, the shield on his back) are kept under <look id>@<pose>.
+    wear() picks a body's: its pose's, then its class's, then the look's own (src/ui/heroart.ts does the same)."""
     out = {}
     for cls, mod in class_modules().items():
         for lid, L in mod.layers().items():
-            out[lid] = {**L, 'cls': cls}
+            out[lid if lid not in out else f'{lid}@{cls}'] = {**L, 'cls': cls}
+        for pose, ls in (mod.poses() if hasattr(mod, 'poses') else {}).items():
+            for lid, L in ls.items():
+                out[f'{lid}@{pose}'] = {**L, 'cls': cls, 'pose': pose}
     return out
+
+
+def wear(layers, lid, cls, pose=None):
+    """the layer a body of this class, standing in this pose, wears for a look"""
+    for key in ([f'{lid}@{pose}'] if pose else []) + [f'{lid}@{cls}', lid]:
+        if key in layers:
+            return layers[key]
+    raise KeyError(lid)
+
+
+def worn_by(layers, cls, pose=None):
+    """every layer a body of this class and pose can wear: one for each of its class's looks"""
+    return [wear(layers, lid, cls, pose) for lid, L in layers.items() if L['cls'] == cls and not L.get('pose')]
 
 
 def sheets(data):
     """a contact sheet per class (for tools/art_sheet.py): every body in its class's SHEET outfits, front and
-    back, as composed from art/heroes.json, with a set's outfit gilded too"""
-    import art_bodies
+    back, as composed from art/heroes.json, with a set's outfit gilded too; a pose's bodies wear the same outfits"""
     out = {}
+    bodies = all_bodies()
     for cls, mod in class_modules().items():
         sheet = {}
-        for bid, make in art_bodies.BODIES.items():
+        for bid, make in bodies.items():
             body = make()
             if body['cls'] != cls:
                 continue
             for name, ids in mod.SHEET.items():
-                worn = {data['layers'][i]['slot']: data['layers'][i] for i in ids}
+                worn = {L['slot']: L for L in (wear(data['layers'], i, cls, pose_of(bid)) for i in ids)}
                 gold = [(name, ())] + ([(name + '_gilded', tuple(worn))] if any(not i.startswith('gear.') for i in ids) and name != 'mixed' else [])
                 for label, gl in gold:
                     for v in ('f', 'b'):
@@ -326,12 +358,12 @@ def head_top(body, view, helms):
 
 
 def build():
-    import art_bodies
-    layers = classes()
     bodies = {}
-    for bid, make in art_bodies.BODIES.items():
+    raw = all_bodies()
+    layers = classes()
+    for bid, make in raw.items():
         body = make()
-        mine = [L for L in layers.values() if L['cls'] == body['cls']]
+        mine = worn_by(layers, body['cls'], pose_of(bid))
         helms = [L for L in mine if L['slot'] == 'helm']
         bodies[bid] = {'cls': body['cls'], 'fem': body['fem'], **{v: {
             'vb': fit_box(body, v, mine), 'top': round(head_top(body, v, helms), 1), 'fit': body[v]['fit'],

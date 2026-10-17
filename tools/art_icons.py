@@ -690,6 +690,10 @@ T['tome_grand'] = tile('#3B2B54', glow(32, 33, 31, '#FFB547', 0.25) + glow(32, 3
                               ''.join(F(d, '#F2C230', 2.4) for d in ('M-15 -25 H-6 L-15 -16 Z', 'M20 -25 H11 L20 -16 Z', 'M-15 23 H-6 L-15 14 Z', 'M20 23 H11 L20 14 Z')) +
                               C(2.5, -1, 8, '#F2C230', 2.6) + F(burst(2.5, -1, (5.5,), 2), '#E9DDFF', 2) + P('M0.5 -4 L1.5 -5', '#FFFFFF', 1.6)))
 
+# ---- the duo rework: the ranger's buttons, specs, capstones and gear, the warrior's Sword and Greataxe (art_icons_duo.py)
+import art_icons_duo  # noqa: E402
+T.update(art_icons_duo.tiles(sys.modules[__name__]))
+
 
 if __name__ == '__main__':
     os.makedirs(OUT, exist_ok=True)
