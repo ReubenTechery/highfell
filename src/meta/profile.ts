@@ -25,7 +25,7 @@ import { settleSpots } from './hearth';
 import { opened } from './logs';
 import { warbandOpen } from './warband';
 
-export const PROFILE_VERSION = 11;
+export const PROFILE_VERSION = 12;
 /** Shared gear climbs to Rare. Epic is earned on the hero. */
 export const WARBAND_CAP: Rar = 2;
 
@@ -117,6 +117,9 @@ export interface Profile {
   vale: ValeState;
   /** your XP, from every kill and chest since v11: the level it makes is yours, every hero's talent points */
   xp: number;
+  /** who takes the other seat on Normal (the duo rework, v12): 'cls:<class>' for a bot of that class, or one of your
+   *  heroes' ids; null is the bot that fills the gap (meta/party.ts companionOf) */
+  companion: string | null;
 }
 
 const blankSlots = (): Record<SlotId, RegularSlot> => Object.fromEntries(SLOT_IDS.map((s) => [s, { rar: 0 as Rar }])) as Record<SlotId, RegularSlot>;
@@ -135,6 +138,7 @@ export function freshProfile(now = Date.now()): Profile {
     seen: {},
     vale: freshVale(),
     xp: 0,
+    companion: null,
   };
 }
 export const emptyBed = (): BedState => ({ seed: null, grown: 0, shimmer: false });
@@ -243,6 +247,9 @@ const MIGRATIONS: Record<number, (raw: any) => any> = {
     const xp = retroXp(d), counters = obj(d.counters);
     return { ...d, xp, counters: { ...counters, ...(xp > 0 ? { 'xp.retro': xp, level: Math.max(num(counters.level, 0), levelOf(xp)) } : {}) }, roster: (Array.isArray(d.roster) ? d.roster : []).map((h: unknown) => ({ ...obj(h), spec: null, talents: {} })) };
   },
+  /* v11 ran three seats. From v12 (the duo rework) a run is two heroes, and the save keeps who takes the other seat:
+     nobody chosen yet, so the bot that fills the gap. */
+  11: (d) => ({ ...d, companion: null }),
 };
 
 /** what a clear paid before XP, before its dungeon's multiplier and without its bosses: about its trash, the
@@ -333,6 +340,7 @@ export function normalize(d: any, now = Date.now()): Profile {
   for (const [k, v] of Object.entries(obj(d.seen))) p.seen[k] = num(v, 0);
   p.vale = normVale(d.vale);
   p.xp = Math.max(0, Math.floor(num(d.xp, 0)));
+  p.companion = str(d.companion);
   return p;
 }
 

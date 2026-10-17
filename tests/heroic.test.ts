@@ -246,7 +246,7 @@ test('saves: a v8 gilded piece becomes the plain piece plus its kit, both logs k
   v8.achievements = { 'barrow.log': { at: 400 } };
   const p = migrate(v8);
   assert.equal(p.v, PROFILE_VERSION);
-  assert.equal(PROFILE_VERSION, 11);
+  assert.equal(PROFILE_VERSION, 12);
   // a gilded piece is the plain piece plus its kit
   assert.deepEqual(p.collection['barrowguard.helm'], { n: 2, kc: 7, at: 100 }, 'a piece you only had gilded is yours plain now');
   assert.deepEqual(p.collection['barrowguard.helm.gilded'], { n: 2, kc: 7, at: 100 }, 'and its kit');

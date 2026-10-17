@@ -37,4 +37,6 @@ export const TUT_BY_CLASS: Record<ClassId, Record<string, TutStep>> = {
     block: { slot: 'a4', icon: 'shadowstep', step: '4 / 5', title: 'Shadowstep Behind', badge: 'Gold cone ➔ Blink behind boss', text: 'Shadowstep behind him while the Tank parries his swing: two more points!' },
     stagger: { slot: 'a2', icon: 'ambush', step: '5 / 5', title: 'Boss Exposed!', badge: 'Five points + poisoned + Exposed!', text: 'Spend all five on Shadowstrike for a guaranteed massive crit!' },
   },
+  // the ranger's lessons come with the duo rework's teaching stream (docs/duo-agents.md)
+  ranger: {},
 };

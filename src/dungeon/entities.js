@@ -9,6 +9,7 @@ import { breakCage, cutChain, interruptCast } from './mobs.js';
 import { onPerfectBlock } from './buttons.js';
 import { spikes, talentHitMul, talentStats, wallMul } from './specs.js';
 import { killXp } from '../content/xp';
+import { dodged, duelDamage, heroFalls } from './duo.js';
 
 /* play a sound; during the pet walkout everything is hushed except what forces through */
 export const sfx = (n, v, force) => { if (S && !S.quiet && (!S.hush || force)) HOOKS.sound(n, v); };
@@ -37,7 +38,7 @@ export const brewFx = (id) => (id && BREW_FX[id]) || {};
    stats added up (meta/talents.ts talentLoadout; specs.js turns them into multipliers). Bots have none.
    name is your hero's (a bot's is its role's); sprite is the hero's picture for this run, composed in layers by the
    run screen, and fit its weapon glow and head top (render.js heroFit). */
-export function makeHero(role, isPlayer, loadout) {
+export function makeHero(role, isPlayer, loadout, seat = 0) {
   const R = ROLES[role];
   const L = loadout || {};
   const cls = L.cls || (role === 'tank' ? 'warrior' : role === 'healer' ? 'cleric' : 'mage');
@@ -47,7 +48,8 @@ export function makeHero(role, isPlayer, loadout) {
   const maxHp = Math.round(R.hp * hpMultiplier(gearPower) * might * ts.hp);
   const B = brewFx(L.brew);
   return {
-    id: 'h_' + role, kind: 'hero', role, cls, name: L.name || R.name, sprite: L.sprite || '', fit: L.fit || null, isPlayer, x: 0, y: 0, r: R.r,
+    // known by its seat and class (the duo rework, src/dungeon/duo.js); role is the old trinity's
+    id: 'h' + seat, seat, kind: 'hero', role, cls, name: L.name || R.name, sprite: L.sprite || '', fit: L.fit || null, isPlayer, x: 0, y: 0, r: R.r,
     face: -Math.PI / 2, back: true, flip: false, hp: maxHp, maxHp, armor: R.armor, power, gearPower, might,
     traits: new Set(L.traits || []), bonuses: new Set(L.bonuses || []), unique: L.unique || null,
     spec: L.spec || null, tal: new Set(L.tal || []), ts,
@@ -234,7 +236,7 @@ export const PERFECT_WINDOW = 0.5;
 export function hurtHero(h, amt, src, o) {
   o = o || {};
   if (!h.alive || S.over) return 0;
-  if (h.iframe > 0 && o.dodge !== false) { if (!o.quiet) { if (h.isPlayer) fxText(h.x, h.y - 80, 'Dodged', '#DDF3FF', 18); h.stats.dodges++; } return 0; }
+  if (h.iframe > 0 && o.dodge !== false) { if (!o.quiet) { if (h.isPlayer) fxText(h.x, h.y - 80, 'Dodged', '#DDF3FF', 18); h.stats.dodges++; } dodged(h, src, o); return 0; }
   if (o.ground && h.st.air > 0) return 0;
   // the dungeon's tuning: everything that hurts a hero hits this much harder
   let a = amt * S.tune.hit;
@@ -324,7 +326,7 @@ export function hurtHero(h, amt, src, o) {
     if (h.isPlayer) { shake(a >= 100 ? 7 : 3); S.hurtFlash = Math.min(1, S.hurtFlash + a / 300); }
     // counts hits by kind (handHits, ringHits, bombHits, ...): the flawless achievements read these from runSummary
     if (o.kind) { S.stats[o.kind + 'Hits'] = (S.stats[o.kind + 'Hits'] || 0) + 1; emit({ type: 'hazard.hit', kind: o.kind, player: !!h.isPlayer }); }
-    if (h.hp <= 0) killHero(h);
+    if (h.hp <= 0) heroFalls(h, src);
   }
   return a;
 }
@@ -398,7 +400,7 @@ export function hurtMob(m, amt, src, o) {
   // small mobs squash for two frames and are nudged back (only drawn)
   if (F.flinch && !m.isBoss && !m.M.big) { m.squash = 0.035; if (src) m.nudgeA = Math.atan2(m.y - src.y, m.x - src.x); }
   if (src && src.kind === 'hero') {
-    aggro(m, src, 0); addThreat(m, src, a * src.threatMod * (o.threat || 1)); src.stats.dmg += a;
+    aggro(m, src, 0); addThreat(m, src, a * src.threatMod * (o.threat || 1)); src.stats.dmg += a; duelDamage(src, a, crit);
     if (o.auto) src.stats.auto = (src.stats.auto || 0) + a;
     // what did it: the sims break a hero's damage down by button (npm run sim)
     if (o.key) { const by = src.stats.by || (src.stats.by = {}); by[o.key] = (by[o.key] || 0) + a; }

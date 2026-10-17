@@ -1,12 +1,12 @@
 /** The three seats in every party, and what each one can press. Four buttons each, plus the swipe dodge. */
-import type { AbilityDef, AbilitySlot, GearKey, RoleDef, RoleId } from './types';
+import type { AbKey, AbilityDef, AbilitySlot, GearKey, RoleDef, RoleId } from './types';
 import { CLASSES, type ClassId } from './folk';
 
 export const ORDER: RoleId[] = ['tank', 'healer', 'dps'];
 export const SLOTS_AB: AbilitySlot[] = ['a1', 'a2', 'a3', 'a4'];
 
-export const abKey = (h: RoleId | GearKey | { role?: RoleId; cls?: string }): GearKey =>
-  typeof h === 'string' ? h : h.cls === 'rogue' ? 'rogue' : (h.role ?? CLASSES[(h.cls as ClassId) || 'warrior']?.role ?? 'dps');
+export const abKey = (h: RoleId | AbKey | { role?: RoleId; cls?: string }): AbKey =>
+  typeof h === 'string' ? h : h.cls === 'rogue' ? 'rogue' : h.cls === 'ranger' ? 'ranger' : (h.role ?? CLASSES[(h.cls as ClassId) || 'warrior']?.role ?? 'dps');
 
 export const ROLES: Record<RoleId, RoleDef> = {
   tank: { id: 'tank', name: 'Brannoc', title: 'Tank', hp: 1250, armor: 0.44, speed: 176, r: 18, threat: 1.3, color: '#4F6FA8',
@@ -19,7 +19,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
 
 /* Each class has a filler (no cooldown, once a beat), a payoff it sets up, and two cooldowns. Charge and Shadowstep
    move you, so they never wait for the beat; the shield is held. What each button does is src/dungeon/buttons.js. */
-export const AB: Record<GearKey, Record<AbilitySlot, AbilityDef>> = {
+export const AB: Record<AbKey, Record<AbilitySlot, AbilityDef>> = {
   tank: {
     a1: { key: 'cleave', name: 'Cleave', cd: 0, filler: true, hit: 60, desc: 'A wide axe sweep through everything in front of you, every beat. Primed, it Crushes for 1.6×.', combo: 'The Cleave after a Charge, a Slam, a perfect block or a Cleave crit Crushes, and a stunned, Staggered or Exposed foe is always Crushed' },
     a2: { key: 'charge', name: 'Charge', cd: 8, offBeat: true, desc: 'Rush a mob and shoulder-slam it: it stuns the foes round it, stops their casts and primes Crush. A boss staggers.', combo: 'On a boss: a 1s Stagger, not a stun (he keeps attacking), and it still stops his cast' },
@@ -44,10 +44,18 @@ export const AB: Record<GearKey, Record<AbilitySlot, AbilityDef>> = {
     a3: { key: 'flurry', name: 'Fan of Blades', cd: 6.0, desc: 'Whirl knives round you: they stop casts, refresh venom and add a point if they hit.', combo: 'Your interrupt for a pack’s casters' },
     a4: { key: 'shadowstep', name: 'Shadowstep', cd: 8, offBeat: true, desc: 'Blink behind your target, strike it and stop its cast. You swing 35% faster for 3.8 seconds and gain two points.', combo: 'Close the gap, stop a cast, and bank points' },
   },
+  // the ranger (docs/duo.md, names are drafts): the plumbing's placeholder; the ranger's stream gives it its numbers
+  // and builds the buttons in src/dungeon/ranger.js. No hero can be a ranger until CLASS_ORDER offers it.
+  ranger: {
+    a1: { key: 'quickshot', name: 'Quick Shot', cd: 0, filler: true, hit: 60, desc: 'An arrow every beat that marks its foe.', combo: 'Three marks make a Longshot' },
+    a2: { key: 'longshot', name: 'Longshot', cd: 0, desc: 'On a foe with three marks, or an Exposed one, a drawn arrow that hits hard and goes through to the foes behind it.', combo: 'Your payoff' },
+    a3: { key: 'pinshot', name: 'Pin Shot', cd: 8, desc: 'An arrow that stops a cast and Exposes the caster.', combo: 'Your interrupt' },
+    a4: { key: 'snare', name: 'Snare', cd: 10, aim: true, range: 520, desc: 'Throw a trap that roots whatever walks in.', combo: 'Lay it where your mate drags the pack' },
+  },
 };
 
 /** a class's filler: its button and what it does */
-export function fillerOf(k: GearKey): { slot: AbilitySlot; def: AbilityDef } {
+export function fillerOf(k: AbKey): { slot: AbilitySlot; def: AbilityDef } {
   const slot = SLOTS_AB.find((s) => AB[k][s].filler) || 'a1';
   return { slot, def: AB[k][slot] };
 }

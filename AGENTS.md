@@ -153,7 +153,8 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   rendering to a canvas, `walkout.js` (the lantern tells; `cuckoo.js`, Thimblebriar's clock) and `coach.js`
   (which button's moment has come, for a class's first runs). `buttons.js` is what each class's four buttons and Mend
   do (the fillers and their payoffs; the rogue's are in `rogue.js`), and `heroes.js` fires them. `specs.js` is what
-  every talent does in a fight, by its id, and `fire.js` the Fire mage's four buttons and Burn. `press.js` is the beat and the press queue: every
+  every talent does in a fight, by its id, and `fire.js` the Fire mage's four buttons and Burn. `duo.js` is the duo
+  rework's contracts: the pair (`heroAt`, `mateOf`), the duel card's counts, combos, going down and dodges. `press.js` is the beat and the press queue: every
   press of yours goes through it, and bots ask its `ready()` before they press. `bombs.js` is Thimblebriar's bombs as a shared
   part (any hit knocks one back, a perfect block bats one back, the Sticky Bomb) and `gadgets.js` its sets'
   bonuses and boss weapons. A dungeon's layout is data built by `layout.js` (rooms and the doors between them,

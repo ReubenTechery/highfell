@@ -33,6 +33,7 @@ export type GameEvent =
   | { type: 'block'; perfect: boolean; player: boolean; smash: boolean }
   | { type: 'dodge'; player: boolean }
   | { type: 'crit'; amount: number; player: boolean }
+  | { type: 'combo'; kind: string; player: boolean }
   | { type: 'wisp.sliced'; player: boolean }
   | { type: 'chain.cut'; player: boolean }
   | { type: 'cage.broken'; player: boolean; self: boolean; secs: number }

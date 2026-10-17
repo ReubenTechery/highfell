@@ -29,7 +29,7 @@ import { looksSheet, pickedLook } from './lookssheet';
 import { settingsSheet } from './settingssheet';
 import { resetKeys, stopWaiting, waitForKey } from './keybinds';
 import type { BindSlot } from '../content/keys';
-import { gearKey } from '../content/gear';
+import { abKey } from '../content/roles';
 import { CLASSES } from '../content/folk';
 import { ARMOURY_TABS, armouryActions, armourySheet, countUp, leftSlot, settle, type ArmouryTab, type ArmouryView } from './armoury';
 import { TALENTS } from '../content/talents';
@@ -135,6 +135,7 @@ export class Sheets {
       vfree: () => { this.app.setDev({ valeFree: !this.app.dev.valeFree }); SFX.play('ui'); this.app.refresh(); },
       vluck: () => { this.app.setDev({ valeLuck: !this.app.dev.valeLuck }); SFX.play('ui'); this.app.refresh(); },
       allopen: () => { this.app.setDev({ allOpen: !this.app.dev.allOpen }); SFX.play('ui'); this.app.refresh(); },
+      duo: () => { this.app.setDev({ duo: !this.app.dev.duo }); SFX.play('ui'); this.app.refresh(); },
       xpup: () => {
         const p = this.app.p, to = levelOf(p.xp) + 5;
         if (gainXp(p, xpForLevel(to) - p.xp).xp <= 0) { SFX.play('nope'); return; }
@@ -196,9 +197,9 @@ export class Sheets {
     if (looked) this.app.save();
   }
   /** your active hero's class, for Settings' Keys list (none on a touch screen, where there are no keys) */
-  private keysClass(): { k: ReturnType<typeof gearKey>; cls: string; spec: string | null } | null {
+  private keysClass(): { k: ReturnType<typeof abKey>; cls: string; spec: string | null } | null {
     const h = this.app.touch ? null : activeHero(this.app.p);
-    return h ? { k: gearKey({ role: roleOf(h), cls: h.cls }), cls: CLASSES[h.cls as keyof typeof CLASSES]?.name || 'hero', spec: specOf(h)?.id || null } : null;
+    return h ? { k: abKey({ role: roleOf(h), cls: h.cls }), cls: CLASSES[h.cls as keyof typeof CLASSES]?.name || 'hero', spec: specOf(h)?.id || null } : null;
   }
   close(): void {
     if (!this.spec) return;

@@ -10,6 +10,8 @@ export type Rar = 0 | 1 | 2 | 3; // Common, Uncommon, Rare, Epic (the cap)
 export type SlotId = 'weapon' | 'helm' | 'shoulders' | 'chest';
 export type AbilitySlot = 'a1' | 'a2' | 'a3' | 'a4';
 export type GearKey = RoleId | 'rogue';
+/** whose four buttons: a class's (the gear key, and the ranger's own; the duo rework, docs/duo-agents.md) */
+export type AbKey = GearKey | 'ranger';
 
 export interface RoleDef {
   id: RoleId; name: string; title: string;

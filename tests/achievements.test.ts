@@ -91,7 +91,7 @@ test('profile: a v9 save keeps every achievement and the day it came, with no ki
   const v9 = { ...JSON.parse(JSON.stringify(freshProfile(1))), v: 9, achievements: { 'barrow.into': { at: 7 }, 'barrow.rattle': { at: 9 } }, titles: ['title.bonebreaker'] };
   const p = migrate(v9);
   assert.equal(p.v, PROFILE_VERSION);
-  assert.equal(PROFILE_VERSION, 11);
+  assert.equal(PROFILE_VERSION, 12);
   assert.deepEqual(p.achievements, { 'barrow.into': { at: 7 }, 'barrow.rattle': { at: 9 } });
   assert.deepEqual(p.titles, ['title.bonebreaker']);
 });

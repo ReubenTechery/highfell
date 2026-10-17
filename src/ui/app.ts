@@ -35,8 +35,9 @@ const SCENES: SceneId[] = ['hearth', 'create', 'brew', 'run', 'reveal'];
 export interface Carry { sheet?: unknown; scene?: SceneId }
 
 /** Testing switches that live on this device only, never in the save. */
-/** testing switches, kept on this device: allOpen opens the log rewards (looks, the Risen) and Heroic before they're earned */
-export interface Dev { valeFree: boolean; valeLuck: boolean; allOpen: boolean }
+/** testing switches, kept on this device: allOpen opens the log rewards (looks, the Risen) and Heroic before they're earned;
+ *  duo starts runs with two heroes, you and a bot (the duo rework, until two seats are the default) */
+export interface Dev { valeFree: boolean; valeLuck: boolean; allOpen: boolean; duo: boolean }
 const DEV_KEY = 'highfell.dev';
 
 export class App {
@@ -56,7 +57,7 @@ export class App {
   readonly music = MUSIC;
   scene: SceneId = 'hearth';
   touch = false;
-  dev: Dev = { valeFree: false, valeLuck: false, allOpen: false };
+  dev: Dev = { valeFree: false, valeLuck: false, allOpen: false, duo: false };
   private last = 0;
   /** the frame loop, which only runs while a run is showing */
   private raf = 0;

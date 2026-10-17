@@ -4,11 +4,11 @@
  * with no storage the game uses the starting keys (src/content/keys.ts). Settings' Keys list waits here for the
  * key or mouse button you press next.
  */
-import type { GearKey } from '../content/types';
+import type { AbKey } from '../content/types';
 import { bindOf, bindProblem, rebind, type BindSlot, type Binds } from '../content/keys';
 
 const STORE = 'highfell.keys';
-type Mine = Partial<Record<GearKey, Partial<Binds>>>;
+type Mine = Partial<Record<AbKey, Partial<Binds>>>;
 
 function load(): Mine {
   try {
@@ -18,7 +18,7 @@ function load(): Mine {
       for (const [k, b] of Object.entries(v)) {
         if (!b || typeof b !== 'object') continue;
         const keep = Object.fromEntries(Object.entries(b as Record<string, unknown>).filter(([, x]) => typeof x === 'string'));
-        out[k as GearKey] = keep as Partial<Binds>;
+        out[k as AbKey] = keep as Partial<Binds>;
       }
     }
     return out;
@@ -28,9 +28,9 @@ let mine: Mine = load();
 function save(): void { try { localStorage.setItem(STORE, JSON.stringify(mine)); } catch { /* this browser keeps nothing: the keys last until the page closes */ } }
 
 /** your own bindings for a class (only what differs from where it started) */
-export const ownKeys = (k: GearKey): Partial<Binds> => mine[k] || {};
-export function setKey(k: GearKey, slot: BindSlot, b: string): void { mine = { ...mine, [k]: rebind(k, ownKeys(k), slot, b) }; save(); }
-export function resetKeys(k: GearKey): void { const next = { ...mine }; delete next[k]; mine = next; save(); }
+export const ownKeys = (k: AbKey): Partial<Binds> => mine[k] || {};
+export function setKey(k: AbKey, slot: BindSlot, b: string): void { mine = { ...mine, [k]: rebind(k, ownKeys(k), slot, b) }; save(); }
+export function resetKeys(k: AbKey): void { const next = { ...mine }; delete next[k]; mine = next; save(); }
 
 /** Settings' Keys list: the button waiting for its key, and why the last one pressed couldn't be it */
 export const KEYWAIT: { slot: BindSlot | null; err: string } = { slot: null, err: '' };
@@ -38,7 +38,7 @@ let stop: (() => void) | null = null;
 
 /** wait for the next key or mouse button for this button; `done` redraws the list. Esc, or a click with the
  *  left button, stops waiting. */
-export function waitForKey(k: GearKey, slot: BindSlot, done: () => void): void {
+export function waitForKey(k: AbKey, slot: BindSlot, done: () => void): void {
   stop?.();
   KEYWAIT.slot = slot; KEYWAIT.err = '';
   const take = (b: string): void => {

@@ -46,15 +46,26 @@ The integrator writes these in the plumbing, before anyone else starts.
   ranger's without moving anyone's save. Visible text says ranger.
 - **Duel counts.** `duelAdd(h, key, n = 1)` counts for the duel card: `'combosSet'`, `'combosLanded'`, `'lifts'`,
   `'breaks'`, `'keys'`, `'pickups'`, `'bombs'`. Damage and the biggest crit are counted by `hurtMob` already
-  (`S.duel[h.id]`).
+  (`S.duel[h.id]`, keys in `DUEL_KEYS`).
+- **A party of seats.** `newGame(dg, { party: [{ cls, loadout, isPlayer }], … })` starts a run with those seats in
+  order (the sims too: `simRun({ party })`); without `party` it's the old three seats by role. Two heroes stand side
+  by side at a checkpoint.
+- **Your companion.** `companionOf(p, h)` in `src/meta/party.ts` says who takes the other seat: the one you picked
+  (`setCompanion(p, 'cls:mage')` for a bot of a class the hero maker offers, or one of your heroes' ids once the
+  Warband is open; kept in the save as `p.companion`, v12), else `companionFor(h.cls)`, the bot that fills the gap.
+  The Duo seats switch runs with it.
+- **The ranger's keys.** `abKey({ cls: 'ranger' }) === 'ranger'` picks its buttons (`AB.ranger`, a placeholder to
+  fill) and its default keys (`DEFAULT_KEYS.ranger`); `CLASSES.ranger` is there with `ready: false` and isn't in
+  `CLASS_ORDER`, so nobody can make one until the ranger stream and its art say so. `TUT_BY_CLASS.ranger` is an empty
+  placeholder for the teaching stream.
 - **Combos.** `setUp(foe, by, kind)` marks that `by` set `foe` up (`'freeze'`, `'burn'`, `'stun'`, `'poison'`,
   `'mark'`, `'expose'`). `comboFor(foe, attacker)` gives the kind when the attacker's mate set it up and it's still
   on, else `null`. A payoff that gets a kind hits `COMBO` (1.5) times as hard and calls `combo(attacker, foe, kind)`,
   which pops the word and counts it for both.
 - **Going down.** `heroFalls(h, src)` is where a hero's health hitting zero goes (today it's the old death).
   `isDown(h)`, `pickUp(h, by)`. Stream 2 turns falling into going down; everyone else calls these.
-- **Dodges.** `dodged(h, src, o)` is called when a hero's dodge or block takes a hit that would have landed. Stream
-  2 makes a perfect one open the boss up.
+- **Dodges.** `dodged(h, src, o)` is called when a hero's dodge takes a hit that would have landed (`o` is the hit's
+  options). Stream 2 makes a perfect one open the boss up. Blocks keep their own path (`onPerfectBlock`).
 
 ## Who owns what
 
@@ -174,7 +185,8 @@ Start now. Draw to the item ids; the ranger stream names the items.
 ## 0. The integrator
 
 - **Before anyone else:** the plumbing. Heroes known by seat and class, a run's party as a list of seats (still
-  three seats by default), the ranger's gear key, the contracts in `duo.js`, and the "Duo seats" testing switch.
+  three seats by default), the ranger's gear and button keys, the contracts in `duo.js`, your companion in the save
+  (v12), and the "Duo seats" testing switch.
   Pushed to `main`, with nothing you can see changed.
 - **While the streams work:** reviews and merges pull requests as they're ready, in the order above, and keeps
   `main` green.

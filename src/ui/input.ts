@@ -15,6 +15,7 @@ import { AB, abKey } from '../content/roles';
 import { S, emit } from '../dungeon/state.js';
 import { fx, killMob } from '../dungeon/entities.js';
 import { autoTarget, bestCluster, clampRange, doDodge, heroBy, isFoe } from '../dungeon/heroes.js';
+import { heroAt } from '../dungeon/duo.js';
 import { chainEnds, cutChain, liftCurse, mashCage as mashEngine } from '../dungeon/mobs.js';
 import { AIM, VIEW, toWorld } from '../dungeon/render.js';
 import { press } from '../dungeon/press.js';
@@ -254,8 +255,8 @@ export function bindFrameSwipes(list: HTMLElement): void {
     if (!me.alive || me.st.caged || me.role !== 'healer') return;
     const a = { x: g.x0, y: g.y0 }, b = { x: e.clientX, y: e.clientY };
     if (Math.hypot(b.x - a.x, b.y - a.y) < FRAME_SWIPE) return;
-    list.querySelectorAll<HTMLElement>('[data-role]').forEach((el) => {
-      const h = heroBy(el.dataset.role);
+    list.querySelectorAll<HTMLElement>('[data-seat]').forEach((el) => {
+      const h = heroAt(Number(el.dataset.seat));
       if (h && h.alive && h.st.curse && segHitsRect(a, b, el.getBoundingClientRect())) liftCurse(h, me);
     });
   });

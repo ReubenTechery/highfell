@@ -10,6 +10,7 @@
 import { RARITY, powerFromScore } from '../content/gear';
 import { ORDER, ROLES } from '../content/roles';
 import type { DungeonInfo, RoleId } from '../content/types';
+import { CLASSES, CLASS_ORDER, type ClassId } from '../content/folk';
 import { levelBonus } from '../content/xp';
 import { loadoutFor, partyRar, wholeIlvl } from './gear';
 import { activeHero, roleOf, setActive, type Hero, type Profile } from './profile';
@@ -20,6 +21,28 @@ export interface Seat { role: RoleId; hero: Hero | null; bot: string | null }
 
 /** Heroic needs at least this many real players. */
 export const HEROIC_MIN_PLAYERS = 2;
+
+/** The duo rework (docs/duo.md): every run is two heroes. Until the companion picker lands, the bot who takes the
+ *  other seat is one that fills the gap: in close with someone at range, at range with someone in close. */
+export const COMPANION_FOR: Record<ClassId, ClassId> = { warrior: 'mage', cleric: 'warrior', mage: 'warrior', rogue: 'mage', ranger: 'warrior' };
+export const companionFor = (cls: string): ClassId => COMPANION_FOR[cls as ClassId] || 'warrior';
+/** who takes the other seat on Normal: one of your own heroes, once your Warband is open, or a bot of a class */
+export interface Companion { cls: ClassId; hero: Hero | null }
+/** Your companion for this hero: the one you picked (p.companion: 'cls:<class>' for a bot of a class the hero
+ *  maker offers, or one of your other heroes' ids once your Warband is open), else the bot that fills the gap. */
+export function companionOf(p: Profile, h: Hero): Companion {
+  const c = p.companion;
+  if (c && c.startsWith('cls:')) {
+    const cls = c.slice(4) as ClassId;
+    if (CLASSES[cls] && CLASS_ORDER.includes(cls)) return { cls, hero: null };
+  } else if (c && warbandOpen(p)) {
+    const mate = p.roster.find((x) => x.id === c && x.id !== h.id);
+    if (mate) return { cls: mate.cls as ClassId, hero: mate };
+  }
+  return { cls: companionFor(h.cls), hero: null };
+}
+/** pick who takes the other seat: 'cls:<class>' for a bot, a hero's id, or null for the bot that fills the gap */
+export function setCompanion(p: Profile, choice: string | null): void { p.companion = choice; }
 
 /** The real players in your group, you first. Until online play arrives, that is only you. */
 export function groupOf(p: Profile): Hero[] {

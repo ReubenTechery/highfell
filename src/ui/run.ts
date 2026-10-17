@@ -18,6 +18,7 @@ import { newGame, respawn, update } from '../dungeon/game.js';
 import { S, setHooks } from '../dungeon/state.js';
 import { banner, exposeMob, strengthen } from '../dungeon/entities.js';
 import { abCd, abMana, doDodge, heroBy, isFoe, useAbility } from '../dungeon/heroes.js';
+import { heroAt } from '../dungeon/duo.js';
 import { press } from '../dungeon/press.js';
 import { MAX_POINTS, burnable, crushes, icicleShatter } from '../dungeon/buttons.js';
 import { momentFor } from '../dungeon/coach.js';
@@ -30,8 +31,8 @@ import { lootGlint, startWalkout } from '../dungeon/walkout.js';
 import { Achiever, levelAchiever } from '../meta/achievements';
 import { loadoutFor, partyRar, plainLoadout, trialWeapon, worn } from '../meta/gear';
 import { countBossWipe, countRunStart, gildOf, resolveClear, resolveKill, runLoot, tellOf, type ClearLoot, type KillLoot } from '../meta/loot';
-import { pourFor, seatsFor } from '../meta/party';
-import { activeHero, countClassRun, countLift, finishCurseTip, finishIntroRun, heroById, learnGlow, markClassTrial, needsClassTrial, needsCurseTip, needsSwipeHint, roleOf, type Hero } from '../meta/profile';
+import { companionOf, pourFor, seatsFor } from '../meta/party';
+import { activeHero, countClassRun, countLift, finishCurseTip, finishIntroRun, heroById, learnGlow, markClassTrial, needsClassTrial, needsCurseTip, needsSwipeHint, roleOf, type Hero, type Profile } from '../meta/profile';
 import { CLASSES, type ClassId } from '../content/folk';
 import { RECIPES } from '../content/vale';
 import { broughtBrew, spendBottle } from '../meta/vale';
@@ -63,6 +64,14 @@ const HINTS: Record<string, [string, string, string, number?]> = {
   introMove: ['Drag on the left to walk up into the skeletons.', 'Use WASD or the arrow keys to walk up into the skeletons.', 'Walk into the pack', 12],
   introChest: ['The lantern flared gold and the chest knocked twice: a unique is inside! Walk to the chest to open it.', 'The lantern flared gold and the chest knocked twice: a unique is inside! Walk to the chest to open it.', 'The walkout', 8],
 };
+
+/** the duo seats' companion: one of your heroes in its own gear and talents, or a bot of a class in plain gear */
+function duoMateLoadout(p: Profile, mate: Hero | null, cls: ClassId, rar: Rar): Record<string, unknown> {
+  const r = CLASSES[cls].role;
+  if (mate) { const sprite = heroSprite(mate, r, p); return { ...loadoutFor(p, mate), ...talentLoadout(p, mate), cls, name: mate.name, sprite, fit: spriteFit(sprite) }; }
+  const sprite = botSprite(r, rar);
+  return { ...plainLoadout(r, rar, cls), sprite, fit: spriteFit(sprite) };
+}
 
 export class RunScene implements InputUI {
   private acc = 0;
@@ -347,7 +356,14 @@ export class RunScene implements InputUI {
       onChest: () => this.finish(),
       playerIntent,
     });
-    newGame(engine, { role, loadouts, start: o.start, seed: (Math.random() * 0x7fffffff) | 1, looks, ghostly, gilded, sporeglow, testGear: test, heroic: !!o.heroic, swipeHint: this.swipeHint, xp: !this.practice, xpMul: xpMul(dg), might: partyBonus(p), ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) });
+    // the duo rework's testing switch: two seats, you and your companion (meta/party.ts companionOf: one of your
+    // heroes, or a bot of a class)
+    const mate2 = this.app.dev.duo && h && !intro ? companionOf(p, h) : null;
+    const party = mate2 && h ? [
+      { cls: h.cls, isPlayer: true, loadout: loadouts[role] },
+      { cls: mate2.cls, isPlayer: false, loadout: duoMateLoadout(p, mate2.hero, mate2.cls, rar) },
+    ] : null;
+    newGame(engine, { role, loadouts, party, start: o.start, seed: (Math.random() * 0x7fffffff) | 1, looks, ghostly, gilded, sporeglow, testGear: test, heroic: !!o.heroic, swipeHint: this.swipeHint, xp: !this.practice, xpMul: xpMul(dg), might: partyBonus(p), ...(brew ? { brew, brewCol: RECIPES[brew].color } : {}) });
     S.startedAt = S.t;
     // a heroic run counts for the Barrow's own achievements
     this.ach = this.practice ? null : new Achiever(p, { dungeon: dg.heroicOf || dg.id, role, practice: false, testGear: false });
@@ -634,10 +650,11 @@ export class RunScene implements InputUI {
     // two cooldowns (F, R) further out. Set by the class, never by your own keys, so a phone looks the same.
     const POS: Record<string, string> = { KeyE: 'fil', KeyQ: 'pay', KeyF: 'cdf', KeyR: 'cdr' };
     const posOf = (slot: string) => (slot === 'dodge' ? 'dg' : POS[DEFAULT_KEYS[abKey(p)][slot as 'a1']] || 'cdf');
-    $('frames').innerHTML = S.heroes.map((h: any) => `<li class="fr${h.isPlayer ? ' me' : ''}" data-heal="${h.role}" data-role="${h.role}">
+    // a frame for each seat (the duo rework: heroes are known by seat; data-role is the old trinity's, for its looks)
+    $('frames').innerHTML = S.heroes.map((h: any) => `<li class="fr${h.isPlayer ? ' me' : ''}" data-heal="${h.role}" data-role="${h.role}" data-seat="${h.seat}">
       <span class="fr-top"><span class="fi">${tile(h.cls === 'rogue' ? 'viper' : ROLE_ICON[h.role])}</span><span class="fr-n">${h.isPlayer ? 'You' : h.name}</span><i class="ag" aria-hidden="true"></i></span>
       <span class="fb"><i class="hpf"></i><i class="abf"></i></span>${h.role === 'healer' ? '<span class="fb mp"><i class="mpf"></i></span>' : ''}${CURSE_MARK()}</li>`).join('');
-    $('frames').querySelectorAll<HTMLElement>('.fr').forEach((li) => li.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (S.player.role === 'healer') press(S.player, 'mend', heroBy(li.dataset.role)); }));
+    $('frames').querySelectorAll<HTMLElement>('.fr').forEach((li) => li.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (S.player.role === 'healer') press(S.player, 'mend', heroAt(Number(li.dataset.seat))); }));
     const btn = (slot: string) => {
       const def = slot === 'dodge' ? { key: 'dodge', icon: 'dodge', name: 'Dodge', desc: 'Roll out of trouble.' } as { key: string; icon: string; name: string; desc: string; mana?: number; hold?: boolean; combo?: string; filler?: boolean } : buttonFor(A[slot as 'a1'], p.spec, slot as 'a1');
       const mana = slot === 'dodge' ? 0 : abMana(p, slot);
@@ -654,8 +671,8 @@ export class RunScene implements InputUI {
     const pad = $('pad');
     if (p.role === 'healer') {
       pad.hidden = false;
-      pad.innerHTML = S.heroes.map((h: any) => `<button type="button" class="pd" data-heal="${h.role}" data-role="${h.role}" aria-label="Heal ${h.isPlayer ? 'yourself' : h.name}"><span class="pd-n">${h.isPlayer ? 'You' : h.name}</span><span class="fb"><i class="hpf"></i><i class="abf"></i></span>${CURSE_MARK()}</button>`).join('');
-      pad.querySelectorAll<HTMLElement>('.pd').forEach((b) => b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); press(S.player, 'mend', heroBy(b.dataset.role)); }));
+      pad.innerHTML = S.heroes.map((h: any) => `<button type="button" class="pd" data-heal="${h.role}" data-role="${h.role}" data-seat="${h.seat}" aria-label="Heal ${h.isPlayer ? 'yourself' : h.name}"><span class="pd-n">${h.isPlayer ? 'You' : h.name}</span><span class="fb"><i class="hpf"></i><i class="abf"></i></span>${CURSE_MARK()}</button>`).join('');
+      pad.querySelectorAll<HTMLElement>('.pd').forEach((b) => b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); press(S.player, 'mend', heroAt(Number(b.dataset.seat))); }));
     } else { pad.hidden = true; pad.innerHTML = ''; }
     this.root.dataset.role = p.role;
     $('bossbar').hidden = true;
@@ -718,9 +735,9 @@ export class RunScene implements InputUI {
     const p = S.player;
     const coach = this.learn > 0 && !this.tutKey ? momentFor(p) : null;
     const targeted = new Set<string>();
-    for (const m of S.mobs) if (m.alive && m.state === 'fight' && m.target && !m.cage && !m.M.wisp) targeted.add(m.target.role);
+    for (const m of S.mobs) if (m.alive && m.state === 'fight' && m.target && !m.cage && !m.M.wisp) targeted.add(m.target.id);
     this.root.querySelectorAll<HTMLElement>('[data-heal]').forEach((el) => {
-      const h = heroBy(el.dataset.role);
+      const h = heroAt(Number(el.dataset.seat));
       if (!h) return;
       setW(el.querySelector('.hpf'), h.hp / h.maxHp);
       const ab = el.querySelector<HTMLElement>('.abf'); if (ab) { ab.style.left = (clamp(h.hp / h.maxHp, 0, 1) * 100).toFixed(1) + '%'; setW(ab, Math.min(h.absorb / h.maxHp, 1 - h.hp / h.maxHp)); }
@@ -742,7 +759,7 @@ export class RunScene implements InputUI {
       el.classList.toggle('teach', !!coach && coach.frame === el.dataset.role);
       // a Smite crit blessed your next Mend: the frames glow gold (the healer's payoff)
       el.classList.toggle('blessed', p.role === 'healer' && !!p.mendUp && h.alive);
-      el.classList.toggle('aggro', h.alive && h.role !== 'tank' && targeted.has(h.role));
+      el.classList.toggle('aggro', h.alive && h.role !== 'tank' && targeted.has(h.id));
       el.classList.toggle('far', p.role === 'healer' && h.alive && dist(h, p) > MEND.range);
     });
     // as the healer, a mate under 15% in a fight sets your heart going

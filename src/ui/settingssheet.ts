@@ -10,14 +10,14 @@ import { esc, fmtDate, fmtN, GLYPH } from './dom';
 import { MUSIC } from './music';
 import { AB, SLOTS_AB } from '../content/roles';
 import { DEFAULT_KEYS, keyLabel, type BindSlot } from '../content/keys';
-import type { AbilitySlot, GearKey } from '../content/types';
+import type { AbKey, AbilitySlot } from '../content/types';
 import { buttonFor } from '../content/talents';
 import { tile } from './art';
 import { KEYWAIT, ownKeys } from './keybinds';
 
 /** Your keys: each of your class's four buttons (as your spec has them: Fire's are fire) and the dodge, E, Q, F, R
  *  order. Tap one, then press a key. */
-function keysBox(k: GearKey, cls: string, spec: string | null): string {
+function keysBox(k: AbKey, cls: string, spec: string | null): string {
   const own = ownKeys(k);
   const order = (Object.entries(DEFAULT_KEYS[k]) as [string, string][]).sort((a, b) => 'EQFR'.indexOf(a[1].slice(3)) - 'EQFR'.indexOf(b[1].slice(3))).map(([s]) => s as BindSlot);
   const row = (slot: BindSlot): string => {
@@ -38,7 +38,7 @@ declare const __BUILD__: string;
 const BUILD = typeof __BUILD__ === 'string' ? __BUILD__ : 'dev';
 
 /** `keys`: your class on a computer (its Keys list), or null on a touch screen or before your first hero */
-export function settingsSheet(p: Profile, st: SyncState, dev: Dev, resetArmed: boolean, keys: { k: GearKey; cls: string; spec: string | null } | null): { head: string; body: string } {
+export function settingsSheet(p: Profile, st: SyncState, dev: Dev, resetArmed: boolean, keys: { k: AbKey; cls: string; spec: string | null } | null): { head: string; body: string } {
   const where = st === 'account' ? 'Saved to your account. It follows you between your phone and your computer.' : st === 'connecting' ? 'Connecting to your account…' : st === 'offline' ? 'Your account save could not be reached, so this device is keeping your progress until it can.' : 'Saved on this device. Open the game on claude.ai to keep it in your account too.';
   const body = `
     <div class="box"><h3 class="section-title">Sound</h3><div class="actions vol-row"><button type="button" class="btn small" data-act="sound">${p.settings.sound ? GLYPH.sound + 'Sound on' : GLYPH.mute + 'Sound off'}</button>
@@ -52,6 +52,8 @@ export function settingsSheet(p: Profile, st: SyncState, dev: Dev, resetArmed: b
       <div class="seg"><button type="button" class="sg" role="switch" data-act="vfree" aria-checked="${dev.valeFree}">Instant growth</button><button type="button" class="sg" role="switch" data-act="vluck" aria-checked="${dev.valeLuck}">Lucky ×50</button></div>
       <p class="fine">Collection log rewards and Heroic: try the house looks, the Risen and Heroic before you earn them. A look you haven't earned shows only while this is on; a hero you make stays.</p>
       <div class="seg"><button type="button" class="sg" role="switch" data-act="allopen" aria-checked="${dev.allOpen}">Everything open</button></div>
+      <p class="fine">The duo rework: start runs with two heroes, you and a bot, while it's being built.</p>
+      <div class="seg"><button type="button" class="sg" role="switch" data-act="duo" aria-checked="${dev.duo}">Duo seats</button></div>
       <p class="fine">Levels: add the XP for five more, to try talents out. It stays in your save, like XP from a run.</p>
       <div class="actions"><button type="button" class="btn small" data-act="xpup">+5 levels</button></div>
       <p class="fine">Onboarding: replay the Crypt Trial as your hero, or the guided tour of your house.</p>

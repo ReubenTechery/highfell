@@ -9,7 +9,10 @@ import type { GearKey, RarityDef, RoleId, RoleSlotDef, SlotDef, SlotId, TraitDef
 import { CLASSES, type ClassId } from './folk';
 
 export const gearKey = (h: RoleId | GearKey | { role?: RoleId; cls?: string }): GearKey =>
-  typeof h === 'string' ? h : h.cls === 'rogue' ? 'rogue' : (h.role ?? CLASSES[(h.cls as ClassId) || 'warrior']?.role ?? 'dps');
+  typeof h === 'string' ? h : h.cls === 'rogue' ? 'rogue' : h.cls === 'ranger' ? 'healer' : (h.role ?? CLASSES[(h.cls as ClassId) || 'warrior']?.role ?? 'dps');
+/** a class's gear key: the ranger wears what the code calls healer gear (the cleric's old sets and weapons become
+ *  his, so nobody's save moves; docs/duo-agents.md) */
+export const gearKeyOf = (cls: string): GearKey => gearKey({ cls });
 
 export const RARITY: RarityDef[] = [
   { key: 'common', name: 'Common', score: 10, color: '#8E8A84', ink: '#5E5A55' },

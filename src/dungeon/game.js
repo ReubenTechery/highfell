@@ -2,6 +2,8 @@
 import { dist, distXY, lerp } from '../core/math';
 import { setSeed } from '../core/rng';
 import { ORDER } from '../content/roles';
+import { CLASSES } from '../content/folk';
+import { duelReset } from './duo.js';
 import { HOOKS, S, emit, setS } from './state.js';
 import { aggro, banner, bits, brewFx, dots, fx, fxText, healHero, hurtHero, hurtMob, makeHero, makeMob, sfx, shake } from './entities.js';
 import { botTick, inHaz } from './bots.js';
@@ -15,7 +17,9 @@ import { frostbite, has, holyGround, icefall } from './specs.js';
 import { firestormTick } from './fire.js';
 
 /* dg: a dungeon definition (map, mobs, packs, script). opts:
-   { role, loadouts: {tank, healer, dps}, start, solo, seed, auto, quiet, testGear, heroic, noHeal (sims: an idle healer bot),
+   { party: [{ cls, loadout, isPlayer }] (the seats, in order: the duo rework), or the old three seats by role:
+     role (yours) and loadouts: {tank, healer, dps},
+     start, solo, seed, auto, quiet, testGear, heroic, noHeal (sims: an idle healer bot),
      xp (this run pays XP: a kill pops it over the mob), xpMul (its dungeon's XP multiplier) } */
 export function newGame(dg, opts) {
   setSeed(opts.seed || ((Date.now() & 0xfffffff) | 1));
@@ -31,13 +35,19 @@ export function newGame(dg, opts) {
     tune: Object.assign({ hit: 1, trashHp: 1, bossHp: 1 }, opts.start === 'intro' ? { hit: 0.55, trashHp: 0.65, bossHp: 0.6 } : (opts.heroic && dg.heroic) || dg.tune || {}),
   });
   S.props = dg.props.map((p) => Object.assign({}, p, { room: roomIndexOf(p.x, p.y), sp0: p.sp }));
-  const roles = opts.solo ? ['dps'] : ORDER;
   const L = opts.loadouts || {};
   // one bottle poured at the door: the whole party drinks it (opts.brew, a recipe id; see BREW_FX)
   const pour = opts.brew ? { brew: opts.brew, brewCol: opts.brewCol || null } : {};
   S.brewArea = brewFx(opts.brew).area || 1;
   // your level's bonus is the whole party's (opts.might, 1 at level 1): every seat gets it
-  for (const r of roles) S.heroes.push(makeHero(r, r === opts.role, Object.assign({}, L[r], pour, { might: opts.might || 1 })));
+  const seatLoadout = (l) => Object.assign({}, l, pour, { might: opts.might || 1 });
+  // the party, seat by seat: opts.party (the duo rework), or the old three seats by role
+  if (opts.party && opts.party.length) {
+    opts.party.forEach((st, i) => S.heroes.push(makeHero(CLASSES[st.cls]?.role || 'dps', !!st.isPlayer, seatLoadout({ ...(st.loadout || {}), cls: st.cls }), i)));
+  } else {
+    (opts.solo ? ['dps'] : ORDER).forEach((r, i) => S.heroes.push(makeHero(r, r === opts.role, seatLoadout(L[r]), i)));
+  }
+  duelReset();
   S.player = S.heroes.find((h) => h.isPlayer) || S.heroes[0];
   S.player.isPlayer = true;
   // Brittle is the whole party's (frozen and Chilled foes take more from everyone); the last boss pays the most XP
@@ -56,9 +66,11 @@ export function newGame(dg, opts) {
   return S;
 }
 export function placeParty(cp) {
+  // the old three seats stand by role; any other party stands side by side, centred on the spot
   const off = { tank: [0, -20], healer: [-46, 34], dps: [46, 34] };
+  const byRole = !(S.opts && S.opts.party && S.opts.party.length), n = S.heroes.length;
   for (const h of S.heroes) {
-    const o = off[h.role];
+    const o = byRole ? off[h.role] : [(h.seat - (n - 1) / 2) * 64, 10];
     h.x = cp.x + o[0]; h.y = cp.y + o[1];
     if (!canStand(h.x, h.y, h.r)) { h.x = cp.x; h.y = cp.y; }
     h.face = -Math.PI / 2; h.back = true;

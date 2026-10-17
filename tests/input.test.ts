@@ -87,9 +87,10 @@ test('a healer swipe across a cursed mate lifts the curse, even one that starts 
 test('a healer swipe across a cursed mate\'s party frame lifts it, even one that starts on another frame; a wobbly tap does not', () => {
   const { dps, mob } = phoneRun('healer');
   const fh: Record<string, (e: unknown) => void> = {};
-  // the heal pad, bottom right on a phone: one frame per mate, stacked
-  const frame = (role: string, top: number) => ({ dataset: { role }, getBoundingClientRect: () => ({ left: 240, right: 380, top, bottom: top + 50 }) });
-  const frames = [frame('tank', 530), frame('healer', 586), frame('dps', 642)];
+  // the heal pad, bottom right on a phone: one frame per mate, stacked, each for its seat (the old three: tank 0,
+  // healer 1, DPS 2)
+  const frame = (role: string, seat: number, top: number) => ({ dataset: { role, seat: String(seat) }, getBoundingClientRect: () => ({ left: 240, right: 380, top, bottom: top + 50 }) });
+  const frames = [frame('tank', 0, 530), frame('healer', 1, 586), frame('dps', 2, 642)];
   bindFrameSwipes({ addEventListener: (t: string, fn: (e: unknown) => void) => { fh[t] = fn; }, setPointerCapture: () => {}, querySelectorAll: () => frames } as unknown as HTMLElement);
   const at = (x: number, y: number) => ({ pointerId: 3, clientX: x, clientY: y });
   curseHero(mob, dps);
