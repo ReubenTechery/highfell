@@ -150,6 +150,46 @@ still clears about a fifth faster, but levels are bigger than gear), and the sea
 the gear). Nothing in the save changes shape: the level bonus comes from XP, items keep their ids, talents keep
 theirs.
 
+## Proposal: season capes, season trophies and a total level (the owner, 18 Oct)
+
+The owner wants these on the list before they're forgotten; they get designed properly before Season 1.
+
+- **A 99 cape for each season, only in that season.** Levels reset with the season (decided 18 Oct), so every
+  season has its own climb from 1 to 99. Reach 99 while the season is on and you get its cape: a look your heroes
+  wear, never power. When the season ends, nobody can get that one again.
+- **A legacy version for logging the season later**, timewalk and transmog style: finish a past season's logs and
+  you get its cape in a different cut, so a newcomer can still chase it and the in-season one stays the flex.
+- **A trophy for each season, something epic.** Draft: tiers, the way OSRS Leagues trophies stand in your house
+  for good. Bronze for clearing every dungeon and raid of the season, silver for every Normal log, gold for every
+  Heroic log too, each bigger and more alive in the house than the last.
+- **A total level that carries a little power into the next season**, "nothing crazy, but rewarding enough", so
+  a ten-season veteran is someone people look at in awe. It sits beside the seasonal reset: the season's level is
+  the climb, the total level is the prestige.
+- **Gear across seasons.** Gear is now the same Power across a season, and the owner wants that to hold across
+  seasons too: go back to the Barrow in Season 8 for its set effect, or upgrade old gear the way OSRS's primordial
+  crystal upgrades old boots. That changes the seasons direction above ("its gear becomes looks"), so it has to be
+  settled before Season 1.
+
+Precedents: OSRS skill capes, the trimmed cape for two or more 99s, and Leagues trophies (bronze to dragon, kept
+in your house); WoW's season-only Keystone Master mounts and Feats of Strength; Destiny's gilded season titles;
+WoW timewalking (old content scaled to now, its looks to collect); Lost Ark's roster level (an account level that
+lifts every character a little).
+
+Still open: does gear Power stay put between seasons; what the total level counts and how much it carries (all
+the XP you've ever earned, so nothing is missable, or each season's 99, so a missed season is missed for good);
+one trophy or tiers; how a cape is drawn (a back layer on every race and class).
+
+**From a play tester (18 Oct):**
+- **Daily bonuses** ("do at least 3 a day for better rewards", short speed or attack buffs). A daily chore, which
+  pillar 4 rules out. The pillar-safe version is rested XP, as in WoW: time away banks bonus XP for your next few
+  runs, up to a cap, never lost. Short buffs exist already: brews.
+- **Upgrading spells and weapons.** Talents already change what the buttons do; weapon upgrades are the
+  primordial idea above.
+- **A voice notes button for play testers.** An always-on mic isn't doable from the page (the mic needs a grant
+  each time, it drains a phone, and the game pauses in the background). The quick version: a Note in the pause
+  menu; you talk with your phone keyboard's mic, and it's saved with where you were (dungeon, run time, level) in
+  the game's own database, where Claude can read them and sum up what you keep asking for.
+
 ## Proposal: the Hall of Doors when Season 1 comes
 
 The cellar has a door for every dungeon (built 17 Oct, `docs/design.md`). Season 0's three fill it, between the
