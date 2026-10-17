@@ -38,6 +38,7 @@ import { IN, aimPoint, bindFrameSwipes, bindInput, mashCage, playerIntent, reset
 import { MUSIC, runMusic } from './music';
 import { SFX } from './sound';
 import { openWarband } from '../meta/warband';
+import { RunGuard } from './runguard';
 
 /** A run plays the hero you are playing, from the entrance. `start`, `testRar` and `role` are for the Crypt
  *  Trial and for testing: a run that starts past the entrance or in test gear doesn't count (no loot, kill
@@ -119,6 +120,8 @@ export class RunScene implements InputUI {
   private swipeHint = false;
   private lastRoom = -1;
   private bound = false;
+  /** the back swipe pauses a run instead of leaving the game (runguard.ts) */
+  private guard = new RunGuard(() => { if (this.active() && S && !S.paused && !S.over) this.pause(); });
 
   constructor(private app: App, private root: HTMLElement) {
     $('pause-btn').addEventListener('click', (e) => { e.stopPropagation(); this.pause(); });
@@ -378,10 +381,12 @@ export class RunScene implements InputUI {
     updateCam(0, true);
     this.lastRoom = -1;
     this.live = true; this.acc = 0;
+    this.guard.arm();
     if (intro) this.showWelcome();
   }
   stop(): void {
     this.live = false;
+    this.guard.disarm();
     this.clearTut();
     if (this.off) { this.off(); this.off = null; }
     this.app.root.classList.remove('in-run');

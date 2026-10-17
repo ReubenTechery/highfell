@@ -132,7 +132,7 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
 - `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, its drawing
   `houseart.ts` (its back layer drawn once as pictures by `housepaint.ts`), every room in each look, the Toadstool Workshop's in `houseworkshop.ts`, the cellar's doors
   `halldoors.ts`, your hero's name tag `nametag.ts`, its tour and tips as data `tours.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
-  close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons
+  close-ups), the cauldron (`brew.ts`), the run (HUD and input; `runguard.ts` keeps a back swipe from leaving it) and the reveal. Sheets over them: the dungeons
   (`dungeonsheet.ts`, its door's picture in `stage.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
   (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`, an achievement's row and card in `achcard.ts`), settings (`settingssheet.ts`), a hero's gear in the armoury
   (`armoury.ts`; the card for the piece you pick in `armourycard.ts`), the satchel and the spot picker. A hero is a body wearing a layer per gear slot, put together from the save by `heroart.ts`. Toasts, sound (`sound.ts`: the embedded effects, each with its synthesised fallback) and music
