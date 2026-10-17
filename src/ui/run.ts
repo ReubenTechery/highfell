@@ -24,7 +24,7 @@ import { MAX_POINTS, burnable, crushes, icicleShatter } from '../dungeon/buttons
 import { momentFor } from '../dungeon/coach.js';
 import { CURSE_TIME } from '../dungeon/mobs.js';
 import { inHaz } from '../dungeon/bots.js';
-import { render, resizeView, updateCam, VIEW } from '../dungeon/render.js';
+import { render, resizeView, toScreen, updateCam, VIEW } from '../dungeon/render.js';
 import { addHeroes, dropHeroes, dropVariants } from '../dungeon/art.js';
 import { roomIndexOf } from '../dungeon/world.js';
 import { lootGlint, startWalkout } from '../dungeon/walkout.js';
@@ -48,7 +48,7 @@ import { RunGuard } from './runguard';
 import { TUT_BY_CLASS, type TutStep } from './trial';
 import { RunXp } from './runxp';
 import { partyBonus, xpMul } from '../meta/xp';
-import { levelBonus } from '../content/xp';
+import { KILL_XP, levelBonus } from '../content/xp';
 import { talentLoadout } from '../meta/talents';
 import { BURN, buttonFor } from '../content/talents';
 import { burnOf } from '../dungeon/fire.js';
@@ -477,7 +477,7 @@ export class RunScene implements InputUI {
     // a kill's XP goes into your save as it lands, written out a few seconds later (never every kill mid-fight);
     // a new level is written at once, and may earn a level's achievement
     if (e.type === 'mob.killed' && e.xp && !this.practice) {
-      const g = this.xp.gain(p, e.xp);
+      const g = this.xp.gain(p, e.xp, e.x !== undefined && e.y !== undefined ? toScreen(e.x, e.y - 50) : null, e.boss ? 2 : e.xp >= KILL_XP.big ? 1 : 0);
       // a new level makes the whole party stronger at once, not from the next run
       if (g && g.to > g.from) { strengthen(levelBonus(g.to) / levelBonus(g.from)); this.levelUp(); this.saveXp(); }
       else if (g) this.saveXpSoon();

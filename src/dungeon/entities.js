@@ -476,17 +476,13 @@ export function killMob(m, src) {
 }
 
 /* ---------- XP ---------- */
-/** What a kill pays (content/xp.ts), times the run's multiplier (its dungeon's tier, Heroic), popped in violet over
- *  the mob. Only a run that counts pays (the run sets opts.xp); the run scene adds it to your total. */
-export const XP_COL = '#B98CFF';
+/** What a kill pays (content/xp.ts), times the run's multiplier (its dungeon's tier, Heroic). Only a run that counts
+ *  pays (the run sets opts.xp); the run scene adds it to your total and flies it to the gold bar from the mob's spot
+ *  (ui/runxp.ts), so nothing is popped over the mob itself, where gold means a crit or a payoff. */
 function killXpOf(m) {
   if (!S.opts || !S.opts.xp) return 0;
   const n = Math.round(killXp(m.M, m.type === S.finalBoss) * (S.opts.xpMul || 1));
-  if (n > 0) {
-    S.xpRun = (S.xpRun || 0) + n;
-    const big = m.isBoss;
-    fxText(m.x, m.y - (big ? 260 : m.M.big ? 150 : 100), `+${n} XP`, XP_COL, big ? 30 : m.M.big ? 22 : 17, { dur: big ? 1.8 : 1.2, vy: -46 });
-  }
+  if (n > 0) S.xpRun = (S.xpRun || 0) + n;
   return n;
 }
 
