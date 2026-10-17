@@ -125,14 +125,16 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
 - `src/meta`: TypeScript rules for everything that lasts: the profile and its migrations (heroes live here),
   loot (and when heroic opens), gear, achievements, what the collection log gives (`logs.ts`), the hearth,
   the party's seats and the under-powered warning (`party.ts`), when your Warband opens (`warband.ts`), `vale.ts` (seeds, planter beds, harvests,
-  ranks, brewing) and `tips.ts` (which first-time tip the house and the Dungeons door show).
+  ranks, brewing), `tips.ts` (which first-time tip the house and the Dungeons door show) and `brag.ts` (what a
+  run had to show off, for the Share card).
 - `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, its drawing
   `houseart.ts` (its back layer drawn once as pictures by `housepaint.ts`), every room in each look, the Toadstool Workshop's in `houseworkshop.ts`, your hero's name tag `nametag.ts`, its tour and tips as data `tours.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
   close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons
   (`dungeonsheet.ts`, its door's picture in `stage.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
   (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`, an achievement's row and card in `achcard.ts`), settings (`settingssheet.ts`), a hero's gear in the armoury
   (`armoury.ts`; the card for the piece you pick in `armourycard.ts`), the satchel and the spot picker. Toasts, sound (`sound.ts`: the embedded effects, each with its synthesised fallback) and music
-  (`music.ts`: the streamed loops and the victory sting). `styles.css` is inlined by the build.
+  (`music.ts`: the streamed loops and the victory sting). The Share card (`sharecard.ts`: a moment drawn on a canvas)
+  and its screen (`share.ts`: the share sheet, or the picture to save). `styles.css` is inlined by the build.
 - `audio/`: the sounds, made by `tools/audio.py` from `tools/audio_list.py`: `sfx/*.mp3` and `sfx.json` (the
   build embeds it), `music/*.mp3` and `music.json` (streamed from the live page's own files, never embedded).
 - `src/sim` and `scripts/sim.mjs`: headless bot runs of the real engine (the balance numbers).
@@ -144,9 +146,9 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   curses, numbers, tuning, where each hero's weapon and head are), `coach.test.ts` (which button the coach
   names), `combos.test.ts` (the combos on bosses), `input.test.ts` (the touch controls and party-frame swipes,
   driven without a browser), `meta.test.ts`, `achievements.test.ts` (each says what to do, what it gives and
-  where it went; every title's source; the kill count it came at), `power.test.ts` (seasons, Power and the
-  under-powered warning), `vale.test.ts`, `tips.test.ts` (which first-time tip shows when), `warband.test.ts`
-  (when the Warband opens).
+  where it went; every title's source; the kill count it came at), `brag.test.ts` (what a run had to show off),
+  `power.test.ts` (seasons, Power and the under-powered warning), `vale.test.ts`, `tips.test.ts` (which first-time
+  tip shows when), `warband.test.ts` (when the Warband opens).
 
 ## Commands
 
@@ -177,7 +179,7 @@ python3 tools/audio.py make crit            # the take picked in tools/audio_lis
 
 In the page, `window.highfell` is the running app: `highfell.startRun({ start, testRar, role?, heroic?, dungeon? })`,
 `highfell.run.autoplay(seconds)`, `highfell.reveal.preview('normal' | 'unique' | 'pet' | 'log', dungeon?)`, `highfell.garden.open(bed)`,
-`highfell.showBrew()`, `highfell.showHearth('bunks')` (any room's id), `highfell.music.now()` (what's playing),
+`highfell.showBrew()`, `highfell.showHearth('bunks')` (any room's id), `highfell.share.card(brag)` (a Share card's PNG), `highfell.music.now()` (what's playing),
 `highfell.sfx.clips` (the decoded effects), and `highfell.p` is the live save (change it, then `highfell.save()`). A fresh browser opens on the hero maker: click `#cr-go` to make the rolled hero, then `#intro-skip` to skip the Crypt Trial.
 Settings has testing switches (walkout and log-complete previews of the dungeon picked on the Dungeons sheet, instant garden growth, lucky ×50,
 "Everything open": the log rewards and Heroic before they're earned, and buttons to replay the Crypt Trial and Hearth tour).
@@ -200,7 +202,7 @@ Settings has testing switches (walkout and log-complete previews of the dungeon 
 - **Visible text is plain and short,** and never uses the word "stroke" (the build warns). Say "Power", never
   "item level" or "ilvl", and show it as a whole number (Power 13, never 13.2); the code and the save keep
   their own names (`score`, `ilvl`). The game's name isn't final: it lives in one constant, `GAME_NAME` in
-  `src/content/index.ts`.
+  `src/content/index.ts`, with `PLAY_URL`, the link on Share cards.
 - **Achievements and titles say why.** Every achievement's `how` is one plain, exact sentence, shown wherever
   it shows (toast, chest, page, titles list), and every title comes from exactly one achievement.
   `checkContent()` checks both.

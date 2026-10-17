@@ -9,6 +9,7 @@ import type { RaceId } from '../content/folk';
 import type { Tier } from '../content/types';
 import { LORE } from '../content/vale';
 import { maxPoints, placeOf, points, wearTitle } from '../meta/achievements';
+import { achBrag } from '../meta/brag';
 import { paddock } from '../meta/hearth';
 import { activeHero, type Profile } from '../meta/profile';
 import { skillRank } from '../meta/vale';
@@ -83,6 +84,7 @@ export function logActions(h: LogHost): Record<string, (el: HTMLElement) => void
       h.open({ kind: 'logs', tab: 'achievements', entry: a ? placeOf(a) : undefined });
       if (a) h.root.querySelector<HTMLElement>(`.ac-hit[data-id="${CSS.escape(a.id)}"]`)?.focus({ preventScroll: true });
     },
+    achshare: (el) => { if (ACHIEVEMENTS[el.dataset.id || '']) h.app.share.open([achBrag(el.dataset.id || '')]); },
     achplace: (el) => { SFX.play('ui'); h.open({ kind: 'logs', tab: 'achievements', entry: el.dataset.id }); top(); },
     // a title goes on the hero you play; the armoury's own list puts one on the hero it shows
     wear: (el) => { const hero = activeHero(h.app.p); if (hero && wearTitle(h.app.p, hero, el.dataset.id || null)) { SFX.play('equip'); h.app.save(); } else SFX.play('nope'); },

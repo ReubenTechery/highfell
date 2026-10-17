@@ -23,6 +23,8 @@ import { RACES } from './folk';
 
 /** The game's name, in one place so a rename is one line. */
 export const GAME_NAME = 'Highfell';
+/** Where anyone can play it: the link on a Share card. */
+export const PLAY_URL = 'https://reubentechery.github.io/highfell/';
 
 const byId = <T extends { id: string }>(list: T[]): Record<string, T> => {
   const out: Record<string, T> = {};

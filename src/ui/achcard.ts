@@ -99,6 +99,7 @@ export function achCard(p: Profile, id: string): string {
           ${done ? earnedHtml(p, a) : '<p class="ac-when no">Not yet</p>'}</div></div>
       <div class="ac-sec"><h4>${done ? 'What you did' : 'What to do'}</h4><p class="ac-how">${secret ? 'It’s hidden. You’ll know it when it happens.' : esc(a.how)}</p>${secret ? '' : progressHtml(p, a)}</div>
       ${secret ? '' : `<div class="ac-sec"><h4>${done ? 'What you got' : 'What it gives'}</h4>${rewardsHtml(p, a, true)}<p class="ac-pts"><span class="medal ${a.tier}" aria-hidden="true">${a.points}</span>${a.points} achievement points</p></div>`}
+      ${done && !secret ? `<div class="ac-acts"><button type="button" class="btn small ac-share" data-act="achshare" data-id="${esc(a.id)}">${GLYPH.share}Share</button></div>` : ''}
     </section></div></div>`;
 }
 

@@ -25,6 +25,7 @@ import { Reveal, type RevealExtra } from './reveal';
 import { Creator } from './creator';
 import { Garden } from './garden';
 import { Brewing } from './brew';
+import { Share } from './share';
 
 export type SceneId = 'hearth' | 'create' | 'brew' | 'run' | 'reveal';
 const SCENES: SceneId[] = ['hearth', 'create', 'brew', 'run', 'reveal'];
@@ -46,6 +47,8 @@ export class App {
   readonly creator: Creator;
   readonly garden: Garden;
   readonly brew: Brewing;
+  /** a moment as a picture to post, over whatever is showing */
+  readonly share: Share;
   /** the effects and the music, for testing in the page */
   readonly sfx = SFX;
   readonly music = MUSIC;
@@ -66,6 +69,7 @@ export class App {
     this.creator = new Creator(this, $('sc-create'));
     this.garden = new Garden(this, $('garden'));
     this.brew = new Brewing(this, $('sc-brew'));
+    this.share = new Share(this);
     try { this.dev = { ...this.dev, ...JSON.parse(localStorage.getItem(DEV_KEY) || '{}') }; } catch { /* defaults */ }
   }
 
@@ -121,6 +125,7 @@ export class App {
 
   show(id: SceneId): void {
     this.scene = id;
+    this.share.close();
     for (const s of SCENES) $('sc-' + s).hidden = s !== id;
     // a run picks its own music; the reveal is quiet so every drop's sound lands
     if (id !== 'run') { MUSIC.want(id === 'reveal' ? null : 'house'); MUSIC.duck(1); }
