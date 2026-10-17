@@ -2105,7 +2105,6 @@ button.st-pc:active .tile { transform: scale(0.92); }
 .st-pc.got .tile { border-style: solid; background: none; }
 .st-pc.got .tile svg { filter: none; opacity: 1; }
 .st-pc.on .tile { box-shadow: 0 0 0 4px var(--gold); }
-.st-pc.new .tile { box-shadow: 0 0 0 4px #FFE08A, 0 0 14px 4px rgba(255, 224, 138, 0.6); }
 .st-pc small { font: normal 500 12px/1 var(--f-mono); color: var(--dim); }
 .st-pc.got small { color: #2E6B2A; }
 .st-pc small svg { width: 13px; height: 13px; }
@@ -2127,35 +2126,42 @@ button.st-pc:active .tile { transform: scale(0.92); }
 .ss-side .st-pc.got small { color: #9BE15D; }
 .ss > .sw { grid-area: words; padding: 12px 12px 10px; border-top: 3px solid var(--ink); background: var(--panel-2); }
 .ss .ss-where { grid-area: where; margin: 0; padding: 0 12px 12px; background: var(--panel-2); font: normal 400 12px/1.4 var(--f-mono); color: var(--dim); }
-/* without its stage (the chest draws your hero big above it): a light card, its pieces and count in a row */
-.ss.flat { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'side' 'words' 'where'; background: var(--panel); }
-.ss.flat .ss-side { grid-auto-flow: column; justify-content: space-between; align-items: center; padding: 10px 12px 0; color: var(--ink); }
-.ss.flat .ss-n { color: var(--soft); }
-.ss.flat .ss-n b { color: var(--ink); }
-.ss.flat .ss-n svg { color: #3E9B3A; }
-.ss.flat .st-pc small { color: var(--dim); } .ss.flat .st-pc.got small { color: #2E6B2A; }
-.ss.flat > .sw { border-top: 0; background: none; }
 @media (min-width: 700px) {
-  .ss:not(.flat) { grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: auto auto 1fr; grid-template-areas: 'stage side' 'stage words' 'stage where'; }
+  .ss { grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: auto auto 1fr; grid-template-areas: 'stage side' 'stage words' 'stage where'; }
   .ss-stage { height: 100%; min-height: 250px; border-right: 3px solid var(--ink); }
   .ss-stage .setlook { height: 220px; }
   .ss-side { padding: 14px 14px 6px; }
   /* the words on the dark stage: light, and every line as clear as the next */
-  .ss:not(.flat) > .sw { border-top: 0; background: none; padding: 4px 14px 8px; }
-  .ss:not(.flat) .sw .sw-h, .ss:not(.flat) .sw-b b { color: #FFFFFF; }
-  .ss:not(.flat) .sw .sw-b { color: #E9DDCB; }
-  .ss:not(.flat) .sw .sw-b.turnoff { color: #FFB4A8; }
-  .ss:not(.flat) .sw-b.off > i, .ss:not(.flat) .sw-b.off > em { border-color: #CFC3DD; background: transparent; color: #E9DDCB; }
-  .ss:not(.flat) .ss-where { align-self: end; padding: 0 14px 14px; background: none; color: #CFC3DD; }
+  .ss > .sw { border-top: 0; background: none; padding: 4px 14px 8px; }
+  .ss .sw .sw-h, .ss .sw-b b { color: #FFFFFF; }
+  .ss .sw .sw-b { color: #E9DDCB; }
+  .ss .sw .sw-b.turnoff { color: #FFB4A8; }
+  .ss .sw-b.off > i, .ss .sw-b.off > em { border-color: #CFC3DD; background: transparent; color: #E9DDCB; }
+  .ss .ss-where { align-self: end; padding: 0 14px 14px; background: none; color: #CFC3DD; }
 }
 @media (prefers-reduced-motion: no-preference) {
   .setlook .drop { animation: standdrop 1s cubic-bezier(0.2, 1.4, 0.4, 1) 0.35s both; }
 }
 .slot-moment .sm-art.hero { aspect-ratio: auto; width: auto; height: min(210px, 26vh); }
 .slot-moment .sm-art.hero .setlook { display: block; height: 100%; width: auto; overflow: visible; filter: drop-shadow(0 5px 0 rgba(0, 0, 0, 0.35)); }
-.slot-moment .ss { position: relative; width: 100%; box-sizing: border-box; text-align: left; box-shadow: 0 4px 0 var(--ink); }
-/* a set piece's moment says more, so on a short screen your hero is drawn a little smaller, and if it still
-   doesn't fit the moment scrolls (from its top) rather than cut its ends off */
+/* the chest's set piece, kept short: the set's three pieces as little stickers in their boxes and how many are
+   left. The one that just came glows; the ones still to find are faded in a dashed box. */
+.sm-stickers { position: relative; display: grid; justify-items: center; gap: 8px; margin: 2px 0 4px; }
+.sk-row { display: flex; gap: 12px; }
+.sk { display: grid; place-items: center; width: 54px; height: 54px; box-sizing: border-box; border: 3px dashed rgba(255, 248, 236, 0.5); border-radius: 12px; background: rgba(23, 18, 31, 0.72); }
+.sk .tile { width: 38px; height: 38px; box-sizing: border-box; border: 2px solid var(--ink); border-radius: 8px; box-shadow: none; }
+.sk:not(.got) .tile { filter: grayscale(1); opacity: 0.35; }
+.sk.got { border: 3px solid var(--rc); box-shadow: 0 3px 0 var(--ink); }
+.sk.new { box-shadow: 0 0 0 3px #FFE08A, 0 0 18px 6px rgba(255, 224, 138, 0.5); }
+.big-moment p.sk-left { display: inline-flex; align-items: center; gap: 6px; font-family: var(--f-display); font-size: 20px; line-height: 1.1; color: #FFE08A; text-shadow: 0 3px 0 var(--ink), 2px 0 0 var(--ink), -2px 0 0 var(--ink), 0 -2px 0 var(--ink); }
+.big-moment .sm-stickers.done p.sk-left { color: #9BE15D; }
+.sk-left svg { width: 18px; height: 18px; }
+@media (prefers-reduced-motion: no-preference) {
+  .sk.new { animation: skpop 0.6s cubic-bezier(0.2, 1.6, 0.4, 1) 1.1s both; }
+}
+@keyframes skpop { from { transform: scale(0.6); } to { transform: none; } }
+/* on a short screen your hero is drawn a little smaller, and if the moment still doesn't fit it scrolls (from
+   its top) rather than cut its ends off */
 .slot-moment { overflow-y: auto; place-items: safe center; }
 .slot-moment .rays { position: fixed; }
 @media (max-height: 760px) { .slot-moment .sm-art.hero { height: min(170px, 21vh); } .slot-moment .bm { gap: 6px; } }

@@ -5,7 +5,8 @@
  * piece the armoury has picked), or how many more it needs. The big block has your own hero wearing the whole
  * set on a dark stage, the pieces you haven't found as pale ghosts with a dashed edge (art.ts: setLookSvg), the
  * three pieces (found ones lit, missing ones dashed with their drop rate) and where the pieces drop. The door
- * has a slim row of it. The state of a set comes from meta/sets.ts.
+ * has a slim row of it, and the chest only the three pieces as little stickers and how many are left. The state
+ * of a set comes from meta/sets.ts.
  */
 import { DUNGEONS, ITEMS, heroicVersion } from '../content';
 import type { Hero, Profile } from '../meta/profile';
@@ -29,11 +30,11 @@ export function setWords(st: SetState, o: { have?: boolean } = {}): string {
 
 /** The three pieces as tiles: a found one lit and ticked (ringed gold while worn), a missing one dashed with its
  *  drop rate. `act` makes each a button: 'item' (its sheet), 'peek' (the log's closer look) or 'gearat' (the
- *  armoury on that slot, for `hero`). `drop` is the piece that has just come. */
-export function setTiles(p: Profile, st: SetState, o: { act?: 'item' | 'peek' | 'gearat'; hero?: string; drop?: string } = {}): string {
+ *  armoury on that slot, for `hero`). */
+export function setTiles(p: Profile, st: SetState, o: { act?: 'item' | 'peek' | 'gearat'; hero?: string } = {}): string {
   return `<span class="st-pcs">${st.pieces.map((x) => {
     const name = ITEMS[x.id].name, rate = fmtRate(dropSource(p, x.id)?.rate);
-    const cls = `st-pc${x.have ? ' got' : ''}${x.worn ? ' on' : ''}${x.id === o.drop ? ' new' : ''}`, inner = `<span class="tile" aria-hidden="true">${iconOf(x.id)}</span><small aria-hidden="true">${x.have ? GLYPH.check : rate}</small>`;
+    const cls = `st-pc${x.have ? ' got' : ''}${x.worn ? ' on' : ''}`, inner = `<span class="tile" aria-hidden="true">${iconOf(x.id)}</span><small aria-hidden="true">${x.have ? GLYPH.check : rate}</small>`;
     const label = `${name}: ${x.worn ? 'wearing it' : x.have ? 'yours' : `not found yet, ${rate}`}`;
     if (!o.act) return `<span class="${cls}" style="--rc: ${rarLook(x.id).color}" role="img" aria-label="${esc(label)}">${inner}</span>`;
     const to = o.act === 'gearat' ? ` data-hero="${esc(o.hero || '')}" data-slot="${x.slot}"` : '';
@@ -52,18 +53,25 @@ export function setWhere(p: Profile, st: SetState): string {
   return `${st.pieces.map((x, i) => `${ITEMS[x.id].name}: ${src[i] ? `${src[i]!.boss}, ${fmtRate(src[i]!.rate)}` : '?'}`).join('. ')}${heroic}.`;
 }
 
-/** The big block: your hero in the whole set on a dark stage (left out when the moment draws the hero itself),
- *  the set's name, how many you have and its three pieces, then the words, and where the pieces drop. */
-export function setShow(p: Profile, h: Hero, st: SetState, o: { eyebrow?: string; where?: boolean; stage?: boolean; drop?: string; act?: 'item' | 'peek' | 'gearat' } = {}): string {
-  const look = o.stage === false ? '' : setLookSvg(p, h, st.set.pieces, { drop: o.drop });
-  const stage = look ? `<div class="ss-stage">${look}<span class="ss-floor" aria-hidden="true"></span>${st.done ? '' : '<i class="ss-stamp">Full set</i>'}</div>` : '';
+/** The big block: your hero in the whole set on a dark stage, the set's name, how many you have and its three
+ *  pieces, then the words, and where the pieces drop. */
+export function setShow(p: Profile, h: Hero, st: SetState, o: { eyebrow?: string; where?: boolean; act?: 'item' | 'peek' | 'gearat' } = {}): string {
   const where = o.where ? setWhere(p, st) : '';
-  const count = `<p class="ss-n">${st.done ? `${GLYPH.check}Set done` : `<b>${st.have}</b> of 3`}</p>`, tiles = setTiles(p, st, { act: o.act, hero: h.id, drop: o.drop });
-  // without its stage the words say its name, so the side is just its pieces and the count
-  const side = stage ? `${o.eyebrow ? `<p class="ss-eye">${esc(o.eyebrow)}</p>` : ''}<h3>${esc(st.set.name)}</h3>${count}${tiles}` : `${tiles}${count}`;
-  return `<section class="ss${stage ? '' : ' flat'}${st.done ? ' done' : ''}" aria-label="${esc(`${st.set.name}: ${st.have} of 3`)}">${stage}
-    <div class="ss-side">${side}</div>
+  return `<section class="ss${st.done ? ' done' : ''}" aria-label="${esc(`${st.set.name}: ${st.have} of 3`)}">
+    <div class="ss-stage">${setLookSvg(p, h, st.set.pieces)}<span class="ss-floor" aria-hidden="true"></span>${st.done ? '' : '<i class="ss-stamp">Full set</i>'}</div>
+    <div class="ss-side">${o.eyebrow ? `<p class="ss-eye">${esc(o.eyebrow)}</p>` : ''}<h3>${esc(st.set.name)}</h3>
+      <p class="ss-n">${st.done ? `${GLYPH.check}Set done` : `<b>${st.have}</b> of 3`}</p>${setTiles(p, st, { act: o.act, hero: h.id })}</div>
     ${setWords(st, { have: false })}${where ? `<p class="ss-where">${esc(where)}</p>` : ''}</section>`;
+}
+
+/** The chest's set piece, kept short: the set's three pieces as little stickers in their boxes (found ones lit,
+ *  the one that just came glowing, missing ones faded in a dashed box), and how many are left, or that it's done. */
+export function setStickers(st: SetState, drop?: string): string {
+  const left = st.pieces.length - st.have;
+  const pcs = st.pieces.map((x) => `<span class="sk${x.have ? ' got' : ''}${x.id === drop ? ' new' : ''}" style="--rc: ${rarLook(x.id).color}"><span class="tile">${iconOf(x.id)}</span></span>`).join('');
+  const line = st.done ? `${GLYPH.check}${esc(st.set.name)} set done!` : `${left} more to finish ${esc(st.set.name)}`;
+  return `<div class="sm-stickers${st.done ? ' done' : ''}" role="img" aria-label="${esc(`${st.set.name}: ${st.have} of ${st.pieces.length}. ${st.done ? 'Set done' : `${left} more to finish it`}`)}">
+    <span class="sk-row" aria-hidden="true">${pcs}</span><p class="sk-left" aria-hidden="true">${line}</p></div>`;
 }
 
 /** The door's slim row: the three pieces small (found ones lit, missing ones dashed), "Your set" over the set's

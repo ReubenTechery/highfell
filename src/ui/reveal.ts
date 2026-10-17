@@ -3,8 +3,8 @@
  * chest opens and the cards come out face down and flip one by one, rarest last. A pet or a mount
  * gets the whole screen, and so does a collection log filled at last: its hero walks out, and what it
  * gave stays on the page with a way to it. A new piece for the log gets a moment of its own: its stand
- * comes up and the piece drops on (a set piece drops onto your own hero, in the whole set, and the set is said
- * in full). Then the numbers: kill counts, time, the log's strip, the garden.
+ * comes up and the piece drops on (a set piece drops onto your own hero, in the whole set, with the set's
+ * pieces as little stickers and how many are left). Then the numbers: kill counts, time, the log's strip, the garden.
  * Anything worth showing off (meta/brag.ts) has a Share button, in its moment and above the numbers,
  * which makes a picture of it to post (share.ts).
  */
@@ -27,7 +27,7 @@ import { fitsHero, itemShare, waiting, worn } from '../meta/gear';
 import type { App } from './app';
 import { actions, esc, fmtN, fmtRate, fmtT, GLYPH, reducedMotion, wait } from './dom';
 import { colourOf, iconOf, nameOf, setLookSvg, spriteURL, standSvg, tile } from './art';
-import { setShow } from './setcard';
+import { setStickers } from './setcard';
 import { setState } from '../meta/sets';
 import { ROLE_STAT } from './itemsheet';
 import { mainReward, rewards } from './dungeonsheet';
@@ -273,7 +273,8 @@ export class Reveal {
   }
   /** a piece the log didn't have: its stand comes up and the piece drops on (a trophy or a dye stands on its
    *  own), with what it is, the kill count it came at, whether it finished a set, and the log ticking up. A set
-   *  piece for your hero drops onto you instead, in the whole set, with the set said in full (setcard.ts). */
+   *  piece for your hero drops onto you instead, in the whole set, with the set's pieces as little stickers and
+   *  how many are left (setcard.ts). */
   private slotMoment(d: Drop): Promise<void> {
     const p = this.app.p, dg = this.logOf(d.id) || BARROW, t = slotTag(d.id), c = COLLECTIBLES[d.id];
     const stand = standsOf(dg.id).find((s) => standPieces(s).includes(d.id));
@@ -297,7 +298,7 @@ export class Reveal {
       el.innerHTML = `<span class="rays"></span><div class="bm"><p class="eyebrow">New in your collection log</p>
         <div class="sm-art${look ? ' hero' : stand ? '' : ' loose'}">${art}</div><h2>${esc(nameOf(d.id))}</h2>
         <p class="sm-meta"><i class="sm-rar${t.pale ? ' pale' : ''}" style="--rc: ${t.bg}">${esc(t.word)}</i>${esc(fmtRate(d.rate))} · kill count ${fmtN(d.kc || 0)}</p>
-        ${st && h ? setShow(p, h, st, { stage: false, drop: d.id }) : done ? `<p class="sm-done">${GLYPH.check}${esc(stand!.set.name)} set done · 3 of 3</p>` : ofSet ? `<p class="sm-set">${esc(stand!.set.name)} · ${stand!.pieces.filter(on).length} of 3</p>` : ''}
+        ${st ? setStickers(st, d.id) : done ? `<p class="sm-done">${GLYPH.check}${esc(stand!.set.name)} set done · 3 of 3</p>` : ofSet ? `<p class="sm-set">${esc(stand!.set.name)} · ${stand!.pieces.filter(on).length} of 3</p>` : ''}
         ${need ? this.stripHtml(dg.id, before, after, need, '') : ''}${this.shareBtn(set >= 0 ? set : this.bragAt('unique', d.id))}<p style="opacity: 0.7">Tap to carry on</p></div>`;
       this.root.appendChild(el);
       SFX.play('slot'); SFX.play('rare', 0.7);
