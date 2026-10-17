@@ -125,7 +125,8 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   the party's seats (`party.ts`), and `vale.ts` (seeds, planter beds, harvests, ranks, brewing).
 - `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, its drawing
   `houseart.ts`, every room in each look, the Toadstool Workshop's in `houseworkshop.ts`, your hero's name tag `nametag.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
-  close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. Sheets over them: the dungeons
+  close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. A hero's picture is composed in
+  layers by `heroart.ts` (their body and each slot's piece, from `art/heroes.json`). Sheets over them: the dungeons
   (`dungeonsheet.ts`, its door's picture in `stage.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
   (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`), settings (`settingssheet.ts`), a hero's gear in the armoury
   (`armoury.ts`; the card for the piece you pick in `armourycard.ts`), the satchel and the spot picker. Toasts, sound (`sound.ts`: the embedded effects, each with its synthesised fallback) and music
@@ -133,12 +134,13 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
 - `audio/`: the sounds, made by `tools/audio.py` from `tools/audio_list.py`: `sfx/*.mp3` and `sfx.json` (the
   build embeds it), `music/*.mp3` and `music.json` (streamed from the live page's own files, never embedded).
 - `src/sim` and `scripts/sim.mjs`: headless bot runs of the real engine (the balance numbers).
-- `tools/`: the art pipeline (Python writes SVG into `art/*.json`; the log's armour stands are in `art_wardrobe.py`; the heroes are in `art_heroes.py`, their
-  faces in `art_heads.py`), `art_sheet.py` (look at your art), `pw_check.py` (screenshot the built game),
+- `tools/`: the art pipeline (Python writes SVG into `art/*.json`; the log's armour stands are in `art_wardrobe.py`; the heroes are drawn in layers by
+  `art_gear.py`, their bodies in `art_bodies.py`, each class's gear in `art_gear_<class>.py`, their faces in `art_heads.py`), `art_sheet.py` (look at your art), `pw_check.py` (screenshot the built game),
   `pw_perf.py` (measure the house's speed on a slowed-down phone), `audio.py` (the sounds: ElevenLabs takes,
   trimmed, levelled and compressed; needs ffmpeg).
 - `tests/`: `balance.test.ts` (bot clears must stay in their bands), `dungeon.test.ts` (threat, cages,
-  curses, numbers, tuning, where each hero's weapon and head are), `coach.test.ts` (which button the coach
+  curses, numbers, tuning), `heroart.test.ts` (heroes in layers: every body's anchors, a layer for every piece
+  on every body that can wear it, where each hero's weapon and head are), `coach.test.ts` (which button the coach
   names), `combos.test.ts` (the combos on bosses), `input.test.ts` (the touch controls and party-frame swipes,
   driven without a browser), `meta.test.ts`, `vale.test.ts`.
 

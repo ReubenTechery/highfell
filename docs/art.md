@@ -55,16 +55,37 @@ New colours are fine when a thing needs one; keep them flat and in this family (
 - **Sizes at k = 1:** heroes about 110 to 150 tall to the tip of a hat or staff (the top of the head: a dwarf
   about 100, the others about 115), ordinary mobs about 110, the Gravekeeper 312, pets 60 to
   110, mounts about 160. Icons are 64×64 tiles: a flat coloured square, one black line, one idea each.
-- **Heroes:** `<name>_f` (front) and `<name>_b` (back, the weapon in the other hand). They are drawn "Big
-  Shoulders": the armour is the silhouette (huge pauldrons or mantles, big hands and weapons) over one of the
-  faces in `art_heads.py`, each drawn once around the middle of its eyes. `art_heroes.py` writes its shapes at
-  1.25 times game size and shrinks them by `Z` as it draws, keeping the ink at full weight. `HERO_ART` in
-  `src/content/folk.ts` maps a race and class to a sprite name; a combo is playable once it has art and an
-  entry in `HERO_FIT` (`src/dungeon/render.js`: where its weapon glows, where the top of its head is; a test
-  checks). Mounts face right and carry a `saddle` offset in their collectible so a hero sits on them.
+- **Heroes are drawn in layers:** a body (race, sex and class, in plain linen underclothes: `art_bodies.py`)
+  wearing a layer for each gear slot (chest, shoulders, helm, weapon), drawn from the piece worn there, so what
+  a hero wears is what you see. Front (`_f`) and back (`_b`, the weapon in the other hand). They are drawn "Big
+  Shoulders": the armour is the silhouette (big pauldrons or mantles, big hands and weapons) over one of the
+  faces in `art_heads.py`, each drawn once around the middle of its eyes; but the head always reads at run size,
+  so big pauldrons are drawn a quarter smaller than they stand and scaled to each body.
+  - **Bands:** a hero is drawn band by band, back to front (`BANDS` in `art_gear.py`: the cape, the legs, the
+    torso, the arms, what the other hand holds, the shoulders, the weapon, the hands, the head, the helm, and
+    others; one order for the front and one for the back). The body and every layer put each shape in a band, so
+    a layer can sit behind one part of the body and in front of another (a shield under the pauldron, a beard
+    over the plate).
+  - **Anchors:** each class's gear is drawn once, on its reference body (the warrior's is the dwarf, the cleric's
+    and the rogue's the human, the mage's the elf). Every body has a fit: where the reference's landmarks fall on
+    it (the middle of the eyes, the shoulder line, the shoulders, both grips, and knots down the spine). Each
+    shape of a layer names a region (`spine`, `head`, `sh`, `arm`, `arm2`, `main`, `off`) and moves onto the
+    body by it; only the coordinates move, so the ink keeps its weight on a gnome as on a dwarf. A new body needs
+    its fit; a new piece needs a layer for its class (`tests/heroart.test.ts` checks both).
+  - **Set pieces and boss weapons** are their stands' pieces from the wardrobe, moved onto the hero
+    (`from_stand()`, `held()`), with the sleeves, legs and backs a stand doesn't have. A stand's shaft or strap
+    is redrawn at the hero's weight (`shaft()`); at hero size the stand's own would be all ink.
+  - Shapes are written at 1.25 times game size and shrunk by `Z` as they're drawn (the helpers in
+    `art_heroes.py`), keeping the ink at full weight. `python3 tools/art_gear.py` writes `art/heroes.json` (the
+    page composes each hero from it, `src/ui/heroart.ts`) and a contact sheet per class: every body in Common,
+    Uncommon, Rare, a mixed outfit and each set, gilded too, front and back. Look at it before it goes in:
+    `python3 tools/art_sheet.py shots/heroes_mage.png shots/heroes_mage.json --cols 16`.
+  - `HERO_ART` in `src/content/folk.ts` maps a race and class (and sex, `HERO_ART_SEX`) to its body. Mounts face
+    right and carry a `saddle` offset in their collectible so a hero sits on them.
 - **Heroic drops are gilded:** `gild()` in `art_sprites.py` turns a picture's bone and steel to gold; on a 64x64
   tile it also gives a dark gold ground and a sparkle in the corner. Every heroic drop uses it (a gilding kit is
-  drawn as its piece, gilded), so a gilded piece reads as the heroic one at a glance.
+  drawn as its piece, gilded), so a gilded piece reads as the heroic one at a glance. A hero wearing a gilded
+  piece wears that layer through `gild()`, that piece alone.
 - **The wardrobe:** each set stands on its own armour stand in the collection log (`art_wardrobe.py`). The stand
   is drawn bare, then every piece (helm, shoulders, chest, and the boss weapon of the set's role) is a layer of its
   own around the stand's ground point, split into its silhouette (`sil`) and its details (`det`): a piece you
@@ -80,8 +101,8 @@ New colours are fine when a thing needs one; keep them flat and in this family (
 
 | Tool | Draws | Writes |
 | --- | --- | --- |
-| `tools/art_heroes.py`, `tools/art_heads.py` | the heroes, front and back (the Risen and the Gnomes too, gilded as well); their faces and the backs of their heads | `art/sprites.json` (through `art_sprites.py`) |
-| `tools/art_sprites.py` | mobs, bosses, dungeon props, effects, and `gild()`; builds the heroes in with them | `art/sprites.json` |
+| `tools/art_gear.py`, `tools/art_bodies.py`, `tools/art_gear_tank.py`, `_healer.py`, `_mage.py`, `_rogue.py`, `tools/art_heads.py`, `tools/art_heroes.py` | the heroes in layers: the bands, anchors and how a layer moves onto a body; every body, front and back, with its fit; each class's gear (regular, sets and boss weapons); the faces and backs of heads; the helpers, shapes and colours they share | `art/heroes.json`, and `shots/heroes_<class>.json` to look at |
+| `tools/art_sprites.py` | mobs, bosses, dungeon props, effects, and `gild()` | `art/sprites.json` |
 | `tools/art_icons.py` | ability icons, gear icons, the set pieces' icons (cut from the wardrobe) | `art/icons.json` |
 | `tools/art_wardrobe.py` | the wardrobe: the bare stand and every set piece and boss weapon as a layer, plain and gilded | `art/wardrobe.json` |
 | `tools/art_hearth.py` | the house's props (the lectern, armour stand, weapon rack, larder, bunks, signpost, the Barrow door, bricked arches, the brewing bench, the paddock's hay and trough), the fireplace and furniture, pets, mounts, trophies (and the dye bottle for the log's shelf), banners, lanterns, collectible icons | `art/hearth.json`, `art/collect_icons.json` |
