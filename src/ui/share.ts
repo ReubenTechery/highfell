@@ -106,7 +106,7 @@ export class Share {
       ${n > 1 ? `<div class="sh-dots" aria-hidden="true">${this.brags.map((_, i) => `<i${i === this.at ? ' class="on"' : ''}></i>`).join('')}</div>` : ''}
       ${pic && !sheet ? `<p class="sh-hint">${hint}</p>` : ''}
       <div class="sh-acts">${sheet ? `<button type="button" class="btn gold big" data-act="send">${GLYPH.share}Share</button>` : ''}
-        ${pic ? `<a class="btn${sheet ? '' : ' gold big'}" href="${pic.url}" download="${esc(pic.file.name)}">Save the image</a>` : ''}</div></div>`;
+        ${pic && !framed() ? `<a class="btn${sheet ? '' : ' gold big'}" href="${pic.url}" download="${esc(pic.file.name)}">Save the image</a>` : ''}</div></div>`;
     if (!pic && !this.failed) void this.draw(this.at);
     // focus stays on the button you used (an arrow), or goes to the main one
     (el.querySelector<HTMLElement>(had ? `[data-act="${had}"]` : '.sh-acts .btn') || el.querySelector<HTMLElement>('.sh-acts .btn') || el.querySelector<HTMLElement>('[data-act="close"]'))?.focus({ preventScroll: true });
@@ -145,4 +145,10 @@ export class Share {
       this.render();
     }
   }
+}
+
+/** the page is inside another (claude.ai's viewer), where a download link does nothing: holding or right-clicking
+ *  the picture still saves it */
+function framed(): boolean {
+  try { return window.top !== window.self; } catch { return true; }
 }
