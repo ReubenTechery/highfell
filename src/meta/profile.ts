@@ -15,7 +15,7 @@
  */
 import type { Rar, RoleId, SlotId } from '../content/types';
 import { ORDER } from '../content/roles';
-import { SLOT_IDS } from '../content/gear';
+import { SLOT_IDS, gearKeyOf } from '../content/gear';
 import { CLASSES, FOUNDERS, MAX_HEROES, canMake, cleanName, defaultSex, type ClassId, type RaceId, type SexId } from '../content/folk';
 import { DUNGEONS, KITS } from '../content';
 import { BEDS } from '../content/vale';
@@ -381,6 +381,10 @@ export const owns = (p: Profile, id: string): boolean => !!p.collection[id];
 /* ---------------------------------------------------------------- heroes */
 /** The seat a hero takes in a party. A class this build does not know plays as DPS. */
 export const roleOf = (h: Pick<Hero, 'cls'>): RoleId => CLASSES[h.cls as ClassId]?.role ?? 'dps';
+/** The role whose gear a hero wears, rolls on the tables and raises (the shared floor): its class's, but the ranger
+ *  wears what the code calls healer gear, the cleric's old sets and weapons (the duo rework, `gearKey`). The mage
+ *  and the rogue share the dps floor, as they always have. */
+export const gearRole = (h: Pick<Hero, 'cls'>): RoleId => { const k = gearKeyOf(String(h.cls)); return k === 'rogue' ? 'dps' : k; };
 export const heroById = (p: Profile, id: string | null | undefined): Hero | null => (id ? p.roster.find((h) => h.id === id) || null : null);
 export const activeHero = (p: Profile): Hero | null => heroById(p, p.active) || p.roster[0] || null;
 
@@ -398,7 +402,7 @@ export function nameProblem(p: Profile, raw: string, except?: string): string | 
 export function createHero(p: Profile, o: { name: string; race: RaceId; cls: ClassId; sex?: SexId; free?: boolean }, now = Date.now(), id?: string): Hero | null {
   if (p.roster.length >= MAX_HEROES || (p.roster.length && !(o.free || warbandOpen(p))) || !canMake(o.race, o.cls) || !(o.free || opened(p, 'race', o.race)) || nameProblem(p, o.name)) return null;
   o = { ...o, name: cleanName(o.name)! };
-  const role = CLASSES[o.cls].role;
+  const role = gearRole(o);
   const sex: SexId = o.sex === 'm' || o.sex === 'f' ? o.sex : defaultSex(o.race, o.cls);
   const h: Hero = {
     id: id || 'h_' + now.toString(36) + Math.floor(Math.random() * 1e6).toString(36),

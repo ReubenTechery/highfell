@@ -13,7 +13,7 @@ import { EPIC, SLOT_IDS, TRAITS, gearId, gearKey } from '../content/gear';
 import type { Rng } from '../core/rng';
 import { autoPlace } from './hearth';
 import { bagIt, bestRegular, fitsHero, freshForRole } from './gear';
-import { WARBAND_CAP, bossRecord, dungeonRecord, roleOf, type Hero, type Profile } from './profile';
+import { WARBAND_CAP, bossRecord, dungeonRecord, gearRole, type Hero, type Profile } from './profile';
 import { growBeds, rollSeeds } from './vale';
 import { chestXp, type ChestXp } from './xp';
 import { TOMES } from '../content/xp';
@@ -85,12 +85,14 @@ export const heroicOpen = (p: Profile, dungeon: string): boolean => heroicProgre
 /** whose Marks a dungeon pays: a heroic one pays its normal one's */
 const marksOf = (dg: DungeonInfo): string => dg.heroicOf || dg.id;
 
-/** Each line rolls on its own. Role/class-locked lines only roll for that role/class. */
+/** Each line rolls on its own. Role/class-locked lines only roll for the class that wears them (their gear keys
+ *  match: the ranger rolls the healer's lines, the cleric's old sets). */
 export function rollTable(t: BossLootDef, role: RoleId, rng: Rng, cls?: string): DropDef[] {
   const hit: DropDef[] = [];
+  const key = gearKey({ role, cls });
   for (const d of t.drops) {
     const r = rng();
-    const match = !d.role || (d.role === role && (cls === 'rogue' ? d.cls === 'rogue' : !d.cls));
+    const match = !d.role || gearKey(d) === key;
     if (match && r < d.rate) hit.push(d);
   }
   return hit;
@@ -98,7 +100,7 @@ export function rollTable(t: BossLootDef, role: RoleId, rng: Rng, cls?: string):
 
 /** Add something to the collection. Gear waits for every hero of its role/class to put it on; a pet, mount or trophy finds its spot in the hearth. */
 function grant(p: Profile, h: Hero, id: string, meta: Pick<Drop, 'source' | 'boss' | 'rate' | 'kc'>, now: number): Drop {
-  const role = roleOf(h);
+  const role = gearRole(h);
   const ent = p.collection[id];
   if (ent) { ent.n++; return { id, ...meta, role, isNew: false, dupe: true, marks: DUPE_MARKS }; }
   p.collection[id] = { n: 1, kc: meta.kc || 0, at: now };
@@ -114,7 +116,7 @@ export const REG_CAP: Rar = 2;
 /** The regular piece for the hero you played: their weakest slot (counting what waits in the bag) moves up
  *  one step up to Rare (Epic comes from the dungeon's set and boss weapon). At full Rare it offers weapon traits. */
 export function regularDrop(p: Profile, h: Hero, rng: Rng): Drop {
-  const role = roleOf(h);
+  const role = gearRole(h);
   const gKey = gearKey({ role, cls: h.cls });
   const best = (s: SlotId) => bestRegular(h, s);
   const minR = Math.min(...SLOT_IDS.map((s) => best(s).rar)) as Rar;
@@ -138,12 +140,12 @@ export function regularDrop(p: Profile, h: Hero, rng: Rng): Drop {
 function raiseFloor(p: Profile, role: RoleId, slot: SlotId, rar: Rar): void {
   const r = Math.min(rar, WARBAND_CAP) as Rar;
   if (p.warband[role][slot].rar < r) p.warband[role][slot] = { rar: r };
-  for (const h of p.roster) if (roleOf(h) === role) bagIt(h, slot, { rar: r });
+  for (const h of p.roster) if (gearRole(h) === role) bagIt(h, slot, { rar: r });
 }
 
 /** Accept or refuse a sideways trait offer. It goes on your regular weapon, worn or in the bag. */
 export function takeTrait(h: Hero, trait: string): void {
-  const gKey = gearKey({ role: roleOf(h), cls: h.cls });
+  const gKey = gearKey({ role: gearRole(h), cls: h.cls });
   const reg = bestRegular(h, 'weapon');
   if (reg.rar >= REG_CAP && TRAITS[gKey].some((t) => t.id === trait)) reg.trait = trait;
 }
@@ -173,7 +175,7 @@ export interface KillLoot { boss: string; kc: number; time: number; newPb: boole
 /** The Crypt Trial's chest: an Uncommon weapon and an Uncommon helm for your first hero, so the first real run
  *  starts a step up. As drops, for the chest to show. */
 export function trialStarter(h: Hero): Drop[] {
-  const role = roleOf(h), gk = gearKey({ role, cls: h.cls });
+  const role = gearRole(h), gk = gearKey({ role, cls: h.cls });
   return [
     { id: gearId(gk, 'weapon', 1), source: 'regular', role, slot: 'weapon', rar: 1, prevRar: 0, isNew: true, dupe: false, marks: 0, toEquip: true },
     { id: gearId(gk, 'helm', 1), source: 'regular', role, slot: 'helm', rar: 1, prevRar: 0, isNew: true, dupe: false, marks: 0, toEquip: true },
@@ -185,7 +187,7 @@ export function trialStarter(h: Hero): Drop[] {
 export function grantTrialStarter(p: Profile, h: Hero): boolean {
   if (p.counters['intro.starter']) return false;
   p.counters['intro.starter'] = 1;
-  const role = roleOf(h);
+  const role = gearRole(h);
   raiseFloor(p, role, 'weapon', 1);
   raiseFloor(p, role, 'helm', 1);
   return true;
@@ -194,7 +196,7 @@ export function grantTrialStarter(p: Profile, h: Hero): boolean {
 /** One dungeon's table for a boss, rolled for one player, its drops granted at that table's kill count. */
 function rollKill(p: Profile, dg: DungeonInfo, boss: string, h: Hero, kc: number, rng: Rng, now: number): Drop[] {
   const table = dg.loot.find((t) => t.boss === boss);
-  return table ? rollTable(table, roleOf(h), rng, h.cls).map((d) => grant(p, h, d.id, { source: 'table', boss, rate: d.rate, kc }, now)) : [];
+  return table ? rollTable(table, gearRole(h), rng, h.cls).map((d) => grant(p, h, d.id, { source: 'table', boss, rate: d.rate, kc }, now)) : [];
 }
 
 /** A kill counts and rolls its table (and its seed lines after your first clear). A Heroic kill rolls its normal
@@ -237,7 +239,7 @@ export function resolveClear(p: Profile, dg: DungeonInfo, h: Hero, time: number,
 
 /** the chest's XP as cards: the pages, then each tome */
 export function xpDrops(xp: ChestXp, h: Hero): Drop[] {
-  const role = roleOf(h);
+  const role = gearRole(h);
   return [
     { id: 'xp.pages', source: 'xp', role, isNew: true, dupe: false, marks: 0, xp: xp.pagesXp, n: xp.pages },
     ...xp.tomes.map((t): Drop => ({ id: t.id, source: 'xp', role, isNew: true, dupe: false, marks: 0, xp: t.xp, rate: TOME_RATE[t.id] })),
@@ -249,7 +251,7 @@ const TOME_RATE: Record<string, number> = Object.fromEntries(TOMES.map((t) => [t
 export function runLoot(p: Profile, dg: DungeonInfo, h: Hero, kills: KillLoot[], clear: ClearLoot | null): RunLoot {
   const rec = dungeonRecord(p, dg.id);
   const seeds: Record<string, number> = {};
-  const out: RunLoot = { dungeon: dg.id, role: roleOf(h), hero: h.id, drops: [], tell: 'normal', kc: {}, marks: 0, clears: rec.clears, time: clear ? clear.time : 0, pb: rec.pb, newPb: !!clear?.newPb, firstClear: !!clear?.firstClear, seeds, bedsReady: clear?.bedsReady || 0 };
+  const out: RunLoot = { dungeon: dg.id, role: gearRole(h), hero: h.id, drops: [], tell: 'normal', kc: {}, marks: 0, clears: rec.clears, time: clear ? clear.time : 0, pb: rec.pb, newPb: !!clear?.newPb, firstClear: !!clear?.firstClear, seeds, bedsReady: clear?.bedsReady || 0 };
   for (const k of kills) {
     out.kc[k.boss] = k.kc; out.drops.push(...k.drops); out.marks += k.marks;
     for (const [s, n] of Object.entries(k.seeds || {})) seeds[s] = (seeds[s] || 0) + n;
@@ -281,7 +283,7 @@ export function lootFor(dg: DungeonInfo, role: RoleId, cls?: string): { mine: Dr
   const all = dg.loot.flatMap((t) => t.drops);
   const who = (d: DropDef): { role?: RoleId; cls?: string } => { const it = KITS[d.id] && ITEMS[KITS[d.id].item]; return it ? { role: it.role, cls: it.cls } : d; };
   return {
-    mine: all.filter((d) => { const w = who(d); return w.role === role && (!cls || (cls === 'rogue' ? w.cls === 'rogue' : !w.cls)); }),
+    mine: all.filter((d) => { const w = who(d); return w.role !== undefined && (cls ? gearKey(w) === gearKey({ role, cls }) : w.role === role); }),
     shared: all.filter((d) => !who(d).role).sort((a, b) => b.rate - a.rate),
   };
 }

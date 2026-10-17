@@ -163,7 +163,7 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   flies over them (shots, effects, the numbers). It reaches the screen only through `HOOKS` and `emit`.
 - `src/meta`: TypeScript rules for everything that lasts: the profile and its migrations (heroes live here),
   loot (and when heroic opens), gear, achievements, what the collection log gives (`logs.ts`), the hearth,
-  the party's seats and the under-powered warning (`party.ts`), when your Warband opens (`warband.ts`), `vale.ts` (seeds, planter beds, harvests,
+  the party's seats, your companion and the under-powered warning (`party.ts`), when your Warband opens (`warband.ts`), a hero whose class retired picking a new one (`newclass.ts`), `vale.ts` (seeds, planter beds, harvests,
   ranks, brewing), `tips.ts` (which first-time tip the house and the Dungeons door show), `brag.ts` (what a
   run had to show off, for the Share card), `xp.ts` (gaining XP, your level, the chest's XP) and `talents.ts`
   (talent points, specs, the tree's rules and what a run gets from them, `talentLoadout`).

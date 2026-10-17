@@ -47,6 +47,8 @@ export interface ClassDef {
   blurb: string;
   /** has a kit in the game today */
   ready: boolean;
+  /** gone from the game (the cleric, in the duo rework): its heroes pick a new class once (meta/newclass.ts) */
+  retired?: boolean;
 }
 
 export const RACES: Record<RaceId, RaceDef> = {

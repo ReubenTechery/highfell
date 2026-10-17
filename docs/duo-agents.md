@@ -43,7 +43,15 @@ The integrator writes these in the plumbing, before anyone else starts.
   the nearest one).
 - **The ranger wears what the code calls healer gear.** `gearKeyOf('ranger') === 'healer'`, so the cleric's sets,
   weapons and gilding kits (`candlewake.*`, `sporebloom.*`, `gravekeeper.healer`, `tinker.healer`) become the
-  ranger's without moving anyone's save. Visible text says ranger.
+  ranger's without moving anyone's save. Visible text says ranger. In the rules that's `gearRole(h)`
+  (`src/meta/profile.ts`): the role whose gear a hero wears, rolls on the tables and raises, `'healer'` for a ranger.
+  `fitsHero`, `rollTable`, `lootFor` (pass the class), the ladder, the floor and `trialWeapon` all go by it. For
+  anything about gear or loot use `gearRole`, never `roleOf`.
+- **A class that retires.** `mustPickClass(h)`, `classChoices(h)` and `pickClass(p, h, cls)` in
+  `src/meta/newclass.ts`: a hero whose class has retired (`CLASSES[cls].retired`; the integrator retires the cleric
+  at the end) picks a new class once, keeping its race, name, look, title and clears; its ladder comes along, and a
+  unique the new class can't wear comes off and stays in the collection. Stream 5's sheet uses these. Nothing has
+  retired yet: to try it, set `CLASSES.cleric.retired = true` and put it back.
 - **Duel counts.** `duelAdd(h, key, n = 1)` counts for the duel card: `'combosSet'`, `'combosLanded'`, `'lifts'`,
   `'breaks'`, `'keys'`, `'pickups'`, `'bombs'`. Damage and the biggest crit are counted by `hurtMob` already
   (`S.duel[h.id]`, keys in `DUEL_KEYS`).
