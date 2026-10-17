@@ -49,7 +49,7 @@ function abViper(h, aim) {
   if (!t.cage) addPoints(h, crit ? 2 : 1);
   const storm = knifeStorm(h);
   const more = storm ? foesNear(h.x, h.y, 120, false).filter((o) => o !== t && !o.cage) : sweepFoes(h, t);
-  for (const o of more) { hurtMob(o, hit, h, { crit: 0.22, col: storm ? '#B79CFF' : '#7CF06A', tier: 'filler', key: storm ? 'storm' : 'sweep' }); if (o.alive) applyBleed(h, o); }
+  for (const o of more) { hurtMob(o, hit, h, { crit: 0.22, col: storm ? '#B79CFF' : '#7CF06A', tier: 'filler', key: storm ? 'storm' : 'sweep' }); if (o.alive) { applyBleed(h, o); viperGadgets(h, o); } }
   if (storm) fx({ type: 'whirl', h, x: h.x, y: h.y, r: 120, dur: 0.2, col: '#B79CFF' });
   // the set's crit sparks, scaled for a filler (it crits far more often than Shadowstrike)
   if (crit && h.bonuses.has('shadeveil2') && t.alive) hurtMob(t, 24, h, { col: '#B79CFF', size: 19, noCrit: true });
@@ -76,9 +76,9 @@ function abAmbush(h, aim) {
   const helmMul = (h.bonuses.has('sv_helm') ? 1.25 : 1) * gearMul(h, 'ambush');
   const nsMul = h.nightstalkerT > 0 ? 1.3 : 1;
   h.nightstalkerT = 0;
-  // Last Breath: a foe under a fifth of its health is finished and you keep your points (a boss takes half again)
+  // Last Breath: a foe under a third of its health is finished and you keep your points (a boss takes it twice as hard)
   const last = lastBreath(h, t);
-  const dmg = POINT * pts * helmMul * nsMul * (bleeding ? 1.35 : 1) * (last && t.isBoss ? 1.5 : 1);
+  const dmg = POINT * pts * helmMul * nsMul * (bleeding ? 1.35 : 1) * (last && t.isBoss ? 2 : 1);
   const strike = () => hurtMob(t, dmg, h, { crit: bleeding ? 1 : 0.35, col: bleeding ? '#FF6B6B' : '#FFE08A', tier: full ? 'payoff' : 'hit', key: free ? 'strike_free' : 'strike' });
   const got = strike();
   const crit = LAST.crit;
@@ -94,7 +94,7 @@ function abAmbush(h, aim) {
   if (crit) critSpark(h, t, 55);
   if (bleeding) toxicBurst(h, t);
   scatter(h, t, dmg);
-  ambushGadgets(h, t);
+  ambushGadgets(h);
   // Twin Fangs: every other five-point Shadowstrike strikes again a moment later
   if (full && has(h, 've.fangs') && (h.fangs = !h.fangs)) later(0.16, () => { if (t.alive && h.alive) { strike(); fx({ type: 'cleave', x: h.x, y: h.y - 30, a: h.face, r: 84, dur: 0.22, col: '#FF6B6B', crush: true, dir: -1 }); sfx('bladehit', 0.8); } });
   if (full) payoff(h, 'Shadowstrike!', t.x, t.y - 140, '#FF6B6B');

@@ -19,7 +19,9 @@ The owner has chosen this direction. It isn't built, and it changes the brief, s
   power), and its pets, mounts, titles and house looks are still there to chase. A run there should still give
   a little current-season regular gear, so it's never wasted.
 - **Lasting progress is the collection:** logs, looks, pets, mounts, titles, house looks. Power is per
-  season.
+  season: gear and levels both reset when a new season starts (levels the owner's call, 18 Oct: levels are the
+  climb after the first Epic set, so a season that kept them would have to be tuned for level 99s and a newcomer
+  would start far behind). Your heroes, the collection, achievements, the house and your lifetime XP last.
 - **The three Act 1 dungeons (Barrow Crypt, Thimblebriar Hollow, Moonmere Sanctum) are Season 0** (the game
   shows it, 17 Oct), and are timewalked when Season 1 arrives.
 - **The 6pm live raid night is off.** Raids follow the dungeon rules: Normal playable with your Warband and
@@ -31,11 +33,13 @@ What it replaces or changes: the brief's "later dungeons drop upgrade attachment
 gear" (old gear becomes collection instead), "raids are a later bonus activity" (each season has one), and
 the Free Trial → Base Game → Expansions model in `docs/dungeons.md`. Still to settle (a `/grill-me`): how much
 power a season adds, what timewalked runs give, the wing timing, the price, and whether Season 0 is free. And
-levels and talents (built 17 Oct, account-wide and lasting, like champion points): do they carry across seasons
-as they are? The builds, levels and seasons proposal below (18 Oct) answers it: if levels become the climb, they
-reset with the season.
+levels and talents: settled 18 Oct, they reset with the season (above).
 
 ## Proposal: builds, levels and seasons (the two-hats pass, 18 Oct)
+
+**The owner said yes to all four calls (18 Oct): one Power for a season's Epics, +2.5% a level for the whole
+party, levels reset with the season, and no cap past 99 (+0.5% a level). Built 18 Oct; how it works now is in
+`docs/design.md` (XP, Levels & Talents) and `docs/combat.md`. What follows is the proposal as written.**
 
 The owner asked for a look at every tree, ability, weapon and set with two hats on: the gamer (is it impactful,
 fun, real power creep, room for creative builds) and the balancer (no meta because the other choice is bad). And:

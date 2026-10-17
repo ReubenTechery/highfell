@@ -518,7 +518,7 @@ function xpStrip(p: Profile, loot: RunLoot, extra: RevealExtra): string {
   return `<div class="rv-xp${up ? ' up' : ''}"><span class="rx-top"><b class="rx-lv">${up ? `Level ${a.level} → ${b.level}!` : `Level ${b.level}`}</b><b class="rx-n">+${fmtN(x.end - x.start)} XP</b></span>
     <span class="rx-bar" aria-hidden="true"><i style="width: ${(b.k * 100).toFixed(1)}%"></i></span>
     <small class="rx-parts">${esc(parts.join(' · '))}</small>
-    ${up && !extra.preview ? `<span class="rx-up"><span>${pts > 0 ? `+${pts} talent point${pts === 1 ? '' : 's'}${left ? ` · <b>${left} to spend</b>` : ''} · ` : ''}Your party <b>${bonusText(b.level)}</b></span>${left ? '<button type="button" class="btn small gold" data-act="talents">Talents</button>' : ''}</span>` : ''}</div>`;
+    ${up && !extra.preview ? `<span class="rx-up"><span>${pts > 0 ? `+${pts} talent point${pts === 1 ? '' : 's'}${left ? ` · <b>${left} to spend</b>` : ''} · ` : ''}<span class="rx-bonus">Your party <b>${bonusText(b.level)}</b></span></span>${left ? '<button type="button" class="btn small gold" data-act="talents">Talents</button>' : ''}</span>` : ''}</div>`;
 }
 /** the garden after this run: seeds the bosses dropped, and beds this clear made ready */
 function gardenKv(p: Profile, loot: RunLoot): string {

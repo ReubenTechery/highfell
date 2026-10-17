@@ -20,7 +20,7 @@ import { HOOKS, S } from './state.js';
 import { CHILL, CHILL_SHATTER, LAST, SHATTERLANCE_CHILL, STAGGER, addThreat, aggro, banner, bits, chillBoss, dots, fx, fxText, healHero, hold, hurtMob, say, sfx, shake, staggerBoss, stunned, taunt } from './entities.js';
 import { interruptCast, liftCurse } from './mobs.js';
 import { moveEnt } from './world.js';
-import { blockGadgets, chargeGadgets, cleaveGadgets, cometGadgets, gearMul, icicleGadgets, mendGadgets, sunburstGadgets, wardGadgets } from './gadgets.js';
+import { blockGadgets, chargeGadgets, cleaveGadgets, cometGadgets, gearMul, icicleGadgets, mendGadgets, slamGadgets, sunburstGadgets, wardGadgets } from './gadgets.js';
 import { autoTarget, bestCluster, bombInReach, clampRange, engaged, foesNear, heroBy, isFoe, later, loud, mostHurt, nearestFoe, spawnThrall } from './heroes.js';
 import { ROGUE_BUTTONS } from './rogue.js';
 import { fireboltHit, fireCometLand } from './fire.js';
@@ -104,10 +104,12 @@ function abSlam(h) {
   let n = 0;
   const R = 210 * slamReach(h), wR = 118;
   const chestMul = (h.bonuses.has('bg_chest') ? 1.35 : 1) * gearMul(h, 'slam');
-  for (const m of S.mobs) {
-    if (!isFoe(m) || m.cage || m.M.wisp || dist(m, h) > R + m.r || Math.abs(m.y - h.y) > 600) continue;
+  // Unbowed: with three or more on you, the Slam and its whirlwind hit twice as hard
+  const pull = S.mobs.filter((m) => isFoe(m) && !m.cage && !m.M.wisp && dist(m, h) <= R + m.r && Math.abs(m.y - h.y) <= 600);
+  const unbow = has(h, 'sh.unbowed') && pull.length >= 3 ? 2 : 1;
+  for (const m of pull) {
     taunt(m, h, 4);
-    hurtMob(m, 50 * chestMul, h, { threat: 2, key: 'slam' });
+    hurtMob(m, 50 * chestMul * unbow, h, { threat: 2, key: 'slam' });
     if (m.alive && !m.isBoss) yank(m, h, m.M.big ? 0.5 : 1.05);
     n++;
   }
@@ -121,6 +123,7 @@ function abSlam(h) {
   h.crush = Math.max(h.crush, 1);
   onSlam(h);
   bulwarkPull(h, n);
+  slamGadgets(h, n);
   say(h, n ? (rng() < 0.5 ? 'Oi!' : 'Over here!') : 'Oi?', 0.9);
   // an inward ring, then the whirlwind
   fx({ type: 'ring', x: h.x, y: h.y, r0: R + 12, r1: 24, col: '#F2C230', dur: 0.25, w: 9, ground: true });
@@ -131,7 +134,7 @@ function abSlam(h) {
   h.whirlT = h.whirlDur;
   fx({ type: 'whirl', h, x: h.x, y: h.y, r: wR, dur: h.whirlDur, col: '#F2C230' });
   // Spinning Axe: the whirlwind hits twice as hard; Unbowed: twice as hard again with three or more foes on you
-  const spin = (has(h, 'ax.spin') ? 2 : 1) * (unbowed(h) ? 2 : 1);
+  const spin = (has(h, 'ax.spin') ? 2 : 1) * Math.max(unbow, unbowed(h) ? 2 : 1);
   const spinSlice = (finalSpin) => {
     if (!h.alive || S.over) return;
     sfx('sweep', 0.65);

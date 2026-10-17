@@ -387,6 +387,8 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .dgx-power b.mine, .dgx-card-sub.low b.mine, .dgx-card-line.low b.mine { color: #A3412F; }
 .dgx-power.ok b.mine { color: #3E8A26; }
 .dgx-power svg { width: 16px; height: 16px; flex: none; color: #3E8A26; }
+.dgx-power > span { text-align: center; }
+.dgx-pw { white-space: nowrap; }
 .dgx-shut { display: inline-flex; align-items: center; gap: 6px; text-align: center; }
 .dgx-shut svg { width: 18px; height: 18px; flex: none; }
 /* what finishing the log gives: the big one first */
@@ -2124,6 +2126,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .rx-parts { font-family: var(--f-mono); font-size: 12px; color: #CFC3DD; }
 .rx-up { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-family: var(--f-display); font-size: 16px; color: var(--gold); }
 .rx-up b { font-weight: 400; color: #FFF8EC; }
+.rx-bonus { white-space: nowrap; }
 @media (prefers-reduced-motion: no-preference) { .rv-xp.up .rx-n { animation: ilvlpop 0.9s ease-out; } }
 
 /* the armoury's Talents tab: the level, the specs, the tree and, at the bottom, the picked talent */

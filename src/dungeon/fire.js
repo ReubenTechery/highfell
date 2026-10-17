@@ -21,7 +21,7 @@ const has = (h, id) => !!(h && h.tal && h.tal.has(id));
 export const FIRE_COL = '#FF8A3D';
 /** how hard a Combust hits (and with Shatterlance): a boss burns all fight, so his is less than a Chill's half
  *  again, and a pack burns from one Firestorm, so its is less than a Shatter's double */
-export const COMBUST = 1.75, COMBUST_LANCE = 2.5, BOSS_COMBUST = 1.2, BOSS_COMBUST_LANCE = 1.5;
+export const COMBUST = 1.8, COMBUST_LANCE = 2.8, BOSS_COMBUST = 1.3, BOSS_COMBUST_LANCE = 1.75;
 
 /* ---------- Burn ---------- */
 /** a foe's Burn stacks now (0 when it isn't burning) */
@@ -147,7 +147,7 @@ function firestorm(h, aim) {
   const chestMul = h.bonuses.has('rb_chest') ? 1.25 : 1, rb3Mul = h.bonuses.has('rimebone3') ? 1.3 : 1;
   const pyre = has(h, 'fi.pyre') ? autoTarget(h, true) : null;
   if (pyre) p = { x: pyre.x, y: pyre.y };
-  S.zones.push({ kind: 'firestorm', x: p.x, y: p.y, r: 124, t: 0, dur: 5 + (h.bonuses.has('rb_chest') ? 1 : 0), tick: 0.5, tickT: 0.15, val: Math.round(16 * chestMul * rb3Mul), src: h, seed: rng() * 100, ...(pyre ? { follow: pyre, pyre: true } : {}) });
+  S.zones.push({ kind: 'firestorm', x: p.x, y: p.y, r: 124, t: 0, dur: 5 + (h.bonuses.has('rb_chest') ? 1 : 0), tick: 0.5, tickT: 0.15, val: Math.round(18 * chestMul * rb3Mul), src: h, seed: rng() * 100, ...(pyre ? { follow: pyre, pyre: true } : {}) });
   if (h.bonuses.has('rimebone3')) spawnThrall(h, 'frost', p.x, p.y + 24, 6);
   h.face = Math.atan2(p.y - h.y, p.x - h.x); h.lunge = 0.14; h.lungeA = h.face;
   sfx('firestorm', 0.6); sfx('whoosh', 0.4);
@@ -160,7 +160,7 @@ export function firestormTick(z) {
   const heat = z.pyre ? Math.min(2, 1 + 0.1 * z.t) : 1, brush = has(z.src, 'fi.wildfire');
   for (const m of S.mobs) {
     if (!isFoe(m) || m.cage || Math.hypot(m.x - z.x, m.y - z.y) > z.r + m.r * 0.5) continue;
-    hurtMob(m, (z.val || 16) * heat, z.src, { crit: 0.06, size: 17, col: '#FFD2A0', tier: 'tick', key: 'firestorm' });
+    hurtMob(m, (z.val || 18) * heat, z.src, { crit: 0.06, size: 17, col: '#FFD2A0', tier: 'tick', key: 'firestorm' });
     if (m.alive && (brush || z.n % 2 === 1)) addBurn(z.src, m, 1);
   }
   // Rimebone's three pieces raise what dies in a Firestorm too (entities.js)

@@ -36,17 +36,19 @@ looks at the same power, in a log of their own. Teamwork between roles is the he
 
 ## Pillars: if a change fights one of these, the change is wrong
 
-1. **Dungeons are the core loop.** About 3 to 4 minutes a run in beginner gear (about 2 when melted in full BiS),
-   all three roles needed, loot every time. Four buttons and a dodge, never more: sets, boss weapons and talents
+1. **Dungeons are the core loop.** About 3 to 4 minutes a run at the door (beginner gear in the first dungeon, what
+   it recommends in the later ones), about 1:15 once its set is done, under a minute as your level climbs; all three
+   roles needed, loot every time. Four buttons and a dodge, never more: sets, boss weapons and talents
    change what buttons do, they never add one. Mistakes in beginner gear are genuinely dangerous, and skilled play opens
    windows to hit back harder.
 2. **Power creep you can feel, collecting that lasts.** Regular gear climbs Common → Rare in eight clears; Epic
-   comes from each dungeon's 3-piece sets and boss weapons, and power climbs steeply enough that a geared party
-   melts the dungeon in roughly half the time. Gear, sets, weapon traits and boss weapons are most of the power.
-   Under them, XP and talents are the steady climb (the owner's call, 17 Oct): every kill pays XP, one level for
-   all your heroes, and each level a talent point in one of the class's two spec trees, whose stat talents stay
-   small and whose other talents change how a button works. Beyond that, progress is sideways: collection logs,
-   Heroic gilded logs, looks, pets, mounts, titles, trophies, achievements.
+   comes from each dungeon's 3-piece sets and boss weapons, all of one Power in a season, so a later dungeon's gear
+   is different, never more, and the Barrow's is never thrown away. After the first Epic set your level is the
+   climb (the owner's call, 18 Oct): every kill pays XP, one level for all your heroes, and every level makes your
+   whole party stronger, to 99 and on past it for ever. Levels 2 to 30 each bring a talent point in one of the
+   class's two spec trees, where every row from 2 is a pick of two. Gear and talents decide how you play; levels
+   decide how hard you hit. Beyond that, progress is sideways: collection logs, Heroic gilded logs, looks, pets,
+   mounts, titles, trophies, achievements.
 3. **Honest OSRS loot.** Every line of a table rolls on its own at a fixed rate. No pity. Kill counts
    everywhere. The walkout tells you what's in the chest before it opens, and it never lies.
 4. **Respect the player's time.** No streaks, no daily chores, nothing lost for missing a day (things bank up),
@@ -64,12 +66,14 @@ looks at the same power, in a log of their own. Teamwork between roles is the he
 | --- | --- |
 | 4 gear slots: weapon, helm, shoulders, chest | The weapon chase stays separate from the set chase |
 | Regular gear caps at Rare; Epic comes only from dungeon sets and boss weapons | A quick ladder, then a long chase |
-| The ladder is short (Common 10, Uncommon 12, Rare 14); a set piece is 12 above Rare and a boss weapon 16 (Power 26 and 30 in the Barrow, 8 more a dungeon tier) | Forty-odd runs for a set has to feel like it (17 Oct) |
-| XP is yours, not a hero's: every kill pays it, kept even if the run wipes or you leave; every chest pays the clear, Lore Pages and rare tomes; levels go to 99 | A run always gives something you can see, and alts share the climb |
-| A talent point a level from level 2 to 30 (29 points, a full tree); two specs a class, free to switch, each keeping its points; taking points back is free | A choice of how you play, never a chore or a wrong pick |
-| Talents never add a button; a full damage tree clears about a fifth faster, well under what Epic gear does (a test checks it) | Four buttons and a dodge stay; gear stays the big jump |
+| The ladder is short (Common 10, Uncommon 12, Rare 14); a set piece is 12 above Rare and a boss weapon 16: Power 26 and 30 in every dungeon of a season | Forty-odd runs for a set has to feel like it (17 Oct); a later dungeon's gear is different, never more, so the Barrow's is never thrown away (18 Oct) |
+| XP is yours, not a hero's: every kill pays it, kept even if the run wipes or you leave; every chest pays the clear, Lore Pages and rare tomes; levels go to 99 and on past it, for ever | A run always gives something you can see, alts share the climb, and there's always a next level |
+| Every level makes your whole party stronger (you, your Warband and the bots): +2.5% hits, heals and health a level up to 99, +0.5% a level after | After the first Epic set, the climb is your level, and it lifts every role, healers too (18 Oct) |
+| Each dungeon after the first recommends a level and a Power and is tuned for them; the warning weighs the two together | Levels open the next dungeon as much as gear does |
+| A talent point a level from level 2 to 30 (29 points, a full tree); two specs a class, free to switch, each keeping its points; every row from 2 is a pick of two (sixteen builds a spec); taking points back is free | A choice of how you play, never a chore or a wrong pick (18 Oct) |
+| Talents never add a button; a full damage tree clears about a fifth faster, and a class's two specs stay close (tests check both) | Four buttons and a dodge stay; no spec is the only one worth playing |
 | A rogue's crits are 2.5×, everyone else's 2× | The rogue's big hits keep up with the mage's (17 Oct) |
-| A steep power curve: full BiS melts a dungeon in about half the time | Grinding 100+ runs has to feel it |
+| A steep power curve: the Barrow takes about 3:30 fresh, about 1:15 with its set at the level you get it, about a minute with a second dungeon's set, under one after | Grinding 100+ runs has to feel it (18 Oct) |
 | No currency: duplicates count in the collection log, and weapon traits swap free at Rare | Nothing to grind or spend |
 | Race and class are for keeps; up to 6 heroes | Alts, like WoW, sharing the collection and kill counts |
 | Normal is fully solo with your Warband, and its collection log can always be finished solo | Nobody needs a group to finish a dungeon |
@@ -126,7 +130,7 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   (a small working dungeon to copy for a new one; its `README.md` has the rules for every new dungeon),
   `kits.ts` (gilding kits, Heroic's own drops, built from any dungeon's tables), `act1.ts` (the dungeons in the order
   you meet them, built or still to come), `keys.ts` (each class's keys on a computer), `xp.ts` (what kills, clears
-  and the chest's pages and tomes pay, and the level curve), `levels.ts` (your level's achievements), `talents/`
+  and the chest's pages and tomes pay, the level curve and the level's bonus to the party), `levels.ts` (your level's achievements), `talents/`
   (each class's two specs in a file, `make.ts` for stat talents, and its index: the rows and `buttonFor`, Fire's
   buttons) and `vale/` (ingredients, recipes, ranks, and `garden.ts`).
   `house.ts` is the house's plan (each room's `main`, what a tap from far away opens, the paddock's places and the
@@ -172,7 +176,8 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   where it went; every title's source; the kill count it came at), `brag.test.ts` (what a run had to show off),
   `power.test.ts` (seasons, Power and the under-powered warning), `vale.test.ts`, `tips.test.ts` (which first-time
   tip shows when), `warband.test.ts` (when the Warband opens and who sits in), `housemotion.test.ts` (how the house's bits move),
-  `xp.test.ts` (what kills and chests pay, levels, old saves' XP), `talents.test.ts` (specs, rows, pairs, points).
+  `xp.test.ts` (what kills and chests pay, levels and their bonus, old saves' XP), `talents.test.ts` (specs, rows, pairs,
+  points), `specs.test.ts` (what each talent does in a fight).
 
 ## Commands
 

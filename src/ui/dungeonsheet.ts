@@ -331,7 +331,7 @@ const mineWords = (p: Profile, h: Hero): string => `level ${level(p)}, Power ${w
 function powerLine(p: Profile, h: Hero, dg: DungeonInfo): string {
   if (!dg.recIlvl && !dg.recLevel) return '';
   const ok = strengthOf(p, h) >= wantStrength(dg) - 1e-9;
-  return `<p class="dgx-power${ok ? ' ok' : ''}">${ok ? GLYPH.check : ''}Recommended <b>${recWords(dg)}</b> · ${esc(h.name.split(' ')[0])} <b class="mine">${mineWords(p, h)}</b></p>`;
+  return `<p class="dgx-power${ok ? ' ok' : ''}">${ok ? GLYPH.check : ''}<span><span class="dgx-pw">Recommended <b>${recWords(dg)}</b> ·</span> <span class="dgx-pw">${esc(h.name.split(' ')[0])} <b class="mine">${mineWords(p, h)}</b></span></span></p>`;
 }
 
 /** the warning in the gold button's place: your level and Power against what the dungeon wants, how likely a wipe

@@ -36,7 +36,7 @@ export const FIRE: SpecDef = {
   base: 'Your four buttons turn to fire. Your mage gear works on them the same, and its Comet bonuses on frozen or Chilled foes work on a foe with 3 or more Burn.',
   buttons: {
     a4: { name: 'Firebolt', icon: 'firebolt', desc: 'A bolt of fire, every beat. It adds a Burn to its foe (two on a crit), up to four.', combo: 'A crit makes the next Firebolt Flare: three times as hard, half again on a boss' },
-    a3: { name: 'Comet', icon: 'comet_fire', desc: 'A 0.9s cast that drops a burning comet. On a foe with 3 or more Burn it Combusts: 1.75 times as hard (a fifth more on a boss), and its Burn spreads to the foes round it.', combo: 'Stack Burn first, then Combust it' },
+    a3: { name: 'Comet', icon: 'comet_fire', desc: 'A 0.9s cast that drops a burning comet. On a foe with 3 or more Burn it Combusts: 1.8 times as hard (1.3 times on a boss), and its Burn spreads to the foes round it.', combo: 'Stack Burn first, then Combust it' },
     a1: { name: 'Firestorm', icon: 'firestorm', desc: 'Burning ground. It hits everything in it and adds a Burn every second.', combo: 'Light up a pack, then Comet the middle' },
     a2: { name: 'Ember burst', icon: 'emberburst', desc: 'Blast the foes close to you: it stops their casts, knocks them back and adds two Burn.', combo: 'Your interrupt. On a boss it adds Burn but doesn’t Chill' },
   },

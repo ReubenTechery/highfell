@@ -6,8 +6,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { simRun, type SimResult } from '../src/sim/run';
-import { newHero, plainLoadout } from '../src/meta/gear';
-import type { Rar, RoleId } from '../src/content/types';
+import { loadoutOf, newHero, plainLoadout } from '../src/meta/gear';
+import type { Rar, RoleId, SlotId } from '../src/content/types';
+import { ITEMS } from '../src/content';
 import { SPECS } from '../src/content/talents';
 import { levelBonus, xpForLevel } from '../src/content/xp';
 /** Heroic Barrow is made for level 20 in full Epic: that level's bonus, for every seat */
@@ -214,4 +215,69 @@ test('balance: a full talent tree (level 30) clears Common 7 to 28% faster for a
     assert.ok(k > 0.72 && k < 0.93, `${spec}'s full tree: ${full[spec].toFixed(0)}s against ${base.toFixed(0)}s (${Math.round((1 - k) * 100)}% faster)`);
   }
   near(full.fire, full.frost, 'Fire and Frost, full trees');
+});
+
+/* ---------- levels are the climb (the owner's call, 18 Oct) ----------
+   One Power for every Epic in a season, so the climb after the first set is your level: every level makes the
+   whole party stronger. These hold the curve: the Barrow's set at the level you'd have it, a second dungeon's set
+   later, and a class's two specs close together. */
+
+/** a seat's full kit from one dungeon: its three set pieces and its boss weapon with a trait */
+function kit(set: string, weapon: string, trait: string, cls: string) {
+  const W = (id: string, slot: SlotId, tr?: string) => ({ slot, def: ITEMS[id], trait: tr, unique: true });
+  return { ...loadoutOf([W(`${set}.helm`, 'helm'), W(`${set}.shoulders`, 'shoulders'), W(`${set}.chest`, 'chest'), W(weapon, 'weapon', trait)]), cls };
+}
+const BARROW_KIT: Record<string, ReturnType<typeof kit>> = {
+  warrior: kit('barrowguard', 'gravekeeper.tank', 'wide', 'warrior'), cleric: kit('candlewake', 'gravekeeper.healer', 'sunflare', 'cleric'),
+  mage: kit('rimebone', 'gravekeeper.dps', 'shatterlance', 'mage'), rogue: kit('shadeveil', 'gravekeeper.rogue', 'twinvenom', 'rogue'),
+};
+const HOLLOW_KIT: Record<string, ReturnType<typeof kit>> = {
+  warrior: kit('clockguard', 'tinker.tank', 'wide', 'warrior'), cleric: kit('sporebloom', 'tinker.healer', 'sunflare', 'cleric'),
+  mage: kit('arcspark', 'tinker.dps', 'shatterlance', 'mage'), rogue: kit('gearshade', 'tinker.rogue', 'twinvenom', 'rogue'),
+};
+/** each spec's build here: which of each pair it takes on rows 2 to 5 (0 the first, 1 the second) */
+const BUILD: Record<string, number[]> = { shield: [0, 0, 0, 1], axe: [1, 1, 0, 0], mercy: [0, 0, 1, 1], wrath: [1, 1, 1, 1], frost: [1, 1, 0, 1], fire: [1, 1, 1, 1], venom: [0, 1, 1, 0], blades: [1, 1, 1, 0] };
+/** a hero's talents at a level, spent down the tree in order, with these picks */
+function built(spec: string, picks: number[], level: number): TalentLoadout {
+  const s = SPECS[spec], p = freshProfile(1);
+  const h = newHero(p, { name: 'Sim Hero', race: s.cls === 'warrior' ? 'dwarf' : s.cls === 'mage' ? 'elf' : 'human', cls: s.cls as 'mage' })!;
+  p.xp = xpForLevel(level);
+  pickSpec(h, spec);
+  for (let pass = 0; pass < 6; pass++) for (const t of s.talents) {
+    if (t.choice && s.talents.filter((x) => x.choice === t.choice)[picks[t.row - 2] ?? 0] !== t) continue;
+    while (addPoint(p, h, spec, t.id));
+  }
+  return talentLoadout(p, h);
+}
+/** the Barrow (or another dungeon) with you in a kit, a spec's build and a level, the bots in plain Epic at it */
+function clearAt(spec: string, level: number, kits: Record<string, ReturnType<typeof kit>>, seeds: number[], dungeon = 'barrow'): number {
+  const cls = SPECS[spec].cls, seat = SEAT[cls];
+  const L: Record<string, object> = gear(3);
+  L[seat] = { ...kits[cls], ...built(spec, BUILD[spec], level) };
+  const runs = seeds.map((seed) => simRun({ dungeon, role: seat, seed, loadouts: L, might: levelBonus(level) }));
+  for (const r of runs) assert.equal(r.over, 'victory', `${spec} at level ${level} did not clear`);
+  return runs.reduce((a, r) => a + r.clear!, 0) / runs.length;
+}
+
+test('balance: levels are the climb: at level 22 in the Barrow’s set every role clears it in 1:00 to 1:30, healers too', () => {
+  for (const spec of Object.keys(BUILD)) {
+    const t = clearAt(spec, 22, BARROW_KIT, [101]);
+    assert.ok(t > 60 && t < 90, `${spec} at level 22 in the Barrow's set: ${t.toFixed(0)}s`);
+  }
+});
+
+test('balance: the Barrow keeps melting as you level: a second dungeon’s set at level 35 beats the Barrow’s at 22, and level 99 is under a minute', () => {
+  const at22 = clearAt('frost', 22, BARROW_KIT, [101, 202]);
+  const at35 = clearAt('frost', 35, HOLLOW_KIT, [101, 202]);
+  const at99 = clearAt('frost', 99, BARROW_KIT, [101, 202]);
+  assert.ok(at22 < 85, `level 22, the Barrow's set: ${at22.toFixed(0)}s (about 1:15)`);
+  assert.ok(at35 < at22 * 0.95, `level 35, Thimblebriar's set: ${at35.toFixed(0)}s against ${at22.toFixed(0)}s`);
+  assert.ok(at99 < 60, `level 99: ${at99.toFixed(0)}s`);
+});
+
+test('balance: a class’s two specs stay close: their builds clear within 10% of each other at level 30 in the Barrow’s set', () => {
+  for (const [a, b] of [['shield', 'axe'], ['mercy', 'wrath'], ['frost', 'fire'], ['venom', 'blades']]) {
+    const ta = clearAt(a, 30, BARROW_KIT, [101, 202]), tb = clearAt(b, 30, BARROW_KIT, [101, 202]);
+    assert.ok(Math.abs(ta / tb - 1) < 0.1, `${a} ${ta.toFixed(0)}s against ${b} ${tb.toFixed(0)}s`);
+  }
 });

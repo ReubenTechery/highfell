@@ -7,15 +7,15 @@ export const THIMBLEBRIAR_SETS: SetDef[] = [
     id: 'clockguard', name: 'Clockguard', role: 'tank', dungeon: 'thimblebriar', tier: 2,
     look: 'Riveted brass plate, spring-coiled pauldrons, a ticking bulwark',
     pieces: ['clockguard.helm', 'clockguard.shoulders', 'clockguard.chest'],
-    bonus2: { id: 'clockguard2', desc: 'A perfect block winds your spring: a 150 brass shield.' },
-    bonus3: { id: 'clockguard3', desc: 'Your perfect block drops a lit bomb of yours at the attacker’s feet.', ready: true },
+    bonus2: { id: 'clockguard2', desc: 'A perfect block, or a Slam that pulls three or more, winds your spring: a 150 brass shield.' },
+    bonus3: { id: 'clockguard3', desc: 'Your perfect blocks and your Slams drop a lit bomb of yours at the foes’ feet.', ready: true },
   },
   {
     id: 'sporebloom', name: 'Sporebloom', role: 'healer', dungeon: 'thimblebriar', tier: 2,
     look: 'A glowing toadstool cap, an amber root mantle, a fairy-lantern censer',
     pieces: ['sporebloom.helm', 'sporebloom.shoulders', 'sporebloom.chest'],
     bonus2: { id: 'sporebloom2', desc: 'Mend plants a glowing spore that heals 45 more over 4 seconds.' },
-    bonus3: { id: 'sporebloom3', desc: 'Ward leaves a little patch-up turret for 6 seconds that heals the most hurt mate near it.', ready: true },
+    bonus3: { id: 'sporebloom3', desc: 'Ward leaves a little patch-up turret for 6 seconds that heals the most hurt mate near it and shoots the nearest foe.', ready: true },
   },
   {
     id: 'arcspark', name: 'Arcspark', role: 'dps', dungeon: 'thimblebriar', tier: 2,
@@ -29,7 +29,7 @@ export const THIMBLEBRIAR_SETS: SetDef[] = [
     look: 'A clockwork lens visor, spring-blade spaulders, a velvet burrower’s coat',
     pieces: ['gearshade.helm', 'gearshade.shoulders', 'gearshade.chest'],
     bonus2: { id: 'gearshade2', desc: 'Critical hits throw a spark: 55 from Shadowstrike, 24 from Viper Blades.' },
-    bonus3: { id: 'gearshade3', desc: 'Viper Blades stick a little bomb on the target, and Shadowstrike sets it off.', ready: true },
+    bonus3: { id: 'gearshade3', desc: 'Viper Blades stick a little bomb on every foe they cut, and Shadowstrike sets them all off.', ready: true },
   },
 ];
 

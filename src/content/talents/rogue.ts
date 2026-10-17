@@ -20,7 +20,7 @@ export const VENOM: SpecDef = {
     change('ve.cut', 'Lingering Cut', 4, 'a2', 'ambush', 'Shadowstrike on a poisoned foe leaves it bleeding for half the hit again over 4 seconds.', { choice: 've4' }),
     stat('ve.lethal', 'Lethal', 4, 4, 'dmg'),
     change('ve.fangs', 'Twin Fangs', 5, 'a2', 'cap_fangs', 'Every other five-point Shadowstrike strikes twice.', { capstone: true, choice: 've5' }),
-    change('ve.last', 'Last Breath', 5, 'a2', 'cap_lastbreath', 'Shadowstrike finishes a foe under a fifth of its health and keeps your points; a boss takes half again.', { capstone: true, choice: 've5' }),
+    change('ve.last', 'Last Breath', 5, 'a2', 'cap_lastbreath', 'Shadowstrike finishes a foe under a third of its health and keeps your points; a boss that low takes double.', { capstone: true, choice: 've5' }),
     stat('ve.killer', 'Killer’s Eye', 5, 3, 'crit'),
   ],
 };

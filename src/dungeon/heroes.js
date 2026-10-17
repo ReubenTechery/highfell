@@ -163,12 +163,12 @@ export function heroTick(h, dt) {
   if (cs < -0.3) h.flip = true; else if (cs > 0.3) h.flip = false;
 }
 
-/* heals over time (Candlewake's candles) */
+/* heals over time (Candlewake's candle, Sporebloom's spore): they grow with their healer's Power, like a Mend */
 function tickHots(h, dt) {
   for (let i = h.hots.length - 1; i >= 0; i--) {
     const o = h.hots[i];
     o.left -= dt; o.next -= dt;
-    if (o.next <= 0) { o.next += 1; healHero(o.src, h, o.per, { size: 14, raw: true }); }
+    if (o.next <= 0) { o.next += 1; healHero(o.src, h, o.per, { size: 14 }); }
     if (o.left <= 0) h.hots.splice(i, 1);
   }
 }

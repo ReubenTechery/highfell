@@ -1,12 +1,14 @@
 /* ---------- gadgets: Thimblebriar Hollow's set pieces, set bonuses and the Tinker King's weapons ----------
    Each piece makes one button better (gearMul). Two and three pieces of a set, and the Tinker King's four
    weapons, are gnome gadgets built round the bombs (bombs.js). They change what a button does, never add one:
-     Clockguard   2: a perfect block winds a 150 brass shield. 3: it drops a lit bomb of yours at the attacker.
-     Sporebloom   2: Mend plants a spore that heals 45 more. 3: Ward leaves a patch-up turret for 6 seconds.
+     Clockguard   2: a perfect block (or a Slam that pulls three or more) winds a 150 brass shield. 3: a perfect
+                  block drops a lit bomb of yours at the attacker, and a Slam one at the foes it pulled.
+     Sporebloom   2: Mend plants a spore that heals 45 more. 3: Ward leaves a patch-up turret for 6 seconds that
+                  heals the most hurt mate and shoots the nearest foe.
      Arcspark     2: Comet into a frozen foe (or a Chilled boss) arcs to 2 more (with nobody else near, back into it).
                   3: Comet splits into four frost bombs.
      Gearshade    2: a crit with Shadowstrike throws a 55 spark (Viper Blades 24). 3: Viper Blades stick a bomb on
-                  the target and Shadowstrike sets it off.
+                  every foe they cut and Shadowstrike sets them all off.
      Mainspring Maul      Charge winds the spring: the next Cleave hits twice.
      Sporelight Censer    Mend's spore bursts to heal everyone near it; Sunburst sends the bombs near you flying.
      Arcwright's Coil     Icicle chains to 2 more foes; into a frozen foe, each one bounces twice.
@@ -43,6 +45,14 @@ export function blockGadgets(h, src) {
     if (h.isPlayer) fxText(h.x, h.y - 120, 'Brass shield', '#FFE08A', 18);
   }
   if (h.bonuses.has('clockguard3') && src && src.kind === 'mob' && src.alive) dropBomb(h, src.x, src.y + 10, { fuse: 0.45, from: h });
+}
+/** Slam pulled `n` foes: Clockguard's spring (three or more) and its bomb at their feet */
+export function slamGadgets(h, n) {
+  if (n >= 3 && h.bonuses.has('clockguard2')) {
+    h.absorb = Math.max(h.absorb, Math.round(150 * h.power)); h.absorbT = 6;
+    if (h.isPlayer) fxText(h.x, h.y - 120, 'Brass shield', '#FFE08A', 18);
+  }
+  if (n > 0 && h.bonuses.has('clockguard3')) dropBomb(h, h.x + Math.cos(h.face) * 56, h.y + Math.sin(h.face) * 36 + 10, { fuse: 0.6, from: h });
 }
 /** Charge lands: Clockguard's pauldrons give a brass shield, and the Mainspring Maul winds its spring */
 export function chargeGadgets(h) {
@@ -82,9 +92,16 @@ export function wardGadgets(h, t) {
 function turretTick(z) {
   let low = null;
   for (const a of S.heroes) if (a.alive && dist(a, z) <= z.r && a.hp < a.maxHp && (!low || a.hp / a.maxHp < low.hp / low.maxHp)) low = a;
-  if (!low) return;
-  healHero(z.src, low, 40, { size: 15 });
-  fx({ type: 'beam', x: z.x, y: z.y - 60, x2: low.x, y2: low.y - 40, col: '#9BE15D', dur: 0.2 });
+  if (low) {
+    healHero(z.src, low, 40, { size: 15 });
+    fx({ type: 'beam', x: z.x, y: z.y - 60, x2: low.x, y2: low.y - 40, col: '#9BE15D', dur: 0.2 });
+  }
+  // and it shoots the nearest foe
+  const foe = others(z.src, z, z.r, null)[0];
+  if (foe) {
+    hurtMob(foe, 40, z.src, { noCrit: true, col: '#9BE15D', size: 16, tier: 'tick', key: 'turret' });
+    fx({ type: 'beam', x: z.x, y: z.y - 60, x2: foe.x, y2: foe.y - 40, col: '#D8FFB8', dur: 0.18 });
+  }
 }
 function drawTurret(ctx, z, drawSpr, fade) {
   ctx.globalAlpha = fade * 0.25; ctx.fillStyle = '#9BE15D';
@@ -135,17 +152,16 @@ export function critSpark(h, t, amt = 55) {
   hurtMob(t, amt, h, { col: '#FFB070', size: 19, noCrit: true });
   dots(t.x, t.y - 50, '#FFE08A', 8, 160);
 }
-/** Viper Blades: Gearshade sticks a little bomb on the target (one at a time) */
+/** Viper Blades: Gearshade sticks a little bomb on each foe it cuts (one at a time on each) */
 export function viperGadgets(h, t) {
   if (!h.bonuses.has('gearshade3') || !t.alive || t.M.thing) return;
   if (S.mobs.some((b) => b.alive && b.stuck === t && b.by === h)) return;
   const b = dropBomb(h, t.x, t.y, { fuse: 6 });
   b.stuck = t; b.small = true;
 }
-/** Shadowstrike: sets off the bomb you stuck on its target */
-export function ambushGadgets(h, t) {
-  const b = S.mobs.find((x) => x.alive && x.stuck === t && x.by === h);
-  if (b) { b.small = false; b.fuseT = 0; }
+/** Shadowstrike: sets off every bomb you stuck */
+export function ambushGadgets(h) {
+  for (const b of S.mobs) if (b.alive && b.stuck && b.by === h) { b.small = false; b.fuseT = 0; }
 }
 /** Shadowstep from (ox, oy): the Fusecutters leave a lit bomb of yours there */
 export function stepGadgets(h, ox, oy) {

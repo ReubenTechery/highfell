@@ -95,7 +95,7 @@ export function talentsTab(p: Profile, h: Hero, node: string | undefined, view: 
 /** your level, how far into it, the points it gives and how many this hero has left to spend */
 function levelLine(p: Profile, h: Hero): string {
   const pr = levelProgress(p.xp), pts = pointsOf(p), left = unspent(p, h);
-  const next = `${fmtN(pr.into)} / ${fmtN(pr.need)} XP to level ${pr.level + 1}`;
+  const next = `${fmtN(pr.need - pr.into)} XP to level ${pr.level + 1}`;
   return `<div class="tn-lv">
     <span class="tn-lvn"><small>Level</small><b>${pr.level}</b></span>
     <span class="tn-lvx"><span class="tn-bar" aria-hidden="true"><i style="width: ${(pr.k * 100).toFixed(1)}%"></i></span><small>${next}</small></span>

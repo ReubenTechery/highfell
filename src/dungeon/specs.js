@@ -39,11 +39,11 @@ export function talentHitMul(src, m) {
 export const foesOn = (h) => S.mobs.reduce((n, m) => n + (isFoe(m) && !m.cage && !m.M.thing && m.target === h ? 1 : 0), 0);
 
 /* ---------- the warrior ---------- */
-/** Spiked Shield: a foe that hits you takes 30 back, 90 if you blocked it (not a telegraph's hit, which isn't a
+/** Spiked Shield: a foe that hits you takes 50 back, 150 if you blocked it (not a telegraph's hit, which isn't a
  *  swing) */
 export function spikes(h, src, blocked) {
   if (!has(h, 'sh.spikes') || !src || src.kind !== 'mob' || !src.alive || src.M.thing) return;
-  hurtMob(src, blocked ? 90 : 30, h, { size: blocked ? 18 : 15, col: '#C9D2DC', noCrit: true, tier: 'tick', key: 'spikes' });
+  hurtMob(src, blocked ? 150 : 50, h, { size: blocked ? 18 : 15, col: '#C9D2DC', noCrit: true, tier: 'tick', key: 'spikes' });
 }
 /** Payback readies the next Cleave on a perfect block */
 export function onPerfect(h) {
@@ -79,10 +79,10 @@ export function breach(h, m) {
 /** Bulwark: how far Slam reaches (half as far again), and what the foes it pulled add to your next Cleave */
 export const slamReach = (h) => (has(h, 'sh.bulwark') ? 1.5 : 1);
 export function bulwarkPull(h, n) { if (has(h, 'sh.bulwark') && n > 0) h.bulwark = Math.min(8, n); }
-/** the Cleave after a Bulwark Slam: 6% harder a foe it pulled (up to 8); it uses it up */
+/** the Cleave after a Bulwark Slam: 8% harder a foe it pulled (up to 8); it uses it up */
 export function bulwarkMul(h) {
   if (!h.bulwark) return 1;
-  const k = 1 + 0.06 * h.bulwark;
+  const k = 1 + 0.08 * h.bulwark;
   h.bulwark = 0;
   return k;
 }
@@ -232,11 +232,11 @@ export function flashpoint(h, t, got) {
   for (const o of foesNear(t.x, t.y, 120, false)) if (o !== t && !o.cage && !o.M.wisp && !o.M.thing) hurtMob(o, got / 2, h, { raw: true, noCrit: true, size: 17, col: '#FFE08A', key: 'flash' });
   fx({ type: 'ring', x: t.x, y: t.y - 30, r0: 16, r1: 120, col: '#F2C230', dur: 0.3, w: 6 });
 }
-/** Sunpillar: Sunburst calls a pillar of light on your target, 300 to it and 100 to the foes round it */
+/** Sunpillar: Sunburst calls a pillar of light on your target, 230 to it and 80 to the foes round it */
 export function sunpillar(h, t) {
   if (!has(h, 'wr.pillar') || !t || !isFoe(t) || t.cage) return;
-  hurtMob(t, 300, h, { crit: 0.15, col: '#FFE08A', key: 'pillar' });
-  for (const o of foesNear(t.x, t.y, 110, false)) if (o !== t && !o.cage && !o.M.wisp && !o.M.thing) hurtMob(o, 100, h, { noCrit: true, size: 18, col: '#FFE08A', key: 'pillar' });
+  hurtMob(t, 230, h, { crit: 0.15, col: '#FFE08A', key: 'pillar' });
+  for (const o of foesNear(t.x, t.y, 110, false)) if (o !== t && !o.cage && !o.M.wisp && !o.M.thing) hurtMob(o, 80, h, { noCrit: true, size: 18, col: '#FFE08A', key: 'pillar' });
   fx({ type: 'beam', x: t.x, y: t.y - 420, x2: t.x, y2: t.y - 20, col: '#FFE08A', dur: 0.35 });
   fx({ type: 'ring', x: t.x, y: t.y, r0: 14, r1: 110, col: '#F2C230', dur: 0.32, w: 8, ground: true });
   dots(t.x, t.y - 60, '#FFE08A', 12, 220);
@@ -244,7 +244,7 @@ export function sunpillar(h, t) {
 /** Holy Ground: a Prayer circle of yours burns the foes in it, every pulse */
 export function holyGround(z) {
   if (!has(z.src, 'wr.ground')) return;
-  for (const m of S.mobs) if (isFoe(m) && !m.cage && !m.M.wisp && Math.hypot(m.x - z.x, m.y - z.y) <= z.r + m.r * 0.5) hurtMob(m, 18, z.src, { col: '#FFE08A', size: 15, noCrit: true, tier: 'tick', key: 'ground' });
+  for (const m of S.mobs) if (isFoe(m) && !m.cage && !m.M.wisp && Math.hypot(m.x - z.x, m.y - z.y) <= z.r + m.r * 0.5) hurtMob(m, 36, z.src, { col: '#FFE08A', size: 15, noCrit: true, tier: 'tick', key: 'ground' });
 }
 
 /* ---------- the mage (frost; fire is fire.js) ---------- */
@@ -304,8 +304,8 @@ export function lingeringCut(h, t, got) {
   if (!has(h, 've.cut') || !t.alive || got <= 0 || t.M.thing) return;
   t.cut = { src: h, per: (got * 0.5) / 8, left: 4, next: 0.5 };
 }
-/** Last Breath: is this foe low enough for Shadowstrike to finish (a boss to take half again)? */
-export const lastBreath = (h, t) => has(h, 've.last') && t.hp < t.maxHp * 0.2;
+/** Last Breath: is this foe low enough for Shadowstrike to finish (a boss to take it twice as hard)? */
+export const lastBreath = (h, t) => has(h, 've.last') && t.hp < t.maxHp / 3;
 /** Twin Edge: Viper Blades strikes twice, each 60% as hard */
 export const twinEdge = (h) => has(h, 'bl.twin');
 /** Second Ring: Fan of Blades throws a second ring a moment later */
@@ -320,7 +320,7 @@ export function toxicBurst(h, t) {
   if (!has(h, 've.burst') || !t.bleed || t.bleed.left <= 0 || !t.alive) return;
   const b = t.bleed, ticks = Math.ceil(b.left / 0.5);
   t.bleed = null;
-  hurtMob(t, b.per * (b.n || 1) * ticks, h, { raw: true, noCrit: true, col: '#7CF06A', size: 22, key: 'toxic' });
+  hurtMob(t, b.per * (b.n || 1) * ticks, h, { noCrit: true, col: '#7CF06A', size: 22, key: 'toxic' });
   dots(t.x, t.y - 44, '#7CF06A', 10, 160);
 }
 /** Grave Mark: Shadowstep marks its target, which takes 10% more from you for 8 seconds */

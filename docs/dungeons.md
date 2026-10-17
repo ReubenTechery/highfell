@@ -18,6 +18,11 @@ Highfell uses an honest, old-school buy-once model: **a generous 3-dungeon Free 
 
 ## 2. The Act 1 Stepped Treadmill: "Dungeon Uniques ARE the Ladder"
 
+> **Since 18 Oct** (the owner's call) every Epic in a season is the same Power, 26 a set piece and 30 a boss weapon,
+> and levels are the climb: every level makes the whole party stronger, and each later dungeon recommends a level
+> and a Power (Thimblebriar level 15 and Power 22, Moonmere level 30 and Power 26). The stepped item levels in the
+> tables here (34, 42) are the older plan; how it works now is in `docs/design.md` (XP, Levels & Talents).
+
 All 3 Free Trial dungeons are **open from Clear 0** (no artificial lock icons), but they are tuned as a **true OSRS-style Stepped Gear Treadmill (`1 → 2 → 3`)** where your hero and your bunk-room Warband companions need the previous dungeon's `1/25` Epic Sets and `1/40` Boss Weapons to survive the next dungeon:
 
 | Tier | Dungeon | Entry Gear Needed | Drops (Set & Weapon ilvl) | Scenery & Signature Toys | 3-Piece Set Fantasy | Log Completion Prizes | Garden Seed (final boss) |
@@ -107,14 +112,14 @@ Bombs at once.
 
 #### Sets and weapons: bombs and gadgets
 
-Four sets, one per class, each three pieces (helm, shoulders, chest), at item level 34.
+Four sets, one per class, each three pieces (helm, shoulders, chest), at the season's Power, 26 (item level 34 until 18 Oct).
 
 | Set | Class | Looks like | 2 pieces | 3 pieces |
 | --- | --- | --- | --- | --- |
-| **Clockguard** | Warrior (tank) | Riveted brass plate, spring-coiled pauldrons, a ticking bulwark | A perfect block winds your spring: a 150 brass shield | Your perfect block drops a lit bomb at the attacker's feet |
-| **Sporebloom** | Cleric (healer) | A glowing toadstool cap, an amber root mantle, a fairy-lantern censer | Mend plants a glowing spore that heals 45 more over 4 seconds | Ward leaves a little patch-up turret for 6 seconds that heals the most hurt mate near it |
-| **Arcspark** | Mage (DPS) | A copper filament crown, coil shoulders, star-threaded robes | Comet on a frozen foe arcs to 2 more | Comet splits into four small frost bombs that blow a moment later |
-| **Gearshade** | Rogue (DPS) | A clockwork lens visor, spring-blade spaulders, a velvet burrower's coat | Crits with Shadowstrike or Viper Blades throw a 55 spark | Viper Blades stick a little bomb on the target, and Shadowstrike sets it off |
+| **Clockguard** | Warrior (tank) | Riveted brass plate, spring-coiled pauldrons, a ticking bulwark | A perfect block, or a Slam that pulls three or more, winds your spring: a 150 brass shield | Your perfect blocks and your Slams drop a lit bomb of yours at the foes' feet |
+| **Sporebloom** | Cleric (healer) | A glowing toadstool cap, an amber root mantle, a fairy-lantern censer | Mend plants a glowing spore that heals 45 more over 4 seconds | Ward leaves a little patch-up turret for 6 seconds that heals the most hurt mate near it and shoots the nearest foe |
+| **Arcspark** | Mage (DPS) | A copper filament crown, coil shoulders, star-threaded robes | Comet on a frozen foe or a Chilled boss arcs to 2 more foes (or back into it, if it is alone) | Comet splits into four small frost bombs that blow a moment later |
+| **Gearshade** | Rogue (DPS) | A clockwork lens visor, spring-blade spaulders, a velvet burrower's coat | Critical hits throw a spark: 55 from Shadowstrike, 24 from Viper Blades | Viper Blades stick a little bomb on every foe they cut, and Shadowstrike sets them all off |
 
 The Tinker King's weapons, one per class (1/40 each):
 
@@ -154,7 +159,7 @@ whatever lands there). Harder, and made for Thimblebriar's own epics. No Heroic-
 
 #### Rules and numbers
 
-- **Tuned for Barrow's epics** (the owner's pick): bots at power 1.72 (about a Barrow weapon and a set piece
+- **Tuned for Barrow's epics** (the owner's pick, 16 Oct; since 18 Oct it's level 15 and Power 22, in As built below): bots at power 1.72 (about a Barrow weapon and a set piece
   each) clear in 3:30 to 4:00 with no wipes. Bots in Rare (1.48) wipe at least once in most runs, mostly at the
   Tinker King. Full Barrow epics (1.96): about 3:00. Thimblebriar's own full kit (2.44): about half of 1.72's
   time.
@@ -227,6 +232,15 @@ Since 17 Oct the regular ladder is shorter (Rare is Power 14, `1.24`) and the ep
 longer get through at all (12 of 12 runs gave up after six wipes, the Tinker King every time): Thimblebriar now
 asks for Barrow epics. A hero wearing two of them (a boss weapon and a set piece is about `1.77`) gets bots in
 plain Epic (`partyRar`), which is where the dungeon is made to be met.
+
+Since 18 Oct (the owner's call: one Power for every Epic in a season, and levels are the climb) Thimblebriar's set
+pieces are Power 26 and its weapons 30, the Barrow's numbers, and it recommends level 15 and Power 22. Its tune is the
+old one times level 15's bonus (1.35): `hit: 4.05, trashHp: 6.35, bossHp: 1.62`, the Stomper 4.86, the Tinker King
+1.24. Bots in plain Epic at level 15 clear in about 3:40 (Old Toadstool 45 s, the Tinker King 77 s); in the Barrow's
+set at level 15 about 2:30 to 3:10, and in its own set at level 35 about 1:35 to 2:15. Rare at level 15 wipes at the
+Tinker King in most runs. Heroic is made for level 35 in its own kit (`hit: 6.9, trashHp: 9.75, bossHp: 3.9`). The
+set pass of the same day: Clockguard's spring and bomb come from Slam too, Sporebloom's turret shoots, and Gearshade's
+bombs go on every foe the blades cut.
 
 #### Plan
 

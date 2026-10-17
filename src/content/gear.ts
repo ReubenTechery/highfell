@@ -71,7 +71,7 @@ export const TRAITS: Record<GearKey, TraitDef[]> = {
   healer: [
     { id: 'sunflare', name: 'Sunflare', desc: 'Mend also heals the next most hurt ally for half.' },
     { id: 'quickhands', name: 'Quick Hands', desc: 'Mend never starts the beat, so your next button can follow it straight away.' },
-    { id: 'kindle', name: 'Kindle', desc: 'A Ward that breaks heals its target for 80.' },
+    { id: 'kindle', name: 'Kindle', desc: 'A Ward that breaks heals its target for 80 and bursts for 80 on the foes round it.' },
   ],
   dps: [
     { id: 'shatterlance', name: 'Shatterlance', desc: 'Comet on a frozen target hits three times as hard, and on a Chilled boss twice as hard.' },

@@ -297,9 +297,9 @@ export function hurtHero(h, amt, src, o) {
     if (t > 0 && !o.quiet && h.isPlayer) fxText(h.x, h.y - 70, 'Absorbed', '#DDF3FF', 16);
     if (h.absorb <= 0.5) {
       h.absorb = 0;
-      // Kindle: a Ward that breaks heals whoever wore it
+      // Kindle: a Ward that breaks heals whoever wore it and bursts on the foes round them
       const by = h.wardBy; h.wardBy = null;
-      if (by && by.alive && by.traits.has('kindle')) later(0, () => healHero(by, h, 80, { show: true, raw: true }));
+      if (by && by.alive && by.traits.has('kindle')) later(0, () => kindle(by, h));
     }
   }
   a = Math.round(a);
@@ -327,6 +327,12 @@ export function hurtHero(h, amt, src, o) {
     if (h.hp <= 0) killHero(h);
   }
   return a;
+}
+/** Kindle: a broken Ward heals its mate 80 and bursts for 80 on the foes round them */
+function kindle(by, h) {
+  healHero(by, h, 80, { show: true });
+  for (const m of S.mobs) if (m.alive && !m.untargetable && !m.cage && !m.M.thing && !m.M.wisp && m.state === 'fight' && Math.hypot(m.x - h.x, m.y - h.y) <= 120 + m.r) hurtMob(m, 80, by, { noCrit: true, col: '#FFE08A', size: 17, key: 'kindle' });
+  fx({ type: 'ring', x: h.x, y: h.y - 30, r0: 14, r1: 120, col: '#FFE08A', dur: 0.3, w: 6 });
 }
 export function killHero(h) {
   h.hp = 0; h.alive = false; h.blocking = false; h.cast = null; h.dash = null; h.deadT = 0; h.stats.deaths++; S.stats.deaths++;
