@@ -269,6 +269,7 @@ export interface DungeonStage {
   boss: StagePiece;
   /** what stands in front of the boss but behind the heroes */
   front: StagePiece[];
-  /** where your three heroes stand (tank, healer, DPS, left to right), on one ground line, and how big */
-  heroes: { x: [number, number, number]; y: number; k: number };
+  /** where your heroes stand, left to right, on one ground line, and how big (the Dungeons sheet spaces any other
+   *  number of heroes round these spots: ui/stage.ts) */
+  heroes: { x: number[]; y: number; k: number };
 }
