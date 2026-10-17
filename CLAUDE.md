@@ -23,7 +23,8 @@ After `npm run all` passes and you've looked at phone and desktop screenshots:
    only: never `--all`, tags or stashes. The repo is public.
 3. If the change matters to the design, update the Dungeon Systems doc on claude.ai **and** its copy in
    `docs/design.md` (other agents can only read the copy), and the "Where it's at" part of Start Here. A
-   combat change also updates the Combat Overhaul doc and its copy in `docs/combat.md`.
+   combat change also updates the Combat Overhaul doc and its copy in `docs/combat.md`. A stage of the duo rework
+   also updates the Duo Rework doc and its copy in `docs/duo.md`.
 
 ## Work from other agents
 
@@ -39,6 +40,7 @@ then merge into `main` and publish.
 | Start Here doc (index of every artifact) | https://claude.ai/artifact/CKgMqHaxJsEvyuQxFWZvP7 |
 | Dungeon Systems doc (abilities, loot, achievements) | https://claude.ai/artifact/1JtG4R1SNrsTanWw8KGMhK |
 | Combat Overhaul doc (the combat plan; copied to `docs/combat.md`) | https://claude.ai/code/artifact/cf174f66-e52f-4e8a-945f-287a204b089e |
+| Duo Rework doc (the duo plan and its calls; copied to `docs/duo.md`) | https://claude.ai/artifact/1JHxqY3H9ikFqWZ216Qpew |
 | Barrow Crypt v1 (the first test build, frozen) | https://claude.ai/artifact/PCWjjDHnK42uQb5tUUR8tU |
 
 The design canvases (Concept, Look Book, Raid Night, Barrow King Fight) are linked from Start Here. Never put

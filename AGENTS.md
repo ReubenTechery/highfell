@@ -1,20 +1,25 @@
 # Highfell: the brief for any agent
 
+> **The duo rework is being built (from 18 Oct).** This brief describes the duo game Highfell is becoming: two
+> heroes a run, every class a damage dealer, the teamwork in the mechanics. The plan, its six stages and the owner's
+> calls are in `docs/duo.md`. Until a stage lands, the live game keeps the old three seats (tank, healer, DPS) in
+> the places that stage replaces, and `docs/design.md` describes the game as built. Build toward this brief.
+
 Read this whole file before you change anything. It is the same brief for Claude, Gemini or anyone else;
 `CLAUDE.md` and `GEMINI.md` only add notes for their own tools. The owner decides; you build what was
 asked, well, and say so when you think something is a mistake.
 
 ## What we are making, and why
 
-A three-seat co-op dungeon game (tank, healer, DPS) for phone and desktop, played in one web page.
-Portrait first, 2D, touch first (keys on desktop too).
+A duo co-op dungeon game for phone and desktop, played in one web page: every run is two heroes, you and your
+mate (or a bot), and every class deals damage. Portrait first, 2D, touch first (keys on desktop too).
 
 **Who it's for:** people who loved MMO dungeons and OSRS endgame PvE grinds but can't give a game months any more. A parent
 with a free evening or three hours on a Friday night. The owner is the target player. When they can play,
 it has to be worth it: big moments, real loot, dramatic power creep that melts dungeons you used to struggle in, a reason to come back, and never a chore.
 
 **The best of two games, nothing else:**
-- From **WoW**: the trinity (tank, healer, DPS) and teamwork between them, smashing abilities and seeing
+- From **WoW**: dungeons with a mate and the teamwork between you, smashing abilities and seeing
   big crits (especially after a new weapon), the gear treadmill, talent trees with two specs a class, dungeons
   with friends, a cosy tavern home, lore.
 - From **OSRS**: loot with a fixed drop rate per item, every item rolled on its own, kill counts, XP for every
@@ -26,19 +31,20 @@ logs are the core loop: four-minute runs you grind 100+ times to complete logs, 
 Warband gears up and melts packs, unlock Heroics, and move to the next dungeon. Raids are a later bonus activity,
 not the core loop. Nothing else gets added to that shape without the owner saying so.
 
-**Normal is solo, Heroic is the group flex.** Normal is fully playable on your own: your own Warband heroes from
-your bunk room fill the other two seats in their real gear (bots stand in for roles you have no hero for), and a
-Normal collection log can always be finished solo. Your Warband opens once you've cleared every dungeon once: until
-then bots, in gear at your hero's level, fill the other seats, so your first hero is the star. You can group up on Normal if you want. Heroic is the optional
-group flex: at least two real players, plus a bot if there are only two, never your Warband. It drops the Normal
-loot (for the Normal log, so grouping up is never a worse evening than playing solo) plus gilding kits: gilded
-looks at the same power, in a log of their own. Teamwork between roles is the heart of the combat.
+**Every run is two heroes: you and your mate.** Normal works with a bot in the other seat or, once your Warband
+opens (every dungeon cleared once), one of your own heroes in its own gear, so a Normal collection log can always be
+finished without a mate; until then your first hero is the star. Heroic is for two real players, never a bot or your
+Warband. It drops the Normal loot (so playing together is never a worse evening than playing alone) plus gilding
+kits: gilded looks at the same power, in a log of their own. Raids, later, are four players: two pairs. Every class
+deals damage, and there is no tank, healer or support: the teamwork lives in mechanics that take both of you (a
+curse only your mate can lift, chains only your mate can break, two-hands puzzles, combos, picking each other up),
+and the game never says who does what. One on the boss and one on the adds is the deep end two friends discover.
 
 ## Pillars: if a change fights one of these, the change is wrong
 
 1. **Dungeons are the core loop.** About 3 to 4 minutes a run at the door (beginner gear in the first dungeon, what
-   it recommends in the later ones), about 1:15 once its set is done, under a minute as your level climbs; all three
-   roles needed, loot every time. Four buttons and a dodge, never more: sets, boss weapons and talents
+   it recommends in the later ones), about 1:15 once its set is done, under a minute as your level climbs; both
+   heroes needed, loot every time. Four buttons and a dodge, never more: sets, boss weapons and talents
    change what buttons do, they never add one. Mistakes in beginner gear are genuinely dangerous, and skilled play opens
    windows to hit back harder.
 2. **Power creep you can feel, collecting that lasts.** Regular gear climbs Common → Rare in eight clears; Epic
@@ -76,27 +82,34 @@ looks at the same power, in a log of their own. Teamwork between roles is the he
 | A steep power curve: the Barrow takes about 3:30 fresh, about 1:15 with its set at the level you get it, about a minute with a second dungeon's set, under one after | Grinding 100+ runs has to feel it (18 Oct) |
 | No currency: duplicates count in the collection log, and weapon traits swap free at Rare | Nothing to grind or spend |
 | Race and class are for keeps; up to 6 heroes | Alts, like WoW, sharing the collection and kill counts |
-| Normal is fully solo with your Warband, and its collection log can always be finished solo | Nobody needs a group to finish a dungeon |
-| The Warband opens once every dungeon has been cleared once (and stays open); until then you have one hero and bots at its gear level fill the seats | You fall for one main first; alts come because you want more, not as homework |
-| Heroic is the optional group flex: at least two real players plus a bot, never your Warband | Playing together is the flex, never a wall |
-| Shared gear floor per role, capped at Rare, raised by your ladder in the role you play; Epic is earned on the hero | A new hero of a role you play never starts cold, mains still mean something |
-| Your Warband heroes come to help and never get loot; one sits in only when its gear is at least as good as the bot's, best-geared first | Your hero is the main character; the loot is all yours (17 Oct) |
+| Every run is two heroes, and every class deals damage: no tank, no healer, no supports | Runs are short and melt as you level, so a healer or tank becomes a passenger, and every reward speaks damage (18 Oct) |
+| Normal works with a bot or one of your heroes in the other seat, and its collection log can always be finished without a mate | Nobody needs a friend online to finish a dungeon |
+| The Warband opens once every dungeon has been cleared once (and stays open); until then a bot at your level takes the other seat | You fall for one main first; alts come because you want more, not as homework |
+| Heroic is for two real players, never a bot or your Warband; raids, later, are four players as two pairs, each with its own duo mechanics, plus some for all four | Playing together is the flex, never a wall |
+| Shared gear floor per class, capped at Rare, raised by your ladder in the class you play; Epic is earned on the hero | A new hero of a class you play never starts cold, mains still mean something |
+| Your Warband heroes come to help and never get loot; you pick which one takes the other seat | Your hero is the main character; the loot is all yours (17 Oct) |
 | Gear is never put on for you | Putting it on yourself is the dopamine |
-| The tank earns threat, and bosses crush anyone else they hit | Tanking has a real job; nobody else can facetank |
-| Beginner gear is meant to struggle: dungeons hit hard, telegraphs pierce shields | Tanking, healing, dodging and blocking matter |
-| Only the tank is caged; inside, the boss turns on someone else | The party feels the tank's absence |
+| No threat: a boss marks who his next big swing is for; block it or dodge it, and a perfect block or dodge opens him up; packs go for whoever's nearest, and the warrior's Slam turns them on him for 3 s | Every class gets the moment the tank had, and one less system |
+| At zero health you go down, not out: your mate stands beside you to pick you up, and both down is a wipe; out of a fight you're full again in about 2 s, and every payoff heals you a little | No healer and no waiting, and the best "I've got you" moment in co-op |
+| Beginner gear is meant to struggle: dungeons hit hard, telegraphs pierce shields | Dodging, blocking, the mechanics and picking each other up matter |
+| Chains and cages hold one of you, and only your mate can break them | The pair feels it when one of you is out |
 | You see only your own numbers; mates' spell effects stay | Less noise, your numbers mean more |
 | The four buttons and Mend share a one-second beat; a press made up to 0.4 s early waits and fires on time, and nothing buzzes for being early | Mashing is never wrong, as in WoW (the combat plan, `docs/combat.md`) |
-| Every class has a filler with no cooldown to press every beat (Cleave, Smite, Icicle or Fire's Firebolt, Viper Blades), a payoff it sets up and two cooldowns; casters have no automatic attacks, melee keep small ones | Your presses do the damage, and every beat has something worth pressing |
-| Casts stop only to interrupts (Charge, Rime burst or Fire's Ember burst, Fan of Blades, Shadowstep), never to damage, and an interrupt Exposes the caster; Exposed is every class's payoff setup | A job for the tank and the DPS, and burn windows the party hits together |
+| Every class has a filler with no cooldown to press every beat (Cleave, Icicle or Fire's Firebolt, Viper Blades, the ranger's Quick Shot), a payoff it sets up and two cooldowns; casters have no automatic attacks, melee keep small ones | Your presses do the damage, and every beat has something worth pressing |
+| Casts stop only to interrupts (Charge, Rime burst or Fire's Ember burst, Fan of Blades, Shadowstep, the ranger's Pin Shot), never to damage, and an interrupt Exposes the caster; Exposed is every class's payoff setup | A job for either of you, and burn windows the pair hits together |
+| Any payoff on a foe your mate set up (frozen, burning, stunned, poisoned, marked or Exposed) is a COMBO: half again as hard, counted for both of you on the duel card | Setups and payoffs across the pair are the synergy you feel |
 | The gold glow is for payoffs only; warnings keep their words without it | One glow you can't miss beats five you learn to ignore |
 | On the phone a held button repeats and the filler is the big button under the thumb; on a computer each class's buttons sit on E, Q, F and R beside WASD, a held key fires once, and Settings rebinds them, kept in the browser, never the save | The thumb can rest, your fingers never leave WASD, and bindings belong to a keyboard |
 | The first garden harvest gives the Hill Goat | Earned, and it stands in the paddock |
 | Every mount in the game has a place in the paddock beside the house; one you lack is a shadow with a "?" | Like the collection log, you see what's left to chase |
 | No trading or selling between players, ever | The collection log has to mean "I did this" |
-| A DPS alone dies before the mini boss (a test checks it) | All three roles are needed |
-| Only the healer lifts curses (a swipe or Sunburst); a missed curse drops its hero to a tenth and never kills | Something only the healer can do, in the packs as well as the bosses |
-| An idle healer wipes the party by Sir Rattlebones; you as tank in Common gear with a bot healer still clear (tests check both) | The healer matters, and the other seats are never punished for it |
+| One hero alone dies before the mini boss; any class with a bot in the other seat clears in Common (tests check both) | Both heroes are needed, and every class can carry its half |
+| Only your mate lifts your curse (a swipe across you or your frame); a missed curse drops you to a tenth and never kills | A job only your mate can do, in the packs as well as the bosses |
+| A mate who never lifts or picks you up gets the pair wiped by Sir Rattlebones (a test checks it) | Your mate matters |
+| Each class has a boss spec and a pack spec, and every boss brings adds that matter (left alone they shield him, heal him or curse you); one on the boss and one on the adds is the fastest way through, never forced or labelled | The depth two friends discover |
+| A duel card at the chest (damage, combos, mechanics, one MVP line each); a live meter is a switch, off by default; loot never depends on it | A friendly rivalry where doing the mechanics is how you top it |
+| The pair hits with the higher hero's level bonus; each player earns their own XP and rolls their own loot | Carrying a mate is fun and costs nobody anything |
+| Bots do every mechanic, a beat slower than a sharp mate | Playing with your mate is the quickest way to clear |
 | Crypt Seals are Heroic only | Normal got curses instead, so it doesn't get busier |
 | A class's first five runs glow the one button whose moment has come, fading out; a new class's first run offers its Crypt Trial | Teach in the moment, on the phone, with no new buttons and no walls of text |
 | Garden seeds drop from dungeon bosses and grow in clears, never on a clock | It feeds the dungeon loop with no timers or chores |
@@ -107,7 +120,7 @@ looks at the same power, in a log of their own. Teamwork between roles is the he
 | House looks come only from finishing a dungeon's log (a gilded one from its Heroic log) | The house shows what you've done; a look can't be faked |
 | A finished collection log gives a house look, a title and one big prize, never power | The long chase that makes the log mean something |
 | A log's pet, mount and dye (on Heroic: the gilded pet, mount and plume) are bonus slots, never needed to finish it | The rarest drops stay a flex, and finishing never waits on them |
-| Dwarf, elf and human from the start; the other races are earned in dungeons; four classes | Races are the flex you earn; four classes keep it to four buttons |
+| Dwarf, elf and human from the start; the other races are earned in dungeons; four classes: warrior, mage, rogue and ranger (the cleric retired 18 Oct, and a cleric hero picks a new class once, keeping its race, name and level) | Races are the flex you earn; two classes in close and two at range |
 | A log's big prize can be a race, a race and class combo, or something else | There will be a lot of dungeons |
 | Heroic opens once you've found 3 pieces of that dungeon's Normal log, never by clears | A drop gate keeps the "so close, one more run" pull going |
 | Every dungeon gets a Heroic: harder; it drops the Normal loot plus a gilding kit per unique (its gilded look for good, any seat, same power); its log is the kits | Grouping up is never a worse evening than solo; something to chase after the gear cap, never more power |
@@ -274,6 +287,7 @@ helpers in the existing tools, and look at a contact sheet of what you drew befo
 | The live game (published from `main` by Claude) | https://claude.ai/artifact/LYyryT29gsopt6UPoNceVd |
 | The systems design | `docs/design.md` (a copy of the Dungeon Systems doc on claude.ai) |
 | The combat plan (WoW-style combat in six stages, the calls the owner made, the targets) | `docs/combat.md` (a copy of the Combat Overhaul doc on claude.ai) |
+| The duo rework (two heroes a run, the classes, duo mechanics, six stages, the owner's calls) | `docs/duo.md` (a copy of the Duo Rework doc on claude.ai) |
 | The art bible | `docs/art.md` |
 | Parked ideas and proposals | `docs/ideas.md` |
 | The code | https://github.com/ReubenTechery/highfell |
