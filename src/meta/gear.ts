@@ -115,8 +115,8 @@ export function effectsOf(l: Loadout, role: GearKey): Effect[] {
   }
   for (const t of l.traits) { const d = traitDef(role, t); if (d) out.push({ kind: 'trait', id: d.id, name: d.name, desc: d.desc }); }
   for (const s of Object.values(SETS)) {
-    if (l.bonuses.includes(s.bonus2.id)) out.push({ kind: 'set', id: s.bonus2.id, name: `${s.name}, 2 pieces`, desc: s.bonus2.desc });
-    if (l.bonuses.includes(s.bonus3.id)) out.push({ kind: 'set', id: s.bonus3.id, name: `${s.name}, 3 pieces`, desc: s.bonus3.desc, ...(s.bonus3.ready ? {} : { later: true }) });
+    if (l.bonuses.includes(s.bonus2.id)) out.push({ kind: 'set', id: s.bonus2.id, name: `${s.name}, wear 2`, desc: s.bonus2.desc });
+    if (l.bonuses.includes(s.bonus3.id)) out.push({ kind: 'set', id: s.bonus3.id, name: `${s.name}, wear all 3`, desc: s.bonus3.desc, ...(s.bonus3.ready ? {} : { later: true }) });
   }
   return out;
 }

@@ -16,6 +16,8 @@ import { bestRegular, compareFor, compareOn, floorWorn, gildedOn, itemShare, loo
 import { spotById, spotOf } from '../meta/hearth';
 import type { Profile } from '../meta/profile';
 import { cap, esc, fmtDate, fmtN, fmtRate, GLYPH } from './dom';
+import { setState } from '../meta/sets';
+import { setWords } from './setcard';
 import { colourOf, iconOf, nameOf, rarLook } from './art';
 
 export const KIND_WORD: Record<CollectibleKind, string> = { pet: 'Pets', mount: 'Mounts', trophy: 'Trophies', banner: 'Banners', cosmetic: 'Looks' };
@@ -73,7 +75,8 @@ export function itemSheet(p: Profile, id: string, hasBack: boolean): { head: str
     side = `<div class="stats"><span class="chip">Power <b>${share.ilvl}</b></span>${share.power > 0 ? `<span class="chip">${esc(cap(ROLE_STAT[d.role].main))} <b>+${share.power}%</b></span><span class="chip">Health <b>+${share.health}%</b></span>` : ''}</div>`;
     // the effect is already in the comparison when wearing it would add it
     if (d.effectDesc && !cmp?.c.gains.some((x) => x.kind === 'unique')) more += `<div class="box"><b style="font-family: var(--f-display); font-weight: 400">When worn</b><span class="fine">${esc(d.effectDesc)}</span></div>`;
-    if (d.setId) { const s = SETS[d.setId]; more += `<div class="box setbox"><b style="font-family: var(--f-display); font-weight: 400">${esc(s.name)} set</b><div class="setline"><i>2</i><span>${esc(s.bonus2.desc)}</span></div><div class="setline ${s.bonus3.ready ? '' : 'later'}"><i>3</i><span>${esc(s.bonus3.desc)}</span></div></div>`; }
+    const st = d.setId ? setState(p, wearerOf(p, d), d.setId) : null;
+    if (st) more += `<div class="box">${setWords(st)}</div>`;
     more += gildBox(p, d);
     if (d.flavor) more += `<p class="fine it-fl">“${esc(d.flavor)}”</p>`;
   } else if (t?.kind === 'collectible') {

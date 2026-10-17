@@ -3,11 +3,12 @@
  * chest opens and the cards come out face down and flip one by one, rarest last. A pet or a mount
  * gets the whole screen, and so does a collection log filled at last: its hero walks out, and what it
  * gave stays on the page with a way to it. A new piece for the log gets a moment of its own: its stand
- * comes up and the piece drops on. Then the numbers: kill counts, time, the log's strip, the garden.
+ * comes up and the piece drops on (a set piece drops onto your own hero, in the whole set, with the set's
+ * pieces as little stickers and how many are left). Then the numbers: kill counts, time, the log's strip, the garden.
  * Anything worth showing off (meta/brag.ts) has a Share button, in its moment and above the numbers,
  * which makes a picture of it to post (share.ts).
  */
-import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, ITEMS, KITS, heroicVersion } from '../content';
+import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, ITEMS, KITS, SETS, heroicVersion } from '../content';
 import { TELL_SPRITES } from '../dungeon/walkout.js';
 import { KIT_RATE, gilded } from '../content/kits';
 import { TOME, bonusText } from '../content/xp';
@@ -25,10 +26,12 @@ import { readyBeds, seedTotal } from '../meta/vale';
 import { logAchievement, logProgress, standPieces, standsOf } from '../meta/logs';
 import { wearTitle } from '../meta/achievements';
 import { PLANTS } from '../content/vale';
-import { itemShare, waiting, worn } from '../meta/gear';
+import { fitsHero, itemShare, waiting, worn } from '../meta/gear';
 import type { App } from './app';
 import { actions, esc, fmtN, fmtRate, fmtT, GLYPH, reducedMotion, wait } from './dom';
-import { colourOf, iconOf, nameOf, spriteURL, standSvg, tile } from './art';
+import { colourOf, iconOf, nameOf, setLookSvg, spriteURL, standSvg, tile } from './art';
+import { setStickers } from './setcard';
+import { setState } from '../meta/sets';
 import { ROLE_STAT } from './itemsheet';
 import { mainReward, rewards } from './dungeonsheet';
 import { dropOf, prizeArt, slotTag } from './logbook';
@@ -234,7 +237,7 @@ export class Reveal {
         if (dp > 0) gains = `<span class="lc-gains"><b class="up">${GLYPH.rise}+${dp}% ${esc(ROLE_STAT[it.role].short)}</b><b class="up">${GLYPH.rise}+${dh}% hp</b></span>`;
       }
       const piece = kit && ITEMS[kit.item];
-      note = d.dupe ? `Duplicate · Seen ${fmtN(this.app.p.collection[d.id]?.n || 2)}× in log` : piece ? `Gilding kit · ${this.app.p.collection[piece.id] ? 'gilds your' : 'gilds the'} ${esc(piece.name)}` : c ? (c.kind === 'pet' ? 'Waiting by the fire' : c.kind === 'mount' ? 'In the paddock at home' : c.kind === 'cosmetic' ? 'A new look' : 'On the mantel') : it?.setId ? `${esc(it.name.split(' ')[0])} set piece · Power ${itemShare(it).ilvl}` : it?.effectDesc ? esc(it.effectDesc) : '';
+      note = d.dupe ? `Duplicate · Seen ${fmtN(this.app.p.collection[d.id]?.n || 2)}× in log` : piece ? `Gilding kit · ${this.app.p.collection[piece.id] ? 'gilds your' : 'gilds the'} ${esc(piece.name)}` : c ? (c.kind === 'pet' ? 'Waiting by the fire' : c.kind === 'mount' ? 'In the paddock at home' : c.kind === 'cosmetic' ? 'A new look' : 'On the mantel') : it?.setId ? `${esc(SETS[it.setId]?.name || '')} set · Power ${itemShare(it).ilvl}` : it?.effectDesc ? esc(it.effectDesc) : '';
     }
     const xp = d.source === 'xp';
     const stamp = example ? '<span class="stamp ex">Example</span>' : table ? (d.dupe ? '<span class="stamp dupe">Dupe</span>' : '<span class="stamp">New</span>') : xp ? '<span class="stamp xp">XP</span>' : d.offerTrait ? '' : '<span class="stamp" style="background: var(--green)">Up</span>';
@@ -300,16 +303,23 @@ export class Reveal {
     });
   }
   /** a piece the log didn't have: its stand comes up and the piece drops on (a trophy or a dye stands on its
-   *  own), with what it is, the kill count it came at, whether it finished a set, and the log ticking up */
+   *  own), with what it is, the kill count it came at, whether it finished a set, and the log ticking up. A set
+   *  piece for your hero drops onto you instead, in the whole set, with the set's pieces as little stickers and
+   *  how many are left (setcard.ts). */
   private slotMoment(d: Drop): Promise<void> {
     const p = this.app.p, dg = this.logOf(d.id) || BARROW, t = slotTag(d.id), c = COLLECTIBLES[d.id];
     const stand = standsOf(dg.id).find((s) => standPieces(s).includes(d.id));
     const on = (id: string): boolean => id === d.id || !!p.collection[id];
-    const art = stand ? standSvg(standPieces(stand), on, { drop: d.id }) : c?.sprite ? `<img src="${spriteURL(c.sprite)}" alt="">` : `<span class="tile">${iconOf(d.id)}</span>`;
-    const done = !!stand && standPieces(stand).every(on);
+    // a set piece for your hero: you, in the whole set, the new piece falling into place and the rest as ghosts
+    const h = heroById(p, this.extra?.hero || null) || activeHero(p), it = ITEMS[d.id];
+    const st = h && it?.setId && fitsHero(it, h) ? setState(p, h, it.setId, { plus: [d.id] }) : null;
+    const look = st && h ? setLookSvg(p, h, st.set.pieces, { drop: d.id }) : '';
+    const art = look || (stand ? standSvg(standPieces(stand), on, { drop: d.id }) : c?.sprite ? `<img src="${spriteURL(c.sprite)}" alt="">` : `<span class="tile">${iconOf(d.id)}</span>`);
+    // a set is its 3 pieces (on Heroic, their kits); the boss weapon leans on the stand but isn't one of them
+    const ofSet = !!stand && stand.pieces.includes(d.id), done = ofSet && stand!.pieces.every(on);
     const { before, after, need } = this.logTick(d.id, dg);
-    // a piece that finished its set shares the set (the weapon leans on the stand, but it isn't one of the three)
-    const set = stand?.pieces.includes(d.id) ? this.brags.findIndex((b) => b.kind === 'set' && b.id === stand.set.id && !!b.gilded === !!dg.heroicOf) : -1;
+    // a piece that finished its set shares the set
+    const set = ofSet ? this.brags.findIndex((b) => b.kind === 'set' && b.id === stand!.set.id && !!b.gilded === !!dg.heroicOf) : -1;
     return new Promise((res) => {
       const el = document.createElement('div');
       el.className = 'big-moment gold slot-moment';
@@ -317,9 +327,9 @@ export class Reveal {
       el.setAttribute('role', 'dialog');
       el.setAttribute('aria-label', `New in your collection log: ${nameOf(d.id)}`);
       el.innerHTML = `<span class="rays"></span><div class="bm"><p class="eyebrow">New in your collection log</p>
-        <div class="sm-art${stand ? '' : ' loose'}">${art}</div><h2>${esc(nameOf(d.id))}</h2>
+        <div class="sm-art${look ? ' hero' : stand ? '' : ' loose'}">${art}</div><h2>${esc(nameOf(d.id))}</h2>
         <p class="sm-meta"><i class="sm-rar${t.pale ? ' pale' : ''}" style="--rc: ${t.bg}">${esc(t.word)}</i>${esc(fmtRate(d.rate))} · kill count ${fmtN(d.kc || 0)}</p>
-        ${done && stand ? `<p class="sm-done">${GLYPH.check}${esc(stand.set.name)} set done · ${standPieces(stand).length} of ${standPieces(stand).length}</p>` : stand ? `<p class="sm-set">${esc(stand.set.name)} · ${standPieces(stand).filter(on).length} of ${standPieces(stand).length}</p>` : ''}
+        ${st ? setStickers(st, d.id) : done ? `<p class="sm-done">${GLYPH.check}${esc(stand!.set.name)} set done · 3 of 3</p>` : ofSet ? `<p class="sm-set">${esc(stand!.set.name)} · ${stand!.pieces.filter(on).length} of 3</p>` : ''}
         ${need ? this.stripHtml(dg.id, before, after, need, '') : ''}${this.shareBtn(set >= 0 ? set : this.bragAt('unique', d.id))}<p style="opacity: 0.7">Tap to carry on</p></div>`;
       this.root.appendChild(el);
       SFX.play('slot'); SFX.play('rare', 0.7);
@@ -420,7 +430,7 @@ export class Reveal {
   private logStrip(l: DungeonInfo, fresh: Drop[]): string {
     const dungeon = l.id, last = fresh[fresh.length - 1], { start, end, need } = this.logTick('', l);
     const stand = last && standsOf(dungeon).find((s) => standPieces(s).includes(last.id));
-    const done = !!stand && standPieces(stand).every((id) => id === last!.id || !!this.app.p.collection[id]);
+    const done = !!stand && stand.pieces.includes(last.id) && stand.pieces.every((id) => id === last!.id || !!this.app.p.collection[id]);
     const news = fresh.length ? `+${fresh.length} new: <b>${fresh.map((d) => esc(nameOf(d.id))).join(', ')}</b>${done ? ' · set done' : ''}` : '';
     return `<button type="button" class="rv-logstrip" data-act="tolog" data-id="${esc(stand ? `${dungeon}.set.${stand.set.id}` : `${dungeon}.log`)}" aria-label="Open the collection log">${this.stripHtml(dungeon, start, end, need, news)}</button>`;
   }

@@ -45,8 +45,9 @@ The integrator writes these in the plumbing, before anyone else starts.
   weapons and gilding kits (`candlewake.*`, `sporebloom.*`, `gravekeeper.healer`, `tinker.healer`) become the
   ranger's without moving anyone's save. Visible text says ranger. In the rules that's `gearRole(h)`
   (`src/meta/profile.ts`): the role whose gear a hero wears, rolls on the tables and raises, `'healer'` for a ranger.
-  `fitsHero`, `rollTable`, `lootFor` (pass the class), the ladder, the floor and `trialWeapon` all go by it. For
-  anything about gear or loot use `gearRole`, never `roleOf`.
+  `fitsHero`, `rollTable`, `lootFor` (pass the class), the ladder, the floor and `trialWeapon` all go by it, and so
+  do a set's state and which set a door and the armoury show (`src/meta/sets.ts`, merged 18 Oct). For anything about
+  gear or loot use `gearRole`, never `roleOf`.
 - **A class that retires.** `mustPickClass(h)`, `classChoices(h)` and `pickClass(p, h, cls)` in
   `src/meta/newclass.ts`: a hero whose class has retired (`CLASSES[cls].retired`; the integrator retires the cleric
   at the end) picks a new class once, keeping its race, name, look, title and clears; its ladder comes along, and a
@@ -86,7 +87,7 @@ The integrator writes these in the plumbing, before anyone else starts.
 | 2 | Staying alive, combos, and the warrior, mage and rogue | `claude/duo-classes` | after plumbing | `buttons.js`, `specs.js`, `rogue.js`, `fire.js`, `heroes.js`, `press.js`, `duo.js` (going down, dodges, combos), `talents/` (warrior, mage, rogue, `make.ts`, `index.ts`) | `roles.ts`, `gear.ts`, `items.ts`, `gadgets.js`, `bots.js` (those classes' parts) |
 | 3 | The ranger | `claude/duo-ranger` | after plumbing | `src/dungeon/ranger.js`, `talents/ranger.ts`, `tests/ranger.test.ts` | `roles.ts`, `gear.ts`, `items.ts`, `gadgets.js`, `bots.js`, `keys.ts`, `folk.ts` (the ranger's and the old healer's parts) |
 | 4 | Bosses, packs and duo mechanics | `claude/duo-bosses` | after plumbing | `moves.js`, `mobs.js`, `bombs.js`, `template.js`, each dungeon's `bosses.js`, `mobs.js`, `script.js`, `map.js`, `signature.js`, `_template/` | `entities.js` (threat and targeting only), each `engine.ts` (tunes), `bots.js` (mechanics), `render.js` (marks) |
-| 5 | Two seats and the screens | `claude/duo-ui` | after plumbing | `run.ts`, `input.ts`, `dungeonsheet.ts`, `stage.ts` and each dungeon's `stage.ts`, `reveal.ts`, a new `duelcard.ts`, `sharecard.ts`, `brag.ts`, `creator.ts`, `herosheet.ts`, `armoury.ts`, `talentstab.ts`, `settingssheet.ts`, `keybinds.ts`, `styles.css` | `tips.ts` (the companion tip) |
+| 5 | Two seats and the screens | `claude/duo-ui` | after plumbing | `run.ts`, `input.ts`, `dungeonsheet.ts`, `stage.ts` and each dungeon's `stage.ts`, `reveal.ts`, `setcard.ts`, a new `duelcard.ts`, `sharecard.ts`, `brag.ts`, `creator.ts`, `herosheet.ts`, `armoury.ts`, `talentstab.ts`, `settingssheet.ts`, `keybinds.ts`, `styles.css` | `tips.ts` (the companion tip) |
 | 6 | Teaching, achievements and words | `claude/duo-teach` | after plumbing | `trial.ts`, `coach.js`, `tours.ts`, `tips.ts`, each dungeon's `achievements.ts`, `levels.ts`, `_template/README.md` | `run.ts` (the trial's set-up only) |
 
 Hot spots, where two streams touch one file: `roles.ts`, `items.ts`, `gadgets.js` and `gear.ts` (streams 2 and 3,

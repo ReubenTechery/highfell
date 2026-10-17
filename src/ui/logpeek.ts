@@ -19,6 +19,8 @@ import { iconOf, nameOf, pieceSvg, spriteURL } from './art';
 import { cap, esc, fmtDate, fmtN, fmtRate, GLYPH } from './dom';
 import { ROLE_STAT, VERDICT, tag } from './itemsheet';
 import { slotTag, whoOf } from './logbook';
+import { setState } from '../meta/sets';
+import { setWords } from './setcard';
 
 const SLOT_WORD: Record<string, string> = { helm: 'Helm', shoulders: 'Shoulders', chest: 'Chest', weapon: 'Weapon' };
 
@@ -55,7 +57,7 @@ export function peekCard(p: Profile, id: string, onSet?: string): string {
     body = `<p class="pk-desc">Turns the ${esc(it.name)} gold for every hero who wears it. Never more power.</p><p class="pk-home">${esc(now)}</p>`;
     if (stand && onSet !== `${src!.dg.id}.set.${stand.set.id}`) acts += `<button type="button" class="btn small" data-act="entry" data-id="${esc(src!.dg.id)}.set.${esc(stand.set.id)}">The set</button>`;
   } else if (it) {
-    const g = gear(p, it, stand ? stand.pieces.filter((x) => p.collection[x]).length : 0);
+    const g = gear(p, it);
     body = g.html;
     acts = g.act;
     if (stand && onSet !== `${src!.dg.id}.set.${stand.set.id}`) acts += `<button type="button" class="btn small" data-act="entry" data-id="${esc(src!.dg.id)}.set.${esc(stand.set.id)}">The set</button>`;
@@ -74,9 +76,8 @@ export function peekCard(p: Profile, id: string, onSet?: string): string {
 }
 
 /** a piece of gear: its stats, each with how it changes what its role wears now and the verdict on top (and a
- *  way to put it on when it's yours), what it does when worn, and its set's bonuses lit by how many of the set
- *  you have */
-function gear(p: Profile, d: ItemDef, found: number): { html: string; act: string } {
+ *  way to put it on when it's yours), what it does when worn, and its set, in the same words as everywhere */
+function gear(p: Profile, d: ItemDef): { html: string; act: string } {
   const share = itemShare(d), word = ROLE_STAT[d.role];
   const h = wearerOf(p, d);
   const cmp = (h && compareFor(p, h, d.id)) || compareOn(floorWorn(p, d.role, d.cls), d.role, d);
@@ -88,8 +89,7 @@ function gear(p: Profile, d: ItemDef, found: number): { html: string; act: strin
   const owns = !!(p.collection[d.id] || (d.kind === 'gear' && h && bestRegular(h, d.slot).rar >= d.rar));
   const act = h && owns && cmp.verdict !== 'wearing' ? `<button type="button" class="btn small gold" data-act="gearat" data-hero="${esc(h.id)}" data-slot="${d.slot}" data-id="${esc(d.id)}">${GLYPH.shield}Put it on</button>` : '';
   const fx = d.effectDesc ? `<p class="pk-fx"><b>When worn</b> ${esc(d.effectDesc)}</p>` : '';
-  const s = d.setId ? SETS[d.setId] : undefined;
-  const set = s ? `<div class="lb-bonus pk-set"><p class="pk-set-h"><b>${esc(s.name)} set</b><small>${found} of ${s.pieces.length} found</small></p>
-      <p class="${found >= 2 ? 'on' : ''}"><i>2</i><span>${esc(s.bonus2.desc)}</span></p><p class="${found >= 3 ? 'on' : ''}"><i>3</i><span>${esc(s.bonus3.desc)}</span></p></div>` : '';
+  const st = d.setId ? setState(p, h, d.setId) : null;
+  const set = st ? `<div class="sw-box pk-set">${setWords(st)}</div>` : '';
   return { html: vs + fx + set, act };
 }

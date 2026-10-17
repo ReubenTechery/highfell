@@ -6,7 +6,9 @@
  * at the end of the bar (the Barrow's: a new kind of hero, the Risen). The line opens the Loot page: those
  * rewards and what each role can get, yours first (what you have lit up, every drop rate; tap one to hold
  * it up against what you wear). On desktop the loot sits beside the rest instead. The main thing is the
- * door: your party standing in front of the dungeon's door with its final boss behind them (stage.ts). On
+ * door: your party standing in front of the dungeon's door with its final boss behind them (stage.ts). Under
+ * the log's line, one slim row for the set this dungeon drops for the hero you're playing (setcard.ts): its
+ * three pieces, its name and how many you have; it opens the Your set page, that set big on your hero. On
  * Normal your own Warband heroes from your bunk room fill the other seats in their own gear (or bots stand
  * in until you make them); tap a hero for Who goes in, to play another or make one. Heroic needs at least
  * two players (party.ts), so its other seats wait for friends and the gold button stays locked until online
@@ -29,6 +31,7 @@ import { groupOf, heroesFor, partyProblem, seats, strengthOf, underPowered, want
 import { level } from '../meta/xp';
 import { activeHero, heroById, roleOf, setActive, type Hero, type Profile } from '../meta/profile';
 import { doorTip, finishTip, type DoorTip } from '../meta/tips';
+import { dungeonSet, setState } from '../meta/sets';
 import type { App } from './app';
 import { esc, fmtN, fmtRate, fmtT, GLYPH } from './dom';
 import { botSprite, colourOf, heroImg, heroSprite, iconOf, nameOf, placeSprite, tile, XP_VIOLET } from './art';
@@ -36,12 +39,13 @@ import { ilvl } from './hearth';
 import { SWATCH } from './lookssheet';
 import { SFX } from './sound';
 import { seatAt, stageShape, stageSvg } from './stage';
+import { setRow, setShow } from './setcard';
 import { warbandOpen, warbandWhy } from '../meta/warband';
 import { CLEAR_XP } from '../content/xp';
 import { chestXpLines, xpMul } from '../meta/xp';
 
 /** the sheet's pages: the door (the everyday one) and the ones a tap away, each with a back arrow */
-export type DgPage = 'door' | 'loot' | 'heroes' | 'brews' | 'list';
+export type DgPage = 'door' | 'loot' | 'set' | 'heroes' | 'brews' | 'list';
 
 /** what the sheet remembers while the page is open: which page, Normal or Heroic, and which dungeon; whether
  *  the under-powered warning is up over the gold button, and the dungeons you chose Go anyway for (they don't
@@ -116,15 +120,18 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
   else if (gap) foot = warning(base, gap);
   else foot = powerLine(p, h, dg) + `<button type="button" class="btn gold big dgx-enter${pick.heroic ? ' heroic' : ''}" data-act="go">${pick.heroic ? 'Enter Heroic' : `Enter the ${esc(base.name.split(' ')[0])}`}</button>`;
   const loot = lootPanel(p, dg, role);
+  // the set this dungeon drops for the hero you're playing (on Heroic too: it drops the Normal loot)
+  const sd = h ? dungeonSet(h, base.id) : undefined, st = h && sd ? setState(p, h, sd.id) : null;
   if (pick.page === 'loot') return { head: subHead(`${pick.heroic ? 'Heroic ' : ''}${base.name.split(' ')[0]} loot`), body: `<div class="dgx-lootpage">${loot}</div>`, foot };
+  if (pick.page === 'set' && h && st) return { head: subHead('Your set'), body: `<div class="dgx-setpage">${setShow(p, h, st, { eyebrow: base.name, where: true, act: 'item' })}</div>`, foot };
   if (pick.page === 'heroes') return { head: subHead('Who goes in'), body: heroesPage(p, pick.heroic, allOpen || warbandOpen(p)), foot };
   if (pick.page === 'brews') return { head: subHead('Your brew'), body: brewsPage(p), foot };
   const head = `<h2><button type="button" class="dgx-namebtn" data-act="dglist" aria-label="${esc(base.name)}. All dungeons">${esc(base.name)}${GLYPH.down}</button></h2><p>${seasonTag(base.season)}Tier ${meta.roman}${pick.heroic ? ' · Heroic' : ''} · ${statLine(rec?.clears || 0, keeper?.kc || 0, rec?.pb)}</p>`;
   // on a phone the log line opens the Loot page; on desktop the loot sits in its own column instead
   const tip = doorTip(p, pick.heroic);
-  const body = `<div class="dgx${pick.heroic ? ' heroic' : ''}${tip ? ' tipping' : ''}">
+  const body = `<div class="dgx${pick.heroic ? ' heroic' : ''}${tip ? ' tipping' : ''}${st ? ' has-set' : ''}">
     ${door(p, base, pick.heroic, diff + steps(base.id), tip === 'warband')}
-    ${logLine(p, dg, true)}
+    ${logLine(p, dg, true)}${st ? setRow(st) : ''}
     <aside class="dgx-lootcol" aria-label="Loot">${loot}</aside>
     <div class="dgx-you">${brewButton(p, tip === 'brew')}${tip === 'brew' ? brewTip() : ''}</div>
   </div>`;
@@ -241,6 +248,7 @@ export function dungeonActions(d: DungeonHost): Record<string, (el: HTMLElement)
   };
   return {
     logx: () => page('loot'),
+    setx: () => page('set'),
     dglist: () => page('list'),
     dgback: () => page('door'),
     dgpick: (el) => { d.pick.dungeon = el.dataset.id || 'barrow'; d.pick.heroic = false; d.pick.page = 'door'; SFX.play('ui'); d.refresh(); },

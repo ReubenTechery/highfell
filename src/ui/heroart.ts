@@ -28,8 +28,9 @@ export const HERO_ART_DATA = HEROES as unknown as HeroArt;
 const H = HERO_ART_DATA;
 
 /** What a hero looks like: their body, the layer worn in each slot, the slots drawn gilded, and whether their
- *  race's gold look (Gilded Bones, Gilded Gnomes) is on. */
-export interface Look { body: string; slots: Partial<Record<SlotId, string>>; gold: SlotId[]; race?: string | null }
+ *  race's gold look (Gilded Bones, Gilded Gnomes) is on. A set's preview also has slots drawn as ghosts (pieces
+ *  not found yet) and the slot whose piece has just arrived, which falls into place when drawn inline. */
+export interface Look { body: string; slots: Partial<Record<SlotId, string>>; gold: SlotId[]; race?: string | null; ghost?: SlotId[]; drop?: SlotId }
 /** A composed picture: SVG text in game units round the ground point, and its box. */
 export interface Pic { svg: string; vb: number[] }
 /** Where a picture's weapon glows (seen from the front) and the top of its head: what floats over a hero goes above it. */
@@ -132,6 +133,23 @@ export function regionFn(cls: string, view: View, fit: Fit, region: string): Fn 
 /** colours swapped by a map (gild(): bone and steel to gold) */
 export const recolour = (svg: string, map: Record<string, string>): string => svg.replace(/#[0-9A-Fa-f]{6}/g, (c) => map[c.toUpperCase()] || c);
 
+/** A piece not found yet, as a ghost: the piece in one pale colour, faint, with one dashed line round its whole
+ *  silhouette like the log's stands draw one (the silhouette masks out its own line, so only the outer half
+ *  shows and shapes that overlap don't). Its parts come together, so the line goes round all of it once. The look
+ *  is carried in the SVG itself, so it works as an image as well as inline. */
+const GHOST = { fill: '#C9C2E8', ink: '#8C84B8', line: '#FFF8EC' };
+let ghosts = 0;
+export function ghostPiece(parts: string[], box: number[]): string {
+  const all = parts.join('');
+  const sil = (all.match(/<(?:path|circle|ellipse)\b[^>]*\/>/g) || []).filter((x) => !/fill: none/.test(x)).map((x) => x.replace(/ style="[^"]*"/, '')).join('');
+  if (!sil) return '';
+  const pale = all.replace(/fill: #1E1A1A/g, `fill: ${GHOST.ink}`).replace(/fill: #[0-9A-Fa-f]{6}/g, (m) => (m.endsWith(GHOST.ink) ? m : `fill: ${GHOST.fill}`)).replace(/stroke: #[0-9A-Fa-f]{6}/g, `stroke: ${GHOST.ink}`);
+  const id = `hg${++ghosts}`, [x, y, w, h] = box, r = `x="${x}" y="${y}" width="${w}" height="${h}"`;
+  return `<g class="ghost"><mask id="${id}" maskUnits="userSpaceOnUse" ${r}><rect ${r} fill="#fff"/><g fill="#000">${sil}</g></mask>`
+    + `<g opacity="0.55">${pale}</g>`
+    + `<g mask="url(#${id})" fill="none" stroke="${GHOST.line}" stroke-opacity="0.95" stroke-width="5" stroke-dasharray="5 9" stroke-linecap="round" stroke-linejoin="round">${sil}</g></g>`;
+}
+
 // ---------------------------------------------------------------- composing
 /** A body wearing its look, one view, as SVG shapes in game units, with the body's box. */
 export function composeLook(look: Look, view: View): Pic | null {
@@ -141,19 +159,30 @@ export function composeLook(look: Look, view: View): Pic | null {
   const fn = (region: string): Fn => fns[region] || (fns[region] = regionFn(body.cls, view, bv.fit, region));
   const race = look.race ? H.races[look.race] : null;
   const out: string[] = [];
+  const frags = (L: Layer): Frag[] => (body.fem && L[`${view}w`]) || L[view];
+  // a ghost's parts are gathered and drawn as one, in the last band any of them is in
+  const ghost: Partial<Record<SlotId, { last: string; parts: string[] }>> = {};
+  for (const slot of look.ghost || []) {
+    const L = look.slots[slot] ? H.layers[look.slots[slot]!] : null;
+    const last = L && [...H.bands[view]].reverse().find((b) => frags(L).some((f) => f[0] === b));
+    if (last) ghost[slot] = { last, parts: [] };
+  }
   for (const band of H.bands[view]) {
     const z = bv.z[band];
     if (z) out.push(race ? recolour(z, race.map) : z);
     for (const slot of H.slots) {
       const id = look.slots[slot], L = id ? H.layers[id] : null;
       if (!L) continue;
-      for (const [b, region, svg] of (body.fem && L[`${view}w`]) || L[view]) {
+      const g = ghost[slot];
+      for (const [b, region, svg] of frags(L)) {
         if (b !== band) continue;
         let part = warp(svg, fn(region));
+        if (g) { g.parts.push(part); continue; }
         if (look.gold.includes(slot)) part = recolour(part, H.gild);
         if (race?.gear) part = recolour(part, race.map);
-        out.push(part);
+        out.push(look.drop === slot ? `<g class="drop">${part}</g>` : part);
       }
+      if (g && g.last === band) out.push(ghostPiece(g.parts, bv.vb));
     }
   }
   return { svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${bv.vb.join(' ')}" width="${bv.vb[2]}" height="${bv.vb[3]}">${out.join('')}</svg>`, vb: bv.vb };
@@ -169,7 +198,8 @@ export function fitOfLook(look: Look): HeroFitOut | null {
 }
 /** A short stable name for a look, so the same look is composed once. */
 export function lookName(look: Look): string {
-  const key = [look.body, ...H.slots.map((s) => look.slots[s] || ''), look.gold.slice().sort().join('+'), look.race || ''].join('|');
+  const preview = look.ghost?.length || look.drop ? [(look.ghost || []).slice().sort().join('+'), look.drop || ''] : [];
+  const key = [look.body, ...H.slots.map((s) => look.slots[s] || ''), look.gold.slice().sort().join('+'), look.race || '', ...preview].join('|');
   let h = 5381;
   for (let i = 0; i < key.length; i++) h = ((h * 33) ^ key.charCodeAt(i)) >>> 0;
   return `hero.${h.toString(36)}`;
