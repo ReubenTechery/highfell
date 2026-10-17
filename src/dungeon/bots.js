@@ -59,11 +59,11 @@ const NOVA_REACH = AB.dps.a2.range;
 /* a cast a bot can see and stop: kickable, and it's had a moment to react (a bot's reaction time) */
 const kickable = (h, m) => !!(m.cast && m.cast.kick && m.cast.t >= h.bot.react);
 /* the boss a mage could Chill now: Rime burst is (nearly) ready, he isn't Chilled already, and it's a calm moment
-   to step in (he's on the tank and between moves, and nobody is caged) */
+   to step in (he's on someone else, between moves, and nobody is caged) */
 export function chillTarget(h) {
   const b = S.boss && S.boss.alive && !S.boss.hidden && S.boss.state === 'fight' ? S.boss : null;
   if (!b || h.role !== 'dps' || h.cls === 'rogue' || h.cd.a2 > 0.3 || b.st.chill > 0) return null;
-  const calm = !b.act && b.target && b.target.role === 'tank' && !S.heroes.some((a) => a.st.caged);
+  const calm = !b.act && b.target && b.target !== h && !S.heroes.some((a) => a.st.caged);
   return calm ? b : null;
 }
 export function okHere(h) {
