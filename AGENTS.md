@@ -129,8 +129,9 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   the party's seats and the under-powered warning (`party.ts`), when your Warband opens (`warband.ts`), `vale.ts` (seeds, planter beds, harvests,
   ranks, brewing), `tips.ts` (which first-time tip the house and the Dungeons door show) and `brag.ts` (what a
   run had to show off, for the Share card).
-- `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, its drawing
-  `houseart.ts` (its back layer drawn once as pictures by `housepaint.ts`), every room in each look, the Toadstool Workshop's in `houseworkshop.ts`, the cellar's doors
+- `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, drawn on one canvas by
+  `housecanvas.ts` from pictures `housepaint.ts` makes, its bits moved by `housemotion.ts`; its drawing
+  `houseart.ts`, every room in each look, the Toadstool Workshop's in `houseworkshop.ts`, the cellar's doors
   `halldoors.ts`, your hero's name tag `nametag.ts`, its tour and tips as data `tours.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
   close-ups), the cauldron (`brew.ts`), the run (HUD and input; `runguard.ts` keeps a back swipe from leaving it) and the reveal. Sheets over them: the dungeons
   (`dungeonsheet.ts`, its door's picture in `stage.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
@@ -150,7 +151,7 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   driven without a browser), `meta.test.ts`, `achievements.test.ts` (each says what to do, what it gives and
   where it went; every title's source; the kill count it came at), `brag.test.ts` (what a run had to show off),
   `power.test.ts` (seasons, Power and the under-powered warning), `vale.test.ts`, `tips.test.ts` (which first-time
-  tip shows when), `warband.test.ts` (when the Warband opens).
+  tip shows when), `warband.test.ts` (when the Warband opens), `housemotion.test.ts` (how the house's bits move).
 
 ## Commands
 

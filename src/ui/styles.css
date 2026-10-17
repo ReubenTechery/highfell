@@ -48,12 +48,17 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 /* ---- the hearth: your house, cut open ---- */
 .hearth { background: #2E2A55; overflow: hidden; overflow: clip; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
 .hearth.dragging { cursor: grabbing; }
-/* the camera moves .h-cam as one picture; .h-world holds the house's layers in world units (camera.ts) */
+/* the house is drawn on one canvas (housecanvas.ts). The camera moves .h-cam; .h-world holds the house's
+   layers in world units (camera.ts): the layer you tap (.house), see-through once the canvas has its first frame
+   (.h-drawn), and until then the layers that stand in for the canvas. .h-cam is never marked will-change: a phone
+   re-layered the house each time it started or stopped moving, ran out of memory and dropped whole frames. */
 .h-cam, .h-world, .h-world > * { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
-/* .h-cam is marked will-change: transform only while the camera moves (camera.ts). Left on, a phone keeps
-   the house painted at the sharpness of the first zoom it saw, so after flying out of a room it could only
-   paint the patch that had been on screen and left the rest blank. */
 .h-cam { cursor: default; pointer-events: none; }
+.h-canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: none; pointer-events: none; }
+.hearth.h-drawn .h-canvas { display: block; }
+.hearth.h-drawn .h-world > .house { opacity: 0; }
+.hearth.h-drawn .h-world > :is(.h-back, .h-front, .h-fx, .h-bits, .h-pips) { display: none; }
+.h-measure { position: absolute; width: 0; height: 0; overflow: hidden; visibility: hidden; pointer-events: none; }
 /* On a tall screen (a phone) the world is clipped to its own box. The sky, hills and ground are drawn far
    wider than it, for wide screens zoomed right out; left unclipped they made the house's picture more than
    twice the size, which a phone can't hold (parts of the house went blank). A phone never sees past the sides,
@@ -63,11 +68,12 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
   .hearth { background: linear-gradient(#2E2A55 50%, #6B4A3A 50%); }
 }
 .h-world > svg { display: block; }
-/* the back layer, drawn once as pictures (housepaint.ts); its gradients stay live in .h-defs for the other layers */
+/* standing in for the canvas: the back, live; its gradients in .h-defs, for the other layers standing in */
 .h-back { overflow: visible; }
-.h-world > .h-paint { visibility: hidden; pointer-events: none; }
 .h-world > .h-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 .bit { position: absolute; display: block; }
+/* the layer you tap. Its rules (.house ...) are copied into the canvas's pictures of it, so what Decorate shows is
+   drawn there too (housepaint.ts: sceneCss); a hover, the keyboard's focus and the tour's ring the canvas draws */
 .house .thing, .house .spot, .house .hero, .house .newhero, .house .mount { pointer-events: auto; cursor: pointer; }
 .house .spot.empty, .house .spot.none, .hearth.dragging .house * { pointer-events: none; }
 .hearth:not(.dragging) .house.deco .spot.empty, .hearth:not(.dragging) .house.deco .spot.none { pointer-events: auto; }
@@ -90,83 +96,18 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .wb-shut { display: flex; align-items: center; gap: 8px; margin: 0; text-align: left; }
 .wb-shut svg { width: 18px; height: 18px; flex: none; }
 .house .sign { font-family: var(--f-display); font-size: 30px; fill: var(--ink); text-anchor: middle; pointer-events: none; }
-.bit.pip circle { fill: var(--red); stroke: var(--ink); stroke-width: 4; }
 .bit.pip text { font-family: var(--f-display); font-size: 27px; fill: #FFFFFF; text-anchor: middle; }
 /* a mount you haven't got, in the paddock: its shadow and a question mark */
 .bit .pq { font-family: var(--f-display); font-size: 64px; fill: #FFF8EC; stroke: var(--ink); stroke-width: 7px; paint-order: stroke; text-anchor: middle; }
 .room .lbl { font-family: var(--f-display); font-size: 22px; fill: #FFF8EC; stroke: var(--ink); stroke-width: 6px; paint-order: stroke; text-anchor: middle; pointer-events: none; }
 .room .lbl.small { font-size: 17px; }
-/* the house's moving bits: each is its own small picture, so the browser moves it without a redraw. The fire,
-   the smoke, the birds' wings and the fireflies keep one slow beat, a new frame every 0.45s. Held still, each
-   shows one frame, and the birds stay out of sight. */
+/* the house's moving bits, standing in for the canvas (which moves them: housemotion.ts), held still on one
+   frame, the birds out of sight */
 .bit.fire-b, .bit.smoke:not(.s0), .bit.flock.b { opacity: 0; }
-@media (prefers-reduced-motion: no-preference) {
-  .bit.fire-a { animation: fireA 0.9s steps(1) infinite; }
-  .bit.fire-b { animation: fireB 0.9s steps(1) infinite; }
-  /* the smoke's four frames take turns, so its puffs climb */
-  .bit.smoke { animation: frame4 1.8s steps(1) infinite; }
-  .bit.smoke.s1 { animation-delay: -1.35s; }
-  .bit.smoke.s2 { animation-delay: -0.9s; }
-  .bit.smoke.s3 { animation-delay: -0.45s; }
-  /* the flock crosses the sky once every 66s, flapping as it goes; coming home, it is 8s along */
-  .bit.flock { animation: flight 66s linear -8s infinite, fireA 0.9s steps(1) infinite; }
-  .bit.flock.b { animation-name: flight, fireB; }
-  /* fireflies blink and drift through 16 beats, each from its own place in them */
-  .bit.firefly { animation: glimmer 7.2s steps(1) infinite; }
-  .bit.firefly.f1 { animation-delay: -2.7s; animation-direction: reverse; }
-  .bit.firefly.f2 { animation-delay: -4.95s; }
-  /* the light round a lit door in the cellar breathes slowly */
-  .bit.doorglow { animation: glow 2.6s ease-in-out infinite alternate; }
-  .bit.bob { animation: bob 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
-  .bit.breathe { animation: breathe 3.2s ease-in-out infinite; transform-origin: 50% 100%; }
-  .bit.sway { animation: sway 4s ease-in-out infinite; transform-origin: 50% 0%; }
-  .bit.new-pop { animation: newpop 0.7s cubic-bezier(.2, 1.6, .4, 1) both; transform-origin: 50% 100%; }
-  .bit.pip { animation: bob 1.2s ease-in-out infinite; transform-origin: 50% 100%; }
-  /* mounts in the paddock wander a little each way (34 world units: PADDOCK.wander), stop, turn round; each at its own pace */
-  .bit.wander { animation: wander 17s ease-in-out infinite; transform-origin: 50% 100%; }
-  .bit.wander.w1 { animation-duration: 21s; animation-delay: -7s; }
-  .bit.wander.w2 { animation-duration: 19s; animation-delay: -12s; animation-direction: reverse; }
-  .bit.wander.w3 { animation-duration: 23s; animation-delay: -4s; }
-}
-@keyframes fireA { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
-@keyframes fireB { 0%, 49% { opacity: 0; } 50%, 100% { opacity: 1; } }
-@keyframes frame4 { 0% { opacity: 1; } 25%, 100% { opacity: 0; } }
-/* the flock's arc, from where houseart.ts draws it (past the left edge) over the roof to past the right edge;
-   then it waits out of sight, shrunk to nothing */
-@keyframes flight {
-  0% { transform: translate(0, 0); } 2.5% { transform: translate(350px, -19px); } 5% { transform: translate(700px, -76px); }
-  7.5% { transform: translate(1050px, -167px); } 10% { transform: translate(1400px, -285px); } 12.5% { transform: translate(1750px, -422px); }
-  15% { transform: translate(2100px, -570px); } 17.5% { transform: translate(2450px, -718px); } 20% { transform: translate(2800px, -855px); }
-  22.5% { transform: translate(3150px, -973px); } 25% { transform: translate(3500px, -1064px); } 27.5% { transform: translate(3850px, -1121px); }
-  30% { transform: translate(4200px, -1140px); } 32.5% { transform: translate(4550px, -1121px); } 35% { transform: translate(4900px, -1064px); }
-  37.5% { transform: translate(5250px, -973px); } 40% { transform: translate(5600px, -855px); } 42.5% { transform: translate(5950px, -718px); }
-  45% { transform: translate(6300px, -570px); } 47.5% { transform: translate(6650px, -422px); } 50% { transform: translate(7000px, -285px); }
-  52.5% { transform: translate(7350px, -167px); } 55% { transform: translate(7700px, -76px); } 57.5% { transform: translate(8050px, -19px); }
-  60% { transform: translate(8400px, 0); } 60.1%, 100% { transform: translate(8400px, 0) scale(0); }
-}
-/* a firefly's 16 frames: dark, glowing up, drifting, dimming, dark again, and once more */
-@keyframes glimmer {
-  0%, 6.25% { opacity: 0; transform: translate(0, 0); }
-  12.5% { opacity: 0.45; transform: translate(6px, -6px); } 18.75% { opacity: 1; transform: translate(14px, -14px); }
-  25% { opacity: 1; transform: translate(22px, -18px); } 31.25% { opacity: 0.45; transform: translate(28px, -26px); }
-  37.5%, 50% { opacity: 0; transform: translate(26px, -30px); }
-  56.25% { opacity: 0.45; transform: translate(16px, -36px); } 62.5% { opacity: 1; transform: translate(6px, -34px); }
-  68.75% { opacity: 0.45; transform: translate(-4px, -28px); } 75%, 100% { opacity: 0; transform: translate(0, 0); }
-}
 @keyframes glow { from { opacity: 0.75; } to { opacity: 1; } }
 @keyframes bob { 0%, 100% { transform: translateY(0) scaleY(1); } 50% { transform: translateY(-3px) scaleY(1.02); } }
 @keyframes breathe { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.025); } }
-@keyframes sway { 0%, 100% { transform: rotate(-1.2deg); } 50% { transform: rotate(1.2deg); } }
 @keyframes newpop { from { transform: scale(0.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-@keyframes wander {
-  0% { transform: translateX(0) scaleX(1); }
-  28%, 44% { transform: translateX(34px) scaleX(1); }
-  47%, 52% { transform: translateX(34px) scaleX(-1); }
-  80%, 92% { transform: translateX(-34px) scaleX(-1); }
-  95% { transform: translateX(-34px) scaleX(1); }
-  100% { transform: translateX(0) scaleX(1); }
-}
-
 /* the room signs: you see them when you are zoomed out, and tap one to go in */
 .h-signs { position: absolute; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
 .h-sign { position: absolute; left: 0; top: 0; will-change: transform; padding: 4px 12px 5px; border-radius: 12px; border: 3px solid var(--ink); background: var(--panel); color: var(--ink); box-shadow: 0 3px 0 var(--ink); font-family: var(--f-display); font-size: 16px; white-space: nowrap; cursor: pointer; opacity: 0; transition: opacity 0.2s; pointer-events: none; }

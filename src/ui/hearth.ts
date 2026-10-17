@@ -7,9 +7,9 @@
  * under a name tag; your other heroes wait by their beds upstairs. Pets, trophies and banners go in spots
  * all over the house; Decorate shows the empty ones. Out in the paddock every mount in the game has its own
  * place: yours wander about, the rest are shadows; tap one for its card. One big button: Dungeons.
- * The house is drawn in layers the camera moves as one picture: the back (the outside, rooms and
- * furniture) and the front (the lights) are built only when a look changes; between them are what you
- * tap (things, spots, heroes) and the bits that move, each its own small picture (art.ts), and the pips.
+ * The house is drawn on one canvas (housecanvas.ts): the back (the outside, rooms and furniture) and the
+ * front (the lights) are built only when a look changes; between them are what you tap (things, spots, heroes:
+ * the scene, a layer in the page you tap, see-through) and the bits that move (art.ts), and the pips.
  */
 import { COLLECTIBLES } from '../content';
 import { CLASSES, MAX_HEROES, RACES, type ClassId, type RaceId } from '../content/folk';
@@ -21,11 +21,11 @@ import { finishTip, houseTip, type HouseTip } from '../meta/tips';
 import { bedToOpen } from '../meta/vale';
 import type { App } from './app';
 import { actions, esc, GLYPH } from './dom';
-import { ART, bitsHtml, heroSprite, placeSprite, spriteBit, type Bit } from './art';
+import { ART, heroSprite, placeSprite, spriteBit, type Bit } from './art';
 import { SFX } from './sound';
 import { Camera } from './camera';
 import { BACKDROP, HOUSE_BOUNDS, HOUSE_FIT, houseBack, houseBits, houseDefs, houseLights, houseWalls } from './houseart';
-import { HousePaint } from './housepaint';
+import { HouseCanvas } from './housecanvas';
 import { bedLook } from './garden';
 import { hallDoors } from './halldoors';
 import { NameTag } from './nametag';
@@ -44,8 +44,6 @@ const HOME_ROOM = 'hall';
 const WHOLE = 'house';
 /** the world's top left: every layer of the house is drawn from here, in world units */
 const [X0, Y0] = HOUSE_BOUNDS;
-/** screen pixels per CSS pixel the house is drawn for: a 3x phone gets 2x, scaled up a touch (as camera.ts) */
-const pxPerUnit = (): number => Math.min(2, window.devicePixelRatio || 1);
 /** what a scene draws besides the layer you tap: the bits that move (y-sorted like the layer) and the pips */
 interface Extras { bits: { y: number; bit: Bit }[]; pips: Bit[] }
 
@@ -54,13 +52,8 @@ export class Hearth {
   fresh = new Set<string>();
   private cam: Camera;
   private svg: SVGSVGElement;
-  /** the back layer (sky, hill, walls, furniture) as pictures: housepaint.ts */
-  private paint: HousePaint;
-  /** each room's light, over everything, as one soft picture */
-  private light: HousePaint;
-  private fx: HTMLElement;
-  private bits: HTMLElement;
-  private pips: HTMLElement;
+  /** the house on screen: one canvas, drawn from the layers below (housecanvas.ts) */
+  private house: HouseCanvas;
   /** the looks the back and front were last built for, and the markup each layer was last given */
   private looks = '';
   private drawn = new Map<Element, string>();
@@ -92,16 +85,13 @@ export class Hearth {
         <svg class="h-front" ${size} aria-hidden="true"></svg><div class="h-pips" aria-hidden="true"></div></div></div>
       <div class="h-signs no-cam"></div><div class="h-top no-cam"></div><div class="h-bottom no-cam"></div>`;
     this.svg = root.querySelector('svg.house')!;
-    this.paint = new HousePaint(root.querySelector('.h-world')!, root.querySelector('svg.h-back')!, [X0, Y0]);
-    this.light = new HousePaint(root.querySelector('.h-world')!, root.querySelector('svg.h-front')!, [X0, Y0], { soft: true });
-    this.fx = root.querySelector('.h-fx')!;
-    this.bits = root.querySelector('.h-bits')!;
-    this.pips = root.querySelector('.h-pips')!;
     this.signs = root.querySelector('.h-signs')!;
     this.top = root.querySelector('.h-top')!;
     this.bottom = root.querySelector('.h-bottom')!;
     this.tag = new NameTag(root, this.top, this.bottom);
-    this.cam = new Camera(root, root.querySelector('.h-cam')!, root.querySelector('.h-world')!, { bounds: HOUSE_BOUNDS, onChange: () => this.onView(), onRest: () => this.rested(), onAim: (x, y, z) => this.aimed(x, y, z) });
+    const world = root.querySelector<HTMLElement>('.h-world')!, q = <T extends Element>(sel: string): T => world.querySelector<T>(sel)!;
+    this.cam = new Camera(root, root.querySelector('.h-cam')!, world, { bounds: HOUSE_BOUNDS, onChange: () => this.onView() });
+    this.house = new HouseCanvas(root, this.cam, { world, svg: this.svg, back: q('svg.h-back'), front: q('svg.h-front'), fx: q('.h-fx'), bits: q('.h-bits'), pips: q('.h-pips') });
     actions(root, {
       dungeon: () => { SFX.play('ui'); if (this.tourStep !== null) this.endTour(true); else { this.out = this.far(); app.sheets.open({ kind: 'dungeon' }); } },
       gear: () => { SFX.play('ui'); if (this.tourStep !== null) this.endTour(false); this.act('gear'); },
@@ -133,8 +123,8 @@ export class Hearth {
       if (e.key === '+' || e.key === '=') this.cam.zoomAt(1.25, this.cam.w / 2, this.cam.h / 2);
       if (e.key === '-' || e.key === '_') this.cam.zoomAt(0.8, this.cam.w / 2, this.cam.h / 2);
     });
-    // the name tag changes size when the display font arrives
-    if (document.fonts) document.fonts.addEventListener('loadingdone', () => { this.tag.measure(); this.onView(); });
+    // the name tag changes size when the display font arrives, and the house's labels are written again in it
+    if (document.fonts) document.fonts.addEventListener('loadingdone', () => { this.tag.measure(); this.house.fonts(); this.onView(); });
   }
 
   /** The next time the house is drawn, go to this room (the bunk room after making a hero, say). */
@@ -217,27 +207,23 @@ export class Hearth {
   render(): void {
     const p = this.app.p, h = activeHero(p);
     if (!h) return;
+    this.house.wake();
     // a tip whose moment has come begins once nothing is open over the house
     if (this.tourStep === null && !this.covered()) { const t = houseTip(p); if (t) this.beginTour(t); }
     const look = (room: string): string => lookOf(p, room, this.app.dev.allOpen);
     const looks = LOOK_ROOMS.map(look).join(' ');
     if (looks !== this.looks) {
       this.looks = looks;
-      // the outer walls' cut edges go in the back picture; each room's light is a soft picture of its own, over
-      // your heroes (live, the two were a second full-size layer the browser redrew every time the camera stopped)
-      this.paint.set(houseDefs(), houseBack(look) + houseWalls(look));
-      this.light.set(houseDefs(), houseLights(look));
-      this.fx.innerHTML = bitsHtml(houseBits(look), X0, Y0);
+      // the outer walls' cut edges go in the back picture; each room's light is a soft picture over everything
+      this.house.setBack(houseDefs(), houseBack(look) + houseWalls(look), houseLights(look), houseBits(look));
     }
     const extra: Extras = { bits: [], pips: [] };
-    this.draw(this.svg, this.scene(h, extra));
-    this.draw(this.bits, bitsHtml(extra.bits.sort((a, b) => a.y - b.y).map((b) => b.bit), X0, Y0));
-    this.draw(this.pips, bitsHtml(extra.pips, X0, Y0));
+    const changed = this.draw(this.svg, this.scene(h, extra));
     this.svg.classList.toggle('deco', this.decorating);
     this.root.classList.toggle('decorating', this.decorating);
+    this.house.setScene(extra.bits.sort((a, b) => a.y - b.y).map((b) => b.bit), extra.pips, changed);
     this.hud(h);
     this.layout();
-    this.paintWhole();
     if (this.fresh.size) setTimeout(() => this.fresh.clear(), 1200);
   }
 
@@ -250,8 +236,8 @@ export class Hearth {
     return true;
   }
 
-  /** the back layer's whole picture: over all the camera can show (a portrait screen clips to the house's
-   *  bounds), sharp enough for the whole-house zoom with a little to spare */
+  /** the house's whole pictures: over all the camera can show (a portrait screen clips to the house's bounds),
+   *  sharp enough for the whole-house zoom */
   private paintWhole(): void {
     if (this.cam.w < 2) return;
     const [bx0, by0, bx1, by1] = HOUSE_BOUNDS, [ax0, ay0, ax1, ay1] = BACKDROP;
@@ -263,28 +249,19 @@ export class Hearth {
       const x0 = Math.max(ax0, cx - vw / 2), y0 = Math.max(ay0, cy - vh / 2), x1 = Math.min(ax1, cx + vw / 2), y1 = Math.min(ay1, cy + vh / 2);
       r = [x0, y0, x1 - x0, y1 - y0];
     }
-    this.paint.whole(r, this.fitZ * pxPerUnit() * 1.25);
-    // the rooms' light lives only inside the house: its picture covers just that
-    const [fx0, fy0, fx1, fy1] = HOUSE_FIT;
-    this.light.whole([fx0, fy0, fx1 - fx0, fy1 - fy0], this.fitZ * pxPerUnit() * 1.25);
-  }
-  /** the camera has stopped: the part on screen gets drawn sharp, if the whole picture is too soft for it */
-  private rested(): void { this.aimed(this.cam.cx, this.cam.cy, this.cam.z); }
-  /** the camera is flying to a view (or has stopped at one): its sharp picture starts now, to be ready on landing */
-  private aimed(cx: number, cy: number, z: number): void {
-    const w = this.cam.w / z, h = this.cam.h / z;
-    this.paint.sharp([cx - w / 2, cy - h / 2, w, h], z * pxPerUnit());
+    this.house.whole(r, this.fitZ);
   }
   /** your Warband is open (or the testing switch opens everything) */
   private warband(): boolean { return warbandOpen(this.app.p) || this.app.dev.allOpen; }
-  /** The house is off screen: its pictures let go of their memory. */
-  sleep(): void { this.paint.sleep(); this.light.sleep(); }
+  /** The house is off screen: it stops drawing, and its pictures let go of their memory. */
+  sleep(): void { this.house.sleep(); }
 
   /** fit the camera to the screen: on the first look, and coming home, show the whole house */
   layout(): void {
     const w0 = this.cam.w, h0 = this.cam.h;
     this.cam.measure();
     if (this.cam.w < 2) return;
+    this.house.resize();
     const wasFar = this.placed && this.far();
     const [x0, y0, x1, y1] = HOUSE_FIT;
     this.fitZ = Math.min(this.cam.w / (x1 - x0), (this.cam.h - 160) / (y1 - y0));
@@ -364,6 +341,7 @@ export class Hearth {
       const t = far ? 'Go into the hall' : 'See the whole house';
       if (z.getAttribute('aria-label') !== t) { z.setAttribute('aria-label', t); z.setAttribute('title', t); z.innerHTML = far ? GLYPH.home : HOUSE_GLYPH; }
     }
+    this.house.view();
   }
 
   /* ---------------------------------------------------------------- what a tap does */
@@ -605,7 +583,7 @@ export const ilvl = (score: number): string => String(wholeIlvl(score));
 const padlock = (x: number, y: number): string => `<g class="padlock"><path d="M${x - 11} ${y - 4} V${y - 14} A11 11 0 0 1 ${x + 11} ${y - 14} V${y - 4}"/><rect x="${x - 17}" y="${y - 5}" width="34" height="26" rx="5"/></g>`;
 const plus = (x: number, y: number): string => `<path class="plus" d="M${x - 10} ${y} H${x + 10} M${x} ${y - 10} V${y + 10}"/>`;
 /** a little red count, like the one on a button, bobbing over what it counts */
-const pip = (x: number, y: number, t: string): Bit => ({ box: [x - 27, y - 27, 54, 54], body: `<circle cx="${x}" cy="${y}" r="24"/><text x="${x}" y="${y + 9}">${esc(t)}</text>`, cls: 'pip' });
+const pip = (x: number, y: number, t: string): Bit => ({ box: [x - 27, y - 27, 54, 54], body: `<circle cx="${x}" cy="${y}" r="24" style="fill: #E04A3F; stroke: #1E1A1A; stroke-width: 4"/><text x="${x}" y="${y + 9}">${esc(t)}</text>`, cls: 'pip' });
 /** what a tap on something in the house picks out for what it opens: a garden bed, a dungeon's door */
 type Pick = { bed?: number; dungeon?: string };
 /** where a spot sorts in the layer: pets by where they stand, the rest at the back */

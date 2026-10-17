@@ -1,11 +1,13 @@
 /**
  * A camera over a big drawing, like a map: drag to look around, pinch or scroll to zoom, and smooth
- * flights to a point. It never redraws the drawing to move: the drawing sits in a `layer` the browser moves
- * and scales as a picture, and inside it a `world` holds everything in world units at the zoom it was last
- * drawn sharp at (`base`). When the camera comes to rest at a new zoom, it rebases: the world is drawn
- * sharp again at that zoom (never past SHARP_MAX, and at no more than 2x pixels) and the layer goes back to scale 1. What a tap does is up to the scene, which
- * asks `moved()` first so the click that ends a drag or a pinch never counts as a tap. Pointers that start
- * on the scene's buttons (anything inside `.no-cam`) are left alone.
+ * flights to a point. It moves a `layer` (and in it a `world`, everything in world units), and tells the scene
+ * after every move. The house draws itself on a canvas from where the camera is (housecanvas.ts); the layer it
+ * moves is the one you tap, see-through, so it lines up with the picture. The world is still scaled to the zoom
+ * it was last drawn sharp at (`base`, never past SHARP_MAX, at no more than 2x pixels) for the moment at the start
+ * when the page's own layers stand in for the canvas. The layer is never marked will-change: that made phones
+ * re-layer the house each time it started or stopped moving. What a tap does is up to the scene, which asks
+ * `moved()` first so the click that ends a drag or a pinch never counts as a tap. Pointers that start on the
+ * scene's buttons (anything inside `.no-cam`) are left alone.
  */
 import { reducedMotion } from './dom';
 
@@ -14,10 +16,6 @@ export interface CameraOpts {
   bounds: [number, number, number, number];
   /** called after the view changes, at most once a frame */
   onChange: () => void;
-  /** called once the camera has come to rest (no finger down, no flight, drawn sharp) */
-  onRest?: () => void;
-  /** called as a flight sets off, with where it will land: the middle and the zoom */
-  onAim?: (cx: number, cy: number, z: number) => void;
 }
 type Pt = { x: number; y: number };
 
@@ -46,8 +44,6 @@ export class Camera {
   private raf = 0;
   /** the zoom the world was last drawn at, and the timer that redraws it when the camera rests */
   private base = 0;
-  /** whether the layer is marked as moving (will-change), from the first move until the camera rests */
-  private moving = false;
   private rest = 0;
 
   constructor(private root: HTMLElement, private layer: HTMLElement, private world: HTMLElement, private o: CameraOpts) {
@@ -71,6 +67,8 @@ export class Camera {
   toScreen(wx: number, wy: number): [number, number] { return [(wx - this.cx) * this.z + this.w / 2, (wy - this.cy) * this.z + this.h / 2]; }
   /** true for a moment after a drag or a pinch, so the click that ends it does nothing */
   moved(): boolean { return performance.now() < this.quiet; }
+  /** a finger is down or a flight is on: the camera is about to move again */
+  get busy(): boolean { return this.pts.size > 0 || this.flying; }
 
   /** Zoom by a factor, keeping the world point under (px, py) where it is. */
   zoomAt(f: number, px: number, py: number): void {
@@ -94,7 +92,6 @@ export class Camera {
     const to = this.clamped(cx, cy, clamp(z, this.zMin, this.zMax));
     if (reducedMotion() || (Math.hypot(to.cx - from.cx, to.cy - from.cy) < 1 && Math.abs(to.z / from.z - 1) < 0.002)) { this.set(to.cx, to.cy, to.z); done?.(); return; }
     this.stop();
-    this.o.onAim?.(to.cx, to.cy, to.z);
     const id = this.flight;
     this.flying = true;
     const t0 = performance.now();
@@ -149,21 +146,10 @@ export class Camera {
     const was = this.base;
     this.rebase();
     if (this.base !== was) this.write();
-    else { this.still(); this.o.onRest?.(); }
-  }
-  /** At rest the layer stops being marked as moving, so the browser paints the whole world fresh at the zoom
-   *  it's at now. Marked as moving for good, a phone keeps the first zoom's sharpness and, after a flight out
-   *  of a room, paints only the patch that was on screen before. */
-  private still(): void {
-    if (!this.moving) return;
-    this.moving = false;
-    this.layer.style.willChange = 'auto';
   }
   /** write the view now: move and scale the layer, in whole device pixels so it stays crisp at rest */
   private write(): void {
     if (!this.base) this.rebase();
-    // while the camera moves, the browser slides and scales the layer as one picture, with no repaints
-    if (!this.moving) { this.moving = true; this.layer.style.willChange = 'transform'; }
     const [x0, y0] = this.o.bounds;
     const dpr = window.devicePixelRatio || 1, snap = (v: number): number => Math.round(v * dpr) / dpr;
     this.layer.style.transform = `translate(${snap(this.w / 2 - (this.cx - x0) * this.z)}px, ${snap(this.h / 2 - (this.cy - y0) * this.z)}px) scale(${(this.z / this.base).toFixed(5)})`;
