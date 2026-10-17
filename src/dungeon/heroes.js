@@ -6,9 +6,10 @@ import { HOOKS, S, emit } from './state.js';
 import { banner, bits, brewFx, dots, fx, fxText, healHero, hurtMob, sfx } from './entities.js';
 import { canStand, moveEnt } from './world.js';
 import { gearMul } from './gadgets.js';
-import { BUTTONS, dashTick, finishCast } from './buttons.js';
+import { BUTTONS, PARRY, SWORD, dashTick, finishCast, isAxe, isSword } from './buttons.js';
 import { FIRE_BUTTONS } from './fire.js';
-import { has, knifeStorm, unbowed, venomStacks } from './specs.js';
+import { has, knifeStorm, tempoHaste, unbowed, venomStacks } from './specs.js';
+import { downTick, refill, setUp } from './duo.js';
 
 export const heroBy = (role) => S.heroes.find((h) => h.role === role) || null;
 export const aliveHeroes = () => S.heroes.filter((h) => h.alive);
@@ -113,24 +114,31 @@ export function heroTick(h, dt) {
   if (h.stormT > 0) h.stormT = Math.max(0, h.stormT - dt);
   if (h.heartT > 0) h.heartT = Math.max(0, h.heartT - dt);
   if (h.dawnT > 0) h.dawnT = Math.max(0, h.dawnT - dt);
+  if (h.tempoT > 0) { h.tempoT = Math.max(0, h.tempoT - dt); if (h.tempoT <= 0) h.tempo = 0; }
   h.gcd -= dt; h.iframe -= dt; h.flash -= dt; h.hurtT -= dt; h.lunge -= dt; h.sayT -= dt; h.moving -= dt;
   if (h.frenzyT > 0) h.frenzyT = Math.max(0, h.frenzyT - dt);
   if (h.nightstalkerT > 0) h.nightstalkerT = Math.max(0, h.nightstalkerT - dt);
   if (h.swingT > 0) h.swingT = Math.max(0, h.swingT - dt);
   if (h.whirlT > 0) h.whirlT = Math.max(0, h.whirlT - dt);
-  if (!h.alive) { h.deadT += dt; return; }
+  // down: a mate beside you picks you up (duo.js); up again some other way (a wipe, the fight's end), and you're
+  // not down any more
+  if (!h.alive) { h.deadT += dt; downTick(h, dt); return; }
+  if (h.down) h.down = false;
   st.stun = Math.max(0, st.stun - dt); st.root = Math.max(0, st.root - dt); st.haunt = Math.max(0, st.haunt - dt); st.air = Math.max(0, st.air - dt);
   st.ghost = Math.max(0, (st.ghost || 0) - dt); st.surge = Math.max(0, (st.surge || 0) - dt); st.zeal = Math.max(0, (st.zeal || 0) - dt);
   if (h.absorbT > 0) { h.absorbT -= dt; if (h.absorbT <= 0) h.absorb = 0; }
   if (h.hots.length) tickHots(h, dt);
   const ooc = !S.inCombat && S.t - S.lastCombat > 2.2;
   if (h.role === 'healer') h.mana = Math.min(h.maxMana, h.mana + dt * (ooc ? 16 : 1.6));
-  if (ooc && h.hp < h.maxHp && S.healerUp) h.hp = Math.min(h.maxHp, h.hp + h.maxHp * 0.09 * dt);
+  // out of a fight you're full again in about 2 seconds, healer or not
+  refill(h, dt);
 
-  const want = h.role === 'tank' && h.intent.block && !st.stun && !st.caged && h.dodgeT <= 0 && !h.dash && !st.air;
+  // the warrior's shield, held; a Greataxe's Parry drops after PARRY.max, and comes up again once you let go
+  if (!h.intent.block) h.parryLock = false;
+  const want = h.cls === 'warrior' && h.intent.block && !h.parryLock && !st.stun && !st.caged && h.dodgeT <= 0 && !h.dash && !st.air;
   if (want && !h.blocking) { h.blocking = true; h.blockT = 0; sfx('shieldup'); }
   if (!want) h.blocking = false;
-  if (h.blocking) h.blockT += dt;
+  if (h.blocking) { h.blockT += dt; if (isAxe(h) && h.blockT >= PARRY.max) { h.blocking = false; h.parryLock = true; } }
 
   if (st.kx || st.ky) { moveEnt(h, st.kx * dt, st.ky * dt); const k = Math.pow(0.015, dt); st.kx *= k; st.ky *= k; if (Math.abs(st.kx) + Math.abs(st.ky) < 8) st.kx = st.ky = 0; }
   if (h.dash) { dashTick(h, dt); return; }
@@ -144,7 +152,7 @@ export function heroTick(h, dt) {
   if (h.cast && mag > 0.3) { h.cast = null; if (h.isPlayer) fxText(h.x, h.y - 100, 'Cancelled', '#DDF3FF', 16); }
   if (mag > 0.08 && !h.cast) {
     const k = Math.min(1, mag);
-    const sp = h.speed * k * (h.blocking ? 0.45 : 1) * (st.haunt > 0 ? 0.6 : 1) * (st.surge > 0 ? 1.25 : 1);
+    const sp = h.speed * k * (h.blocking ? (isAxe(h) ? 0.8 : 0.45) : 1) * (st.haunt > 0 ? 0.6 : 1) * (st.surge > 0 ? 1.25 : 1);
     moveEnt(h, (mx / mag) * sp * dt, (my / mag) * sp * dt);
     h.walkT += dt * 10 * k; h.moving = 0.1; h.stillT = 0;
     if (!h.blocking) h.face = Math.atan2(my, mx);
@@ -184,10 +192,12 @@ export function applyBleed(h, m, durOverride) {
   const on = m.bleed && m.bleed.left > 0;
   const n = durOverride ? (on ? m.bleed.n || 1 : 1) : Math.min(venomStacks(h), on ? (m.bleed.n || 1) + 1 : 1);
   m.bleed = { src: h, per, n, left: dur, next: on ? m.bleed.next : 0.5 };
+  // poison is the rogue's setup for a mate's payoff
+  setUp(m, h, 'poison', dur);
 }
 
-/* Automatic attacks: the melee keep small ones between presses (the axe and the daggers keep moving); the healer
-   and the mage have none, their filler is their damage. */
+/* Automatic attacks: the melee keep small ones between presses (the warrior's weapon and the daggers keep moving;
+   a Sword's speed up with its Tempo); the healer and the mage have none, their filler is their damage. */
 export const AUTO = { tank: { dmg: 25, every: 1.5 }, rogue: { dmg: 14, every: 0.7 } };
 function heroAuto(h, dt) {
   h.atkT -= dt;
@@ -197,11 +207,11 @@ function heroAuto(h, dt) {
   h.target = t;
   if (!t) return;
   const d = dist(h, t);
-  if (h.role === 'tank') {
+  if (h.cls === 'warrior') {
     if (h.blocking) return;
     if (d <= h.r + t.r + 30 && h.atkT <= 0) {
-      h.atkT = AUTO.tank.every; h.face = angTo(h, t); h.lunge = 0.16; h.lungeA = h.face;
-      hurtMob(t, AUTO.tank.dmg, h, { knock: 50, tier: 'tick', auto: true, key: 'auto' });
+      h.atkT = AUTO.tank.every / tempoHaste(h); h.face = angTo(h, t); h.lunge = 0.16; h.lungeA = h.face;
+      hurtMob(t, AUTO.tank.dmg * (isSword(h) ? SWORD.auto : 1), h, { knock: 50, tier: 'tick', auto: true, key: 'auto' });
       fx({ type: 'slash', x: h.x, y: h.y - 30, a: h.face, r: 54, dur: 0.18, col: '#FFFFFF' });
       sfx('swing', 0.7);
     }
@@ -231,7 +241,7 @@ export function abCd(h, slot) {
   const def = AB[abKey(h)][slot];
   // Quick Charge and Whirling Edges bring their button back sooner, and Unbowed brings Slam back in half the time
   // with three or more foes on you
-  if (slot === 'a2' && has(h, 'ax.quick')) return 6;
+  if (slot === 'a2' && has(h, 'ga.quick')) return 6;
   if (slot === 'a3' && has(h, 'bl.whirl')) return 4;
   if (slot === 'a3' && def && def.key === 'slam' && unbowed(h)) return def.cd / 2;
   return def && def.cd ? def.cd : 0;
@@ -294,6 +304,8 @@ export function doDodge(h, dx, dy) {
   if (!dx && !dy) v = { x: Math.cos(h.face), y: Math.sin(h.face) };
   // Moonpetal Tonic: every dodge heals (Bramble Fizz brings it back sooner, see heroTick)
   h.dodgeT = 0.3; h.iframe = 0.38; h.dodgeX = v.x; h.dodgeY = v.y; h.cd.dodge = 1.6; h.cast = null; h.blocking = false; h.next = null;
+  // a big hit landing just now makes it a perfect dodge (duo.js dodged), once a dodge
+  h.dodgeAt = S.t; h.dodgePerfect = false;
   if (Math.abs(v.x) > 0.2) h.flip = v.x < 0;
   dots(h.x, h.y, '#C9B79A', 6, 90, { size: 6 });
   const heal = brewFx(h.brew).dodgeHeal;

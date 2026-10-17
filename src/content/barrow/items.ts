@@ -6,7 +6,7 @@ export const BARROW_SETS: SetDef[] = [
     id: 'barrowguard', name: 'Barrowguard', role: 'tank', dungeon: 'barrow',
     look: 'Bone-white plate, skull pauldrons, a coffin-lid shield',
     pieces: ['barrowguard.helm', 'barrowguard.shoulders', 'barrowguard.chest'],
-    bonus2: { id: 'barrowguard2', desc: 'Perfect blocks give you a 150 bone shield.' },
+    bonus2: { id: 'barrowguard2', desc: 'A perfect block or parry makes your next three Cleaves Crush.' },
     bonus3: { id: 'barrowguard3', desc: 'Slam raises two skeleton thralls for 8 seconds. They fight beside you and soak hits.', ready: true },
   },
   {
@@ -37,13 +37,13 @@ const piece = (id: string, name: string, role: ItemDef['role'], slot: ItemDef['s
 
 export const BARROW_ITEMS: ItemDef[] = [
   piece('barrowguard.helm', 'Barrowguard Helm', 'tank', 'helm', 'barrowguard', 's_barrowguard_helm',
-    'bg_helm', 'Cleave hits 25% harder and heals you for 11 whenever it connects.',
+    'bg_helm', 'Cleave hits 25% harder, and a Crush 10% harder still.',
     'The visor is a jaw. It still clacks when you shout.'),
   piece('barrowguard.shoulders', 'Barrowguard Pauldrons', 'tank', 'shoulders', 'barrowguard', 's_barrowguard_shoulders',
-    'bg_shoulders', 'Charge slams for 35% more damage and gives you an 80 bone shield.',
+    'bg_shoulders', 'Charge hits 35% harder and primes one more Crush.',
     'Two skulls, one on each shoulder, both judging you.'),
   piece('barrowguard.chest', 'Barrowguard Plate', 'tank', 'chest', 'barrowguard', 's_barrowguard_chest',
-    'bg_chest', 'Slam hits 35% harder and heals you for 18 per enemy pulled.',
+    'bg_chest', 'Slam hits 35% harder, and its whirlwind spins once more.',
     'Ribs on the outside, which feels backwards.'),
   piece('candlewake.helm', 'Candlewake Crown', 'healer', 'helm', 'candlewake', 's_candlewake_helm',
     'cw_helm', 'Smite hits 30% harder and restores 1 extra mana.',

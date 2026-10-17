@@ -4,7 +4,7 @@ import { AB, MEND } from '../content/roles';
 import { S, emit } from './state.js';
 import { fx, killMob } from './entities.js';
 import { bestCluster, bombInReach, doDodge, heroBy, isFoe, useAbility } from './heroes.js';
-import { MAX_POINTS, POINT, burnable, mend } from './buttons.js';
+import { MAX_POINTS, POINT, burnable, isAxe, mend } from './buttons.js';
 import { ROGUE_CRIT } from './entities.js';
 import { burnOf } from './fire.js';
 import { has, lastBreath, miracleFor, rallyWard } from './specs.js';
@@ -346,7 +346,8 @@ export function tankBlockLogic(h) {
     if (tti >= -0.05 && (soon === null || tti < soon)) { soon = tti; src = z.src; }
   }
   if (soon !== null) {
-    if (!B.plan) B.plan = { lead: rand(0.2, 0.72), ok: rng() < 0.93 };
+    // a Greataxe's Parry drops after PARRY.max, so it goes up a little later
+    if (!B.plan) B.plan = { lead: rand(0.2, isAxe(h) ? 0.55 : 0.72), ok: rng() < 0.93 };
     if (soon <= B.plan.lead && B.plan.ok) { h.intent.block = true; B.blockHold = 0.22; if (src) h.picked = h.picked || (src.kind === 'mob' ? src : null); }
   } else {
     B.plan = null;
@@ -363,11 +364,13 @@ export function tankActions(h) {
   const around = foes.filter((m) => !m.cage && dist(m, h) <= 190 + m.r);
   // Slam: taunt one that slipped, gather a fresh pack, or (on a boss) taunt and spin: it primes Crush
   if (ready(h, 'a3') && (near.length >= 1 || fresh.length >= 3 || around.length >= 2 || (S.boss && around.includes(S.boss)))) { useAbility(h, 'a3'); return; }
-  // Charge: stop a cast in reach, or fetch a loose mob too far for Slam
+  // Charge: stop a cast in reach, fetch a loose mob too far for Slam, or (the warrior hits for damage) the boss, to
+  // Stagger him and prime a Crush
   if (ready(h, 'a2')) {
     const caster = foes.find((m) => kickable(h, m) && dist(m, h) < 420);
     const far = loose.find((m) => { const d = dist(m, h); return d > 200 && d < 420; });
-    const t = caster || far;
+    const boss = foes.find((m) => m.isBoss && !m.hidden && dist(m, h) < 420);
+    const t = caster || far || boss;
     if (t) { useAbility(h, 'a2', t); return; }
   }
   // Cleave every beat, whenever something is in reach in front of you

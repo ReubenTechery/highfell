@@ -1,7 +1,7 @@
-/** The mage's two specs. Frost is the mage as it was: freeze them, then shatter them. Fire turns the four buttons
- *  to fire the moment you pick it: foes burn instead of freezing, and a Comet on a burning foe Combusts. The engine
- *  still knows each button by its slot, so mage gear that makes a button better makes its fire one better too.
- *  Rows 2 to 5 are each a pick of one from two. */
+/** The mage's two specs. Frost is the pack spec: freeze the adds, then shatter them. Fire is the boss spec, and
+ *  turns the four buttons to fire the moment you pick it: foes burn instead of freezing, the Burn builds over a long
+ *  fight, and a Comet on a burning foe Combusts. The engine still knows each button by its slot, so mage gear that
+ *  makes a button better makes its fire one better too. Rows 2 to 5 are each a pick of one from two. */
 import type { SpecDef } from '../types';
 import { change, stat } from './make';
 
@@ -11,11 +11,11 @@ export const BURN = { per: 2, every: 0.5, dur: 6, max: 4, kindling: 6, combust: 
 
 export const FROST: SpecDef = {
   id: 'frost', cls: 'mage', name: 'Frost', icon: 'spec_frost', color: '#3D7FC1',
-  pitch: 'Freeze them, then shatter them. Frozen foes can’t hit back.',
+  pitch: 'Every foe at once: freeze the pack, then shatter it. Frozen foes can’t hit back.',
   talents: [
     stat('fr.cold', 'Bitter Cold', 1, 5, 'dmg'),
     stat('fr.mind', 'Clear Mind', 1, 5, 'crit'),
-    change('fr.deep', 'Hard Rime', 2, 'a4', 'icicle', 'Icicle hits a frozen or Chilled foe 15% harder.', { choice: 'fr2' }),
+    change('fr.reach', 'Wide Rime', 2, 'a2', 'nova', 'Rime burst reaches a third further, and what it freezes stays frozen a second longer.', { choice: 'fr2' }),
     change('fr.wide', 'Wide Winter', 2, 'a1', 'blizzard', 'Blizzard is a third wider and lasts a second longer.', { choice: 'fr2' }),
     stat('fr.layers', 'Layers', 2, 4, 'hp'),
     change('fr.bite', 'Numbing Cold', 3, 'a1', 'blizzard', 'A foe that stays in Blizzard for 2 seconds freezes for a second (a boss is Chilled).', { choice: 'fr3' }),
@@ -32,7 +32,7 @@ export const FROST: SpecDef = {
 
 export const FIRE: SpecDef = {
   id: 'fire', cls: 'mage', name: 'Fire', icon: 'spec_fire', color: '#FF8A3D',
-  pitch: 'Set them burning, then blow them up. No freezing: fire hits harder.',
+  pitch: 'One big foe at a time: set it burning, let the fire build, then blow it up.',
   base: 'Your four buttons turn to fire. Your mage gear works on them the same, and its Comet bonuses on frozen or Chilled foes work on a foe with 3 or more Burn.',
   buttons: {
     a4: { name: 'Firebolt', icon: 'firebolt', desc: 'A bolt of fire, every beat. It adds a Burn to its foe (two on a crit), up to four.', combo: 'A crit makes the next Firebolt Flare: three times as hard, half again on a boss' },
@@ -44,7 +44,7 @@ export const FIRE: SpecDef = {
     stat('fi.heat', 'Heat', 1, 5, 'dmg'),
     stat('fi.spark', 'Spark', 1, 5, 'crit'),
     change('fi.kindling', 'Stoked', 2, 'a4', 'firebolt', 'Burn stacks up to 6, not 4.', { choice: 'fi2' }),
-    change('fi.flash', 'Flash Fire', 2, 'a4', 'firebolt', 'A Firebolt crit sets every foe near its target burning too.', { choice: 'fi2' }),
+    change('fi.slow', 'Slow Burn', 2, 'a4', 'firebolt', 'Your Burn grows 5% hotter every second it keeps burning, up to twice as hot.', { choice: 'fi2' }),
     stat('fi.warm', 'Warm Blood', 2, 4, 'hp'),
     change('fi.wildfire', 'Brushfire', 3, 'a1', 'firestorm', 'Firestorm adds a Burn every half second, not every second.', { choice: 'fi3' }),
     change('fi.searing', 'Searing', 3, 'a4', 'firebolt', 'Firebolt hits 20% harder on a foe with 4 or more Burn.', { choice: 'fi3' }),

@@ -297,7 +297,7 @@ test('thimblebriar: the gadgets: a Clockguard perfect block drops a bomb of your
   const king = s.mobs.find((m: any) => m.type === 'tinker');
   tank.bonuses = new Set(['clockguard2', 'clockguard3']);
   onPerfectBlock(tank, king);
-  assert.ok(tank.absorb > 0, 'a brass shield');
+  assert.ok(tank.wound, 'the spring is wound: the next Cleave hits twice');
   const bomb = s.mobs.find((m: any) => m.M.bomb && m.alive);
   assert.ok(bomb && bomb.gold && bomb.by === tank, 'a lit bomb of the tank’s');
   const hp = king.hp;

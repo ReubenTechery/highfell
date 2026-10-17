@@ -57,7 +57,7 @@ test('threat: hit harder than the tank and it comes for you; Slam grabs it back 
   m.x = tank.x + 150; m.y = tank.y; m.st.kx = m.st.ky = 0;
   assert.ok(useAbility(tank, 'a3', null));
   assert.equal(pickTarget(m), tank);
-  assert.ok(m.forcedT > 3);
+  assert.ok(m.forcedT > 2.9, 'it turns on him for 3 seconds');
   assert.ok(tank.whirlT > 0.3, 'Slam starts the 360° whirlwind spin');
   const far = Math.hypot(m.x - tank.x, m.y - tank.y);
   step(0.6);
@@ -194,13 +194,16 @@ test('combat: Cleave is the filler (no cooldown, once a beat); a perfect block, 
   assert.equal(tank.beat, BEAT.len, 'it starts the beat');
   assert.equal(useAbility(tank, 'a1', m), false, 'once a beat');
 
-  // a perfect block primes a Crush and ends the beat; Barrowguard 2pc gives a 150 bone shield
+  // a perfect block primes a Crush and ends the beat; Barrowguard 2pc makes it three
   tank.crush = 0;
-  tank.bonuses.add('barrowguard2');
   onPerfectBlock(tank, m);
   assert.equal(tank.crush, 1, 'the next Cleave Crushes');
   assert.equal(tank.beat, 0, 'so Cleave fires the moment the shield comes down');
-  assert.equal(tank.absorb, Math.round(150 * tank.power), 'Barrowguard 2-piece grants 150 absorb on Perfect Block');
+  tank.crush = 0;
+  tank.bonuses.add('barrowguard2');
+  onPerfectBlock(tank, m);
+  assert.equal(tank.crush, 3, 'Barrowguard 2-piece: the next three Cleaves Crush');
+  tank.crush = 1;
   assert.ok(useAbility(tank, 'a1', m));
   assert.equal(LAST.tier, 'payoff', 'a Crush');
   assert.equal(tank.crush, 0, 'and it used the prime');

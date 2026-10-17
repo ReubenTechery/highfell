@@ -8,11 +8,11 @@ import { AB, fillerMul } from '../content/roles';
 import { RARITY } from '../content/gear';
 import { S } from './state.js';
 import { LAST, aggro, dots, fx, fxText, healHero, hurtMob, sfx } from './entities.js';
-import { interruptCast } from './mobs.js';
 import { canStand } from './world.js';
 import { ambushGadgets, critSpark, gearMul, stepGadgets, viperGadgets } from './gadgets.js';
 import { applyBleed, autoTarget, foesNear, isFoe, later, loud, nearestFoe, spawnThrall } from './heroes.js';
 import { KNIFE_STORM, bitterMul, cuttingWind, deathMark, fanVenom, finish, has, knifeStorm, lastBreath, lingeringCut, scatter, secondRing, sweepFoes, toxicBurst, twinEdge } from './specs.js';
+import { combo, comboCrit, comboFor, comboMul, kick, payoffHeal } from './duo.js';
 
 /** Shadowstrike's damage a point, and the most points a rogue holds */
 export const POINT = 28, MAX_POINTS = 5;
@@ -78,11 +78,15 @@ function abAmbush(h, aim) {
   h.nightstalkerT = 0;
   // Last Breath: a foe under a third of its health is finished and you keep your points (a boss takes it twice as hard)
   const last = lastBreath(h, t);
+  // a Shadowstrike on a foe your mate set up is a COMBO (Twin Fangs' second strike isn't another)
+  const ck = comboFor(t, h);
   const dmg = POINT * pts * helmMul * nsMul * (bleeding ? 1.35 : 1) * (last && t.isBoss ? 2 : 1);
-  const strike = () => hurtMob(t, dmg, h, { crit: bleeding ? 1 : 0.35, col: bleeding ? '#FF6B6B' : '#FFE08A', tier: full ? 'payoff' : 'hit', key: free ? 'strike_free' : 'strike' });
-  const got = strike();
+  const strike = (k = 1, chance = bleeding ? 1 : 0.35) => hurtMob(t, dmg * k, h, { crit: chance, col: bleeding ? '#FF6B6B' : '#FFE08A', tier: full ? 'payoff' : 'hit', key: free ? 'strike_free' : 'strike' });
+  const got = strike(comboMul(ck), comboCrit(ck, bleeding ? 1 : 0.35));
   const crit = LAST.crit;
   h.points = 0;
+  if (ck) combo(h, t, ck, got);
+  payoffHeal(h);
   if (last && !t.isBoss) { finish(h, t, 'Last Breath!'); h.points = had; }
   if (free) (t.burned ||= new Set()).add(h.id);
   // Venomrush: a poisoned Shadowstrike gives a point back; Encore: a five-point one gives one
@@ -114,7 +118,7 @@ function abFlurry(h) {
     for (const m of S.mobs) {
       if (!isFoe(m) || m.cage || dist(m, h) > R + m.r) continue;
       aggro(m, h, 0);
-      if (m.cast) interruptCast(m, h);
+      if (m.cast) kick(m, h);
       hurtMob(m, 50 * fanMul, h, { col: '#D7DEE6', size: 18, key });
       if (!m.M.thing) hit = true;
       fanVenom(h, m);
@@ -150,7 +154,7 @@ function abShadowstep(h, aim) {
   dots(ox, oy - 30, '#B79CFF', 8, 120);
   fx({ type: 'swipe', x: ox, y: oy - 30, x2: h.x, y2: h.y - 30, col: '#B79CFF', dur: 0.22 });
   dots(h.x, h.y - 30, '#7CF06A', 8, 140);
-  if (t.cast) interruptCast(t, h);
+  if (t.cast) kick(t, h);
   const shMul = h.bonuses.has('sv_shoulders') ? 1.35 : 1;
   hurtMob(t, 70 * shMul, h, { crit: 0.25, col: '#B79CFF', key: 'step' });
   stepGadgets(h, ox, oy);

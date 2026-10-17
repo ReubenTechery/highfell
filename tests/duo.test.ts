@@ -87,7 +87,7 @@ test('duo: a combo is a payoff on a foe your mate set up, and it counts for both
   assert.equal(comboFor(mob, b), null, 'an old setup is no combo');
 });
 
-test('duo: a hero at zero still falls as before until stream 2 makes it going down; dodges reach the hook', () => {
+test('duo: a hero at zero goes down, not out, and its mate can pick it up; dodges reach the hook', () => {
   const s = pair();
   const h = heroAt(1);
   assert.equal(isDown(h), false);
@@ -97,7 +97,10 @@ test('duo: a hero at zero still falls as before until stream 2 makes it going do
   h.iframe = 0;
   hurtHero(h, 99999, null, { pierce: true, block: false });
   assert.equal(h.alive, false);
+  assert.ok(isDown(h), 'down');
   assert.ok(s.heroes.some((o: any) => o.alive));
+  assert.ok(pickUp(h, heroAt(0)), 'your mate picks you up');
+  assert.ok(h.alive && !isDown(h));
 });
 
 test('duo: the ranger has its own buttons and keys, wears what the code calls healer gear, and isn\'t offered yet', () => {

@@ -1,6 +1,6 @@
-/** The rogue's two specs. Venom: one foe at a time, stacked poison and huge Shadowstrikes. Blades: every foe at
- *  once, your knives spin through the whole pack. Neither changes the buttons until points go in. Rows 2 to 5 are
- *  each a pick of one from two. */
+/** The rogue's two specs. Venom, the boss spec: one foe at a time, stacked poison and huge Shadowstrikes. Blades,
+ *  the pack spec: every foe at once, your knives spin through the whole pack. Neither changes the buttons until
+ *  points go in. Rows 2 to 5 are each a pick of one from two. */
 import type { SpecDef } from '../types';
 import { change, stat } from './make';
 

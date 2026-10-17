@@ -4,18 +4,19 @@
    keys, so gear that makes a button better makes its fire one better too (gearMul, the set pieces, the traits).
    Foes burn instead of freezing: each stack of Burn hurts every half second (BURN), a new one starts it again,
    and a Comet on a foe with 3 or more Combusts like a Shatter (twice as hard, half again on a boss) and spreads
-   its Burn to the foes round it. Its talents are here: Stoked (fi.kindling), Flash Fire, Brushfire (fi.wildfire),
-   Searing, Afterburn, Flashover, Comet Shower and Pyre. */
+   its Burn to the foes round it. Fire is the boss spec: Burn builds over a long fight. Its talents are here: Stoked
+   (fi.kindling), Slow Burn, Brushfire (fi.wildfire), Searing, Afterburn, Flashover, Comet Shower and Pyre. A foe
+   with 3 or more Burn is a setup for your mate's payoffs (duo.js). */
 import { angTo, dist } from '../core/math';
 import { rng } from '../core/rng';
 import { AB, fillerMul } from '../content/roles';
 import { BURN } from '../content/talents';
 import { S } from './state.js';
 import { LAST, aggro, bits, chillBoss, dots, fx, fxText, hurtMob, sfx, shake } from './entities.js';
-import { interruptCast } from './mobs.js';
 import { autoTarget, bestCluster, clampRange, engaged, foesNear, isFoe, later, loud, spawnThrall } from './heroes.js';
 import { cometGadgets, gearMul, icicleGadgets } from './gadgets.js';
 import { icicleShatter, payoff, trail } from './buttons.js';
+import { combo, comboCrit, comboFor, comboMul, kick, payoffHeal, setUp } from './duo.js';
 
 const has = (h, id) => !!(h && h.tal && h.tal.has(id));
 export const FIRE_COL = '#FF8A3D';
@@ -26,21 +27,27 @@ export const COMBUST = 1.8, COMBUST_LANCE = 2.8, BOSS_COMBUST = 1.3, BOSS_COMBUS
 /* ---------- Burn ---------- */
 /** a foe's Burn stacks now (0 when it isn't burning) */
 export const burnOf = (m) => (m.burn && m.burn.left > 0 ? m.burn.n : 0);
-/** Add Burn to a foe: `k` stacks, up to four (six with Stoked), and it starts again from full */
+/** Add Burn to a foe: `k` stacks, up to four (six with Stoked), and it starts again from full. A Burn of 3 or more
+ *  is your mate's setup. */
 export function addBurn(h, m, k) {
   if (!m.alive || m.cage || m.M.wisp || m.M.thing) return;
   const max = has(h, 'fi.kindling') ? BURN.kindling : BURN.max;
+  const on = !!(m.burn && m.burn.left > 0);
   const n = Math.min(max, burnOf(m) + k);
-  m.burn = { src: h, n, left: BURN.dur, next: m.burn && m.burn.left > 0 ? m.burn.next : BURN.every };
+  m.burn = { src: h, n, left: BURN.dur, next: on ? m.burn.next : BURN.every, age: on ? m.burn.age || 0 : 0 };
+  if (n >= BURN.combust) setUp(m, h, 'burn', BURN.dur);
 }
+/** Slow Burn: a Burn grows this much hotter every second it keeps burning, up to `most` times as hot */
+export const SLOW_BURN = { per: 0.05, most: 2 };
+const heatOf = (b) => (has(b.src, 'fi.slow') ? Math.min(SLOW_BURN.most, 1 + SLOW_BURN.per * (b.age || 0)) : 1);
 /** Ticks a foe's Burn. True if it died. */
 export function burnTick(m, dt) {
   const b = m.burn;
   if (!b || b.left <= 0) return false;
-  b.left -= dt; b.next -= dt;
+  b.left -= dt; b.next -= dt; b.age = (b.age || 0) + dt;
   if (b.next <= 0) {
     b.next += BURN.every;
-    hurtMob(m, BURN.per * b.n, b.src, { col: '#FFB347', size: 15, noCrit: true, tier: 'tick', key: 'burn' });
+    hurtMob(m, BURN.per * b.n * heatOf(b), b.src, { col: '#FFB347', size: 15, noCrit: true, tier: 'tick', key: 'burn' });
     if (rng() < 0.6) bits(m.x + (rng() - 0.5) * m.r, m.y - 30 - rng() * 30, 'ember', 1, 60);
     if (!m.alive) return true;
   }
@@ -62,12 +69,14 @@ export function fireboltHit(h, t) {
   const { k, primed } = icicleShatter(h, t), flares = k > 1;
   if (primed) h.shatter--;
   const searing = has(h, 'fi.searing') && burnOf(t) >= BURN.max ? 1.2 : 1;
-  const got = hurtMob(t, AB.dps.a4.hit * fillerMul(h.bonuses) * k * searing, h, { crit: 0.25, col: flares ? '#FFB347' : '#FFD2A0', tier: flares ? 'payoff' : 'filler', shard: 'ember', key: 'firebolt' });
+  // a Flare on a foe your mate set up is a COMBO
+  const ck = flares ? comboFor(t, h) : null;
+  const got = hurtMob(t, AB.dps.a4.hit * fillerMul(h.bonuses) * k * searing * comboMul(ck), h, { crit: comboCrit(ck, 0.25), col: flares ? '#FFB347' : '#FFD2A0', tier: flares ? 'payoff' : 'filler', shard: 'ember', key: 'firebolt' });
   const crit = LAST.crit;
+  if (ck) combo(h, t, ck, got);
+  if (flares) payoffHeal(h);
   if (crit && !flares) { h.shatter = Math.max(h.shatter, 1); if (h.isPlayer) fxText(h.x, h.y - 130, 'Flare ready', '#FFB347', 18, { dur: 0.9 }); }
   if (t.alive) addBurn(h, t, crit ? 2 : 1);
-  // Flash Fire: a crit sets every foe near its target burning too
-  if (crit && has(h, 'fi.flash')) for (const o of foesNear(t.x, t.y, 110, false)) if (o !== t && !o.cage) addBurn(h, o, 1);
   icicleGadgets(h, t, flares);
   // Splinter (30% of the hit) and the Rimebone Crown (15) splash a second foe, as they do for Icicle
   const o = S.mobs.find((m) => m !== t && isFoe(m) && engaged(m) && !m.cage && !m.M.thing && dist(m, t) < 200);
@@ -92,7 +101,10 @@ export function fireCometLand(h, t, cd) {
     const lance = h.traits.has('shatterlance');
     // a boss burns all fight, so his Combust is a quarter, not the half a Chill gives for a while
     const k = !combust ? 1 : t.isBoss ? (lance ? BOSS_COMBUST_LANCE : BOSS_COMBUST) : (lance ? COMBUST_LANCE : COMBUST);
-    if (t.alive) hurtMob(t, AB.dps.a3.hit * gearMul(h, 'comet') * k, h, { crit: 0.15, col: combust ? '#FFB347' : '#FFD2A0', tier: combust ? 'payoff' : 'hit', shard: 'ember', key: 'comet' });
+    // a Combust on a foe your mate set up is a COMBO
+    const ck = combust ? comboFor(t, h) : null;
+    if (t.alive) { const got = hurtMob(t, AB.dps.a3.hit * gearMul(h, 'comet') * k * comboMul(ck), h, { crit: comboCrit(ck, 0.15), col: combust ? '#FFB347' : '#FFD2A0', tier: combust ? 'payoff' : 'hit', shard: 'ember', key: 'comet' }); if (ck) combo(h, t, ck, got); }
+    if (combust) payoffHeal(h);
     const splash = foesNear(tx, ty, 90, false).filter((o) => o !== t && !o.cage);
     for (const o of splash) hurtMob(o, 114, h, { size: 19, key: 'comet' });
     if (combust) {
@@ -176,7 +188,7 @@ function emberBurst(h) {
     hurtMob(m, 50 * shMul, h, { col: '#FFD2A0', key: 'nova' });
     if (!m.alive || m.M.thing) continue;
     // it stops casts, a boss's too
-    if (m.cast) interruptCast(m, h);
+    if (m.cast) kick(m, h);
     // and knocks the small ones back, away from you
     if (!m.isBoss && !m.M.big && !m.M.wisp) { const a = angTo(h, m); m.st.kx += Math.cos(a) * 260; m.st.ky += Math.sin(a) * 260; m.wind = 0; }
     addBurn(h, m, 2);

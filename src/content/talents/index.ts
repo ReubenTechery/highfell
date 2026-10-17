@@ -9,7 +9,7 @@
  * src/meta/talents.ts; what each talent does in a run is src/dungeon/specs.js (and fire.js for Fire's buttons).
  */
 import type { AbilityDef, AbilitySlot, SpecButton, SpecDef, TalentDef } from '../types';
-import { AXE, SHIELD } from './warrior';
+import { GREATAXE, SWORD } from './warrior';
 import { MERCY, WRATH } from './cleric';
 import { FIRE, FROST } from './mage';
 import { BLADES, VENOM } from './rogue';
@@ -18,12 +18,34 @@ export { TALENT_STATS, statLine } from './make';
 export { BURN } from './mage';
 
 /** every spec, two a class, the class's first one first */
-export const SPEC_LIST: SpecDef[] = [SHIELD, AXE, MERCY, WRATH, FROST, FIRE, VENOM, BLADES];
+export const SPEC_LIST: SpecDef[] = [SWORD, GREATAXE, MERCY, WRATH, FROST, FIRE, VENOM, BLADES];
 export const SPECS: Record<string, SpecDef> = Object.fromEntries(SPEC_LIST.map((s) => [s.id, s]));
 /** a class's two specs */
 export const specsFor = (cls: string): SpecDef[] => SPEC_LIST.filter((s) => s.cls === cls);
 /** a spec's talent by id, and which spec it's in */
 export const TALENTS: Record<string, { spec: SpecDef; def: TalentDef }> = Object.fromEntries(SPEC_LIST.flatMap((s) => s.talents.map((t) => [t.id, { spec: s, def: t }])));
+
+/** Talents that were reworked away (the duo rework, 18 Oct: the warrior's two trees whole, and one pick each in
+ *  Frost and Fire), by id, with the name they had. A hero's points in one stay in the save but count for
+ *  nothing, so they're back to spend (the owner's call: points in a reworked talent come back, with a note). */
+export const RETIRED_TALENTS: Record<string, string> = {
+  'sh.grit': 'Grit', 'sh.skin': 'Iron Skin', 'sh.spikes': 'Spiked Shield', 'sh.rim': 'Rim Strike', 'sh.presence': 'Presence',
+  'sh.brace': 'Breach', 'sh.cover': 'Cover', 'sh.stout': 'Heft', 'sh.bulwark': 'Bulwark', 'sh.wall': 'Iron Wall', 'sh.plate': 'Plating',
+  'sh.payback': 'Payback', 'sh.unbowed': 'Unbowed', 'sh.stubborn': 'Stubborn',
+  'ax.edge': 'Sharp Edge', 'ax.eye': 'Keen Eye', 'ax.hungry': 'Hungry Axe', 'ax.savage': 'Savage Swing', 'ax.brawn': 'Brawn',
+  'ax.quick': 'Quick Charge', 'ax.spin': 'Spinning Axe', 'ax.tempo': 'Battle Tempo', 'ax.fury': 'Rising Fury', 'ax.headlong': 'Headlong',
+  'ax.heavy': 'Heavy Hands', 'ax.storm': 'Axe Storm', 'ax.final': 'Final Word', 'ax.killer': 'Killer Instinct',
+  'fr.deep': 'Hard Rime', 'fi.flash': 'Flash Fire',
+};
+/** the points a hero has in reworked talents, spec by spec, for the note that says they're back: e.g. { shield: 12 } */
+export function refundedPoints(talents: Record<string, Record<string, number>>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [spec, ranks] of Object.entries(talents || {})) {
+    const n = Object.entries(ranks || {}).reduce((a, [id, r]) => a + (RETIRED_TALENTS[id] && r > 0 ? r : 0), 0);
+    if (n > 0) out[spec] = n;
+  }
+  return out;
+}
 
 /** the points that must be in the rows above before a row opens (by row, 1 to 5) */
 export const ROW_NEED: Record<number, number> = { 1: 0, 2: 5, 3: 10, 4: 15, 5: 20 };
@@ -54,6 +76,7 @@ export function checkTalents(): string[] {
     const pairs: Record<string, number> = {};
     for (const t of s.talents) {
       if (ids.has(t.id)) bad.push(`talent ${t.id} twice`);
+      if (RETIRED_TALENTS[t.id]) bad.push(`talent ${t.id} was retired: give a reworked talent a new id`);
       ids.add(t.id);
       if (!ROWS.includes(t.row)) bad.push(`${t.id} row ${t.row}`);
       if (t.ranks < 1 || (!t.stat && t.ranks !== 1)) bad.push(`${t.id} ranks ${t.ranks}`);

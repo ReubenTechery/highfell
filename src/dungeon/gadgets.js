@@ -1,8 +1,9 @@
 /* ---------- gadgets: Thimblebriar Hollow's set pieces, set bonuses and the Tinker King's weapons ----------
    Each piece makes one button better (gearMul). Two and three pieces of a set, and the Tinker King's four
    weapons, are gnome gadgets built round the bombs (bombs.js). They change what a button does, never add one:
-     Clockguard   2: a perfect block (or a Slam that pulls three or more) winds a 150 brass shield. 3: a perfect
-                  block drops a lit bomb of yours at the attacker, and a Slam one at the foes it pulled.
+     Clockguard   2: a perfect block (or a Slam that pulls three or more) winds the spring: the next Cleave hits
+                  twice. 3: a perfect block drops a lit bomb of yours at the attacker, and a Slam one at the foes it
+                  pulled. The Breastplate makes the Cleave after a Slam harder for each foe it pulled.
      Sporebloom   2: Mend plants a spore that heals 45 more. 3: Ward leaves a patch-up turret for 6 seconds that
                   heals the most hurt mate and shoots the nearest foe.
      Arcspark     2: Comet into a frozen foe (or a Chilled boss) arcs to 2 more (with nobody else near, back into it).
@@ -37,31 +38,37 @@ export function gearMul(h, key) {
 
 const others = (h, near, r, but) => S.mobs.filter((m) => m !== but && isFoe(m) && !m.cage && !m.M.thing && engaged(m) && dist(m, near) <= r).sort((a, b) => dist(a, near) - dist(b, near));
 
-/* ---------- the tank ---------- */
-/** a perfect block: Clockguard's brass shield and its bomb at the attacker's feet */
+/* ---------- the warrior ---------- */
+/** wind the spring: the next Cleave hits twice (Clockguard's two pieces, the Mainspring Maul) */
+function windUp(h) {
+  if (!h.wound && h.isPlayer) fxText(h.x, h.y - 130, 'Wound up!', '#FFE08A', 18);
+  h.wound = true;
+}
+/** a perfect block: Clockguard's spring and its bomb at the attacker's feet */
 export function blockGadgets(h, src) {
-  if (h.bonuses.has('clockguard2')) {
-    h.absorb = Math.max(h.absorb, Math.round(150 * h.power)); h.absorbT = 6;
-    if (h.isPlayer) fxText(h.x, h.y - 120, 'Brass shield', '#FFE08A', 18);
-  }
+  if (h.bonuses.has('clockguard2')) windUp(h);
   if (h.bonuses.has('clockguard3') && src && src.kind === 'mob' && src.alive) dropBomb(h, src.x, src.y + 10, { fuse: 0.45, from: h });
 }
-/** Slam pulled `n` foes: Clockguard's spring (three or more) and its bomb at their feet */
+/** Slam pulled `n` foes: Clockguard's spring (three or more), the Breastplate's pull and its bomb at their feet */
 export function slamGadgets(h, n) {
-  if (n >= 3 && h.bonuses.has('clockguard2')) {
-    h.absorb = Math.max(h.absorb, Math.round(150 * h.power)); h.absorbT = 6;
-    if (h.isPlayer) fxText(h.x, h.y - 120, 'Brass shield', '#FFE08A', 18);
-  }
+  if (n >= 3 && h.bonuses.has('clockguard2')) windUp(h);
+  if (n > 0 && h.bonuses.has('cg_chest')) h.springPull = Math.min(8, n);
   if (n > 0 && h.bonuses.has('clockguard3')) dropBomb(h, h.x + Math.cos(h.face) * 56, h.y + Math.sin(h.face) * 36 + 10, { fuse: 0.6, from: h });
 }
-/** Charge lands: Clockguard's pauldrons give a brass shield, and the Mainspring Maul winds its spring */
-export function chargeGadgets(h) {
-  if (h.bonuses.has('cg_shoulders')) { h.absorb = Math.max(h.absorb, Math.round(90 * h.power)); h.absorbT = Math.max(h.absorbT, 5); }
-  if (h.unique === 'mainspring') { h.wound = true; if (h.isPlayer) fxText(h.x, h.y - 130, 'Wound up!', '#FFE08A', 18); }
+/** the Cleave after a Slam with the Clockguard Breastplate: 5% harder a foe it pulled (up to 8); it uses it up */
+export function springPull(h) {
+  if (!h.springPull) return 1;
+  const k = 1 + 0.05 * h.springPull;
+  h.springPull = 0;
+  return k;
 }
-/** Cleave: the Mainspring Maul's wound spring hits everything again a moment later */
+/** Charge lands: the Mainspring Maul winds its spring */
+export function chargeGadgets(h) {
+  if (h.unique === 'mainspring') windUp(h);
+}
+/** Cleave: a wound spring hits everything again a moment later */
 export function cleaveGadgets(h, hits, dmg) {
-  if (h.unique !== 'mainspring' || !h.wound || !hits.length) return;
+  if (!h.wound || !hits.length) return;
   h.wound = false;
   S.timers.push({ t: 0.16, fn: () => {
     if (!h.alive) return;

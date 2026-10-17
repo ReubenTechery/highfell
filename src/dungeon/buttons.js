@@ -1,8 +1,9 @@
 /* ---------- buttons: what each class's four buttons (and Mend) do ----------
    Every class has a filler (no cooldown, once a beat: Cleave, Smite, Icicle, Viper Blades), a payoff it sets
    up, and two cooldowns. The payoffs:
-     tank    Crush (1.6×): the Cleave after a Charge, a Slam, a perfect block or a Cleave crit (h.crush counts the
-             ones primed); a stunned, Staggered or Exposed foe is always Crushed
+     warrior Crush (1.6×): the Cleave after a Charge, a Slam, a perfect block or a Cleave crit (h.crush counts the
+             ones primed); a stunned, Staggered or Exposed foe is always Crushed. His two specs change how he
+             swings (SWORD, GREATAXE: below)
      healer  a Smite crit makes the next Mend free and half again as big (h.mendUp: the party frames glow)
      mage    Shatter: Icicle hits a frozen foe 3× and a Chilled boss 1.5× (Comet 2× and 1.5×); an Icicle crit makes
              the next Icicle Shatter anything (h.shatter counts the ones primed)
@@ -10,6 +11,9 @@
              two; Shadowstrike spends them all, 28 a point (a rogue's crits are 2.5×)
    Exposed (+35% damage taken) is every payoff's setup: Cleave Crushes, Icicle and Comet Shatter as on a Chilled
    boss, Shadowstrike hits as if you had five points, and Smite heals double.
+   Every payoff heals you a little (duo.js payoffHeal), and one on a foe your mate set up is a COMBO (duo.js
+   comboFor and combo): half again as hard. The setups each button leaves for a mate are tagged here too (setUp,
+   kick, stunBy, exposeBy).
    heroes.js fires these (useAbility); press.js times the player's presses; bots.js picks the bots'. The rogue's
    four are rogue.js; Fire's are fire.js; what talents change in each is specs.js. */
 import { angDiff, angTo, dist } from '../core/math';
@@ -17,14 +21,15 @@ import { rng } from '../core/rng';
 import { AB, BEAT, MEND, fillerMul } from '../content/roles';
 import { RARITY } from '../content/gear';
 import { HOOKS, S } from './state.js';
-import { CHILL, CHILL_SHATTER, LAST, SHATTERLANCE_CHILL, STAGGER, addThreat, aggro, banner, bits, chillBoss, dots, fx, fxText, healHero, hold, hurtMob, say, sfx, shake, staggerBoss, stunned, taunt } from './entities.js';
-import { interruptCast, liftCurse } from './mobs.js';
+import { CHILL, CHILL_SHATTER, LAST, SHATTERLANCE_CHILL, STAGGER, addThreat, aggro, banner, bits, chillBoss, dots, fx, fxText, healHero, hold, hurtMob, say, sfx, shake, stunned, taunt } from './entities.js';
+import { liftCurse } from './mobs.js';
 import { moveEnt } from './world.js';
-import { blockGadgets, chargeGadgets, cleaveGadgets, cometGadgets, gearMul, icicleGadgets, mendGadgets, slamGadgets, sunburstGadgets, wardGadgets } from './gadgets.js';
+import { blockGadgets, chargeGadgets, cleaveGadgets, cometGadgets, gearMul, icicleGadgets, mendGadgets, slamGadgets, springPull, sunburstGadgets, wardGadgets } from './gadgets.js';
 import { autoTarget, bestCluster, bombInReach, clampRange, engaged, foesNear, heroBy, isFoe, later, loud, mostHurt, nearestFoe, spawnThrall } from './heroes.js';
 import { ROGUE_BUTTONS } from './rogue.js';
 import { fireboltHit, fireCometLand } from './fire.js';
-import { axeStorm, breach, bulwarkMul, bulwarkPull, chargeCrushes, circleFollows, dawn, finalWord, finish, flashpoint, hailTarget, hardRime, has, hearten, longWinter, miracle, mendMul, onCrush, onPerfect, onSlam, overflow, paybackStun, rallyWard, rimStrike, savageMul, shardburst, slamReach, smiteHealTargets, smiteSear, stunHit, sunlanceTarget, sunpillar, sunstrike, takePayback, twiceStruck, twinWard, unbowed, wideWinter } from './specs.js';
+import { addTempo, axeStorm, breach, bulwarkMul, bulwarkPull, chargeCrushes, circleFollows, crushMul, dawn, finalWord, finish, flashpoint, hailTarget, has, hearten, longWinter, miracle, mendMul, onCrush, onPerfect, overflow, paybackStun, rallyWard, rimeHold, rimeReach, rimStrike, savageMul, shardburst, slamReach, smiteHealTargets, smiteSear, stunHit, sunlanceTarget, sunpillar, sunstrike, takePayback, twiceStruck, twinWard, unbowed, wideWinter } from './specs.js';
+import { combo, comboCrit, comboFor, comboMul, kick, payoffHeal, setUp, stunBy } from './duo.js';
 export { POINT, MAX_POINTS, burnable } from './rogue.js';
 
 /** Cleave's Crush */
@@ -41,87 +46,110 @@ export function payoff(h, word, x, y, col) {
 /** the filler's swing trail takes the weapon's rarity colour (Common keeps the class's own) */
 export const trail = (h, base) => (h.weaponRar >= 1 ? RARITY[h.weaponRar].color : base);
 
-/* ---------- the tank: Cleave, Charge, Slam, the shield ---------- */
+/* ---------- the warrior: Cleave, Charge, Slam, the shield ----------
+   Picking a spec changes how he swings, before any points go in (content/talents/warrior.ts):
+     Sword     (spec 'shield') one-handed, with the shield: Cleave hits the foe it's aimed at SWORD.focus times as
+               hard and the rest SWORD.side, in a narrower arc; his automatic swings hit SWORD.auto times as hard,
+               and every Cleave that lands speeds them up (Tempo, specs.js)
+     Greataxe  (spec 'axe') two-handed, the shield on his back: Cleave sweeps wider and further, a Crush sweeps all
+               the way round, Slam's whirlwind is bigger, and the shield button is a Parry (PARRY, heroes.js) */
+export const SWORD = { focus: 1.5, side: 0.6, arc: 1.05, auto: 1.3 };
+export const GREATAXE = { arc: 1.6, reach: 140, whirl: 150 };
+/** a Parry drops after `max` seconds held (let go to raise it again); a perfect one ripostes at every foe within
+ *  `riposte` */
+export const PARRY = { max: 0.9, riposte: 140 };
+export const isSword = (h) => h.cls === 'warrior' && h.spec === 'shield';
+export const isAxe = (h) => h.cls === 'warrior' && h.spec === 'axe';
 /** will this Cleave Crush this foe? (a primed Cleave Crushes everything it hits) */
 export const crushes = (h, m) => h.crush > 0 || stunned(m) || m.exposed > 0;
 
 function abCleave(h, aim) {
   const t = aim && aim.kind === 'mob' && isFoe(aim) ? aim : autoTarget(h);
   if (t && dist(h, t) < 220) h.face = angTo(h, t);
-  const wide = h.traits.has('wide');
+  const sword = isSword(h), axe = isAxe(h);
   const primed = h.crush > 0;
-  // Payback (a perfect block readied it): three times as hard, and it stuns; Axe Storm: a primed Cleave sweeps
-  // all the way round and its Crushes hit 15% harder
-  const back = takePayback(h), storm = axeStorm(h, primed);
-  const hits = foesNear(h.x, h.y, 126, false).filter((m) => !m.cage && (storm || Math.abs(angDiff(h.face, angTo(h, m))) < (wide ? 1.42 : 1.25)));
+  // Payback (a perfect block readied it): three times as hard, and it stuns. A Greataxe's Crush sweeps all the way
+  // round you, and with Axe Storm every Cleave does
+  const back = takePayback(h);
+  const round = axeStorm(h) || (axe && (primed || back));
+  const arc = (sword ? SWORD.arc : axe ? GREATAXE.arc : 1.25) + (h.traits.has('wide') ? 0.17 : 0);
+  const hits = foesNear(h.x, h.y, axe ? GREATAXE.reach : 126, false).filter((m) => !m.cage && (round || Math.abs(angDiff(h.face, angTo(h, m))) < arc));
+  // the sword's point: the foe it's aimed at (or the nearest it reaches)
+  const main = sword ? (hits.includes(t) ? t : hits.slice().sort((a, b) => dist(h, a) - dist(h, b))[0]) : null;
   if (primed) h.crush--;
-  // Bulwark: the foes the last Slam pulled make this Cleave harder; Rim Strike: every third Cleave stuns
-  const mul = fillerMul(h.bonuses) * (hits.length ? bulwarkMul(h) : 1), hit = AB.tank.a1.hit, rim = hits.length > 0 && rimStrike(h);
+  // Wide Pull and the Clockguard Breastplate: the foes the last Slam pulled make this Cleave harder; Rim Strike:
+  // every third Cleave stuns
+  const mul = fillerMul(h.bonuses) * (hits.length ? bulwarkMul(h) * springPull(h) : 1), hit = AB.tank.a1.hit, rim = hits.length > 0 && rimStrike(h);
   let crushed = 0, critPrime = false, dealt = 0;
   for (const m of hits) {
     const c = back || primed || stunned(m) || m.exposed > 0;
     // Final Word: a Crush on a foe under a fifth of its health finishes it (a boss takes it twice as hard)
     const last = c && !back && finalWord(h, m);
-    const k = (back ? 3 : c ? CRUSH * (storm ? 1.15 : 1) : 1) * savageMul(h, m) * (last && m.isBoss ? 2 : 1);
-    // Cleave is the tank's threat engine: 2× threat, a Crush 3×, so a mage's Comet on an Exposed boss can't take him
-    const got = hurtMob(m, hit * mul * k, h, { knock: c ? 130 : 80, crit: 0.2, threat: c ? 3 : 2, tier: c ? 'payoff' : 'filler', key: back ? 'payback' : c ? 'crush' : 'cleave' });
+    // a Crush on a foe your mate set up is a COMBO
+    const ck = c ? comboFor(m, h) : null;
+    const point = sword ? (m === main ? SWORD.focus : SWORD.side) : 1;
+    const k = (back ? 3 : c ? CRUSH * crushMul(h) : 1) * savageMul(h, m) * (last && m.isBoss ? 2 : 1) * point * comboMul(ck);
+    // Cleave makes 2× threat, a Crush 3×
+    const got = hurtMob(m, hit * mul * k, h, { knock: c ? 130 : 80, crit: comboCrit(ck, 0.2), threat: c ? 3 : 2, tier: c ? 'payoff' : 'filler', key: back ? 'payback' : c ? 'crush' : 'cleave' });
     if (c) { crushed++; dealt += got; }
     else if (LAST.crit) critPrime = true;
-    if (back) paybackStun(m);
+    if (ck) combo(h, m, ck, got);
+    if (back) paybackStun(m, h);
     if (last) finish(h, m, 'Final Word!');
-    if (rim) stunHit(m, 1);
+    if (rim) stunHit(m, 1, h);
   }
   if (rim && h.isPlayer) fxText(h.x, h.y - 130, 'Rim Strike!', '#C9D2DC', 18, { dur: 0.8 });
   // a Cleave crit primes the next Cleave's Crush (a Crush's own crit doesn't chain)
   if (critPrime) h.crush = Math.max(h.crush, 1);
-  if (crushed) onCrush(h, dealt);
+  if (crushed) { onCrush(h, dealt); payoffHeal(h); }
+  if (sword && hits.length) addTempo(h);
   cleaveGadgets(h, hits, hit * mul * (crushed ? CRUSH : 1));
-  if (hits.length > 0 && h.bonuses.has('bg_helm')) healHero(h, h, 11, { size: 17 });
   // the axe swings left, then right
   h.swingDir = (h.swingDir || 1) > 0 ? -1 : 1;
   h.lunge = 0.22; h.lungeA = h.face; h.swingT = 0.24; h.atkT = Math.max(h.atkT, 0.5); h.blocking = false;
-  if (storm) fx({ type: 'whirl', h, x: h.x, y: h.y, r: 126, dur: 0.3, col: '#F2C230' });
-  else fx({ type: 'cleave', x: h.x, y: h.y - 30, a: h.face, r: crushed ? 114 : 100, dur: 0.25, col: crushed ? '#F2C230' : trail(h, '#FFE08A'), wide: true, crush: crushed > 0, dir: h.swingDir });
+  if (round) fx({ type: 'whirl', h, x: h.x, y: h.y, r: GREATAXE.reach, dur: 0.3, col: crushed ? '#F2C230' : trail(h, '#FFE08A') });
+  else fx({ type: 'cleave', x: h.x, y: h.y - 30, a: h.face, r: (crushed ? 114 : 100) * (axe ? 1.12 : 1), dur: 0.25, col: crushed ? '#F2C230' : trail(h, '#FFE08A'), wide: !sword, crush: crushed > 0, dir: h.swingDir });
   sfx('sweep', 0.8);
   if (hits.length) {
     sfx('axehit', Math.min(1, 0.55 + hits.length * 0.12));
     bits(h.x + Math.cos(h.face) * 56, h.y + Math.sin(h.face) * 34 - 24, 'shard_bone', crushed ? 6 : 3, 210);
   }
-  if (crushed) payoff(h, back ? 'Payback!' : storm ? 'Axe Storm!' : 'Crush!', h.x + Math.cos(h.face) * 58, h.y + Math.sin(h.face) * 35 - 112);
+  if (crushed) payoff(h, back ? 'Payback!' : round && !axe ? 'Axe Storm!' : 'Crush!', h.x + Math.cos(h.face) * 58, h.y + Math.sin(h.face) * 35 - 112);
   if (h.unique === 'gravedigger' && ++h.cleaves % 8 === 0) gravedig(h);
   return true;
 }
 /* The Gravedigger: every eighth Cleave digs in, stunning what's round you (a boss staggers) */
 function gravedig(h) {
-  for (const m of foesNear(h.x, h.y, 120, false)) { if (m.cage) continue; hurtMob(m, 30, h, { size: 17 }); if (m.isBoss) staggerBoss(m, STAGGER); else { m.st.stun = Math.max(m.st.stun, 1); m.wind = 0; } }
+  for (const m of foesNear(h.x, h.y, 120, false)) { if (m.cage) continue; hurtMob(m, 30, h, { size: 17 }); stunBy(m, 1, h, STAGGER); }
   fx({ type: 'ring', x: h.x, y: h.y, r0: 20, r1: 130, col: '#C9B79A', dur: 0.3, w: 8, ground: true });
   bits(h.x, h.y, 'shard_dirt', 8, 220); sfx('thud');
   if (h.isPlayer) shake(3);
 }
 
-/* Slam: drag everything around you in, make it turn on you, spin a whirlwind through the pack, and prime Crush */
+/** how long Slam turns the foes it pulls on you, and how long the pile it makes is your mate's setup (it never
+ *  stuns: Slam is no interrupt) */
+export const SLAM = { taunt: 3, pile: 1.5 };
+/* Slam: drag everything around you into a pile (your mate's setup), turn it on you, spin a whirlwind through it,
+   and prime Crush */
 function abSlam(h) {
   let n = 0;
-  const R = 210 * slamReach(h), wR = 118;
+  const R = 210 * slamReach(h), wR = isAxe(h) ? GREATAXE.whirl : 118;
   const chestMul = (h.bonuses.has('bg_chest') ? 1.35 : 1) * gearMul(h, 'slam');
   // Unbowed: with three or more on you, the Slam and its whirlwind hit twice as hard
   const pull = S.mobs.filter((m) => isFoe(m) && !m.cage && !m.M.wisp && dist(m, h) <= R + m.r && Math.abs(m.y - h.y) <= 600);
-  const unbow = has(h, 'sh.unbowed') && pull.length >= 3 ? 2 : 1;
+  const unbow = has(h, 'ga.unbowed') && pull.length >= 3 ? 2 : 1;
   for (const m of pull) {
-    taunt(m, h, 4);
+    taunt(m, h, SLAM.taunt);
     hurtMob(m, 50 * chestMul * unbow, h, { threat: 2, key: 'slam' });
-    if (m.alive && !m.isBoss) yank(m, h, m.M.big ? 0.5 : 1.05);
+    if (m.alive && !m.isBoss) { yank(m, h, m.M.big ? 0.5 : 1.05); setUp(m, h, 'stun', SLAM.pile); }
     n++;
   }
-  if (n > 0 && h.bonuses.has('bg_chest')) healHero(h, h, 18 * n, { size: 17 });
-  if (n > 0 && h.bonuses.has('cg_chest')) healHero(h, h, 20 * n, { size: 17 });
   if (h.bonuses.has('barrowguard3')) {
     spawnThrall(h, 'bg', h.x - 42, h.y + 18, 8);
     spawnThrall(h, 'bg', h.x + 42, h.y + 18, 8);
     if (h.isPlayer) fxText(h.x, h.y - 125, 'Barrow Thralls!', '#FFE08A', 20);
   }
   h.crush = Math.max(h.crush, 1);
-  onSlam(h);
   bulwarkPull(h, n);
   slamGadgets(h, n);
   say(h, n ? (rng() < 0.5 ? 'Oi!' : 'Over here!') : 'Oi?', 0.9);
@@ -130,11 +158,13 @@ function abSlam(h) {
   dots(h.x, h.y, '#C9B79A', 10, 200);
   if (n && h.isPlayer) shake(2.5);
   sfx('slam', 0.7); sfx('taunt');
-  h.whirlDur = 0.42;
+  // the Barrowguard Plate spins it once more
+  const spins = h.bonuses.has('bg_chest') ? 3 : 2;
+  h.whirlDur = 0.42 + (spins - 2) * 0.17;
   h.whirlT = h.whirlDur;
   fx({ type: 'whirl', h, x: h.x, y: h.y, r: wR, dur: h.whirlDur, col: '#F2C230' });
   // Spinning Axe: the whirlwind hits twice as hard; Unbowed: twice as hard again with three or more foes on you
-  const spin = (has(h, 'ax.spin') ? 2 : 1) * Math.max(unbow, unbowed(h) ? 2 : 1);
+  const spin = (has(h, 'ga.spin') ? 2 : 1) * Math.max(unbow, unbowed(h) ? 2 : 1);
   const spinSlice = (finalSpin) => {
     if (!h.alive || S.over) return;
     sfx('sweep', 0.65);
@@ -146,8 +176,7 @@ function abSlam(h) {
     }
     if (hitAny) bits(h.x, h.y - 28, 'shard_bone', 4, 170);
   };
-  later(0.18, () => spinSlice(false));
-  later(0.35, () => spinSlice(true));
+  for (let i = 0; i < spins; i++) later(0.18 + i * 0.17, () => spinSlice(i === spins - 1));
   return true;
 }
 /* pull a mob in towards the hero, to just outside arm's reach (knockback decays at 0.01 a second, so the
@@ -201,51 +230,47 @@ export function dashTick(h, dt) {
 function chargeImpact(h, d) {
   const ring = h.traits.has('ringing');
   const shMul = (h.bonuses.has('bg_shoulders') ? 1.35 : 1) * gearMul(h, 'charge');
-  const dmg = 92 * shMul, stunDur = 1.0;
+  // Ringing Blow stuns a second longer, the Clockguard Pauldrons half a second
+  const dmg = 92 * shMul, stunDur = 1.0 + (ring ? 1 : 0) + (h.bonuses.has('cg_shoulders') ? 0.5 : 0);
   const hits = foesNear(h.x, h.y, 92, false).filter((m) => !m.cage);
   for (const m of hits) {
     aggro(m, h, 0);
     const hitDmg = m.M.big ? dmg * 1.15 : dmg;
     hurtMob(m, hitDmg, h, { knock: 160, key: 'charge' });
-    // the mob you charged turns on you; Ringing Charge makes everything you hit turn
-    if (ring) hurtMob(m, hitDmg, h, { knock: 60 });
-    if (ring || m === d.mob) taunt(m, h, 2.5);
+    // Ringing Blow: it hits twice
+    if (ring) hurtMob(m, hitDmg, h, { knock: 60, key: 'charge' });
+    if (m === d.mob) taunt(m, h, 2.5);
     addThreat(m, h, 260);
-    // it stops a cast, a boss's too (a boss only staggers)
-    if (m.cast) interruptCast(m, h);
-    if (m.isBoss) staggerBoss(m, STAGGER);
-    else { m.st.stun = Math.max(m.st.stun, stunDur); m.wind = 0; }
+    // it stops a cast, a boss's too (a boss only staggers), and the stun is your mate's setup
+    if (m.cast) kick(m, h);
+    stunBy(m, stunDur, h, STAGGER);
     breach(h, m);
   }
-  if (h.bonuses.has('bg_shoulders')) {
-    h.absorb = Math.max(h.absorb, Math.round(80 * h.power));
-    h.absorbT = Math.max(h.absorbT, 5);
-    if (h.isPlayer) fxText(h.x, h.y - 116, 'Skull Guard', '#FFE08A', 18);
-  }
   chargeGadgets(h);
-  // Charge primes Crush (Headlong two); the Gravedigger one more
-  h.crush = Math.max(h.crush, chargeCrushes(h) + (h.unique === 'gravedigger' ? 1 : 0));
+  // Charge primes Crush (Headlong two); the Gravedigger and the Barrowguard Pauldrons one more each
+  h.crush = Math.max(h.crush, chargeCrushes(h) + (h.unique === 'gravedigger' ? 1 : 0) + (h.bonuses.has('bg_shoulders') ? 1 : 0));
   if (d.mob) h.picked = d.mob.alive ? d.mob : null;
   fx({ type: 'ring', x: h.x, y: h.y, r0: 16, r1: 108, col: '#F2C230', dur: 0.28, w: 9, ground: true });
   dots(h.x, h.y, '#C9B79A', 10, 180);
   bits(h.x, h.y - 20, 'shard_dirt', 6, 200);
   if (hits.length) { sfx('thud'); if (h.isPlayer) { shake(2.5); hold(0.045, h, d.mob); } }
 }
-/** a perfect block hits back, primes Crush and ends the beat (so Cleave fires the moment the shield comes down);
- *  Barrowguard 2pc gives a bone shield */
+/** a perfect block (or parry) hits back, primes Crush and ends the beat (so Cleave fires the moment the shield
+ *  comes down); the foe it Exposed is your mate's setup. A Greataxe's perfect parry ripostes at every foe round
+ *  you; Barrowguard's two pieces make the next three Cleaves Crush. */
 export function onPerfectBlock(h, src) {
-  if (src && src.kind === 'mob' && src.alive) {
-    hurtMob(src, 185, h, { col: '#F2C230', size: 26, noCrit: true });
-    fx({ type: 'cleave', x: h.x + Math.cos(h.face) * 16, y: h.y - 34, a: h.face, r: 78, dur: 0.22, col: '#F2C230', crush: true });
+  const parry = isAxe(h);
+  const back = parry ? foesNear(h.x, h.y, PARRY.riposte, false).filter((m) => !m.cage && !m.M.thing) : src && src.kind === 'mob' && src.alive ? [src] : [];
+  for (const m of back) hurtMob(m, 185, h, { col: '#F2C230', size: 26, noCrit: true, key: 'riposte' });
+  if (back.length) {
+    if (parry) fx({ type: 'whirl', h, x: h.x, y: h.y, r: PARRY.riposte, dur: 0.24, col: '#F2C230' });
+    else fx({ type: 'cleave', x: h.x + Math.cos(h.face) * 16, y: h.y - 34, a: h.face, r: 78, dur: 0.22, col: '#F2C230', crush: true });
   }
-  h.crush = Math.max(h.crush, 1);
+  if (src && src.kind === 'mob' && src.alive && src.exposed > 0) setUp(src, h, 'expose', src.exposed);
+  h.crush = Math.max(h.crush, h.bonuses.has('barrowguard2') ? 3 : 1);
   h.beat = 0;
   onPerfect(h);
-  if (h.bonuses.has('barrowguard2')) {
-    h.absorb = Math.max(h.absorb, Math.round(150 * h.power));
-    h.absorbT = 6;
-    if (h.isPlayer) fxText(h.x, h.y - 120, 'Bone shield', '#FFE08A', 18);
-  }
+  if (h.bonuses.has('barrowguard2') && h.isPlayer) fxText(h.x, h.y - 120, 'Three Crushes', '#FFE08A', 18);
   blockGadgets(h, src);
 }
 
@@ -408,8 +433,12 @@ function icicleHit(h, t, half = false) {
   // Hailstorm's second shard is a third as strong, and neither uses up nor primes a Shatter
   const sh = icicleShatter(h, t), primed = sh.primed && !half, k = half && sh.primed ? 1 : sh.k, shatters = k > 1;
   if (primed) h.shatter--;
-  const got = hurtMob(t, AB.dps.a4.hit * fillerMul(h.bonuses) * k * hardRime(h, t) * (half ? 1 / 3 : 1), h, { crit: 0.25, col: shatters ? '#8FD6FF' : '#DDF3FF', tier: shatters ? 'payoff' : 'filler', shard: 'shard_ice', key: half ? 'hail' : 'icicle' });
+  // a Shatter on a foe your mate set up is a COMBO (Hailstorm's second shard never is)
+  const ck = shatters && !half ? comboFor(t, h) : null;
+  const got = hurtMob(t, AB.dps.a4.hit * fillerMul(h.bonuses) * k * (half ? 1 / 3 : 1) * comboMul(ck), h, { crit: comboCrit(ck, 0.25), col: shatters ? '#8FD6FF' : '#DDF3FF', tier: shatters ? 'payoff' : 'filler', shard: 'shard_ice', key: half ? 'hail' : 'icicle' });
   if (half) { if (shatters) shardburst(h, t, got); bits(t.x, t.y - 40, 'shard_ice', 3, 160); return; }
+  if (ck) combo(h, t, ck, got);
+  if (shatters) payoffHeal(h);
   // an Icicle crit primes the next one to Shatter anything (a Shattering Icicle's own crit doesn't chain)
   if (LAST.crit && !shatters) { h.shatter = Math.max(h.shatter, 1); if (h.isPlayer) fxText(h.x, h.y - 130, 'Shatter ready', '#8FD6FF', 18, { dur: 0.9 }); }
   if (shatters) shardburst(h, t, got);
@@ -441,17 +470,18 @@ function abBlizzard(h, aim) {
   return true;
 }
 function abNova(h) {
-  const R = AB.dps.a2.range;
+  // Wide Rime: it reaches a third further, and what it freezes stays frozen a second longer
+  const R = AB.dps.a2.range * rimeReach(h);
   const shMul = (h.bonuses.has('rb_shoulders') ? 1.4 : 1) * gearMul(h, 'nova'), longer = h.bonuses.has('as_shoulders') ? 1 : 0;
   for (const m of S.mobs) {
     if (!isFoe(m) || m.cage || dist(m, h) > R + m.r) continue;
     aggro(m, h, 0);
     hurtMob(m, 50 * shMul, h, { col: '#DDF3FF', key: 'nova' });
     if (!m.alive || m.M.thing) continue;
-    // it stops casts, a boss's too (a boss is only Chilled)
-    if (m.cast) interruptCast(m, h);
-    if (m.isBoss) { m.st.slow = 0.4; m.st.slowT = 3; chillBoss(m, CHILL + longer); }
-    else if (!m.M.wisp) { m.st.freeze = 4 + longer; m.wind = 0; }
+    // it stops casts, a boss's too (a boss is only Chilled); frozen and Chilled are your mate's setup
+    if (m.cast) kick(m, h);
+    if (m.isBoss) { m.st.slow = 0.4; m.st.slowT = 3; chillBoss(m, CHILL + longer); setUp(m, h, 'freeze', CHILL + longer); }
+    else if (!m.M.wisp) { m.st.freeze = 4 + longer + rimeHold(h); m.wind = 0; setUp(m, h, 'freeze', m.st.freeze); }
   }
   if (h.bonuses.has('rb_shoulders')) h.cd.a3 = Math.max(0, h.cd.a3 - 1.5);
   if (h.unique === 'gravefrost') {
@@ -491,12 +521,17 @@ export function finishCast(h) {
     const lance = h.traits.has('shatterlance');
     // 2× a frozen foe (3× with Shatterlance), 1.5× a Chilled boss or anything Exposed (2× with Shatterlance)
     const k = frozen ? (lance ? 3 : 2) : chill ? (lance ? SHATTERLANCE_CHILL : CHILL_SHATTER) : 1, shatters = k > 1;
-    const got = t.alive ? hurtMob(t, AB.dps.a3.hit * gearMul(h, 'comet') * k, h, { crit: 0.15, col: shatters ? '#8FD6FF' : '#DDF3FF', tier: shatters ? 'payoff' : 'hit', shard: 'shard_ice', key: 'comet' }) : 0;
-    if (shatters) { payoff(h, 'Shatter!', tx, ty - (t.isBoss ? 230 : 150), '#8FD6FF'); shardburst(h, t, got); }
+    // a Shatter on a foe your mate set up is a COMBO
+    const ck = shatters && t.alive ? comboFor(t, h) : null;
+    const got = t.alive ? hurtMob(t, AB.dps.a3.hit * gearMul(h, 'comet') * k * comboMul(ck), h, { crit: comboCrit(ck, 0.15), col: shatters ? '#8FD6FF' : '#DDF3FF', tier: shatters ? 'payoff' : 'hit', shard: 'shard_ice', key: 'comet' }) : 0;
+    if (ck) combo(h, t, ck, got);
+    if (shatters) { payoff(h, 'Shatter!', tx, ty - (t.isBoss ? 230 : 150), '#8FD6FF'); shardburst(h, t, got); payoffHeal(h); }
     if (shatters && h.bonuses.has('rimebone2')) h.cd.a3 = Math.min(h.cd.a3, cd / 2);
     const splash = foesNear(tx, ty, 90, false).filter((o) => o !== t && !o.cage);
     for (const o of splash) hurtMob(o, 114, h, { size: 19, key: 'comet' });
     if (h.unique === 'gravefrost') for (const o of [t, ...splash]) { if (!o.alive) continue; if (o.isBoss) { o.st.slow = Math.max(o.st.slow, 0.4); o.st.slowT = 2; chillBoss(o, 2); } else if (!o.M.wisp) { o.st.freeze = Math.max(o.st.freeze, 2); o.wind = 0; } }
+    // a frost Comet leaves what it hit cold: your mate's setup for 2 seconds
+    for (const o of [t, ...splash]) setUp(o, h, 'freeze', 2);
     cometGadgets(h, t, tx, ty, shatters);
     fx({ type: 'ring', x: tx, y: ty, r0: 20, r1: 110, col: '#DDF3FF', dur: 0.3, w: 8, ground: true });
     bits(tx, ty - 20, 'shard_ice', 14, 320);

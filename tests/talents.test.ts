@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { checkContent } from '../src/content';
-import { ROW_NEED, SPECS, SPEC_LIST, TALENT_STATS, TREE_POINTS, buttonFor, specsFor, treePoints } from '../src/content/talents';
+import { RETIRED_TALENTS, ROW_NEED, SPECS, SPEC_LIST, TALENT_STATS, TREE_POINTS, TALENTS, buttonFor, refundedPoints, specsFor, treePoints } from '../src/content/talents';
 import { AB } from '../src/content/roles';
 import { TOMES, PAGES, xpForLevel } from '../src/content/xp';
 import { freshProfile, migrate, type Hero, type Profile } from '../src/meta/profile';
@@ -74,13 +74,13 @@ test('talents: rows open as points go in above them, and a point needs points le
   const { p, h } = atLevel(12);
   pickSpec(h, 'frost');
   const s = SPECS.frost;
-  const deep = s.talents.find((t) => t.id === 'fr.deep')!;
+  const deep = s.talents.find((t) => t.id === 'fr.reach')!;
   assert.match(addProblem(p, h, s, deep) || '', /Needs 5/);
   for (let i = 0; i < 5; i++) assert.ok(addPoint(p, h, 'frost', 'fr.cold'));
   assert.equal(addPoint(p, h, 'frost', 'fr.cold'), false, 'five is full');
   assert.ok(rowOpen(h, s, 2));
-  assert.ok(addPoint(p, h, 'frost', 'fr.deep'));
-  assert.equal(addPoint(p, h, 'frost', 'fr.deep'), false, 'one point');
+  assert.ok(addPoint(p, h, 'frost', 'fr.reach'));
+  assert.equal(addPoint(p, h, 'frost', 'fr.reach'), false, 'one point');
   for (let i = 0; i < 4; i++) addPoint(p, h, 'frost', 'fr.layers');
   assert.equal(spentIn(h, s), 10);
   assert.ok(rowOpen(h, s, 3));
@@ -172,4 +172,29 @@ test('talents: Fire’s buttons have their own names and pictures; the rest keep
   assert.equal(buttonFor(AB.dps.a4, 'frost', 'a4').name, 'Icicle');
   assert.equal(buttonFor(AB.dps.a4, null, 'a4').icon, 'icicle');
   assert.ok(ROW_NEED[5] <= TREE_POINTS - 4);
+});
+
+test('talents: the warrior’s two trees were reworked for damage (Sword and Greataxe); points in a reworked talent come back, with a note', () => {
+  assert.equal(SPECS.shield.name, 'Sword');
+  assert.equal(SPECS.axe.name, 'Greataxe');
+  assert.equal(buttonFor(AB.tank.a4, 'axe', 'a4').name, 'Parry', 'the Greataxe’s shield button is a Parry');
+  assert.equal(buttonFor(AB.tank.a4, 'shield', 'a4').name, 'Shield');
+  // no talent of today’s trees takes an old id
+  for (const id of Object.keys(RETIRED_TALENTS)) assert.ok(!TALENTS[id], id);
+  // a warrior from before: Shield picked, 15 points in the old tree, and a mage with Hard Rime
+  const { p, h } = atLevel(16, 'warrior');
+  pickSpec(h, 'shield');
+  h.talents.shield = { 'sh.grit': 5, 'sh.skin': 5, 'sh.spikes': 1, 'sh.presence': 4 };
+  h.talents.axe = { 'ax.edge': 3 };
+  assert.equal(spentIn(h, SPECS.shield), 0, 'none of them count');
+  assert.equal(unspent(p, h), 15, 'every point is back to spend');
+  assert.deepEqual(talentLoadout(p, h), { spec: 'shield', tal: [], ts: {} });
+  assert.deepEqual(refundedPoints(h.talents), { shield: 15, axe: 3 }, 'for the note');
+  assert.ok(addPoint(p, h, 'shield', 'sw.blade'), 'and they go in the new tree');
+  assert.deepEqual(refundedPoints(h.talents), { shield: 15, axe: 3 }, 'the old ones stay in the save, untouched');
+  const q = migrate(JSON.parse(JSON.stringify(p)), T0);
+  assert.equal(q.roster[0].talents.shield['sh.grit'], 5, 'a save keeps them');
+  const m = atLevel(10, 'mage');
+  m.h.talents.frost = { 'fr.cold': 5, 'fr.deep': 1, 'fr.wide': 0 };
+  assert.deepEqual(refundedPoints(m.h.talents), { frost: 1 });
 });

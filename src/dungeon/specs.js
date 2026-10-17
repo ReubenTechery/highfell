@@ -6,9 +6,10 @@
    or the tick it changes. Fire's own four buttons and its Burn are fire.js. Ids are content/talents' own. */
 import { angTo, dist } from '../core/math';
 import { S, emit } from './state.js';
-import { STAGGER, bits, chillBoss, dots, exposeMob, fx, fxText, healHero, hurtMob, sfx, shake, staggerBoss } from './entities.js';
+import { STAGGER, bits, chillBoss, dots, fx, fxText, healHero, hurtMob, sfx, shake } from './entities.js';
 import { applyBleed, foesNear, isFoe, mostHurt } from './heroes.js';
 import { burnTick } from './fire.js';
+import { exposeBy, freshSt, setUp, stunBy } from './duo.js';
 
 /** does this hero have this talent? */
 export const has = (h, id) => !!(h && h.tal && h.tal.has(id));
@@ -20,7 +21,7 @@ export function talentStats(T) {
   return { dmg: 1 + (T.dmg || 0), heal: 1 + (T.heal || 0), hp: 1 + (T.hp || 0), crit: T.crit || 0, haste: 1 + (T.haste || 0), armor: 1 - (T.armor || 0), threat: 1 + (T.threat || 0) };
 }
 
-/** what a hero's hit on a mob gets from talents past its stats: Rising Fury (the axe's own), Grave Mark and
+/** what a hero's hit on a mob gets from talents past its stats: Rising Fury (the Sword's own), Grave Mark and
  *  Cutting Wind (on a foe its rogue marked or cut), Brittle (the whole party's, on a frozen or Chilled foe), and
  *  what a Mercy healer gave the hero: Heartening (after a Mend), Rally (while their Ward holds), Dawn (after
  *  Sunburst) */
@@ -38,16 +39,28 @@ export function talentHitMul(src, m) {
 /** how many foes are on this hero now (fighting it) */
 export const foesOn = (h) => S.mobs.reduce((n, m) => n + (isFoe(m) && !m.cage && !m.M.thing && m.target === h ? 1 : 0), 0);
 
-/* ---------- the warrior ---------- */
+/* ---------- the warrior ----------
+   Sword (spec 'shield'): Tempo, Rim Strike, Spiked Shield, Breach, Swift Steel, Rising Fury, Iron Wall, Payback,
+   Final Word. Greataxe (spec 'axe'): Savage Swing, Hungry Axe, Spinning Axe, Quick Charge, Headlong, Wide Pull,
+   Axe Storm, Unbowed. What picking each spec changes on its own is buttons.js (SWORD, GREATAXE, PARRY). */
+/** Tempo, the Sword's: every Cleave that lands speeds his automatic swings up, `haste` a stack, up to `max` stacks
+ *  (eight with Swift Steel); they fall away `life` seconds after his last Cleave */
+export const TEMPO = { haste: 0.15, max: 5, swift: 8, life: 4 };
+export function addTempo(h) {
+  h.tempo = Math.min(has(h, 'sw.swift') ? TEMPO.swift : TEMPO.max, (h.tempoT > 0 ? h.tempo || 0 : 0) + 1);
+  h.tempoT = TEMPO.life;
+}
+/** how much faster Tempo makes a hero's automatic swings */
+export const tempoHaste = (h) => (h.tempoT > 0 ? 1 + TEMPO.haste * (h.tempo || 0) : 1);
 /** Spiked Shield: a foe that hits you takes 50 back, 150 if you blocked it (not a telegraph's hit, which isn't a
  *  swing) */
 export function spikes(h, src, blocked) {
-  if (!has(h, 'sh.spikes') || !src || src.kind !== 'mob' || !src.alive || src.M.thing) return;
+  if (!has(h, 'sw.spikes') || !src || src.kind !== 'mob' || !src.alive || src.M.thing) return;
   hurtMob(src, blocked ? 150 : 50, h, { size: blocked ? 18 : 15, col: '#C9D2DC', noCrit: true, tier: 'tick', key: 'spikes' });
 }
 /** Payback readies the next Cleave on a perfect block */
 export function onPerfect(h) {
-  if (has(h, 'sh.payback')) {
+  if (has(h, 'sw.payback')) {
     h.payback = true;
     if (h.isPlayer) fxText(h.x, h.y - 140, 'Payback ready', '#F2C230', 18, { dur: 0.9 });
   }
@@ -58,28 +71,20 @@ export function takePayback(h) {
   h.payback = false;
   return true;
 }
-/** Payback's swing stuns what it hits (a boss staggers) */
-export function paybackStun(m) {
-  if (!m.alive || m.M.thing) return;
-  if (m.isBoss) staggerBoss(m, 1.2);
-  else { m.st.stun = Math.max(m.st.stun, 1.5); m.wind = 0; }
-}
+/** Payback's swing stuns what it hits (a boss staggers): your mate's setup */
+export function paybackStun(m, by) { stunBy(m, 1.5, by, 1.2); }
 /** Rim Strike: is this Cleave a third one, that stuns what it hits? (it counts the Cleaves) */
-export const rimStrike = (h) => has(h, 'sh.rim') && ++h.rims % 3 === 0;
-/** a Rim Strike or a Final Word's stun on what it hit: a second (a boss staggers) */
-export function stunHit(m, dur) {
-  if (!m.alive || m.M.thing) return;
-  if (m.isBoss) staggerBoss(m, STAGGER);
-  else { m.st.stun = Math.max(m.st.stun, dur); m.wind = 0; }
-}
-/** Breach: Charge Exposes what it hits for 2 seconds */
+export const rimStrike = (h) => has(h, 'sw.rim') && ++h.rims % 3 === 0;
+/** a Rim Strike's stun on what it hit: a second (a boss staggers), and your mate's setup */
+export function stunHit(m, dur, by) { stunBy(m, dur, by, STAGGER); }
+/** Breach: Charge Exposes what it hits for 2 seconds (your mate's setup too) */
 export function breach(h, m) {
-  if (has(h, 'sh.brace') && m.alive && !m.M.thing) exposeMob(m, 2, 'Exposed!');
+  if (has(h, 'sw.breach') && m.alive && !m.M.thing) exposeBy(m, 2, h, 'Exposed!');
 }
-/** Bulwark: how far Slam reaches (half as far again), and what the foes it pulled add to your next Cleave */
-export const slamReach = (h) => (has(h, 'sh.bulwark') ? 1.5 : 1);
-export function bulwarkPull(h, n) { if (has(h, 'sh.bulwark') && n > 0) h.bulwark = Math.min(8, n); }
-/** the Cleave after a Bulwark Slam: 8% harder a foe it pulled (up to 8); it uses it up */
+/** Wide Pull: how far Slam reaches (half as far again), and what the foes it pulled add to your next Cleave */
+export const slamReach = (h) => (has(h, 'ga.bulwark') ? 1.5 : 1);
+export function bulwarkPull(h, n) { if (has(h, 'ga.bulwark') && n > 0) h.bulwark = Math.min(8, n); }
+/** the Cleave after a Wide Pull Slam: 8% harder a foe it pulled (up to 8); it uses it up */
 export function bulwarkMul(h) {
   if (!h.bulwark) return 1;
   const k = 1 + 0.08 * h.bulwark;
@@ -87,13 +92,17 @@ export function bulwarkMul(h) {
   return k;
 }
 /** Unbowed: three or more foes on you make Slam come back twice as fast and its whirlwind twice as hard */
-export const unbowed = (h) => has(h, 'sh.unbowed') && foesOn(h) >= 3;
+export const unbowed = (h) => has(h, 'ga.unbowed') && foesOn(h) >= 3;
 /** Savage Swing: Cleave 15% harder on a foe under half its health */
-export const savageMul = (h, m) => (has(h, 'ax.savage') && m.hp < m.maxHp * 0.5 ? 1.15 : 1);
+export const savageMul = (h, m) => (has(h, 'ga.savage') && m.hp < m.maxHp * 0.5 ? 1.15 : 1);
 /** Headlong: Charge primes two Crushes, not one */
-export const chargeCrushes = (h) => (has(h, 'ax.headlong') ? 2 : 1);
+export const chargeCrushes = (h) => (has(h, 'ga.headlong') ? 2 : 1);
 /** Final Word: is this foe low enough for a Crush to finish (a boss to take it twice as hard)? */
-export const finalWord = (h, m) => has(h, 'ax.final') && m.hp < m.maxHp * 0.2;
+export const finalWord = (h, m) => has(h, 'sw.final') && m.hp < m.maxHp * 0.2;
+/** Axe Storm: every Cleave sweeps all the way round you */
+export const axeStorm = (h) => has(h, 'ga.storm');
+/** how much harder a Crush hits than CRUSH: Axe Storm's 15%, the Barrowguard Helm's 10% */
+export const crushMul = (h) => (axeStorm(h) ? 1.15 : 1) * (h.bonuses && h.bonuses.has('bg_helm') ? 1.1 : 1);
 /** a finishing blow: whatever a foe has left (a Final Word, a Last Breath) */
 export function finish(h, m, word) {
   if (!m.alive || m.isBoss || m.M.thing) return;
@@ -102,30 +111,16 @@ export function finish(h, m, word) {
 }
 /** Hungry Axe: a fifth of the Crushes' damage heals you; Rising Fury stacks with every Crush */
 export function onCrush(h, dealt) {
-  if (dealt > 0 && has(h, 'ax.hungry')) healHero(h, h, dealt * 0.2, { raw: true, size: 16 });
-  if (has(h, 'ax.fury')) {
+  if (dealt > 0 && has(h, 'ga.hungry')) healHero(h, h, dealt * 0.2, { raw: true, size: 16 });
+  if (has(h, 'sw.fury')) {
     h.fury = Math.min(5, (h.furyT > 0 ? h.fury || 0 : 0) + 1);
     h.furyT = 8;
     if (h.isPlayer && h.fury > 1) fxText(h.x, h.y - 150, `Fury ×${h.fury}`, '#FF8A4C', 17, { dur: 0.8 });
   }
 }
-/** Axe Storm: a primed Cleave sweeps all the way round, and its Crushes hit 15% harder */
-export const axeStorm = (h, primed) => primed && has(h, 'ax.storm');
-/** Cover: Slam shields your two mates for 120 */
-export function onSlam(h) {
-  if (!has(h, 'sh.cover')) return;
-  for (const a of S.heroes) {
-    if (a === h || !a.alive) continue;
-    a.absorb = Math.max(a.absorb, Math.round(120 * h.power));
-    a.absorbT = Math.max(a.absorbT, 6);
-    fx({ type: 'beam', x: h.x, y: h.y - 40, x2: a.x, y2: a.y - 40, col: '#9AA7B8', dur: 0.22 });
-    if (a.isPlayer || h.isPlayer) fxText(a.x, a.y - 96, 'Cover', '#DDF3FF', 17);
-  }
-}
-/** Iron Wall: a hit on a mate within 160 of a tank holding the shield up takes a fifth less */
+/** Iron Wall: a hit on your mate within 160 of you while your shield is up takes a fifth less */
 export function wallMul(t) {
-  if (t.role === 'tank') return 1;
-  for (const h of S.heroes) if (h.role === 'tank' && h.alive && h.blocking && has(h, 'sh.wall') && dist(h, t) <= 160 + t.r) return 0.8;
+  for (const h of S.heroes) if (h !== t && h.cls === 'warrior' && h.alive && h.blocking && has(h, 'sw.wall') && dist(h, t) <= 160 + t.r) return 0.8;
   return 1;
 }
 
@@ -181,8 +176,8 @@ export function miracle(h, reach) {
   const t = S.heroes.find((a) => !a.alive && a !== h && dist(a, h) <= reach);
   if (!t) return;
   h.miracleUsed = true;
-  t.alive = true; t.hp = Math.round(t.maxHp * 0.4); t.deadT = 0; t.iframe = 1; t.flash = 0.2;
-  t.st = { stun: 0, root: 0, haunt: 0, air: 0, ghost: 0, surge: 0, zeal: 0, kx: 0, ky: 0, chained: null, caged: null, curse: null };
+  t.alive = true; t.down = false; t.hp = Math.round(t.maxHp * 0.4); t.deadT = 0; t.iframe = 1; t.flash = 0.2;
+  t.st = freshSt();
   fxText(t.x, t.y - 130, 'MIRACLE!', '#F2C230', 32, { dur: 1.6 });
   fx({ type: 'ring', x: t.x, y: t.y - 40, r0: 20, r1: 150, col: '#F2C230', dur: 0.55, w: 8 });
   dots(t.x, t.y - 60, '#FFE08A', 22, 240);
@@ -248,8 +243,9 @@ export function holyGround(z) {
 }
 
 /* ---------- the mage (frost; fire is fire.js) ---------- */
-/** Hard Rime: Icicle hits a frozen or Chilled foe 15% harder */
-export const hardRime = (h, t) => (has(h, 'fr.deep') && t.st && (t.st.freeze > 0 || t.st.chill > 0) ? 1.15 : 1);
+/** Wide Rime: Rime burst reaches a third further, and what it freezes stays frozen a second longer */
+export const rimeReach = (h) => (has(h, 'fr.reach') ? 4 / 3 : 1);
+export const rimeHold = (h) => (has(h, 'fr.reach') ? 1 : 0);
 /** Wide Winter: Blizzard a third wider and a second longer */
 export const wideWinter = (h) => (has(h, 'fr.wide') ? { r: 1.33, dur: 1 } : { r: 1, dur: 0 });
 /** Long Winter: is this foe in a Blizzard of yours (so a Comet into it Shatters as if it were frozen)? */
@@ -263,22 +259,26 @@ export function icefall(z) {
     hurtMob(m, (z.val || 20) * 3, z.src, { crit: 0.15, col: '#8FD6FF', size: 20, key: 'icefall' });
     if (!m.alive) continue;
     if (m.isBoss) chillBoss(m, 2); else { m.st.freeze = Math.max(m.st.freeze, 2); m.wind = 0; }
+    setUp(m, z.src, 'freeze', 2);
   }
   fx({ type: 'ring', x: z.x, y: z.y, r0: z.r, r1: 20, col: '#DDF3FF', dur: 0.3, w: 9, ground: true });
   bits(z.x, z.y - 30, 'shard_ice', 14, 300);
   if (z.src.isPlayer) { fxText(z.x, z.y - 140, 'Icefall!', '#8FD6FF', 22, { dur: 0.9 }); shake(3); }
   sfx('shatter', z.src.isPlayer ? 0.8 : 0.4);
 }
-/** Numbing Cold: a foe that has stayed 2 seconds in a Blizzard of yours freezes (a boss is Chilled), then it can't
- *  again for 2 seconds */
+/** a Blizzard's tick on a foe in it (game.js): the cold is your mate's setup while it stands in it, and with Numbing
+ *  Cold a foe that has stayed 2 seconds freezes (a boss is Chilled), then it can't again for 2 seconds */
 export function frostbite(z, m) {
-  if (!has(z.src, 'fr.bite') || m.M.wisp || m.M.thing) return;
+  if (m.M.wisp || m.M.thing) return;
+  setUp(m, z.src, 'freeze', 1);
+  if (!has(z.src, 'fr.bite')) return;
   const inT = (z.inT ||= {});
   inT[m.id] = (inT[m.id] || 0) + z.tick;
   if (inT[m.id] < 2) return;
   inT[m.id] = -2;
   if (m.isBoss) { m.st.chill = Math.max(m.st.chill || 0, 2); fxText(m.x, m.y - 245, 'Chilled', '#8FD6FF', 20, { dur: 0.9 }); }
   else { m.st.freeze = Math.max(m.st.freeze, 1); m.wind = 0; }
+  setUp(m, z.src, 'freeze', 2);
 }
 /** Shardburst: a Shatter hits every foe near it for a quarter as much */
 export function shardburst(h, t, got) {

@@ -68,7 +68,7 @@ const NAMES: Record<GearKey, Record<SlotId, [string, string, string, string]>> =
 export const TRAITS: Record<GearKey, TraitDef[]> = {
   tank: [
     { id: 'wide', name: 'Wide Swings', desc: 'Cleave sweeps a wider arc in front of you.' },
-    { id: 'ringing', name: 'Ringing Blow', desc: 'Charge hits twice, and everything it hits turns on you.' },
+    { id: 'ringing', name: 'Ringing Blow', desc: 'Charge hits twice, and its stun lasts a second longer.' },
     { id: 'headsman', name: 'Headsman', desc: 'Hits on stunned mobs, or a Staggered boss, always crit.' },
   ],
   healer: [
