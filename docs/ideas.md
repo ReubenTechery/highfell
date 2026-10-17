@@ -32,8 +32,119 @@ gear" (old gear becomes collection instead), "raids are a later bonus activity" 
 the Free Trial → Base Game → Expansions model in `docs/dungeons.md`. Still to settle (a `/grill-me`): how much
 power a season adds, what timewalked runs give, the wing timing, the price, and whether Season 0 is free. And
 levels and talents (built 17 Oct, account-wide and lasting, like champion points): do they carry across seasons
-as they are (my pick: yes, as the one power that lasts, small next to gear), or does a season add a row or raise
-the level cap?
+as they are? The builds, levels and seasons proposal below (18 Oct) answers it: if levels become the climb, they
+reset with the season.
+
+## Proposal: builds, levels and seasons (the two-hats pass, 18 Oct)
+
+The owner asked for a look at every tree, ability, weapon and set with two hats on: the gamer (is it impactful,
+fun, real power creep, room for creative builds) and the balancer (no meta because the other choice is bad). And:
+what happens at level 100, do levels reset each season, and should the Barrow melt to about 75 seconds once its
+set is done, 60 after the next dungeon's? The owner's lean: every dungeon's gear in a season at the same Power
+with different effects, and the creep coming from levels.
+
+### What the sims found (the real engine, bots in every seat, 6 runs each)
+
+**The creep runs out.** Barrow Crypt, you plus two bots (bots wear plain gear at your rarity):
+
+| | Fresh, level 1 | Rare, level 8 | Barrow set and weapon, level 22 | Full tree, level 30 | Thimblebriar's set, level 35 |
+| --- | --- | --- | --- | --- | --- |
+| Tank (Axe / Shield) | 3:28 | 2:49 | 1:28 / 1:36 | 1:25 / 1:38 | 1:20 / 1:32 |
+| Healer (Mercy / Wrath) | 3:28 | 2:50 | 1:55 / 1:56 | 1:55 / 1:56 | 1:57 / 1:55 |
+| Mage (Frost / Fire) | 3:28 | 2:42 | 1:27 / 1:35 | 1:23 / 1:31 | 1:21 / 1:29 |
+| Rogue (Venom / Blades) | 3:28 | 2:45 | 1:27 / 1:22 | 1:22 / 1:19 | 1:17 / 1:19 |
+
+- Levels 31 to 99 add nothing, and the next dungeon's set takes 2 to 5 seconds off the Barrow.
+- A healer main never melts anything: in full Barrow gear it still takes 1:55, because the bots set the pace and
+  healing past "nobody dies" makes a run no faster.
+- The Barrow can't go under about 42 seconds: that's the walk. With every seat at the same Power it takes
+  3:28 at Power 1, 1:48 at 2, 1:16 at 4, 0:55 at 8, 0:45 at 20 (Thimblebriar: 3:42 at 1.75, 1:47 at 4, 1:00 at
+  12). So 75 seconds is about four times a fresh party's damage, and 60 about seven times.
+
+**Builds are thinner than they look.**
+- A full tree (level 30) takes every talent but one, so every Axe warrior at 30 is the same Axe warrior. Row 3's
+  pick is the only choice.
+- Seven talents do nothing you can feel in a run (each left out alone, Common gear): Deep Freeze, Wildfire, Knife
+  Storm (a capstone), Iron Wall, Brace and Spiked Shield, and Miracle never fires in Normal because nobody dies.
+  Payback fires about three times a run. The big ones: Twin Fangs and Ruthless (about 15 seconds each), Axe Storm
+  (13), Comet Shower (10), Hailstorm (7).
+- Weapon traits are fair (every trait within a few seconds of the others) but none can be felt, and the
+  healer's three only heal.
+- At the same Power (Thimblebriar, every seat 2.3), the Barrow's sets beat Thimblebriar's for the tank (26
+  seconds off against 15), the healer (8 against none: Sporebloom only heals) and the Blades rogue (33 against
+  none); the mage's two are level, and Venom prefers Thimblebriar's. Clockguard's two bonuses need perfect blocks.
+- Bugs: Rimebone's 3-piece only half works for Fire (a foe dying in Firestorm doesn't rise), and the Candlewake and
+  Sporebloom 2-piece heals don't grow with Power.
+- Six talent names are too close to WoW's: Deep Freeze, Frostbite, Kindling, Wildfire, Death Mark, Ruthless.
+
+**Metas.** Axe is 13% faster than Shield (blocking doesn't make a run faster). Wrath is a little faster than
+Mercy, but neither healer makes a run faster. Frost and Fire are level, except the Barrow set leans Frost.
+Venom wins in plain gear and Blades in the Barrow set, so the rogue's pick depends on gear, which is healthy.
+
+### The plan
+
+**1. Gear in a season is the same Power; effects are the difference.** Every Epic in a season is Power 26 (set
+piece) or 30 (boss weapon), whichever dungeon it's from. Barrow gear stays best-in-slot material all season, and a
+build is which set (a 3-piece, or 2 and 1 of another), which weapon and which trait. The regular ladder (Common to
+Rare) stays.
+
+**2. Levels are the climb.** Every level makes your whole party's hits, heals and health 2.5% bigger: you, your
+Warband and the bots (they're at your level already). Talent points stay as they are, one a level from 2 to 30.
+With today's gear and talents that gives (sims, the level bonus as Power for every seat):
+
+| | Rare, level 9 | Barrow set, level 22 | A second set, level 35 | Level 45 | Level 99 |
+| --- | --- | --- | --- | --- | --- |
+| Tank, mage, rogue | 2:16 to 2:22 | 1:10 to 1:19 | 1:01 to 1:15 | 0:58 to 1:05 | 0:49 to 0:55 |
+| Healer | 2:17 to 2:19 | 1:27 | 1:17 | 1:14 | 1:00 |
+
+That's the owner's 75 then 60, and it lifts healers too; the talent and set passes below close the healer gap.
+Each later dungeon is tuned for the level you reach it at (Thimblebriar: about level 20 in the Barrow's set,
+3 minutes at the door), so it says "Recommended level 20" where it now says "Recommended Power 22".
+
+**3. No cap.** Past 99 the levels keep coming forever, about 30 runs each, +0.5% each. There's always a next
+level. 99 keeps its title.
+
+**4. Levels reset with the season.** If levels are the climb and never reset, every new season has to be tuned
+for level 99s and a newcomer starts far behind. Reset with the gear and every season has the same shape (struggle,
+then melt, a 1 to 99 climb of about 30 hours) and everyone starts equal. What lasts: your heroes, the collection,
+looks, pets, mounts, titles, achievements, the house and your lifetime XP. The other way: levels never reset and
+the level bonus stops growing at 50 (past that, levels are for show), so a newcomer catches up in a few weeks.
+
+**5. Every talent row is a pick of two.** Rows 2 to 5 each offer two talents and you take one; row 5 holds two
+capstones. A full tree is still 29 points: 16 builds a spec, 32 a class. Every spec gets its own way to go fast:
+Shield hits back harder the more foes are on it and on perfect blocks, Mercy makes mates hit harder, Axe and Wrath
+keep raw damage. Duds are reworked; WoW-like names get new ones (ids stay, so saves keep every point). A first
+draft (numbers set by the sims; kept talents in plain, new ones marked new):
+
+| Spec | Row 2 | Row 3 | Row 4 | Row 5 (capstones) |
+| --- | --- | --- | --- | --- |
+| Shield | Spiked Shield (reworked: foes that hit you take 40 back, 120 if blocked) or Rim Strike (new: every third Cleave stuns) | Brace (reworked: a perfect block Exposes the attacker) or Cover | Bulwark (new: Slam pulls from twice as far, and each foe pulled makes your next Cleave 6% harder) or Iron Wall | Payback or Unbowed (new: with three or more foes on you, Slam comes back twice as fast and hits 50% harder) |
+| Axe | Hungry Axe or Savage Swing (new: Cleave hits 15% harder under half health) | Quick Charge or Spinning Axe | Rising Fury or Headlong (new: Charge primes a Crush that cuts through a line) | Axe Storm or Final Word (new: a Crush finishes a foe under a quarter health; a boss takes triple) |
+| Mercy | Saving Grace or Heartening (new: a mate you Mend hits 10% harder for 5 seconds) | Walking Prayer or Twin Ward | Overflow or Rally (new: Ward makes its mate hit 15% harder while it holds) | Miracle or Dawn (new: Sunburst makes the party hit 25% harder for 8 seconds) |
+| Wrath | Twin Light or Twice Struck (new: every third Smite strikes twice) | Burning Light or Sunlance | Holy Ground or Sunpillar (new: Sunburst calls a pillar of light on your target) | Sunstrike or Flashpoint (new: a Smite crit bursts on every foe near its target) |
+| Frost | Hard Rime (was Deep Freeze, reworked: frozen foes take 15% more from Icicle) or Wide Winter (new: Blizzard a third wider) | Numbing Cold (was Frostbite) or Brittle | Shardburst or Long Winter (new: Blizzard lasts 2 seconds longer, and a Comet into it Shatters) | Hailstorm or Icefall (new: a Blizzard ends with a crash of ice on everything in it) |
+| Fire | Stoked (was Kindling) or Flash Fire (new: a Firebolt crit spreads a Burn) | Brushfire (was Wildfire, reworked: Firestorm spreads its Burn wider and lasts longer) or Searing | Afterburn or Flashover (new: a Combust makes Ember burst ready again) | Comet Shower or Pyre (new: Firestorm follows your target and grows hotter) |
+| Venom | Deadly Venom or Quick Venom (new: Viper Venom ticks twice as fast for half as long) | Toxic Burst or Grave Mark (was Death Mark) | Encore (was Ruthless) or Lingering Cut (new: Shadowstrike on a poisoned foe leaves it bleeding) | Twin Fangs or Last Breath (new: Shadowstrike finishes a foe under a fifth of its health) |
+| Blades | Sweeping Blades or Twin Edge (new: Viper Blades hits twice) | Whirling Edges or Venom Spray | Scatter or Second Ring (new: Fan of Blades throws a second ring) | Knife Storm (reworked: 6 seconds of swings that hit every foe round you, points twice as fast) or Cutting Wind (new: foes Fan of Blades hits take 15% more from you) |
+
+**6. Sets, weapons and traits.** Each set is the best for some build at the same Power: Clockguard's bonuses
+also come from Slam, not only perfect blocks; Sporebloom's turret shoots the nearest foe too; Gearshade's bombs
+stick to every foe Viper Blades hits (a Blades set); Rimebone's 3-piece works in Firestorm; the 2-piece heals grow
+with Power. Each trait gets a number you can feel (about 5% in its best build), and one healer trait hits (Kindle:
+a breaking Ward bursts on the foes round it).
+
+**7. Tests that hold it.** Fresh Barrow 3:10 to 3:50 at level 1; with its set at level 22, every role 1:10 to
+1:25; with a second set at level 35, 1:00 to 1:10; a class's two specs within 5% in their best builds; no
+talent under 2% in its best build, except the safety picks (Cover, Iron Wall, Miracle), which get a test of their
+own (deaths saved in Heroic-hard runs); the old ones stay (a lone DPS dies, an idle healer wipes, a tank in Common
+gear with a bot healer clears), at level 1.
+
+**What it changes in the brief:** pillar 1's "about 2 minutes when melted" (about 1:15 with the dungeon's set,
+under a minute later), pillar 2 (gear gets you to Epic, then levels are the climb, and gear and talents decide
+how), the ladder row ("8 more a dungeon tier" goes), the XP row (levels past 99), the talents row (a full tree
+still clears about a fifth faster, but levels are bigger than gear), and the seasons direction (levels reset with
+the gear). Nothing in the save changes shape: the level bonus comes from XP, items keep their ids, talents keep
+theirs.
 
 ## Proposal: the Hall of Doors when Season 1 comes
 
