@@ -1,6 +1,6 @@
 /**
  * The close-ups: a gathering spot seen up close, one gesture at a time, three goes a harvest. Snip a
- * stem on the dotted line, pluck a glowcap at its brightest. Each Perfect puts one more in your
+ * stem on the dotted line, pluck a glowcap as it sparkles (its brightest). Each Perfect puts one more in your
  * satchel, and every cut pays Gathering XP the moment it lands (the bar at the foot fills as you go).
  * If a pet dropped, the plant gives it away before you finish: the gathering walkout.
  *
@@ -375,12 +375,21 @@ class Snip extends Toy {
   }
 }
 
-/* ---------------------------------------------------------------- pluck: pick each glowcap at its brightest */
+/* ---------------------------------------------------------------- pluck: pick each glowcap as it sparkles */
 interface Cap { x: number; h: number; period: number; phase: number; plucked: boolean; g: number; peaked: boolean; walker: boolean }
+/** how bright a glowcap is when you pick it (0 to 1): a Perfect from PERFECT, while it sparkles, and a Good from GOOD */
+const PERFECT = 0.86, GOOD = 0.55;
+/** a four-point sparkle centred on (x, y) */
+const SPARKLE = (x: number, y: number, r: number, fill: string): string => {
+  const q = r * 0.26;
+  return S(`M${x} ${y - r} Q${x + q} ${y - q} ${x + r} ${y} Q${x + q} ${y + q} ${x} ${y + r} Q${x - q} ${y + q} ${x - r} ${y} Q${x - q} ${y - q} ${x} ${y - r} Z`, fill, 3);
+};
 class Pluck extends Toy {
   private caps: Cap[] = [];
 
-  hint(): string { return 'Tap each glowcap when it shines brightest.'; }
+  /** said so you can see it: a glowcap sparkles exactly while a tap is a Perfect (a play tester didn't know what
+   *  "its brightest" looked like, 18 Oct) */
+  hint(): string { return 'Tap each glowcap as it sparkles.'; }
   scene(): string {
     const caps: Cap[] = [95, 200, 305].map((x, i) => ({ x, h: [96, 128, 104][i], period: [1.7, 1.35, 2.0][i], phase: Math.random() * 6, plucked: false, g: 0, peaked: false, walker: !!this.run.pet && i === 1 }));
     this.caps = caps;
@@ -396,7 +405,7 @@ class Pluck extends Toy {
           <path class="capfill" d="M-46 ${-c.h} C-46 ${-c.h - 44} 46 ${-c.h - 44} 46 ${-c.h} C30 ${-c.h + 8} -30 ${-c.h + 8} -46 ${-c.h} Z" style="${ink(capCol, 4.5)}"/>
           ${C(-20, -c.h - 18, 6, '#E9FFD9', 0)}${C(8, -c.h - 28, 7, '#E9FFD9', 0)}${C(26, -c.h - 12, 5, '#E9FFD9', 0)}
           ${L(`M-32 ${-c.h - 14} C-24 ${-c.h - 30} -10 ${-c.h - 36} 4 ${-c.h - 36}`, '#FFFFFF', 3)}</g>
-        <g class="ping" style="opacity: 0">${L(`M0 ${-c.h - 74} V${-c.h - 50} M-12 ${-c.h - 62} H12`, '#FFF8EC', 4)}</g>
+        <g class="ping" style="opacity: 0">${SPARKLE(0, -c.h - 64, 15, '#FFF3C4')}${SPARKLE(-50, -c.h - 22, 9, '#FFF3C4')}${SPARKLE(50, -c.h - 38, 8, '#FFF3C4')}</g>
         <rect x="-60" y="${-c.h - 70}" width="120" height="${c.h + 80}" style="fill: transparent"/>
       </g>`;
     });
@@ -413,20 +422,23 @@ class Pluck extends Toy {
       c.g = g;
       const el = this.svg.querySelector(`.cap[data-i="${i}"]`) as SVGGElement;
       if (!el) return;
-      (el.querySelector('.halo') as SVGElement).style.opacity = (g * 0.55).toFixed(3);
-      (el.querySelector('.halo') as SVGElement).setAttribute('r', (40 + g * 34).toFixed(1));
-      const fill = this.run.shimmer ? mix('#8A9A3A', '#FFF07A', g) : mix('#3E6A34', '#C8FF8A', g);
+      // dark for most of its turn and lit up near the top, so the moment stands out; it sparkles (and twinkles)
+      // the whole time a tap would be a Perfect
+      const lit = g * g, now = g >= PERFECT;
+      (el.querySelector('.halo') as SVGElement).style.opacity = (lit * 0.7).toFixed(3);
+      (el.querySelector('.halo') as SVGElement).setAttribute('r', (38 + lit * 38).toFixed(1));
+      const fill = this.run.shimmer ? mix('#6E7A2E', '#FFF6A8', lit) : mix('#2E5A2E', '#E4FFB0', lit);
       (el.querySelector('.capfill') as SVGElement).style.fill = fill;
-      (el.querySelector('.ping') as SVGElement).style.opacity = g > 0.9 ? '1' : '0';
-      if (g > 0.93 && !c.peaked) { c.peaked = true; SFX.play('twinkle', 0.5); }
-      if (g < 0.5) c.peaked = false;
+      (el.querySelector('.ping') as SVGElement).style.opacity = now ? '1' : '0';
+      if (now && !c.peaked) { c.peaked = true; SFX.play('twinkle', 0.5); }
+      if (g < GOOD) c.peaked = false;
     });
   }
   private async pluck(i: number): Promise<void> {
     const c = this.caps[i];
     if (!c || c.plucked || this.done) return;
     c.plucked = true;
-    const g: Grade = c.g >= 0.86 ? 'perfect' : c.g >= 0.55 ? 'good' : 'rough';
+    const g: Grade = c.g >= PERFECT ? 'perfect' : c.g >= GOOD ? 'good' : 'rough';
     SFX.play('pluck');
     const el = this.svg.querySelector(`.cap[data-i="${i}"]`) as SVGGElement;
     (el.querySelector('.halo') as SVGElement).style.opacity = '0';

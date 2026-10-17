@@ -9,7 +9,7 @@ import type { DropDef, IngredientDef, LorePage, NodeDef, RecipeDef } from '../ty
 
 export const INGREDIENTS: Record<string, IngredientDef> = {
   moonpetal: { id: 'moonpetal', name: 'Moonpetal', icon: 'g_moonpetal', desc: 'A pale flower that opens at dusk. Smells like rain on warm stone.' },
-  glowcap: { id: 'glowcap', name: 'Glowcap', icon: 'g_glowcap', desc: 'A mushroom with a lamp in it. Pick it at its brightest.' },
+  glowcap: { id: 'glowcap', name: 'Glowcap', icon: 'g_glowcap', desc: 'A mushroom with a lamp in it. Pick it as it sparkles.' },
   brambleberry: { id: 'brambleberry', name: 'Brambleberry', icon: 'g_berry', desc: 'Dark, sweet and guarded by thorns that mean it.' },
   dew: { id: 'dew', name: 'Starlight Dew', icon: 'g_dew', desc: 'Collects on a bed that shimmers. It hums if you hold it close.', rare: true },
 };
