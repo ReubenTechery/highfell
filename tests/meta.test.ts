@@ -100,23 +100,24 @@ test('heroes: race and class are fixed, male or female look is saved, names are 
   assert.equal(defaultSex('human', 'cleric'), 'f');
   assert.equal(defaultSex('elf', 'mage'), 'f');
   assert.equal(defaultSex('human', 'rogue'), 'f');
-  assert.equal(heroArt('dwarf', 'warrior', 'm'), 'tank');
-  assert.equal(heroArt('dwarf', 'warrior', 'f'), 'tank_w');
-  assert.equal(heroArt('human', 'cleric', 'f'), 'healer');
-  assert.equal(heroArt('human', 'cleric', 'm'), 'healer_m');
-  assert.equal(heroArt('elf', 'mage', 'f'), 'dps');
-  assert.equal(heroArt('elf', 'mage', 'm'), 'dps_m');
-  assert.equal(heroArt('human', 'rogue', 'f'), 'rogue');
-  assert.equal(heroArt('human', 'rogue', 'm'), 'rogue_m');
+  assert.equal(heroArt('dwarf', 'warrior', 'm'), 'dwarf.warrior.m', 'drawn in layers: its body');
+  assert.equal(heroArt('dwarf', 'warrior', 'f'), 'dwarf.warrior.f');
+  assert.equal(heroArt('human', 'cleric', 'f'), 'human.cleric.f');
+  assert.equal(heroArt('human', 'cleric', 'm'), 'human.cleric.m');
+  assert.equal(heroArt('elf', 'mage', 'f'), 'elf.mage.f');
+  assert.equal(heroArt('elf', 'mage', 'm'), 'elf.mage.m');
+  assert.equal(heroArt('human', 'rogue', 'f'), 'human.rogue.f');
+  assert.equal(heroArt('human', 'rogue', 'm'), 'human.rogue.m');
+  assert.equal(heroArt('elf', 'rogue', 'm'), 'elf.rogue.m', 'an elf rogue is an elf');
   for (const r of ['gnome', 'goblin', 'risen'] as const) {
-    assert.equal(heroArt(r, 'warrior', 'm'), `${r}_tank`);
-    assert.equal(heroArt(r, 'warrior', 'f'), `${r}_tank_w`);
-    assert.equal(heroArt(r, 'cleric', 'f'), `${r}_healer`);
-    assert.equal(heroArt(r, 'cleric', 'm'), `${r}_healer_m`);
-    assert.equal(heroArt(r, 'mage', 'f'), `${r}_dps`);
-    assert.equal(heroArt(r, 'mage', 'm'), `${r}_dps_m`);
-    assert.equal(heroArt(r, 'rogue', 'f'), `${r}_rogue`);
-    assert.equal(heroArt(r, 'rogue', 'm'), `${r}_rogue_m`);
+    assert.equal(heroArt(r, 'warrior', 'm'), `${r}.warrior.m`);
+    assert.equal(heroArt(r, 'warrior', 'f'), `${r}.warrior.f`);
+    assert.equal(heroArt(r, 'cleric', 'f'), `${r}.cleric.f`);
+    assert.equal(heroArt(r, 'cleric', 'm'), `${r}.cleric.m`);
+    assert.equal(heroArt(r, 'mage', 'f'), `${r}.mage.f`);
+    assert.equal(heroArt(r, 'mage', 'm'), `${r}.mage.m`);
+    assert.equal(heroArt(r, 'rogue', 'f'), `${r}.rogue.f`);
+    assert.equal(heroArt(r, 'rogue', 'm'), `${r}.rogue.m`);
   }
   assert.equal(cleanName('  Wren   Copperkettle '), 'Wren Copperkettle');
   assert.equal(cleanName('x'), null);
@@ -823,8 +824,9 @@ test('art: every icon and sprite the content names exists', async () => {
   for (const n of ['lantern', 'lantern_gold', 'lantern_out', 'pet_keeper', 'pet_keeper_reach', 'fireplace', 'fire_a', 'fire_b', 'rug', 'hay_bale', 'trough', 'workbench']) if (!sprites[n]) missing.push('sprite ' + n);
   for (const t of THINGS) if (!sprites[t.sprite]) missing.push('sprite ' + t.sprite + ' for ' + t.id);
   for (const n of ['bunk_a', 'bunk_b', 'bunk_c', 'weapon_rack', 'table', 'stool', 'woodpile', 'torch', 'candles', 'skullpile', 'gfire_a', 'gfire_b', 'coffin', 'tomb1', 'bones', 'wisp']) if (!sprites[n]) missing.push('sprite ' + n);
-  // every hero a race and class can be drawn as (male and female), front and back, and gilded for the Risen
-  for (const art of allHeroArt()) for (const v of ['_f', '_b', ...(art.startsWith('risen') ? ['_gilded_f', '_gilded_b'] : [])]) if (!sprites[art + v]) missing.push('sprite ' + art + v);
+  // every hero a race and class can be drawn as (male and female), front and back, and gilded for the Risen (a
+  // name with dots is a body drawn in layers, checked in tests/heroart.test.ts)
+  for (const art of allHeroArt().filter((a) => !a.includes('.'))) for (const v of ['_f', '_b', ...(art.startsWith('risen') ? ['_gilded_f', '_gilded_b'] : [])]) if (!sprites[art + v]) missing.push('sprite ' + art + v);
   for (const r of Object.values(RACES)) if (!tiles[r.icon]) missing.push('icon ' + r.icon + ' for race ' + r.id);
   for (const c of Object.values(CLASSES)) if (!tiles[c.icon]) missing.push('icon ' + c.icon + ' for class ' + c.id);
   for (const n of ['npc_gnome', 'cauldron', 'bed', 'bed_sprout', 'bed_grow', 'node_moonpetal', 'node_moonpetal_shim', 'node_glowcap', 'node_bramble', 'pet_rootling_calm']) if (!sprites[n]) missing.push('sprite ' + n);

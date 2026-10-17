@@ -12,15 +12,13 @@ import { abCd, onPerfectBlock, useAbility } from '../src/dungeon/heroes.js';
 import { CURSE_TIME, breakCage, curseHero, cutChain, liftCurse, makeCage, makeChain, mashCage, spawnMob } from '../src/dungeon/mobs.js';
 import { GIVE_UP, KEEP_UP } from '../src/dungeon/bots.js';
 import { navPoint } from '../src/dungeon/world.js';
-import { HERO_FIT, heroFit } from '../src/dungeon/render.js';
+import { heroFit } from '../src/dungeon/render.js';
 import { BARROW_ENGINE } from '../src/content/barrow/engine';
 import { TEMPLATE_ENGINE } from '../src/content/_template/engine';
 import { TEMPLATE_DUNGEON } from '../src/content/_template';
 import { TEMPLATE_HEROIC } from '../src/content/_template/heroic';
 import { DUNGEON_THEMES } from '../src/dungeon/template.js';
 import { allHeroArt } from '../src/content/folk';
-import { heroSprite } from '../src/ui/art';
-import SPRITES from '../art/sprites.json';
 
 const game = (role: string, start = 'entrance', heroic = false) => {
   newGame(BARROW_ENGINE, { role, seed: 99, start, heroic, auto: false, quiet: true, noEvents: true, loadouts: {} });
@@ -119,22 +117,12 @@ test('cages: a bot tank in a cage mashes its own way out', () => {
   assert.ok(tank.alive);
 });
 
-test('heroes: every one the game can draw knows where its weapon is and how tall it stands, front and back, across all gear tiers', () => {
-  const sprites = SPRITES as Record<string, { vb: number[] }>;
-  for (const set of allHeroArt()) {
-    assert.ok((HERO_FIT as Record<string, unknown>)[set], `no fit for ${set}`);
-    const tiers = ['_rags', '_iron', '', ...(set.startsWith('risen') || set.startsWith('gnome') ? ['_gilded'] : [])];
-    for (const g of tiers) for (const back of [false, true]) {
-      const name = set + g + (back ? '_b' : '_f');
-      assert.ok(sprites[name], `missing sprite ${name}`);
-      const [vx, vy, w] = sprites[name].vb;
-      const { wx, wy, top } = heroFit(set + g, back);
-      assert.ok(wx > vx && wx < vx + w && wy > vy && wy < 0, `${name}: the weapon is on the sprite`);
-      assert.ok(top >= vy && top < -90, `${name}: the head's top is on the sprite`);
-    }
-  }
-  // from behind, the weapon is in the other hand
-  assert.equal(heroFit('tank_rags', true).wx, -heroFit('tank_rags', false).wx);
+test('heroes: every hero the game can draw is a body in layers, which brings its own fit; from behind, the weapon is in the other hand', () => {
+  // a body's views and anchors, and where its weapon and head are, are checked in tests/heroart.test.ts
+  for (const art of allHeroArt()) assert.ok(art.includes('.'), `${art}: a body drawn in layers`);
+  const own = { weapon: [-40, -70], top: -101 };
+  assert.deepEqual(heroFit(false, own), { wx: -40, wy: -70, top: -101 });
+  assert.deepEqual(heroFit(true, own), { wx: 40, wy: -70, top: -101 });
 });
 
 test('intro: starts in the Ossuary, protects the party from dying, and spawns the walkout and chest when Sir Rattlebones falls', () => {
@@ -177,12 +165,7 @@ test('intro: the Crypt Trial plays as any class, and every one of them gets Sir 
   }
 });
 
-test('combat & gear look: heroes start in visual _rags, step to _iron and heroic armour, Cleave is a1 (2.2s cd), Perfect Block resets Cleave, and Boss Weapons buff core abilities', () => {
-  // Visual progression: Common -> _rags, Uncommon -> _iron, Rare/Epic -> full heroic armour
-  assert.equal(heroSprite({ race: 'dwarf', cls: 'warrior', sex: 'm', regular: { weapon: { rar: 0 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'tank'), 'tank_rags');
-  assert.equal(heroSprite({ race: 'dwarf', cls: 'warrior', sex: 'm', regular: { weapon: { rar: 1 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'tank'), 'tank_iron');
-  assert.equal(heroSprite({ race: 'dwarf', cls: 'warrior', sex: 'm', regular: { weapon: { rar: 2 }, helm: { rar: 0 }, shoulders: { rar: 0 }, chest: { rar: 0 } } }, 'tank'), 'tank');
-
+test('combat: Cleave is a1 (2.2s cd), Perfect Block resets Cleave, and Boss Weapons buff core abilities', () => {
   const { s, tank, healer, dps } = game('tank');
   assert.equal(abCd(tank, 'a1'), 2.2);
 
@@ -253,7 +236,7 @@ test('cooperative roles & lethal telegraphs: only healer can banish wisps and cu
 });
 
 test('rogue: +10% movement speed always, glass cannon stats, twin-dagger autos, Viper Venom DoT, Shadowstrike guaranteed crit, Fan kick, Shadowstep blink, and Cryptfangs reset', () => {
-  newGame(BARROW_ENGINE, { role: 'dps', seed: 77, start: 'entrance', auto: false, quiet: true, noEvents: true, loadouts: { dps: { cls: 'rogue', sprite: 'rogue_rags' } } });
+  newGame(BARROW_ENGINE, { role: 'dps', seed: 77, start: 'entrance', auto: false, quiet: true, noEvents: true, loadouts: { dps: { cls: 'rogue' } } });
   const s = S as any;
   const rogue = s.heroes.find((h: any) => h.role === 'dps');
   const tank = s.heroes.find((h: any) => h.role === 'tank');

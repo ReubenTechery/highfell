@@ -17,7 +17,7 @@ import { GARDEN_TABLE } from '../content/vale';
 import { logAchievement, logDone, logProgress, shelfOf, standPieces, standsOf, type Stand } from '../meta/logs';
 import type { Profile } from '../meta/profile';
 import { esc, fmtDate, fmtN, fmtRate, fmtT, GLYPH } from './dom';
-import { iconOf, nameOf, rarLook, spriteURL, standSvg, tile } from './art';
+import { iconOf, nameOf, prizeSprite, rarLook, spriteURL, standSvg, tile } from './art';
 import { mainReward } from './dungeonsheet';
 import { SWATCH } from './lookssheet';
 
@@ -27,7 +27,9 @@ import { SWATCH } from './lookssheet';
 export interface LogView { tryOn: boolean; peek: string | null; flip: boolean; ach: string | null }
 
 /** who stands on a log's plinth: the Barrow's Risen (gilded for its heroic log), Thimblebriar's Gnome */
-export const PRIZE_ART: Record<string, string> = { 'barrow.log': 'risen_tank_f', 'barrow-heroic.log': 'risen_tank_gilded_f', 'thimblebriar.log': 'gnome_tank_f', 'thimblebriar-heroic.log': 'gnome_tank_gilded_f' };
+const PRIZES: Record<string, [string, boolean]> = { 'barrow.log': ['risen', false], 'barrow-heroic.log': ['risen', true], 'thimblebriar.log': ['gnome', false], 'thimblebriar-heroic.log': ['gnome', true] };
+/** A log's prize race, as a picture: a warrior of it in Rare gear, gold for a heroic log's. */
+export const prizeArt = (id: string): string | undefined => (PRIZES[id] ? `${prizeSprite(...PRIZES[id])}_f` : undefined);
 
 type Page = { kind: 'dungeon'; dg: DungeonInfo } | { kind: 'set'; dg: DungeonInfo; stand: Stand } | { kind: 'garden' } | { kind: 'other' };
 const SLOT_WORD: Record<string, string> = { helm: 'Helm', shoulders: 'Shoulders', chest: 'Chest', weapon: 'Weapon' };
@@ -77,7 +79,7 @@ function chips(p: Profile, pg: Page, heroic: boolean): string {
  *  the toggle between the dungeon's log and its heroic one */
 function prize(p: Profile, dg: DungeonInfo, flipped: boolean): string {
   const ach = logAchievement(dg.id), pr = logProgress(p, dg.id), won = !!ach && !!p.achievements[ach.id];
-  const main = ach ? mainReward(ach) : null, art = ach ? PRIZE_ART[ach.id] : undefined;
+  const main = ach ? mainReward(ach) : null, art = ach ? prizeArt(ach.id) : undefined;
   const left = pr.need - pr.have;
   const ORDER = ['pet', 'mount', 'dye', 'trophy'];
   const bonus = (dg.bonus || []).map((id) => (id.startsWith('dye.') ? 'dye' : COLLECTIBLES[id]?.kind || 'drop')).sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));

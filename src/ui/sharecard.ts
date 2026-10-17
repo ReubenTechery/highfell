@@ -18,7 +18,7 @@ import { ART, heroSprite, iconOf, nameOf, pieceSvg, placeSprite, rarLook, riderS
 import { mainReward } from './dungeonsheet';
 import { fmtN, fmtT, wait } from './dom';
 import { ilvl } from './hearth';
-import { PRIZE_ART } from './logbook';
+import { prizeArt } from './logbook';
 
 export const CARD_W = 1080, CARD_H = 1350;
 const INK = '#1E1A1A', CREAM = '#FFF8EC', GOLD = '#F2C230';
@@ -139,7 +139,7 @@ function scene(b: Brag, who: CardHero): { body: string; at: [number, number] } {
       return { body: heroAt(who, 290) + shadow(770, 130) + (st ? boxed(standSvg(st.pieces, () => true), 770 + vx * k, FEET + vy * k, vw * k, vh * k) : ''), at: [770, 640] };
     }
     case 'log': {
-      const art = PRIZE_ART[b.id];
+      const art = prizeArt(b.id);
       return { body: heroAt(who, 310) + (art ? shadow(780, 80) + placeSprite(art, 780, FEET, { k: HERO_K }) : floating(b.id, 770, 640)), at: [600, 620] };
     }
     case 'pb': return { body: heroAt(who, 540), at: [540, 600] };

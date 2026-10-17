@@ -1,6 +1,6 @@
 import { TAU, angTo, clamp, dist, lerp } from '../core/math';
 import { vrand } from '../core/rng';
-import { AB, ROLES, abKey } from '../content/roles';
+import { AB, abKey } from '../content/roles';
 import { RARITY } from '../content/gear';
 import { S } from './state.js';
 import { BAKE_S, PAT, bakeAll, drawSpr, makePatterns, mkCanvas } from './art.js';
@@ -309,50 +309,16 @@ export function drawThrall(ctx, tr) {
   const tint = tr.kind === 'shade' ? 'ghost' : tr.kind === 'frost' ? 'frost' : 'gold';
   drawSpr(ctx, sp, x, y, { flip: tr.flip, sx: 0.78, sy, alpha: fade * (tr.kind === 'shade' ? 0.72 : 0.92), tint, tintA: 0.48 });
 }
-/** Each hero sprite set: where its weapon is, seen from the front (the glow goes behind it), and the top of its
- *  head or hat (what floats over a hero goes above it). heroFit() reads it for a gilded set too, and from
- *  behind puts the weapon in the other hand. */
-export const HERO_FIT = {
-  tank: { weapon: [-48, -75], top: -107 },
-  tank_w: { weapon: [-48, -75], top: -107 },
-  healer: { weapon: [-30, -128], top: -117 },
-  healer_m: { weapon: [-30, -128], top: -117 },
-  dps: { weapon: [28, -122], top: -145 },
-  dps_m: { weapon: [28, -122], top: -145 },
-  rogue: { weapon: [-29, -50], top: -118 },
-  rogue_m: { weapon: [-29, -50], top: -118 },
-  gnome_tank: { weapon: [-37, -62], top: -95 },
-  gnome_tank_w: { weapon: [-37, -62], top: -95 },
-  gnome_healer: { weapon: [-25, -98], top: -95 },
-  gnome_healer_m: { weapon: [-25, -98], top: -95 },
-  gnome_dps: { weapon: [24, -94], top: -102 },
-  gnome_dps_m: { weapon: [24, -94], top: -102 },
-  gnome_rogue: { weapon: [-24, -36], top: -94 },
-  gnome_rogue_m: { weapon: [-24, -36], top: -94 },
-  goblin_tank: { weapon: [-37, -62], top: -95 },
-  goblin_tank_w: { weapon: [-37, -62], top: -95 },
-  goblin_healer: { weapon: [-25, -98], top: -95 },
-  goblin_healer_m: { weapon: [-25, -98], top: -95 },
-  goblin_dps: { weapon: [24, -94], top: -102 },
-  goblin_dps_m: { weapon: [24, -94], top: -102 },
-  goblin_rogue: { weapon: [-24, -36], top: -94 },
-  goblin_rogue_m: { weapon: [-24, -36], top: -94 },
-  risen_tank: { weapon: [-33, -90], top: -130 },
-  risen_tank_w: { weapon: [-33, -90], top: -130 },
-  risen_healer: { weapon: [-30, -118], top: -125 },
-  risen_healer_m: { weapon: [-30, -118], top: -125 },
-  risen_dps: { weapon: [28, -122], top: -148 },
-  risen_dps_m: { weapon: [28, -122], top: -148 },
-  risen_rogue: { weapon: [-29, -50], top: -118 },
-  risen_rogue_m: { weapon: [-29, -50], top: -118 },
-};
-export function heroFit(set, back) {
-  const fit = HERO_FIT[set.replace(/_(gilded|rags|iron)$/g, '')] || { weapon: [0, -80], top: -112 };
+/** Where a hero's weapon is, seen from the front (the glow goes behind it), and the top of its head or hat (what
+ *  floats over a hero goes above it): its fit, worked out with its picture (src/ui/heroart.ts). From behind, the
+ *  weapon is in the other hand. */
+export function heroFit(back, own) {
+  const fit = own || { weapon: [0, -80], top: -112 };
   return { wx: back ? -fit.weapon[0] : fit.weapon[0], wy: fit.weapon[1], top: fit.top };
 }
 export function drawHero(ctx, h) {
-  const set = h.sprite || ROLES[h.role].sprite, name = set + (h.back ? '_b' : '_f');
-  const { wx, wy, top } = heroFit(set, h.back);
+  const name = h.sprite + (h.back ? '_b' : '_f');
+  const { wx, wy, top } = heroFit(h.back, h.fit);
   if (!h.alive) {
     drawSpr(ctx, name, h.x, h.y - 6, { rot: -Math.PI / 2 * (h.flip ? -1 : 1) * Math.min(1, h.deadT * 5), alpha: 0.5, sx: 0.9, sy: 0.9 });
     return;
@@ -408,7 +374,7 @@ export function drawHero(ctx, h) {
     if (S.frame % 9 === 0) S.parts.push({ x: h.x + fx_ + vrand(-12, 12), y: h.y, z: -wy + vrand(-10, 10), vx: 0, vy: 0, vz: 0, up: true, col: '#FFF6D0', size: vrand(2.5, 4), t: 0, dur: 0.8 });
   }
   const yy = h.dodgeT > 0 ? y + 26 : y;
-  // your set's look: gold (gilded pieces, or the old Gravegold Dye), ghostly (the Ghostly Dye; run.ts lets it win), or
+  // your set's look: gold (the old Gravegold Dye), ghostly (the Ghostly Dye; run.ts lets it win), or
   // glowing like mushrooms in the dark (the Sporeglow Dye, on a Thimblebriar set)
   const gold = h.isPlayer && S.opts.gilded, ghost = (h.st && h.st.ghost > 0) || (!gold && h.isPlayer && S.opts.ghostly);
   const spore = !gold && !ghost && h.isPlayer && S.opts.sporeglow;
@@ -440,7 +406,7 @@ function drawCurses(ctx, v) {
   const teach = S.opts.swipeHint && S.player.role === 'healer' && S.player.alive;
   for (const h of S.heroes) {
     if (!h.alive || !h.st.curse || h.y < v.y0 || h.y > v.y1) continue;
-    const { top } = heroFit(h.sprite || ROLES[h.role].sprite, h.back);
+    const { top } = heroFit(h.back, h.fit);
     curseMark(ctx, h.x, h.y + top - 12, h.st.curse.t / CURSE_TIME, h.st.curse);
     if (teach) swipeArrow(ctx, h.x, h.y - 40);
   }

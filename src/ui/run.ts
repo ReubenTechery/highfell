@@ -20,20 +20,20 @@ import { momentFor } from '../dungeon/coach.js';
 import { CURSE_TIME } from '../dungeon/mobs.js';
 import { inHaz } from '../dungeon/bots.js';
 import { render, resizeView, updateCam, VIEW } from '../dungeon/render.js';
-import { dropVariants } from '../dungeon/art.js';
+import { addHeroes, dropHeroes, dropVariants } from '../dungeon/art.js';
 import { roomIndexOf } from '../dungeon/world.js';
 import { lootGlint, startWalkout } from '../dungeon/walkout.js';
 import { Achiever } from '../meta/achievements';
-import { gildedOn, loadoutFor, partyRar, plainLoadout, trialWeapon, worn } from '../meta/gear';
+import { loadoutFor, partyRar, plainLoadout, trialWeapon, worn } from '../meta/gear';
 import { countBossWipe, countRunStart, gildOf, resolveClear, resolveKill, runLoot, tellOf, type ClearLoot, type KillLoot } from '../meta/loot';
 import { pourFor, seatsFor } from '../meta/party';
 import { activeHero, countClassRun, countLift, finishCurseTip, finishIntroRun, heroById, learnGlow, markClassTrial, needsClassTrial, needsCurseTip, needsSwipeHint, roleOf, type Hero } from '../meta/profile';
-import { CLASSES, heroArt, type ClassId } from '../content/folk';
+import { CLASSES, type ClassId } from '../content/folk';
 import { RECIPES } from '../content/vale';
 import { broughtBrew, spendBottle } from '../meta/vale';
 import type { App } from './app';
 import { $, esc, flash, fmtT, GLYPH } from './dom';
-import { heroImg, heroSprite, nameOf, spriteURL, tile } from './art';
+import { ART, botSprite, heroImg, heroSprite, nameOf, plainSprite, spriteFit, spriteURL, tile } from './art';
 import { IN, aimPoint, bindFrameSwipes, bindInput, mashCage, playerIntent, resetInput, type InputUI } from './input';
 import { MUSIC, runMusic } from './music';
 import { SFX } from './sound';
@@ -285,8 +285,7 @@ export class RunScene implements InputUI {
     const test = o.testRar != null || !h;
     this.practice = o.start !== 'entrance' || test;
     const rar: Rar = intro ? 3 : o.testRar != null ? o.testRar : h ? partyRar(p, h) : 0;
-    const tierSuffix = rar <= 0 ? '_rags' : rar === 1 ? '_iron' : '';
-    const loadouts: Record<string, unknown> = {};
+    const loadouts: Record<string, { sprite?: string; fit?: unknown; unique?: string | null; [k: string]: unknown }> = {};
     // who sits with you is party.ts's rule (your Warband on Normal, bots on Heroic); try-gear runs and the trial bring bots
     const team = h && !test && !intro ? seatsFor(p, [h], !!o.heroic) : null;
     for (const r of ['tank', 'healer', 'dps'] as RoleId[]) {
@@ -296,14 +295,15 @@ export class RunScene implements InputUI {
         loadouts[r] = { ...base, cls: mate.cls, name: mate.name, sprite: heroSprite(mate, r, p) };
       } else {
         const base = r === role ? (test || !h ? plainLoadout(r, rar, h?.cls) : loadoutFor(p, h)) : plainLoadout(r, rar);
-        loadouts[r] = { ...base, sprite: `${ROLES[r].sprite}${tierSuffix}` };
+        loadouts[r] = { ...base, sprite: botSprite(r, rar) };
       }
     }
     if (intro) {
       // each seat gets the Barrow's own boss weapon for it (gear.ts's trialWeapon), so the trial shows the real power
-      loadouts.tank = { ...(loadouts.tank as object), unique: trialWeapon('tank', 'warrior'), bonuses: ['barrowguard2'], name: 'Brannoc', sprite: 'tank' };
-      if (role === 'healer') loadouts.healer = { ...(loadouts.healer as object), unique: trialWeapon('healer', h?.cls), bonuses: ['candlewake2'] };
-      else if (role === 'dps') loadouts.dps = { ...(loadouts.dps as object), unique: trialWeapon('dps', h?.cls), bonuses: [h?.cls === 'rogue' ? 'shadeveil2' : 'rimebone2'] };
+      const tankWeapon = trialWeapon('tank', 'warrior');
+      loadouts.tank = { ...loadouts.tank, unique: tankWeapon, bonuses: ['barrowguard2'], name: 'Brannoc', sprite: botSprite('tank', rar, tankWeapon || undefined) };
+      if (role === 'healer') loadouts.healer = { ...loadouts.healer, unique: trialWeapon('healer', h?.cls), bonuses: ['candlewake2'] };
+      else if (role === 'dps') loadouts.dps = { ...loadouts.dps, unique: trialWeapon('dps', h?.cls), bonuses: [h?.cls === 'rogue' ? 'shadeveil2' : 'rimebone2'] };
     }
     // one bottle poured at the door for the whole party: only the poured one is spent (a run that doesn't count keeps it)
     const poured = h && !intro ? pourFor([{ role, leader: true, brew: broughtBrew(p) }]) : null;
@@ -311,9 +311,18 @@ export class RunScene implements InputUI {
     this.brew = brew;
     if (brew && !this.practice) spendBottle(p, brew);
     if (h) {
-      const spr = test ? `${heroArt(h.race, h.cls, h.sex) || ROLES[role].sprite}${tierSuffix}` : heroSprite(h, role, p);
-      loadouts[role] = { ...(loadouts[role] as object), cls: h.cls, name: h.name, sprite: spr };
+      const spr = test ? plainSprite(h, role, rar, loadouts[role].unique) : heroSprite(h, role, p);
+      loadouts[role] = { ...loadouts[role], cls: h.cls, name: h.name, sprite: spr };
     }
+    // a hero drawn in layers brings its picture, composed for this run, and where its weapon and head are
+    const pics: Record<string, unknown> = {};
+    for (const L of Object.values(loadouts)) {
+      const fit = L.sprite ? spriteFit(L.sprite) : null;
+      if (!fit || !L.sprite) continue;
+      L.fit = fit;
+      for (const v of ['_f', '_b']) pics[L.sprite + v] = ART[L.sprite + v];
+    }
+    void addHeroes(pics);
     const looks = Object.keys(p.collection).filter((id) => COLLECTIBLES[id] && (COLLECTIBLES[id].kind === 'cosmetic') && !p.settings.looksOff.includes(id));
     // a dungeon's dye works on that dungeon's set: the Ghostly Dye on a Barrow piece, the Sporeglow Dye on a Thimblebriar one
     const wornSetOf = (dungeon: string): boolean => !!h && Object.values(worn(p, h)).some((w) => w.def.setId && SETS[w.def.setId]?.dungeon === dungeon);
@@ -323,10 +332,9 @@ export class RunScene implements InputUI {
     const baseDg = DUNGEONS[baseId] || BARROW;
     const dg = this.dg = o.heroic ? (heroicVersion(baseDg.id) || baseDg) : baseDg;
     const engine = DUNGEON_ENGINES[baseDg.id] || BARROW_ENGINE;
-    // gold in the dungeon: a gilded piece you wear (its kit is yours and on), or the old Gravegold Dye on a Barrow
-    // set. The rarer Ghostly Dye wins: switch it off in Looks to shine gold
-    const gildedWorn = !!h && Object.values(worn(p, h)).some((w) => w.unique && gildedOn(p, w.def.id));
-    const gilded = !test && !ghostly && (gildedWorn || (looks.includes('dye.ghostly.gilded') && wornSet));
+    // gold in the dungeon: the old Gravegold Dye on a Barrow set (a gilded piece is gold in its own layer). The
+    // rarer Ghostly Dye wins: switch it off in Looks to shine gold
+    const gilded = !test && !ghostly && looks.includes('dye.ghostly.gilded') && wornSet;
     const sporeglow = !test && !ghostly && !gilded && looks.includes('dye.sporeglow') && wornSetOf('thimblebriar');
     if (!this.practice) countRunStart(p, dg);
     // a class's first runs glow the button whose moment has come (the trial teaches its own way)
@@ -381,6 +389,7 @@ export class RunScene implements InputUI {
     $('intro-skip').hidden = true;
     $('intro-tag').hidden = true;
     dropVariants();
+    dropHeroes();
   }
   skipIntro(): void {
     finishIntroRun(this.app.p);
@@ -401,7 +410,7 @@ export class RunScene implements InputUI {
     $('msg-title').textContent = offer && hero ? `First time as a ${CLASSES[hero.cls as ClassId]?.name || 'new class'}?` : 'Welcome to Highfell';
     // you in the middle, in your own looks and full Epic, with the two party mates either side
     const fig = (r: RoleId): string => {
-      const mine = r === me, spr = (mine && hero && heroArt(hero.race, hero.cls, hero.sex)) || ROLES[r].sprite;
+      const mine = r === me, spr = heroBy(r)?.sprite || botSprite(r, 3);
       return `<div class="wk-fig ${mine ? 'lead' : 'side'}">${heroImg(spr, { cls: 'wk-img' })}<span class="wk-role"><i class="rdot ${r}"></i>${ROLES[r].title}${mine ? ' (You)' : ''}</span></div>`;
     };
     const [left, right] = (['tank', 'healer', 'dps'] as RoleId[]).filter((r) => r !== me);
