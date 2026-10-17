@@ -15,7 +15,7 @@ import { TEMPLATE_DUNGEON } from '../src/content/_template';
 import { TEMPLATE_HEROIC_BUNDLE } from '../src/content/_template/heroic';
 import { TEMPLATE_ITEMS } from '../src/content/_template/items';
 import { PROFILE_VERSION, freshProfile, migrate, setActive, type Hero, type Profile } from '../src/meta/profile';
-import { HEROIC_AFTER, gildOf, heroicOpen, lootFor, resolveKill, resolveRun, rollTable, runLoot, tellOf, type Drop } from '../src/meta/loot';
+import { HEROIC_PIECES, gildOf, heroicOpen, lootFor, resolveKill, resolveRun, rollTable, runLoot, tellOf, type Drop } from '../src/meta/loot';
 import { equip, gildedOn, loadoutFor, lookId, newHero, ownedFor, setGilded, worn } from '../src/meta/gear';
 import { logDone, logProgress, logSlots, shelfOf, standPieces, standsOf } from '../src/meta/logs';
 import { Achiever } from '../src/meta/achievements';
@@ -120,9 +120,10 @@ test('heroic: what drops counts for the Barrow’s log, kill count and gear; Her
   assert.deepEqual(logProgress(p, 'barrow-heroic'), { have: 16, need: 16 });
   assert.ok(p.dungeons.barrow.marks > marks, 'Heroic pays Barrow Marks');
   assert.equal(p.dungeons['barrow-heroic']?.marks || 0, 0);
-  // a Heroic run still never opens before ten Normal clears
-  assert.equal(HEROIC_AFTER, 10);
-  assert.equal(heroicOpen(p, 'barrow'), false);
+  // Heroic's own kits never count towards opening it: only the Normal log's pieces do
+  assert.equal(HEROIC_PIECES, 3);
+  const normal = DUNGEONS.barrow.collection.filter((id) => p.collection[id]).length;
+  assert.equal(heroicOpen(p, 'barrow'), normal >= HEROIC_PIECES, 'the 16 kits alone would open it if they counted');
 });
 
 test('heroic: a kit never changes power, and its piece switches between plain and gilded', () => {

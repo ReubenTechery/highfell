@@ -65,13 +65,15 @@ export interface RunLoot {
 export const DUPE_MARKS = 3;
 export const CLEAR_MARKS = 1;
 /** A heroic dungeon opens once you've cleared its normal one this many times: about when gear tops out. */
-export const HEROIC_AFTER = 10;
-
-/** How close you are to a dungeon's heroic version: clears of the normal one, out of HEROIC_AFTER. */
+/** Heroic opens once you've found this many pieces of its normal dungeon's collection log (duplicates count once,
+ *  the pet, mount and dye count too). A drop, not a number of clears: the chase to it is the fun. */
+export const HEROIC_PIECES = 3;
+/** How close you are to a dungeon's heroic version: pieces of the normal one's log found, out of HEROIC_PIECES. */
 export function heroicProgress(p: Profile, dungeon: string): { have: number; need: number } {
-  return { have: Math.min(HEROIC_AFTER, p.dungeons[dungeon]?.clears || 0), need: HEROIC_AFTER };
+  const found = (DUNGEONS[dungeon]?.collection || []).filter((id) => p.collection[id]).length;
+  return { have: Math.min(HEROIC_PIECES, found), need: HEROIC_PIECES };
 }
-export const heroicOpen = (p: Profile, dungeon: string): boolean => heroicProgress(p, dungeon).have >= HEROIC_AFTER;
+export const heroicOpen = (p: Profile, dungeon: string): boolean => heroicProgress(p, dungeon).have >= HEROIC_PIECES;
 /** whose Marks a dungeon pays: a heroic one pays its normal one's */
 const marksOf = (dg: DungeonInfo): string => dg.heroicOf || dg.id;
 

@@ -7,7 +7,7 @@ import { TEMPLATE_DUNGEON } from '../src/content/_template';
 import { TEMPLATE_ENGINE } from '../src/content/_template/engine';
 import { BARROW } from '../src/content/barrow';
 import { activeHero, classRuns, countClassRun, countLift, createHero, dungeonRecord, finishCurseTip, finishHearthTour, finishIntroRun, freshProfile, learnGlow, markClassTrial, migrate, nameProblem, needsClassTrial, needsCurseTip, needsHearthTour, needsIntroRun, needsSwipeHint, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, startHearthTour, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
-import { DUPE_MARKS, grantTrialStarter, heroicOpen, heroicProgress, resolveRun, rollTable, trialStarter } from '../src/meta/loot';
+import { DUPE_MARKS, HEROIC_PIECES, grantTrialStarter, heroicOpen, heroicProgress, resolveRun, rollTable, trialStarter } from '../src/meta/loot';
 import { bestRegular, betterFor, buyTrait, compareFor, compareOn, effectsOf, equip, floorWorn, freshForRole, itemScore, loadoutFor, newHero, plainLoadout, putOn, seenSlot, setChange, shelfFor, waiting, waitingFor, weaponTrait, wear, wearerOf, worn, type ShelfPiece } from '../src/meta/gear';
 import { CLASSES, FOUNDERS, HERO_ART, MAX_HEROES, RACES, allHeroArt, canMake, cleanName, defaultSex, heroArt } from '../src/content/folk';
 import { SLOT_IDS, gearId } from '../src/content/gear';
@@ -662,13 +662,22 @@ test('collection log: filling the Barrow’s whole log opens Barrow Hall, a titl
   assert.equal(lookOpen(q, 'barrow'), false, 'and the Barrow’s own log is still its own');
 });
 
-test('heroic: opens after ten clears of its normal dungeon (its loot is in heroic.test.ts)', () => {
+test('heroic: opens once you have found three pieces of its normal dungeon’s log, never by clears (its loot is in heroic.test.ts)', () => {
   const { p } = withHero('tank');
   assert.equal(heroicOpen(p, 'barrow'), false);
-  dungeonRecord(p, 'barrow').clears = 9;
-  assert.deepEqual(heroicProgress(p, 'barrow'), { have: 9, need: 10 });
-  dungeonRecord(p, 'barrow').clears = 10;
-  assert.ok(heroicOpen(p, 'barrow'));
+  dungeonRecord(p, 'barrow').clears = 50;
+  assert.equal(heroicOpen(p, 'barrow'), false, 'clears alone never open it');
+  assert.deepEqual(heroicProgress(p, 'barrow'), { have: 0, need: HEROIC_PIECES });
+  const log = DUNGEONS.barrow.collection;
+  p.collection[log[0]] = { n: 1, kc: 9, at: 1 };
+  p.collection[log[0]] = { n: 3, kc: 9, at: 1 };
+  assert.deepEqual(heroicProgress(p, 'barrow'), { have: 1, need: HEROIC_PIECES }, 'a duplicate is still one piece');
+  p.collection[log[1]] = { n: 1, kc: 20, at: 2 };
+  assert.equal(heroicOpen(p, 'barrow'), false, 'two of three');
+  p.collection[log[log.length - 1]] = { n: 1, kc: 31, at: 3 };
+  assert.ok(heroicOpen(p, 'barrow'), 'the third piece opens it (a bonus slot like the pet counts too)');
+  assert.deepEqual(heroicProgress(p, 'barrow'), { have: HEROIC_PIECES, need: HEROIC_PIECES });
+  assert.equal(heroicOpen(p, 'thimblebriar'), false, 'each dungeon counts only its own log');
   const H = heroicVersion('barrow')!;
   assert.equal(H.id, 'barrow-heroic');
   assert.equal(H.heroicOf, 'barrow');

@@ -23,7 +23,7 @@ import { ORDER, ROLES } from '../content/roles';
 import type { AchievementDef, DropDef, DungeonInfo, DungeonStage, RoleId } from '../content/types';
 import { RECIPES, RECIPE_ORDER } from '../content/vale';
 import { loadoutFor, wholeIlvl } from '../meta/gear';
-import { HEROIC_AFTER, heroicOpen, heroicProgress, lootFor } from '../meta/loot';
+import { heroicOpen, heroicProgress, lootFor } from '../meta/loot';
 import { logAchievement, logProgress } from '../meta/logs';
 import { groupOf, heroesFor, partyProblem, seats, underPowered, type PowerGap } from '../meta/party';
 import { activeHero, heroById, roleOf, setActive, type Hero, type Profile } from '../meta/profile';
@@ -106,7 +106,7 @@ export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): {
   // after a tap of it, a hero short of the dungeon's Power gets the warning in its place
   const gap = h && pick.warn ? underPowered(p, h, dg) : null;
   let foot: string;
-  if (!open) foot = `<p class="fine dgx-shut">${GLYPH.lock}Heroic opens after ${HEROIC_AFTER} clears of the ${esc(base.name.split(' ')[0])}. You have ${hp.have}.</p>`;
+  if (!open) foot = `<p class="fine dgx-shut">${GLYPH.lock}Heroic opens once you’ve found ${hp.need} pieces of the ${esc(base.name.split(' ')[0])}’s log. You have ${hp.have}.</p>`;
   else if (!h) foot = `<button type="button" class="btn gold big dgx-enter" data-act="newhero">${GLYPH.plus}Make a hero</button>`;
   else if (blocked && pick.heroic) foot = `<button type="button" class="btn gold big dgx-enter heroic" disabled>${GLYPH.lock}Enter Heroic</button>`;
   else if (blocked) foot = `<p class="fine dgx-shut">${GLYPH.lock}${esc(blocked)}</p>`;
@@ -148,7 +148,7 @@ function dungeonList(p: Profile, current: string): string {
       <span class="dgx-card-art">${banner(false, m.id)}${name}</span>
       <span class="dgx-card-info"><span class="dgx-card-line"><span>Log <b>${have}/${need}</b></span>${bar(have / Math.max(1, need))}${main ? `<span class="dgx-prize${done ? ' got' : ''}" aria-hidden="true">${tile(main.icon)}</span>` : ''}</span>
         <span class="dgx-card-sub${mine < m.recIlvl ? ' low' : ''}">Recommended <b>Power ${m.recIlvl}</b> · ${esc(h ? h.name.split(' ')[0] : 'you')} <b class="mine">${mine}</b></span>
-        <span class="dgx-card-sub">${clears ? `<b>${clears}</b> clear${clears === 1 ? '' : 's'} · ` : ''}Heroic ${heroicOpen(p, live.id) ? '<b>open</b>' : `<b>${hp.have}/${hp.need}</b> clears`}</span></span></button>`;
+        <span class="dgx-card-sub">${clears ? `<b>${clears}</b> clear${clears === 1 ? '' : 's'} · ` : ''}Heroic ${heroicOpen(p, live.id) ? '<b>open</b>' : `<b>${hp.have}/${hp.need}</b> log pieces`}</span></span></button>`;
   };
   // each season under its own name, its dungeons in their order
   const seasons = [...new Set(ACT1_DUNGEONS.map(seasonOf))];

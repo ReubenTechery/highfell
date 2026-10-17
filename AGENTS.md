@@ -92,6 +92,7 @@ looks at the same power, in a log of their own. Teamwork between roles is the he
 | A log's pet, mount and dye (on Heroic: the gilded pet, mount and plume) are bonus slots, never needed to finish it | The rarest drops stay a flex, and finishing never waits on them |
 | Dwarf, elf and human from the start; the other races are earned in dungeons; four classes | Races are the flex you earn; four classes keep it to four buttons |
 | A log's big prize can be a race, a race and class combo, or something else | There will be a lot of dungeons |
+| Heroic opens once you've found 3 pieces of that dungeon's Normal log, never by clears | A drop gate keeps the "so close, one more run" pull going |
 | Every dungeon gets a Heroic: harder; it drops the Normal loot plus a gilding kit per unique (its gilded look for good, any seat, same power); its log is the kits | Grouping up is never a worse evening than solo; something to chase after the gear cap, never more power |
 | One self-contained HTML file, no frameworks, no runtime dependencies; only the music streams, from the live page's own files, and the game is whole without it | It has to run anywhere, including inside claude.ai |
 | A save never loses data: change its shape only with a version bump and a migration | People's progress is sacred |
