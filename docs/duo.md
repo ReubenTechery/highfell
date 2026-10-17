@@ -237,6 +237,22 @@ Six stages, like the combat overhaul. From stage 3 on, each one is live and play
 Online play is its own plan, with carrying, which only matters once two real players with different levels share a
 run. The one-day test in call 15 can run alongside stage 3.
 
+## Who builds what
+
+The owner's call (18 Oct): build it with several agents at once. Stage 2, the plumbing, comes first from the
+integrator; then six workstreams run side by side, each on its own branch, and the integrator merges, rebalances,
+audits and publishes. The rules, the contracts and each agent's brief are in `docs/duo-agents.md`.
+
+| # | Agent | Builds | Starts |
+| --- | --- | --- | --- |
+| 0 | Integrator (the publishing Claude) | The plumbing, then merging, balance, the audit, the docs and the publish | Now |
+| 1 | Art and sound | The ranger on every race, its sets and bows, the warrior's greataxe, icons, sounds | Now |
+| 2 | Staying alive and the old classes | Going down and picking up, perfect dodges, payoffs that heal, COMBO; the warrior's Sword and Greataxe; the mage's and rogue's lean | After the plumbing |
+| 3 | The ranger | Its buttons, talents, traits, sets, bows and bot | After the plumbing |
+| 4 | Bosses and duo mechanics | No threat, marked swings, pair jobs, the shared duo mechanics, each boss's set, a first retune | After the plumbing |
+| 5 | Two seats and the screens | Two frames, the door, the companion picker, the duel card and meter, the hero maker, the cleric's class pick | After the plumbing |
+| 6 | Teaching and words | The Crypt Trial, the coach, tips, achievements reworded and new | After the plumbing |
+
 ## What it touches
 
 The trinity is in the foundations, so the first build step is plumbing you won't see.

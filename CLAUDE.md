@@ -9,6 +9,11 @@ the owner's account that owns it. Any other Claude (Claude Code running on the o
 another account, or a Claude model picked inside Antigravity) works like the other agents: follow `GEMINI.md`,
 with branches named `claude/<topic>`, pull requests, and no publishing.
 
+**During the duo rework (from 18 Oct) several Claude Code sessions on claude.ai work at once, and only one is the
+integrator.** If your prompt names you a workstream agent (`docs/duo-agents.md`), you are not the publishing Claude,
+whatever account you're on: work on your `claude/duo-*` branch and open a pull request; never push `main`, never
+publish, never edit the claude.ai docs.
+
 ## Publishing (Claude only)
 
 After `npm run all` passes and you've looked at phone and desktop screenshots:
