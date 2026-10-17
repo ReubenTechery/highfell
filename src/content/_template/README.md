@@ -24,6 +24,10 @@ not in the game. Its names, numbers and art are stand-ins.
 7. **The art is the main cost.** Every dungeon needs its 3-piece sets, its boss weapons and the armour stands
    that show them in the collection log (`tools/art_wardrobe.py`). Then the two bosses, the one or two new
    enemies, the props and the theme. Spend the art there; reuse the rest.
+8. **Every achievement says why.** Its `how` is one plain, exact sentence (the toast, the chest, the
+   achievements page and the titles list all show it): name the dungeon, the move by its name in the game, and
+   the seat when only one seat can do it ("As the healer, ..."); a count that adds up over runs just says the
+   number. Every title comes from exactly one achievement. `checkContent()` checks both.
 
 ## What's in here
 
@@ -49,7 +53,10 @@ not in the game. Its names, numbers and art are stand-ins.
 4. Write the signature, the new enemy types, the packs and the two bosses.
 5. Register it in `src/content/index.ts` (`DUNGEONS`, `DUNGEON_ENGINES`, `ITEMS`, `SETS`, `COLLECTIBLES`,
    `TITLES`, `ACHIEVEMENTS`, and its Heroic's `KITS`). `checkContent()` and the tests catch broken ids.
-   Draw its door in `stage.ts` (`tests/meta.test.ts` checks there's room for the heroes).
+   Draw its door in `stage.ts` (`tests/meta.test.ts` checks there's room for the heroes), and its door in the
+   house's cellar: name it `houseDoor` in `index.ts` and draw it in `tools/art_doors.py` in its four states (plain,
+   lit, a gold trim, gilded; `tests/house.test.ts` checks). It takes its place in the Hall of Doors by its place in
+   the Act 1 list (`src/content/act1.ts`).
 6. Give it its own walkout tell: name it in the engine def (`walkout`), on the same clock as the Barrow's
    lantern (`src/dungeon/walkout.js`). Thimblebriar's cuckoo clock (`src/dungeon/cuckoo.js`) is the example,
    and `TELL_SPRITES` in walkout.js is what the reveal shows beside the chest.

@@ -17,6 +17,7 @@ import type { App } from './app';
 import { actions, esc, GLYPH } from './dom';
 import { heroImg, heroSprite, tile } from './art';
 import { SFX } from './sound';
+import { warbandOpen, warbandWhy } from '../meta/warband';
 
 
 export class Creator {
@@ -114,6 +115,7 @@ export class Creator {
 
   private why(): string | null {
     if (this.app.p.roster.length >= MAX_HEROES) return `You have ${MAX_HEROES} heroes. Let one go in the bunk room to make another.`;
+    if (this.app.p.roster.length && !warbandOpen(this.app.p) && !this.app.dev.allOpen) return warbandWhy(this.app.p);
     const R = RACES[this.race];
     if (!CLASSES[this.cls].ready) return `${CLASSES[this.cls].name}s are coming in the classes pass.`;
     if (!canMake(this.race, this.cls)) return this.classesFor(this.race).length ? `${RACES[this.race].name} ${CLASSES[this.cls].name.toLowerCase()}s aren’t drawn yet.` : `${RACES[this.race].plural} arrive in the races pass.`;

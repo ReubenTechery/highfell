@@ -8,6 +8,7 @@ export const BARROW: DungeonInfo = {
   id: 'barrow',
   name: 'Barrow Crypt',
   blurb: 'Five packs, a knight who will not stay down, and the Gravekeeper in his yard. About three and a half minutes, all three seats needed.',
+  season: 0,
   tier: 1,
   recIlvl: 10,
   dropsIlvl: 26,
@@ -31,4 +32,5 @@ export const BARROW: DungeonInfo = {
   bonus: ['dye.ghostly', 'mount.gravehound', 'pet.pint_gravekeeper'],
   achievements: BARROW_ACHIEVEMENTS.map((a) => a.id),
   stage: BARROW_STAGE,
+  houseDoor: 'door_barrow',
 };

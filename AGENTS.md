@@ -28,7 +28,8 @@ not the core loop. Nothing else gets added to that shape without the owner sayin
 
 **Normal is solo, Heroic is the group flex.** Normal is fully playable on your own: your own Warband heroes from
 your bunk room fill the other two seats in their real gear (bots stand in for roles you have no hero for), and a
-Normal collection log can always be finished solo. You can group up on Normal if you want. Heroic is the optional
+Normal collection log can always be finished solo. Your Warband opens once you've cleared every dungeon once: until
+then bots, in gear at your hero's level, fill the other seats, so your first hero is the star. You can group up on Normal if you want. Heroic is the optional
 group flex: at least two real players, plus a bot if there are only two, never your Warband. It drops the Normal
 loot (for the Normal log, so grouping up is never a worse evening than playing solo) plus gilding kits: gilded
 looks at the same power, in a log of their own. Teamwork between roles is the heart of the combat.
@@ -65,6 +66,7 @@ looks at the same power, in a log of their own. Teamwork between roles is the he
 | No currency: duplicates count in the collection log, and weapon traits swap free at Rare | Nothing to grind or spend |
 | Race and class are for keeps; up to 6 heroes | Alts, like WoW, sharing the collection and kill counts |
 | Normal is fully solo with your Warband, and its collection log can always be finished solo | Nobody needs a group to finish a dungeon |
+| The Warband opens once every dungeon has been cleared once (and stays open); until then you have one hero and bots at its gear level fill the seats | You fall for one main first; alts come because you want more, not as homework |
 | Heroic is the optional group flex: at least two real players plus a bot, never your Warband | Playing together is the flex, never a wall |
 | Shared gear floor per role, capped at Rare; Epic is earned on the hero | Alts never start cold, mains still mean something |
 | Gear is never put on for you | Putting it on yourself is the dopamine |
@@ -108,9 +110,10 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   for the Dungeons sheet, and `heroic.ts`, its heroic version: its gilding kits and gilded twins;
   `thimblebriar/`, dungeon 2, the same shape plus `signature.js`, its bombs), `_template/`
   (a small working dungeon to copy for a new one; its `README.md` has the rules for every new dungeon),
-  `kits.ts` (gilding kits, Heroic's own drops, built from any dungeon's tables), and `vale/` (ingredients,
-  recipes, ranks, and `garden.ts`).
-  `house.ts` is the house's plan (each room's `main`, what a tap from far away opens, and the paddock's places). Register new content in `src/content/index.ts`; `checkContent()`
+  `kits.ts` (gilding kits, Heroic's own drops, built from any dungeon's tables), `act1.ts` (the dungeons in the order
+  you meet them, built or still to come), and `vale/` (ingredients, recipes, ranks, and `garden.ts`).
+  `house.ts` is the house's plan (each room's `main`, what a tap from far away opens, the paddock's places and the
+  cellar's Hall of Doors). Register new content in `src/content/index.ts`; `checkContent()`
   and the tests catch broken ids.
 - `src/dungeon`: the engine, plain JS with no DOM: state `S`, entities, heroes, mobs, bots, the loop,
   rendering to a canvas, `walkout.js` (the lantern tells; `cuckoo.js`, Thimblebriar's clock) and `coach.js`
@@ -122,15 +125,19 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   and `emit`.
 - `src/meta`: TypeScript rules for everything that lasts: the profile and its migrations (heroes live here),
   loot (and when heroic opens), gear, achievements, what the collection log gives (`logs.ts`), the hearth,
-  the party's seats (`party.ts`), and `vale.ts` (seeds, planter beds, harvests, ranks, brewing).
+  the party's seats and the under-powered warning (`party.ts`), when your Warband opens (`warband.ts`), `vale.ts` (seeds, planter beds, harvests,
+  ranks, brewing), `tips.ts` (which first-time tip the house and the Dungeons door show) and `brag.ts` (what a
+  run had to show off, for the Share card).
 - `src/ui`: the screens. Scenes: the hearth (the house: `hearth.ts`, its zoom `camera.ts`, its drawing
-  `houseart.ts`, every room in each look, the Toadstool Workshop's in `houseworkshop.ts`, your hero's name tag `nametag.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
+  `houseart.ts` (its back layer drawn once as pictures by `housepaint.ts`), every room in each look, the Toadstool Workshop's in `houseworkshop.ts`, the cellar's doors
+  `halldoors.ts`, your hero's name tag `nametag.ts`, its tour and tips as data `tours.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
   close-ups), the cauldron (`brew.ts`), the run (HUD and input) and the reveal. A hero's picture is composed in
   layers by `heroart.ts` (their body and each slot's piece, from `art/heroes.json`). Sheets over them: the dungeons
   (`dungeonsheet.ts`, its door's picture in `stage.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
-  (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`), settings (`settingssheet.ts`), a hero's gear in the armoury
+  (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`, an achievement's row and card in `achcard.ts`), settings (`settingssheet.ts`), a hero's gear in the armoury
   (`armoury.ts`; the card for the piece you pick in `armourycard.ts`), the satchel and the spot picker. Toasts, sound (`sound.ts`: the embedded effects, each with its synthesised fallback) and music
-  (`music.ts`: the streamed loops and the victory sting). `styles.css` is inlined by the build.
+  (`music.ts`: the streamed loops and the victory sting). The Share card (`sharecard.ts`: a moment drawn on a canvas)
+  and its screen (`share.ts`: the share sheet, or the picture to save). `styles.css` is inlined by the build.
 - `audio/`: the sounds, made by `tools/audio.py` from `tools/audio_list.py`: `sfx/*.mp3` and `sfx.json` (the
   build embeds it), `music/*.mp3` and `music.json` (streamed from the live page's own files, never embedded).
 - `src/sim` and `scripts/sim.mjs`: headless bot runs of the real engine (the balance numbers).
@@ -142,7 +149,10 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   curses, numbers, tuning), `heroart.test.ts` (heroes in layers: every body's anchors, a layer for every piece
   on every body that can wear it, where each hero's weapon and head are), `coach.test.ts` (which button the coach
   names), `combos.test.ts` (the combos on bosses), `input.test.ts` (the touch controls and party-frame swipes,
-  driven without a browser), `meta.test.ts`, `vale.test.ts`.
+  driven without a browser), `meta.test.ts`, `achievements.test.ts` (each says what to do, what it gives and
+  where it went; every title's source; the kill count it came at), `brag.test.ts` (what a run had to show off),
+  `power.test.ts` (seasons, Power and the under-powered warning), `vale.test.ts`, `tips.test.ts` (which first-time
+  tip shows when), `warband.test.ts` (when the Warband opens).
 
 ## Commands
 
@@ -173,7 +183,7 @@ python3 tools/audio.py make crit            # the take picked in tools/audio_lis
 
 In the page, `window.highfell` is the running app: `highfell.startRun({ start, testRar, role?, heroic?, dungeon? })`,
 `highfell.run.autoplay(seconds)`, `highfell.reveal.preview('normal' | 'unique' | 'pet' | 'log', dungeon?)`, `highfell.garden.open(bed)`,
-`highfell.showBrew()`, `highfell.showHearth('bunks')` (any room's id), `highfell.music.now()` (what's playing),
+`highfell.showBrew()`, `highfell.showHearth('bunks')` (any room's id), `highfell.share.card(brag)` (a Share card's PNG), `highfell.music.now()` (what's playing),
 `highfell.sfx.clips` (the decoded effects), and `highfell.p` is the live save (change it, then `highfell.save()`). A fresh browser opens on the hero maker: click `#cr-go` to make the rolled hero, then `#intro-skip` to skip the Crypt Trial.
 Settings has testing switches (walkout and log-complete previews of the dungeon picked on the Dungeons sheet, instant garden growth, lucky ×50,
 "Everything open": the log rewards and Heroic before they're earned, and buttons to replay the Crypt Trial and Hearth tour).
@@ -193,8 +203,13 @@ Settings has testing switches (walkout and log-complete previews of the dungeon 
   about 600 lines; split by responsibility, not by size alone.
 - **Read before you write.** Find the existing helper before making a new one (art helpers, `actions()`,
   `placeSprite`, `tile`, the sheet pattern, toasts, `SFX`).
-- **Visible text is plain and short,** and never uses the word "stroke" (the build warns). The game's name
-  isn't final: it lives in one constant, `GAME_NAME` in `src/content/index.ts`.
+- **Visible text is plain and short,** and never uses the word "stroke" (the build warns). Say "Power", never
+  "item level" or "ilvl", and show it as a whole number (Power 13, never 13.2); the code and the save keep
+  their own names (`score`, `ilvl`). The game's name isn't final: it lives in one constant, `GAME_NAME` in
+  `src/content/index.ts`, with `PLAY_URL`, the link on Share cards.
+- **Achievements and titles say why.** Every achievement's `how` is one plain, exact sentence, shown wherever
+  it shows (toast, chest, page, titles list), and every title comes from exactly one achievement.
+  `checkContent()` checks both.
 - **Done means:** `npm run all` passes, you looked at the change on a phone-sized screenshot (390×844) and a
   desktop one (1440×900) and fixed what looked wrong, and the docs that describe it are updated
   (`docs/design.md` for how a system works, this file for decisions and rules for agents).

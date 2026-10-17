@@ -6,11 +6,11 @@
  * and its kit, the switch between plain and gilded. A kit's sheet is its piece, gilded. Pets, mounts,
  * trophies and looks say what they are and where they come from.
  */
-import { DUNGEONS, ITEMS, KITS, SETS, thing } from '../content';
+import { DUNGEONS, ITEMS, KITS, SETS, rewardSource, thing } from '../content';
 import { gilded } from '../content/kits';
 import { ROLES } from '../content/roles';
 import { ROLE_SLOTS, gearKey } from '../content/gear';
-import type { CollectibleKind, ItemDef, RoleId } from '../content/types';
+import type { AchievementDef, CollectibleKind, ItemDef, RoleId } from '../content/types';
 import { FIRST_HARVEST_GIFT, GARDEN_TABLE } from '../content/vale';
 import { bestRegular, compareFor, compareOn, floorWorn, gildedOn, itemShare, lookId, wearerOf, type Compare, type Effect, type Verdict } from '../meta/gear';
 import { spotById, spotOf } from '../meta/hearth';
@@ -70,7 +70,7 @@ export function itemSheet(p: Profile, id: string, hasBack: boolean): { head: str
     if (cmp) { vs = cmp.html; act = cmp.act; }
     // what the piece gives on its own, next to its picture
     const share = itemShare(d);
-    side = `<div class="stats"><span class="chip">Item level <b>${share.ilvl}</b></span>${share.power > 0 ? `<span class="chip">${esc(cap(ROLE_STAT[d.role].main))} <b>+${share.power}%</b></span><span class="chip">Health <b>+${share.health}%</b></span>` : ''}</div>`;
+    side = `<div class="stats"><span class="chip">Power <b>${share.ilvl}</b></span>${share.power > 0 ? `<span class="chip">${esc(cap(ROLE_STAT[d.role].main))} <b>+${share.power}%</b></span><span class="chip">Health <b>+${share.health}%</b></span>` : ''}</div>`;
     // the effect is already in the comparison when wearing it would add it
     if (d.effectDesc && !cmp?.c.gains.some((x) => x.kind === 'unique')) more += `<div class="box"><b style="font-family: var(--f-display); font-weight: 400">When worn</b><span class="fine">${esc(d.effectDesc)}</span></div>`;
     if (d.setId) { const s = SETS[d.setId]; more += `<div class="box setbox"><b style="font-family: var(--f-display); font-weight: 400">${esc(s.name)} set</b><div class="setline"><i>2</i><span>${esc(s.bonus2.desc)}</span></div><div class="setline ${s.bonus3.ready ? '' : 'later'}"><i>3</i><span>${esc(s.bonus3.desc)}</span></div></div>`; }
@@ -80,7 +80,7 @@ export function itemSheet(p: Profile, id: string, hasBack: boolean): { head: str
     kind = KIND_WORD[t.def.kind];
     side = `<p class="lede">${esc(t.def.desc)}</p>`;
   }
-  const line = dropLine(id);
+  const line = dropLine(id), giver = t?.kind === 'collectible' ? rewardSource(id) : undefined;
   let source = line ? `${line.heroic ? 'Heroic: ' : ''}${line.boss}, ${fmtRate(line.rate)}${line.role ? ` (${ROLES[line.role].title})` : ''}` : '';
   if (!source && t?.kind === 'item' && t.def.kind === 'gear') source = 'Every dungeon clear upgrades your weakest regular slot up to Rare';
   if (!source && t?.kind === 'collectible') source = t.def.source;
@@ -96,10 +96,15 @@ export function itemSheet(p: Profile, id: string, hasBack: boolean): { head: str
   const body = `<div class="detail"><span class="tile" aria-hidden="true" style="box-shadow: 0 3px 0 var(--ink), inset 0 0 0 4px ${colourOf(id)}">${iconOf(pic)}</span>
       <div class="detail-side">${side}</div></div>
     ${vs}${more}
-    <div class="stats"><span class="chip">From <b>${esc(source || 'Unknown')}</b></span></div>
+    ${giver ? fromAch(giver) : `<div class="stats"><span class="chip">From <b>${esc(source || 'Unknown')}</b></span></div>`}
     <p class="fine">${esc(got + home)}</p>
     ${acts ? `<div class="actions">${acts}</div>` : ''}`;
   return { head: `<h2>${esc(nameOf(pic))}</h2><p>${esc(kind)}</p>`, body };
+}
+
+/** a reward an achievement gives: which one, what to do for it, and the way to its card */
+export function fromAch(a: AchievementDef): string {
+  return `<div class="box ac-from"><span><b>From the achievement ${esc(a.name)}</b><span class="fine">${esc(a.how)}</span></span><button type="button" class="btn small" data-act="ach" data-id="${esc(a.id)}">The achievement</button></div>`;
 }
 
 /** each verdict's word, its colour class and its mark */
@@ -131,11 +136,11 @@ function held(p: Profile, d: ItemDef): { html: string; act: string; c: Compare }
   if (c.verdict === 'wearing') return { html: `<section class="cmp v-on" aria-label="Against what you wear">${top}</section>`, act, c };
   const now = c.now.def, nl = rarLook(now.id), dl = rarLook(d.id);
   const vsCards = `<div class="tw-vs" style="margin: 0 12px">
-    <div class="tw-side old"><span class="tile" style="--c: ${nl.color}">${iconOf(now.id)}</span><div><small>Equipped now</small><b style="color: ${nl.ink}">${esc(now.name)}</b><span>${esc(nl.name)} · ilvl ${c.ilvl[0]}</span></div></div>
+    <div class="tw-side old"><span class="tile" style="--c: ${nl.color}">${iconOf(now.id)}</span><div><small>Equipped now</small><b style="color: ${nl.ink}">${esc(now.name)}</b><span>${esc(nl.name)} · Power ${c.ilvl[0]}</span></div></div>
     <i class="tw-arrow" aria-hidden="true">${GLYPH.right}</i>
-    <div class="tw-side new"><span class="tile" style="--c: ${dl.color}">${iconOf(d.id)}</span><div><small>This ${esc(d.slot)}</small><b style="color: ${dl.ink}">${esc(d.name)}</b><span>${esc(dl.name)} · ilvl ${c.ilvl[1]}</span></div></div>
+    <div class="tw-side new"><span class="tile" style="--c: ${dl.color}">${iconOf(d.id)}</span><div><small>This ${esc(d.slot)}</small><b style="color: ${dl.ink}">${esc(d.name)}</b><span>${esc(dl.name)} · Power ${c.ilvl[1]}</span></div></div>
   </div>`;
-  const rows = [`<div class="cmp-row"><span>Item level <small>${c.ilvl[0]} → ${c.ilvl[1]}</small></span>${tag(c.ilvl[1] - c.ilvl[0])}</div>`];
+  const rows = [`<div class="cmp-row"><span>Power <small>${c.ilvl[0]} → ${c.ilvl[1]}</small></span>${tag(c.ilvl[1] - c.ilvl[0])}</div>`];
   if (c.power) rows.push(`<div class="cmp-row"><span>${esc(cap(ROLE_STAT[d.role].main))}</span>${tag(c.power, '%')}</div>`);
   if (c.health) rows.push(`<div class="cmp-row"><span>Health</span>${tag(c.health, '%')}</div>`);
   if (c.set && d.setId) rows.push(`<div class="cmp-row"><span>${esc(SETS[d.setId].name)} set <small>${c.set[0]} → ${c.set[1]} of 3</small></span>${tag(c.set[1] - c.set[0])}</div>`);

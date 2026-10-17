@@ -244,6 +244,7 @@ export function hurtHero(h, amt, src, o) {
       fxText(h.x, h.y - 60, label, o.numCol || '#FF6B5E', o.numSize || (o.crush || a >= 100 ? 26 : 20), o.numDur ? { dur: o.numDur } : undefined);
     }
     if (h.isPlayer) { shake(a >= 100 ? 7 : 3); S.hurtFlash = Math.min(1, S.hurtFlash + a / 300); }
+    // counts hits by kind (handHits, ringHits, bombHits, ...): the flawless achievements read these from runSummary
     if (o.kind) { S.stats[o.kind + 'Hits'] = (S.stats[o.kind + 'Hits'] || 0) + 1; emit({ type: 'hazard.hit', kind: o.kind, player: !!h.isPlayer }); }
     if (h.hp <= 0) killHero(h);
   }

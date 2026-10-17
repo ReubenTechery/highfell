@@ -5,7 +5,7 @@
  * profile every time, so whatever changed is always shown. This file opens and closes them and wires up
  * their buttons; most of them draw in a file of their own.
  */
-import { COLLECTIBLES, DUNGEONS, ITEMS, thing } from '../content';
+import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, ITEMS, thing } from '../content';
 import { SLOT_IDS } from '../content/gear';
 import type { SlotId } from '../content/types';
 import { INGREDIENTS, INGREDIENT_ORDER, LORE, PLANTS, RECIPES, RECIPE_ORDER, SEED_ICON, SEED_ORDER, SKILLS } from '../content/vale';
@@ -30,7 +30,8 @@ import { settingsSheet } from './settingssheet';
 import { ARMOURY_TABS, armouryActions, armourySheet, countUp, leftSlot, settle, type ArmouryTab, type ArmouryView } from './armoury';
 
 export type SheetSpec =
-  | { kind: 'dungeon' }
+  /** the Dungeons, on that dungeon's door when it says (a door in the house's cellar) */
+  | { kind: 'dungeon'; dungeon?: string }
   | { kind: 'satchel' }
   | { kind: 'hero'; hero: string }
   | { kind: 'gear'; hero: string; slot?: SlotId; pick?: string; tab?: ArmouryTab }
@@ -46,7 +47,8 @@ export function normSpec(x: unknown): SheetSpec | null {
   const s = x as Record<string, any> | null;
   if (!s || typeof s !== 'object') return null;
   switch (s.kind) {
-    case 'dungeon': case 'settings': case 'satchel': case 'looks': case 'heroes': case 'mounts': return { kind: s.kind };
+    case 'dungeon': return typeof s.dungeon === 'string' ? { kind: 'dungeon', dungeon: s.dungeon } : { kind: 'dungeon' };
+    case 'settings': case 'satchel': case 'looks': case 'heroes': case 'mounts': return { kind: s.kind };
     case 'hero': return typeof s.hero === 'string' ? { kind: 'hero', hero: s.hero } : null;
     case 'gear': return typeof s.hero === 'string' ? { kind: 'gear', hero: s.hero, ...(SLOT_IDS.includes(s.slot) ? { slot: s.slot } : {}), ...(typeof s.pick === 'string' && ITEMS[s.pick] ? { pick: s.pick } : {}), ...(ARMOURY_TABS.includes(s.tab) ? { tab: s.tab } : {}) } : null;
     case 'logs': return { kind: 'logs', tab: LOG_TABS.includes(s.tab) ? s.tab : 'collection', ...(typeof s.entry === 'string' ? { entry: s.entry } : {}) };
@@ -65,7 +67,7 @@ export class Sheets {
   private lookPick: string | null = null;
   /** the collection log: heroic pages or normal ones, and what its page remembers (Try it on, the closer look) */
   private logHeroic = false;
-  private readonly logView: LogView = { tryOn: false, peek: null, flip: false };
+  private readonly logView: LogView = { tryOn: false, peek: null, flip: false, ach: null };
   /** a hero's sheet: letting them go takes two taps, and renaming has its own little form */
   private heroSt: HeroSheetState = { delArmed: false, renaming: false, err: '' };
   private heroTimer = 0;
@@ -148,7 +150,7 @@ export class Sheets {
       // on the door, the arrow keys step between dungeons like the arrows on the picture
       if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && this.spec.kind === 'dungeon' && this.pick.page === 'door') { dungeonStep(this.pick, e.key === 'ArrowLeft' ? -1 : 1); SFX.play('ui'); this.refresh(); return; }
       if (e.key !== 'Escape') return;
-      if (this.logView.peek) root.querySelector<HTMLElement>('.pk-x')?.click();
+      if (this.logView.peek || this.logView.ach) root.querySelector<HTMLElement>('.pk-x')?.click();
       else if (this.spec.kind === 'dungeon' && dungeonBack(this.pick)) { this.refresh(); const b = root.querySelector('.sheet-body'); if (b) b.scrollTop = 0; }
       else this.close();
     });
@@ -161,10 +163,18 @@ export class Sheets {
     const spec = to.kind === 'gear' ? settle(this.app.p, to) : to;
     // the dungeon picker starts fresh when it opens, but not when you come back to it from one of its drops
     const inDungeon = (s: SheetSpec | null): boolean => !!s && (s.kind === 'dungeon' || (s.kind === 'item' && s.back?.kind === 'dungeon'));
-    // the sheet opens on the door of a dungeon you can go into
-    if (spec.kind === 'dungeon' && !inDungeon(this.spec)) { this.pick.page = 'door'; if (!DUNGEONS[this.pick.dungeon || '']) this.pick.dungeon = 'barrow'; }
+    // the sheet opens on the door of a dungeon you can go into, or the one whose door you tapped in the cellar (one
+    // still to come shows what it will ask of you)
+    if (spec.kind === 'dungeon' && !inDungeon(this.spec)) {
+      this.pick.page = 'door';
+      this.pick.warn = false;
+      if (spec.dungeon) { this.pick.dungeon = spec.dungeon; this.pick.heroic = false; }
+      else if (!DUNGEONS[this.pick.dungeon || '']) this.pick.dungeon = 'barrow';
+    }
     if (spec.kind === 'hero' && !(this.spec && this.spec.kind === 'hero' && this.spec.hero === spec.hero)) { clearTimeout(this.heroTimer); this.heroSt = { delArmed: false, renaming: false, err: '' }; }
     if (spec.kind !== 'logs' && spec.kind !== 'item') this.logView.peek = null;
+    // an achievement asked for by its id opens its card, over its place's page; anything else closes it
+    this.logView.ach = spec.kind === 'logs' && spec.tab === 'achievements' && spec.entry && ACHIEVEMENTS[spec.entry] ? spec.entry : null;
     const looked = leftSlot(this.app.p, this.spec, spec);
     this.spec = spec;
     this.render(!was);
@@ -173,7 +183,7 @@ export class Sheets {
   close(): void {
     if (!this.spec) return;
     const looked = leftSlot(this.app.p, this.spec, null);
-    this.spec = null; this.logView.tryOn = false; this.logView.peek = null;
+    this.spec = null; this.logView.tryOn = false; this.logView.peek = null; this.logView.ach = null;
     this.root.innerHTML = '';
     this.app.hearth.closed();
     if (looked) this.app.save();

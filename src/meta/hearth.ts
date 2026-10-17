@@ -1,12 +1,14 @@
 /**
- * The house's display spots and looks. A layout is just spot id to collectible id, and a look is room
- * id to look id, both saved in the profile, so a friend's house can later be drawn from their profile
- * the same way. Where each spot and room is lives in the house's plan (content/house.ts); this is the rules.
+ * The house's display spots and looks, and the cellar's doors. A layout is just spot id to collectible id, and a
+ * look is room id to look id, both saved in the profile, so a friend's house can later be drawn from their profile
+ * the same way; the doors are read from what you've done. Where each spot, room and door is lives in the house's
+ * plan (content/house.ts); this is the rules.
  */
 import type { CollectibleKind } from '../content/types';
-import { COLLECTIBLES } from '../content';
+import { COLLECTIBLES, DUNGEONS, heroicVersion } from '../content';
+import { ACT1_DUNGEONS } from '../content/act1';
 import { DEFAULT_LOOK, HOUSE_SPOTS, LOOKS, LOOK_ROOMS } from '../content/house';
-import { openProgress, opened } from './logs';
+import { logFinished, openProgress, opened } from './logs';
 import type { Profile } from './profile';
 
 export interface Spot { id: string; kind: CollectibleKind; label: string }
@@ -25,6 +27,22 @@ export const MOUNTS: string[] = Object.values(COLLECTIBLES).filter((c) => c.kind
 /** The paddock: every mount in the game, and whether it's yours. One you own stands in its place (wherever
  *  it was on show before: the old stall, the garden); one you haven't got shows as a shadow. */
 export const paddock = (p: Profile): { id: string; owned: boolean }[] => MOUNTS.map((id) => ({ id, owned: !!p.collection[id] }));
+
+/** How far you've got with a dungeon, as its door in the cellar shows it: bricked up while it's still to come, then
+ *  plain until you've cleared it (Normal or Heroic), lit once you have, gold once its collection log is finished and
+ *  gilded once its Heroic log is. */
+export type DoorState = 'soon' | 'plain' | 'lit' | 'gold' | 'gilded';
+export function doorState(p: Profile, id: string): DoorState {
+  if (!DUNGEONS[id]) return 'soon';
+  const hv = heroicVersion(id);
+  if (hv && logFinished(p, hv.id)) return 'gilded';
+  if (logFinished(p, id)) return 'gold';
+  const clears = (p.dungeons[id]?.clears || 0) + (hv ? p.dungeons[hv.id]?.clears || 0 : 0);
+  return clears > 0 ? 'lit' : 'plain';
+}
+/** The Hall of Doors: every dungeon of Act 1, built or still to come, in the order you meet them, and how far you've
+ *  got with each. Each one has its place along the cellar's wall (hallSlots in content/house.ts). */
+export const cellarDoors = (p: Profile): { id: string; state: DoorState }[] => ACT1_DUNGEONS.map((m) => ({ id: m.id, state: doorState(p, m.id) }));
 
 /** Put something in a spot (or clear it with null). An item can only sit in one spot. */
 export function place(p: Profile, spotId: string, id: string | null): boolean {

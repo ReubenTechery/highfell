@@ -10,7 +10,7 @@ export const TEMPLATE_COLLECTIBLES: CollectibleDef[] = [
   { id: 'trophy.sanctum_key', kind: 'trophy', name: 'Sanctum Key', desc: 'Opens the inner burrow.', icon: 'c_key', sprite: 'tr_key', source: 'Achievement: First Clear' },
 ];
 
+/** every title comes from exactly one achievement (checkContent): this one is the log's */
 export const TEMPLATE_TITLES: TitleDef[] = [
   { id: 'title.tinker', text: 'the Clockwork Knight' },
-  { id: 'title.sporewarden', text: 'the Sporewarden' },
 ];

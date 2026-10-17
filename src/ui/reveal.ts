@@ -4,8 +4,10 @@
  * gets the whole screen, and so does a collection log filled at last: its hero walks out, and what it
  * gave stays on the page with a way to it. A new piece for the log gets a moment of its own: its stand
  * comes up and the piece drops on. Then the numbers: kill counts, time, the log's strip, the garden.
+ * Anything worth showing off (meta/brag.ts) has a Share button, in its moment and above the numbers,
+ * which makes a picture of it to post (share.ts).
  */
-import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, ITEMS, KITS, TITLES, heroicVersion } from '../content';
+import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, DUNGEON_ENGINES, ITEMS, KITS, heroicVersion } from '../content';
 import { TELL_SPRITES } from '../dungeon/walkout.js';
 import { KIT_RATE, gilded } from '../content/kits';
 import type { RaceId } from '../content/folk';
@@ -14,9 +16,11 @@ import { RARITY, ROLE_SLOTS, gearId, gearKey, traitDef } from '../content/gear';
 import { ROLES } from '../content/roles';
 import type { DungeonInfo, Rar, RoleId, SlotId } from '../content/types';
 import { takeTrait, trialStarter, type Drop, type RunLoot, type Tell } from '../meta/loot';
+import { bragsOf, type Brag, type BragKind } from '../meta/brag';
 import { activeHero, heroById, roleOf, type Hero, type Profile } from '../meta/profile';
 import { readyBeds, seedTotal } from '../meta/vale';
 import { logAchievement, logProgress, standPieces, standsOf } from '../meta/logs';
+import { wearTitle } from '../meta/achievements';
 import { PLANTS } from '../content/vale';
 import { itemShare, waiting, worn } from '../meta/gear';
 import type { App } from './app';
@@ -26,6 +30,8 @@ import { ROLE_STAT } from './itemsheet';
 import { mainReward, rewards } from './dungeonsheet';
 import { dropOf, prizeArt, slotTag } from './logbook';
 import { SFX } from './sound';
+import { achRow } from './achcard';
+import { cardWords } from './sharecard';
 import type { RunOpts } from './run';
 
 export interface RevealExtra { unlocked: string[]; hero: string | null; role: RoleId; deaths: number; again: RunOpts | null; preview?: boolean; intro?: boolean }
@@ -41,6 +47,8 @@ export class Reveal {
   private skipping = false;
   private running = false;
   private trait: string | null = null;
+  /** what this chest has to show off, best first (meta/brag.ts): the Share buttons open on one of them */
+  private brags: Brag[] = [];
 
   constructor(private app: App, private root: HTMLElement) {
     actions(root, {
@@ -57,6 +65,14 @@ export class Reveal {
       makerace: (el) => { SFX.play('ui'); this.goHome(); this.app.showCreate(undefined, el.dataset.race as RaceId); },
       putlook: () => { SFX.play('ui'); this.goHome(); this.app.sheets.open({ kind: 'looks' }); },
       tolog: (el) => { SFX.play('ui'); this.goHome(); this.app.sheets.open({ kind: 'logs', tab: 'collection', entry: el.dataset.id }); },
+      // an achievement's card opens over the chest; a title goes on the hero you play, right here
+      ach: (el) => { SFX.play('ui'); this.app.openAchievement(el.dataset.id || ''); },
+      wear: (el) => {
+        const h = activeHero(this.app.p);
+        if (this.extra?.preview || !h || !wearTitle(this.app.p, h, el.dataset.id || null)) { SFX.play('nope'); return; }
+        SFX.play('equip'); this.app.store.save(); this.renderAch();
+      },
+      share: (el) => this.app.share.open(this.brags, { hero: this.extra?.hero, preview: this.extra?.preview, at: +(el.dataset.brag || 0) }),
     });
   }
 
@@ -64,6 +80,7 @@ export class Reveal {
     this.loot = loot; this.extra = extra;
     this.cards = [...loot.drops].sort((a, b) => order(a) - order(b));
     this.flipped = 0; this.skipping = false; this.running = false; this.trait = null;
+    this.brags = extra.intro ? [] : bragsOf(this.app.p, loot, extra.unlocked);
     const tell: Tell = loot.tell;
     const dg = DUNGEONS[loot.dungeon] || BARROW;
     this.root.className = `scene reveal t-${tell}${loot.gild ? ' gild' : ''}`;
@@ -89,6 +106,7 @@ export class Reveal {
         <span class="tap">${extra.intro && !trialReal ? 'Tap to see example drops' : 'Tap the chest'}</span>
       </button>
       <div class="cards" id="rv-cards" hidden></div>
+      <div class="rv-panel rv-brag" id="rv-brag" hidden></div>
       <div class="rv-panel" id="rv-offer" hidden></div>
       <div class="rv-panel" id="rv-sum" hidden></div>
       <div class="rv-panel rv-log" id="rv-log" hidden></div>
@@ -154,7 +172,7 @@ export class Reveal {
       el.setAttribute('aria-label', a.name);
       el.innerHTML = `<span class="rays"></span><div class="bm"><p class="eyebrow">${esc(dg?.name || '')} · collection log complete</p>
         ${prizeArt(id) ? `<img src="${spriteURL(prizeArt(id) as string)}" alt="">` : ''}<h2>${esc(a.name)}</h2>
-        <p>${esc(a.reward.text)}.</p><p style="opacity: 0.7">Tap to carry on</p></div>`;
+        <p>${esc(a.reward.text)}.</p>${this.shareBtn(this.bragAt('log', id))}<p style="opacity: 0.7">Tap to carry on</p></div>`;
       this.root.appendChild(el);
       SFX.play('petfound');
       this.momentDone = () => { el.remove(); this.momentDone = null; res(); };
@@ -186,7 +204,7 @@ export class Reveal {
         const prev = ITEMS[gearId(gk, slot, (d.prevRar ?? 0) as Rar)];
         const nowS = prev ? itemShare(prev) : { power: 0, health: 0, ilvl: 10 }, newS = it ? itemShare(it) : nowS;
         const dp = Math.round((newS.power - nowS.power) * 10) / 10, dh = Math.round((newS.health - nowS.health) * 10) / 10;
-        sub = `${r.name} ${slotName}${d.source === 'spare' ? ` · shared` : ` · ilvl ${nowS.ilvl} → ${newS.ilvl}`}`;
+        sub = `${r.name} ${slotName}${d.source === 'spare' ? ` · shared` : ` · Power ${nowS.ilvl} → ${newS.ilvl}`}`;
         if (dp > 0) gains = `<span class="lc-gains"><b class="up">${GLYPH.rise}+${dp}% ${esc(ROLE_STAT[role].short)}</b><b class="up">${GLYPH.rise}+${dh}% hp</b></span>`;
         note = d.source === 'spare' ? `For your ${ROLES[role].title.toLowerCase()} heroes` : prev && d.prevRar !== d.rar ? `Replaces ${esc(prev.name)}` : '';
         if (d.trait) note += `${note ? ' · ' : ''}Trait: ${esc(traitDef(gk, d.trait)?.name || '')}`;
@@ -204,7 +222,7 @@ export class Reveal {
         if (dp > 0) gains = `<span class="lc-gains"><b class="up">${GLYPH.rise}+${dp}% ${esc(ROLE_STAT[it.role].short)}</b><b class="up">${GLYPH.rise}+${dh}% hp</b></span>`;
       }
       const piece = kit && ITEMS[kit.item];
-      note = d.dupe ? `Duplicate · Seen ${fmtN(this.app.p.collection[d.id]?.n || 2)}× in log` : piece ? `Gilding kit · ${this.app.p.collection[piece.id] ? 'gilds your' : 'gilds the'} ${esc(piece.name)}` : c ? (c.kind === 'pet' ? 'Waiting by the fire' : c.kind === 'mount' ? 'In the paddock at home' : c.kind === 'cosmetic' ? 'A new look' : 'On the mantel') : it?.setId ? `${esc(it.name.split(' ')[0])} set piece · ilvl ${itemShare(it).ilvl}` : it?.effectDesc ? esc(it.effectDesc) : '';
+      note = d.dupe ? `Duplicate · Seen ${fmtN(this.app.p.collection[d.id]?.n || 2)}× in log` : piece ? `Gilding kit · ${this.app.p.collection[piece.id] ? 'gilds your' : 'gilds the'} ${esc(piece.name)}` : c ? (c.kind === 'pet' ? 'Waiting by the fire' : c.kind === 'mount' ? 'In the paddock at home' : c.kind === 'cosmetic' ? 'A new look' : 'On the mantel') : it?.setId ? `${esc(it.name.split(' ')[0])} set piece · Power ${itemShare(it).ilvl}` : it?.effectDesc ? esc(it.effectDesc) : '';
     }
     const stamp = example ? '<span class="stamp ex">Example</span>' : table ? (d.dupe ? '<span class="stamp dupe">Dupe</span>' : '<span class="stamp">New</span>') : d.offerTrait ? '' : '<span class="stamp" style="background: var(--green)">Up</span>';
     const tapHint = `<span class="lc-tap">${it ? 'Tap to compare stats' : 'Tap to inspect'}</span>`;
@@ -243,7 +261,7 @@ export class Reveal {
       el.setAttribute('role', 'dialog');
       el.setAttribute('aria-label', c.name);
       el.innerHTML = `<span class="rays"></span><div class="bm"><img src="${spriteURL(c.sprite || '')}" alt=""><h2>${esc(c.name)}</h2>
-        <p>${esc(fmtRate(d.rate))} · kill count ${fmtN(d.kc || 0)}</p><p>${c.kind === 'pet' ? 'He is waiting by the fire at home.' : 'Waiting in the paddock at home.'}</p><p style="opacity: 0.7">Tap to carry on</p></div>`;
+        <p>${esc(fmtRate(d.rate))} · kill count ${fmtN(d.kc || 0)}</p><p>${c.kind === 'pet' ? 'He is waiting by the fire at home.' : 'Waiting in the paddock at home.'}</p>${this.shareBtn(this.bragAt(c.kind === 'pet' ? 'pet' : 'unique', d.id))}<p style="opacity: 0.7">Tap to carry on</p></div>`;
       this.root.appendChild(el);
       SFX.play('petfound');
       this.momentDone = () => { el.remove(); this.momentDone = null; res(); };
@@ -259,6 +277,8 @@ export class Reveal {
     const art = stand ? standSvg(standPieces(stand), on, { drop: d.id }) : c?.sprite ? `<img src="${spriteURL(c.sprite)}" alt="">` : `<span class="tile">${iconOf(d.id)}</span>`;
     const done = !!stand && standPieces(stand).every(on);
     const { before, after, need } = this.logTick(d.id, dg);
+    // a piece that finished its set shares the set (the weapon leans on the stand, but it isn't one of the three)
+    const set = stand?.pieces.includes(d.id) ? this.brags.findIndex((b) => b.kind === 'set' && b.id === stand.set.id && !!b.gilded === !!dg.heroicOf) : -1;
     return new Promise((res) => {
       const el = document.createElement('div');
       el.className = 'big-moment gold slot-moment';
@@ -269,7 +289,7 @@ export class Reveal {
         <div class="sm-art${stand ? '' : ' loose'}">${art}</div><h2>${esc(nameOf(d.id))}</h2>
         <p class="sm-meta"><i class="sm-rar${t.pale ? ' pale' : ''}" style="--rc: ${t.bg}">${esc(t.word)}</i>${esc(fmtRate(d.rate))} · kill count ${fmtN(d.kc || 0)}</p>
         ${done && stand ? `<p class="sm-done">${GLYPH.check}${esc(stand.set.name)} set done · ${standPieces(stand).length} of ${standPieces(stand).length}</p>` : stand ? `<p class="sm-set">${esc(stand.set.name)} · ${standPieces(stand).filter(on).length} of ${standPieces(stand).length}</p>` : ''}
-        ${need ? this.stripHtml(dg.id, before, after, need, '') : ''}<p style="opacity: 0.7">Tap to carry on</p></div>`;
+        ${need ? this.stripHtml(dg.id, before, after, need, '') : ''}${this.shareBtn(set >= 0 ? set : this.bragAt('unique', d.id))}<p style="opacity: 0.7">Tap to carry on</p></div>`;
       this.root.appendChild(el);
       SFX.play('slot'); SFX.play('rare', 0.7);
       this.momentDone = () => { el.remove(); this.momentDone = null; res(); };
@@ -307,6 +327,11 @@ export class Reveal {
   }
   private momentDone: (() => void) | null = null;
   private closeMoment(): void { if (this.momentDone) this.momentDone(); }
+  /** where a moment is in this chest's brags (-1: it isn't one) */
+  private bragAt(kind: BragKind, id: string): number { return this.brags.findIndex((b) => b.kind === kind && b.id === id); }
+  private shareBtn(i: number): string {
+    return i < 0 ? '' : `<button type="button" class="btn gold small bm-share" data-act="share" data-brag="${i}">${GLYPH.share}Share</button>`;
+  }
 
   /** the numbers, the trait offer, the achievements, the buttons */
   private after(): void {
@@ -327,6 +352,12 @@ export class Reveal {
           ${gardenKv(p, loot)}
         </div>${strips}`;
     }
+    const best = this.brags[0], brag = $('rv-brag', this.root);
+    if (best) {
+      brag.hidden = false;
+      brag.innerHTML = `<div class="rb-tx"><small>Worth showing off</small><b>${esc(cardWords(best).title)}</b>${this.brags.length > 1 ? `<span>and ${this.brags.length - 1} more</span>` : ''}</div>
+        <button type="button" class="btn gold" data-act="share" data-brag="0">${GLYPH.share}Share</button>`;
+    }
     this.renderOffer();
     if (extra.intro) {
       const el = $('rv-log', this.root);
@@ -345,11 +376,7 @@ export class Reveal {
       el.innerHTML = logs.map((a) => `<h3>${esc(a.name)}</h3>${rewards(a, true)}
         <div class="actions">${a.reward.race ? `<button type="button" class="btn gold" data-act="makerace" data-race="${esc(a.reward.race)}">Make a hero</button>` : ''}${a.reward.look ? '<button type="button" class="btn" data-act="putlook">Put up the look</button>' : ''}</div>`).join('');
     }
-    if (extra.unlocked.length) {
-      const ach = $('rv-ach', this.root);
-      ach.hidden = false;
-      ach.innerHTML = `<h3>Achievements</h3>${extra.unlocked.map((id) => { const a = ACHIEVEMENTS[id]; return `<div class="ach"><span class="medal ${a.tier}" aria-hidden="true">${a.points}</span><div><div class="n">${esc(a.name)}</div><div class="rw">${esc(a.reward.title ? 'Title: ' + (TITLES[a.reward.title]?.text || '') : a.reward.text)}</div></div><div class="pts">${a.points}<small>points</small></div></div>`; }).join('')}`;
-    }
+    this.renderAch();
     // new gear waits for you: the Gear button says how much
     const up = h && !extra.preview ? waiting(p, h).length : 0;
     const gb = this.root.querySelector<HTMLElement>('#rv-actions [data-act="gear"]');
@@ -365,6 +392,19 @@ export class Reveal {
     const done = !!stand && standPieces(stand).every((id) => id === last!.id || !!this.app.p.collection[id]);
     const news = fresh.length ? `+${fresh.length} new: <b>${fresh.map((d) => esc(nameOf(d.id))).join(', ')}</b>${done ? ' · set done' : ''}` : '';
     return `<button type="button" class="rv-logstrip" data-act="tolog" data-id="${esc(stand ? `${dungeon}.set.${stand.set.id}` : `${dungeon}.log`)}" aria-label="Open the collection log">${this.stripHtml(dungeon, start, end, need, news)}</button>`;
+  }
+  /** every achievement this run earned: what you did, what you got and where it went, Wear it for a title, and
+   *  a tap for its card. The preview's are shown as earned, though nothing is added. */
+  private renderAch(): void {
+    const ids = (this.extra?.unlocked || []).filter((id) => ACHIEVEMENTS[id]), el = $('rv-ach', this.root);
+    if (!ids.length || !el) return;
+    el.hidden = false;
+    // each row opens its card; one worth showing off has a Share button too (share.ts)
+    const row = (id: string): string => {
+      const html = achRow(this.app.p, ACHIEVEMENTS[id], true), i = this.bragAt(ACHIEVEMENTS[id].log ? 'log' : 'ach', id);
+      return i < 0 ? html : html.replace(/<\/div><\/article>$/, `<button type="button" class="btn small ac-share" data-act="share" data-brag="${i}">${GLYPH.share}Share</button></div></article>`);
+    };
+    el.innerHTML = `<h3>Achievements<small>${ids.length} this run · tap one for more</small></h3><div class="ac-list">${ids.map(row).join('')}</div>`;
   }
   private renderOffer(): void {
     const offer = this.loot?.drops.find((d) => d.offerTrait);

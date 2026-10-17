@@ -1,18 +1,20 @@
 /**
  * The armoury: a hero's gear, in three tabs. Gear: the hero, their four slots in a row, every piece they have
  * for the picked slot with the uniques still to find dimmed at the end, the card that says what putting the
- * picked piece on would change (armourycard.ts), and one Put it on at the bottom. Abilities: the four buttons
+ * picked piece on would change (armourycard.ts), and one Put it on at the bottom (a second tap on the picked
+ * piece does the same, and only your next tap moves: a new piece's Put it on glows). Abilities: the four buttons
  * and what the gear does to them. Looks: the title and the looks. Your other heroes are a tap away in the
  * corner. Its buttons (armouryActions), the moment a piece goes on (the burst, the item level counting up)
  * and looking clearing New (leftSlot) live here too; the sheets open and close it.
  */
-import { COLLECTIBLES, ITEMS, SETS, TITLES } from '../content';
+import { COLLECTIBLES, ITEMS, SETS, TITLES, placeName } from '../content';
 import { AB, ROLES, SLOTS_AB, abKey } from '../content/roles';
 import { ROLE_SLOTS, SLOT_IDS, gearKey } from '../content/gear';
 import { CLASSES, RACES, type ClassId, type RaceId } from '../content/folk';
-import type { AbilitySlot, SlotId } from '../content/types';
+import type { AbilitySlot, RoleId, SlotId } from '../content/types';
 import { activeHero, heroById, roleOf, setActive, type Hero, type Profile } from '../meta/profile';
 import { betterFor, buyTrait, compareOn, effectsOf, healthPct, itemScore, loadoutFor, lookId, powerPct, seenSlot, shelfFor, waiting, waitingFor, wear, worn, type ShelfPiece, type Worn } from '../meta/gear';
+import { titleRows, wearTitle } from '../meta/achievements';
 import type { App } from './app';
 import { cap, esc, fmtRate, GLYPH } from './dom';
 import { heroImg, heroSprite, iconOf, nameOf, rarLook, tile } from './art';
@@ -22,6 +24,7 @@ import { ROLE_STAT } from './itemsheet';
 import { dropSource } from './logpeek';
 import { pieceCard, traitRow } from './armourycard';
 import type { SheetSpec } from './sheets';
+import { progressHtml } from './achcard';
 
 export type ArmouryTab = 'gear' | 'abilities' | 'looks';
 export const ARMOURY_TABS: ArmouryTab[] = ['gear', 'abilities', 'looks'];
@@ -58,32 +61,35 @@ export function leftSlot(p: Profile, from: SheetSpec | null, next: SheetSpec | n
   return !!h && seenSlot(h, from.slot);
 }
 
-/** the armoury's buttons: its tabs, a slot, a piece, another hero, Put it on (with its moment), the weapon
- *  trait, playing as this hero, a title, a look on or off, and the way in from a drop's sheet */
+/** the armoury's buttons: its tabs, a slot, a piece (a second tap puts it on), another hero, Put it on (with
+ *  its moment), the weapon trait, playing as this hero, a title, a look on or off, and the way in from a
+ *  drop's sheet */
 export function armouryActions(x: ArmouryHost): Record<string, (el: HTMLElement) => void> {
   const cur = (): GearSpec | null => { const s = x.spec(); return s && s.kind === 'gear' ? s : null; };
   const gearHero = (): Hero | null => { const s = cur(); return s ? heroById(x.app.p, s.hero) : null; };
   const go = (patch: Partial<GearSpec>): void => { const s = cur(); if (!s) return; SFX.play('ui'); x.open({ ...s, ...patch }); };
+  const wearPicked = (): void => {
+    const s = cur(), h = gearHero(), p = x.app.p, def = s?.pick ? ITEMS[s.pick] : undefined;
+    if (!h || !def) return;
+    const from = +ilvl(loadoutFor(p, h).score);
+    if (!wear(p, h, def)) { SFX.play('nope'); return; }
+    const v = x.view;
+    v.justOn = { hero: h.id, slot: def.slot, from, to: +ilvl(loadoutFor(p, h).score), at: performance.now() };
+    SFX.play('equip');
+    x.app.save();
+    // the moment happens up top (the slot bursts, the item level climbs), so scroll back up to it
+    const b = x.root.querySelector<HTMLElement>('.sheet-body');
+    if (b && b.scrollTop > 0) b.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    setTimeout(() => { if (v.justOn && performance.now() - v.justOn.at > 1500) v.justOn = null; }, 1600);
+  };
   return {
     artab: (el) => go({ tab: el.dataset.tab as ArmouryTab }),
     arslot: (el) => go({ slot: el.dataset.slot as SlotId, pick: undefined, tab: 'gear' }),
-    arpick: (el) => go({ pick: el.dataset.id }),
+    // only the picked piece, when it can go on, carries data-wear (pieceTile)
+    arpick: (el) => (el.dataset.wear ? wearPicked() : go({ pick: el.dataset.id })),
     arhero: (el) => { const s = cur(); if (!s || !el.dataset.id) return; SFX.play('ui'); x.open({ kind: 'gear', hero: el.dataset.id, tab: s.tab }); },
     arheroes: () => { SFX.play('ui'); x.open({ kind: 'heroes' }); },
-    arwear: () => {
-      const s = cur(), h = gearHero(), p = x.app.p, def = s?.pick ? ITEMS[s.pick] : undefined;
-      if (!h || !def) return;
-      const from = +ilvl(loadoutFor(p, h).score);
-      if (!wear(p, h, def)) { SFX.play('nope'); return; }
-      const v = x.view;
-      v.justOn = { hero: h.id, slot: def.slot, from, to: +ilvl(loadoutFor(p, h).score), at: performance.now() };
-      SFX.play('equip');
-      x.app.save();
-      // the moment happens up top (the slot bursts, the item level climbs), so scroll back up to it
-      const b = x.root.querySelector<HTMLElement>('.sheet-body');
-      if (b && b.scrollTop > 0) b.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-      setTimeout(() => { if (v.justOn && performance.now() - v.justOn.at > 1500) v.justOn = null; }, 1600);
-    },
+    arwear: wearPicked,
     trait: (el) => { const h = gearHero(); if (!h) return; if (buyTrait(x.app.p, h, 'barrow', el.dataset.trait!)) { SFX.play('coin'); x.app.save(); } else SFX.play('nope'); },
     playas: () => { const h = gearHero(); if (!h) return; setActive(x.app.p, h.id); SFX.play('ui'); x.app.save(); },
     look: (el) => { const p = x.app.p, id = el.dataset.id!; const off = new Set(p.settings.looksOff); if (off.has(id)) off.delete(id); else off.add(id); p.settings.looksOff = [...off]; SFX.play('ui'); x.app.save(); },
@@ -94,7 +100,7 @@ export function armouryActions(x: ArmouryHost): Record<string, (el: HTMLElement)
       if (x.app.scene === 'reveal') x.app.showHearth();
       x.open({ kind: 'gear', hero: h.id, slot: el.dataset.slot as SlotId, ...(el.dataset.id ? { pick: el.dataset.id } : {}) });
     },
-    title: (el) => { const h = gearHero(); if (!h) return; h.title = el.dataset.id || null; SFX.play('ui'); x.app.save(); },
+    title: (el) => { const h = gearHero(); if (h && wearTitle(x.app.p, h, el.dataset.id || null)) { SFX.play(el.dataset.id ? 'equip' : 'ui'); x.app.save(); } else SFX.play('nope'); },
   };
 }
 
@@ -147,7 +153,7 @@ function gear(p: Profile, h: Hero, s: GearSpec, view: ArmouryView): { body: stri
   const j = view.justOn && view.justOn.hero === h.id && performance.now() - view.justOn.at < 1400 ? view.justOn : null;
   const stage = `<div class="ar-stage${j ? ' just-on' : ''}" style="--light: ${race?.light || '#F4B942'}">
     <span class="ar-glow" aria-hidden="true"></span>${heroImg(heroSprite(h, role, p), { cls: 'ar-img', alt: h.name })}<span class="ar-floor" aria-hidden="true"></span>
-    <div class="ar-il"><b>${ilvl(L.score)}</b><span>Item level</span></div>
+    <div class="ar-il"><b>${ilvl(L.score)}</b><span>Power</span></div>
     <div class="ar-pw"><span>${esc(cap(ROLE_STAT[role].short))}</span><b>+${powerPct(L)}%</b><span>Health</span><b>+${healthPct(L)}%</b></div>
     ${p.active === h.id ? '<span class="ar-playing">Playing</span>' : `<button type="button" class="btn small ar-play" data-act="playas">${GLYPH.play}Play as ${esc(first)}</button>`}
   </div>`;
@@ -166,30 +172,30 @@ function slotTile(p: Profile, h: Hero, it: Worn, sets: Record<string, number>, o
   const d = it.def, look = rarLook(d.id), name = ROLE_SLOTS[gearKey(h)][it.slot].name, shown = lookId(p, d.id);
   const isNew = !!waitingFor(p, h, it.slot), up = !isNew && betterFor(p, h, it.slot);
   const set = d.setId ? SETS[d.setId] : undefined;
-  return `<button type="button" class="ar-slot${isNew ? ' new' : ''}${just ? ' just-on' : ''}" role="tab" aria-selected="${on}" data-act="arslot" data-slot="${it.slot}" style="--rc: ${look.color}" aria-label="${esc(name)}: ${esc(nameOf(shown))}, ${esc(look.name)}, item level ${itemScore(d)}${isNew ? ', something new to put on' : up ? ', something better to put on' : ''}">
+  return `<button type="button" class="ar-slot${isNew ? ' new' : ''}${just ? ' just-on' : ''}" role="tab" aria-selected="${on}" data-act="arslot" data-slot="${it.slot}" style="--rc: ${look.color}" aria-label="${esc(name)}: ${esc(nameOf(shown))}, ${esc(look.name)}, Power ${itemScore(d)}${isNew ? ', something new to put on' : up ? ', something better to put on' : ''}">
     <span class="ar-st"><span class="tile">${iconOf(shown)}</span>${isNew ? '<i class="ar-new">New</i>' : ''}${up ? `<i class="ar-up" title="Something better">${GLYPH.rise}</i>` : ''}${set ? `<i class="ar-setn">${sets[set.id] || 0}/3</i>` : d.kind === 'unique' ? `<i class="ar-star">${STAR}</i>` : ''}<i class="ar-lv">${itemScore(d)}</i>${just ? BURST : ''}</span>
     <span class="ar-sn">${esc(name)}</span></button>`;
 }
 
 /** one piece in a slot's row as it looks (gilded, once its kit is yours): worn (a tick), new, picked, or not
- *  found yet (dimmed, with its drop rate) */
+ *  found yet (dimmed, with its drop rate). Tapped again once it's picked, a piece you have goes on. */
 function pieceTile(p: Profile, x: ShelfPiece, on: boolean): string {
-  const d = x.def, look = rarLook(d.id), shown = x.found ? lookId(p, d.id) : d.id;
+  const d = x.def, look = rarLook(d.id), shown = x.found ? lookId(p, d.id) : d.id, wears = on && x.found && !x.worn;
   const chip = x.worn ? `<i class="ar-on" title="Wearing">${GLYPH.check}</i>` : `<i class="ar-lv">${x.found ? itemScore(d) : fmtRate(dropSource(p, d.id)?.rate) || '?'}</i>`;
-  return `<button type="button" class="ar-pc${x.found ? '' : ' ghost'}" data-act="arpick" data-id="${esc(d.id)}" aria-pressed="${on}" style="--rc: ${look.color}; --rk: ${look.ink}" aria-label="${esc(nameOf(shown))}${x.worn ? ', wearing' : x.isNew ? ', new' : x.found ? '' : ', not found yet'}">
+  return `<button type="button" class="ar-pc${x.found ? '' : ' ghost'}" data-act="arpick" data-id="${esc(d.id)}"${wears ? ' data-wear="1"' : ''} aria-pressed="${on}" style="--rc: ${look.color}; --rk: ${look.ink}" aria-label="${esc(nameOf(shown))}${x.worn ? ', wearing' : x.isNew ? ', new' : x.found ? '' : ', not found yet'}${wears ? '. Tap again to put it on' : ''}">
     <span class="ar-pt"><span class="tile">${iconOf(shown)}</span>${x.found ? '' : '<span class="ar-q" aria-hidden="true">?</span>'}${x.isNew ? '<i class="ar-new">New</i>' : ''}${chip}</span>
     <b>${esc(nameOf(shown))}</b></button>`;
 }
 
-/** the bottom: Put it on (gold unless it's a downgrade), or what's worn or not found yet, and the next slot
- *  with something new */
+/** the bottom: Put it on (gold unless it's a downgrade, and glowing for a new piece: it's your next tap), or
+ *  what's worn or not found yet, and the next slot with something new */
 function foot(p: Profile, h: Hero, slot: SlotId, x: ShelfPiece, j: ArmouryView['justOn']): string {
   const next = SLOT_IDS.find((sl) => sl !== slot && waitingFor(p, h, sl));
   const nextBtn = next ? `<button type="button" class="btn small ar-next" data-act="arslot" data-slot="${next}"><span>Next new: ${esc(ROLE_SLOTS[gearKey(h)][next].name)}</span>${GLYPH.right}</button>` : '';
   if (!x.found) return `<p class="ar-note"><i class="ar-qi" aria-hidden="true">?</i><span>Not found yet</span></p>${nextBtn}`;
-  if (x.worn) return `<p class="ar-note on">${GLYPH.check}<span>Wearing it<small>${j ? `Item level ${ilvl(j.to)}` : 'Tap another piece to compare'}</small></span></p>${nextBtn}`;
+  if (x.worn) return `<p class="ar-note on">${GLYPH.check}<span>Wearing it<small>${j ? `Power ${ilvl(j.to)}` : 'Tap another piece to compare'}</small></span></p>${nextBtn}`;
   const worse = compareOn(worn(p, h), gearKey(h), x.def).verdict === 'worse';
-  return `<button type="button" class="btn big ar-wear${worse ? '' : ' gold'}" data-act="arwear">${GLYPH.shield}Put it on</button>`;
+  return `<button type="button" class="btn big ar-wear${worse ? '' : ' gold'}${x.isNew && !worse ? ' now' : ''}" data-act="arwear">${GLYPH.shield}Put it on</button>`;
 }
 
 /** the Abilities tab: the four buttons with what the gear does to each, then what is always on */
@@ -217,18 +223,38 @@ function abilities(p: Profile, h: Hero): string {
     ${always.length ? `<div class="ar-always">${always.map((e) => `<p><b>${esc(e.kind === 'trait' ? `${e.name} trait` : e.name)}</b> ${esc(e.desc)}</p>`).join('')}</div>` : '<p class="fine">Wear two pieces of a set, or a Rare weapon with a trait, to switch one on.</p>'}`;
 }
 
-/** the Looks tab: a title to wear, and the looks you own, on or off (never power) */
+/** the Looks tab: every title (the ones you have to wear with a tap, and where each came from; the rest with
+ *  exactly how to earn them), and the looks you own, on or off (never power) */
 function looks(p: Profile, h: Hero): string {
-  const role = roleOf(h);
-  const titles = p.titles.filter((t) => TITLES[t]);
-  const titleBox = `<div class="box"><h3 class="section-title">Title<small>shown with ${esc(h.name.split(' ')[0])}’s name</small></h3>${titles.length ? `<div class="titles" role="radiogroup">
-    <button type="button" class="sg" role="radio" data-act="title" data-id="" aria-checked="${!h.title}">None</button>
-    ${titles.map((t) => `<button type="button" class="sg" role="radio" data-act="title" data-id="${t}" aria-checked="${h.title === t}">${esc(TITLES[t].text)}</button>`).join('')}</div>` : '<p class="fine">Some achievements give a title. Every hero can wear the ones you earn.</p>'}</div>`;
+  return titlesBox(p, h) + looksBox(p, h, roleOf(h));
+}
+
+/** Every title in one list. Yours say where they came from and go on with one tap (the one worn says so, and
+ *  shows over this hero's head in the house); the rest say exactly how to earn them, with your progress, and a
+ *  hidden achievement's keeps its secret. */
+function titlesBox(p: Profile, h: Hero): string {
+  const rows = titleRows(p), first = h.name.split(' ')[0], mine = rows.filter((r) => r.have), rest = rows.filter((r) => !r.have);
+  const where = (id: string): string => esc(placeName(id) || '');
+  const row = (r: (typeof rows)[number]): string => {
+    const on = h.title === r.id, a = r.from;
+    const btn = !r.have ? '' : on ? '<button type="button" class="btn small" data-act="title" data-id="">Take it off</button>'
+      : `<button type="button" class="btn small gold" data-act="title" data-id="${esc(r.id)}">Wear it</button>`;
+    const said = r.have ? `From ${esc(a.name)} · ${where(a.dungeon)}`
+      : r.secret ? `A hidden achievement in ${where(a.dungeon)}. You’ll know it when it happens.` : `${esc(a.how)} <i>${esc(a.name)} · ${where(a.dungeon)}</i>`;
+    return `<li class="tl-row${r.have ? ' have' : ''}${on ? ' on' : ''}"><span class="tl-tx"><b>${r.secret ? '???' : esc(r.text)}${on ? `<i class="ac-on">${GLYPH.check}Wearing</i>` : ''}</b>
+      <small>${said}</small>${r.have || r.secret ? '' : progressHtml(p, a)}</span>${btn}</li>`;
+  };
+  return `<div class="box tl"><h3 class="section-title">Titles<small>${mine.length} of ${rows.length} · over ${esc(first)}’s head</small></h3>
+    ${mine.length ? `<ul class="tl-list">${mine.map(row).join('')}</ul>` : '<p class="fine">Achievements give titles. Every hero of yours can wear the ones you earn.</p>'}
+    ${rest.length ? `<h4 class="tl-h">To earn</h4><ul class="tl-list">${rest.map(row).join('')}</ul>` : ''}</div>`;
+}
+
+/** the looks you own, on or off, and the ones still to find */
+function looksBox(p: Profile, h: Hero, role: RoleId): string {
   const ids = ['cosmetic.glow_shield', 'cosmetic.glow_staff', 'cosmetic.crit_ice', 'cosmetic.trail_wisp', 'dye.ghostly', 'dye.ghostly.gilded', 'dye.sporeglow', 'cosmetic.gilded_bones', 'cosmetic.gilded_gnomes']
     .filter((id) => (id === 'cosmetic.glow_shield' ? role === 'tank' : id === 'cosmetic.glow_staff' ? role === 'healer' : id === 'cosmetic.crit_ice' ? role === 'dps' : COLLECTIBLES[id].gilds ? h.race === COLLECTIBLES[id].gilds : true) && (!COLLECTIBLES[id].retired || !!p.collection[id]));
-  const looksBox = `<div class="box"><h3 class="section-title">Looks<small>never power</small></h3><div class="picks">${ids.map((id) => {
+  return `<div class="box"><h3 class="section-title">Looks<small>never power</small></h3><div class="picks">${ids.map((id) => {
     const c = COLLECTIBLES[id], own = !!p.collection[id], on = own && !p.settings.looksOff.includes(id);
     return `<button type="button" class="pick" data-act="${own ? 'look' : 'item'}" data-id="${id}" aria-pressed="${on}"><span class="tile" aria-hidden="true" ${own ? '' : 'style="filter: grayscale(1) opacity(0.5)"'}>${tile(c.icon)}</span><span><b>${esc(c.name)}</b><span>${own ? (on ? 'On' : 'Off') : esc(c.source)}</span></span></button>`;
   }).join('')}</div></div>`;
-  return titleBox + looksBox;
 }

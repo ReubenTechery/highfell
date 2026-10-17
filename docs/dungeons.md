@@ -166,7 +166,6 @@ whatever lands there). Harder, and made for Thimblebriar's own epics. No Heroic-
 
 - A Heroic-only puzzle or seal.
 - New garden plants (Bramble is already there).
-- A door for it in the house's cellar (it's on the Dungeons sheet).
 - The gnomes' racial trick.
 - Moonmere, dungeon 3.
 

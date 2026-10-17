@@ -66,6 +66,7 @@ export function makeHeroicDungeon(cfg: HeroicBuilderConfig): {
     id: heroicId,
     name: `Heroic ${cfg.base.name}`,
     blurb: `The same dungeon with the gloves off: everything hits harder and lasts longer. Made for full Epic.`,
+    season: cfg.base.season,
     bosses: cfg.base.bosses,
     finalBoss: cfg.base.finalBoss,
     loot: kitTables(cfg.loot, kits, cfg.collectibles),

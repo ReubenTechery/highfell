@@ -25,6 +25,7 @@ import { Reveal, type RevealExtra } from './reveal';
 import { Creator } from './creator';
 import { Garden } from './garden';
 import { Brewing } from './brew';
+import { Share } from './share';
 
 export type SceneId = 'hearth' | 'create' | 'brew' | 'run' | 'reveal';
 const SCENES: SceneId[] = ['hearth', 'create', 'brew', 'run', 'reveal'];
@@ -46,6 +47,8 @@ export class App {
   readonly creator: Creator;
   readonly garden: Garden;
   readonly brew: Brewing;
+  /** a moment as a picture to post, over whatever is showing */
+  readonly share: Share;
   /** the effects and the music, for testing in the page */
   readonly sfx = SFX;
   readonly music = MUSIC;
@@ -58,7 +61,7 @@ export class App {
 
   constructor(readonly root: HTMLElement) {
     root.innerHTML = SHELL;
-    this.toasts = new Toasts($('toasts'));
+    this.toasts = new Toasts($('toasts'), (id) => this.openAchievement(id));
     this.hearth = new Hearth(this, $('sc-hearth'));
     this.sheets = new Sheets(this, $('sheets'));
     this.run = new RunScene(this, $('sc-run'));
@@ -66,6 +69,7 @@ export class App {
     this.creator = new Creator(this, $('sc-create'));
     this.garden = new Garden(this, $('garden'));
     this.brew = new Brewing(this, $('sc-brew'));
+    this.share = new Share(this);
     try { this.dev = { ...this.dev, ...JSON.parse(localStorage.getItem(DEV_KEY) || '{}') }; } catch { /* defaults */ }
   }
 
@@ -121,10 +125,11 @@ export class App {
 
   show(id: SceneId): void {
     this.scene = id;
+    this.share.close();
     for (const s of SCENES) $('sc-' + s).hidden = s !== id;
     // a run picks its own music; the reveal is quiet so every drop's sound lands
     if (id !== 'run') { MUSIC.want(id === 'reveal' ? null : 'house'); MUSIC.duck(1); }
-    if (id === 'hearth') { this.hearth.render(); }
+    if (id === 'hearth') { this.hearth.render(); } else this.hearth.sleep();
     if (id === 'run') {
       resizeView();
       if (!this.raf) { this.last = 0; this.raf = requestAnimationFrame((t) => this.frame(t)); }
@@ -199,6 +204,8 @@ export class App {
     this.run.stop();
     this.showHearth();
   }
+  /** An achievement's card, over whatever is showing: its toast, the chest, the garden or the cauldron opens it. */
+  openAchievement(id: string): void { this.sheets.open({ kind: 'logs', tab: 'achievements', entry: id }); }
 }
 
 const SHELL = `

@@ -25,6 +25,9 @@ import { S } from '../src/dungeon/state.js';
 import { WALKOUT_LEN, startWalkout, tickWalkout } from '../src/dungeon/walkout.js';
 import { BARROW_ENGINE } from '../src/content/barrow/engine';
 import WARDROBE from '../art/wardrobe.json';
+import { WARBAND_KEY } from '../src/meta/warband';
+/** a save whose Warband is open: these tests are about other rules and make more than one hero (warband.ts) */
+const openProfile = (...a: Parameters<typeof freshProfile>) => { const p = freshProfile(...a); p.counters[WARBAND_KEY] = 1; return p; };
 
 const H = DUNGEONS['barrow-heroic'];
 /** the Barrow's sixteen uniques (twelve set pieces and four boss weapons), in its log's order */
@@ -35,7 +38,7 @@ const always = () => 0;
 const never = () => 0.999999;
 
 const HERO = { tank: { race: 'dwarf', cls: 'warrior' }, healer: { race: 'human', cls: 'cleric' }, dps: { race: 'elf', cls: 'mage' } } as const;
-function withHero(role: 'tank' | 'healer' | 'dps' = 'tank', p: Profile = freshProfile()): { p: Profile; h: Hero } {
+function withHero(role: 'tank' | 'healer' | 'dps' = 'tank', p: Profile = openProfile()): { p: Profile; h: Hero } {
   const h = newHero(p, { name: 'Test ' + role, ...HERO[role] })!;
   setActive(p, h.id);
   return { p, h };
@@ -217,7 +220,7 @@ test('heroic: about half of runs bring a kit, and a whole Heroic log takes tens 
 });
 
 test('saves: a v8 gilded piece becomes the plain piece plus its kit, both logs keep what you found, and nothing is dropped', () => {
-  const v8: any = JSON.parse(JSON.stringify(freshProfile(1000)));
+  const v8: any = JSON.parse(JSON.stringify(openProfile(1000)));
   v8.v = 8; v8.rev = 77;
   v8.roster = [
     { id: 'a', name: 'Hollis Emberhand', race: 'dwarf', cls: 'warrior', sex: 'm', regular: {}, bag: {}, fresh: ['gravekeeper.tank.gilded', 'gravekeeper.tank'], title: null, named: true, clears: 30,
@@ -242,7 +245,7 @@ test('saves: a v8 gilded piece becomes the plain piece plus its kit, both logs k
   v8.achievements = { 'barrow.log': { at: 400 } };
   const p = migrate(v8);
   assert.equal(p.v, PROFILE_VERSION);
-  assert.equal(PROFILE_VERSION, 9);
+  assert.equal(PROFILE_VERSION, 10);
   // a gilded piece is the plain piece plus its kit
   assert.deepEqual(p.collection['barrowguard.helm'], { n: 2, kc: 7, at: 100 }, 'a piece you only had gilded is yours plain now');
   assert.deepEqual(p.collection['barrowguard.helm.gilded'], { n: 2, kc: 7, at: 100 }, 'and its kit');

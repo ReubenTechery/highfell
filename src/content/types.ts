@@ -129,9 +129,11 @@ export type Tier = 'bronze' | 'silver' | 'gold' | 'meta' | 'hidden' | 'log';
 export interface RewardDef { title?: string; collectible?: string; look?: string; race?: string; text: string }
 export interface AchievementDef {
   id: string;
+  /** where it's earned: a dungeon id (its Heroic counts too), or 'garden' */
   dungeon: string;
   tier: Tier;
   name: string;
+  /** what to do, in one plain, exact sentence: the page, the toast and the titles list all show it */
   how: string;
   points: number;
   reward: RewardDef;
@@ -142,6 +144,8 @@ export interface AchievementDef {
   live?: (e: GameEvent, ctx: { role: RoleId; practice: boolean; testGear: boolean }) => boolean;
   /** checked when a run is cleared */
   run?: (r: RunSummary) => boolean;
+  /** a clear faster than this many seconds earns it (the page shows your best clear against it) */
+  clearUnder?: number;
   /** other achievements it needs */
   needs?: string[];
   /** completes when this collectible is obtained */
@@ -154,10 +158,15 @@ export interface AchievementDef {
 
 export interface BossInfo { id: string; name: string; phases: number; enrage: number; room: number }
 
+/** A season: about three months, with its own dungeons (docs/ideas.md). `name` is what the game shows. */
+export interface SeasonDef { id: number; name: string }
+
 export interface DungeonInfo {
   id: string;
   name: string;
   blurb: string;
+  /** the season it came in (its name is in SEASONS): the first three dungeons are Season 0 */
+  season: number;
   /** Stepped progression tier (1 = Barrow, 2 = Thimblebriar, 3 = Moonmere). */
   tier?: 1 | 2 | 3;
   /** Recommended entry item level for this dungeon. */
@@ -181,6 +190,9 @@ export interface DungeonInfo {
   heroicOf?: string;
   /** its door, as the Dungeons sheet draws it with your party in front (a heroic dungeon uses its normal one's) */
   stage?: DungeonStage;
+  /** its door in the house's cellar, the Hall of Doors: a sprite drawn in four states, this name for plain and with
+   *  `_lit`, `_gold` and `_gilded` on the end (tools/art_doors.py; a heroic dungeon uses its normal one's) */
+  houseDoor?: string;
   /** the chest's headline after a clear (the Barrow's: "The Gravekeeper is buried") */
   clearTitle?: string;
 }

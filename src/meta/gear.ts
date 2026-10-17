@@ -69,6 +69,9 @@ export function loadoutFor(p: Profile, h: Hero): Loadout {
   return loadoutOf(Object.values(worn(p, h)));
 }
 
+/** A score's item level as the game shows it, where it is called Power: a whole number (Power 13, never 13.2). */
+export const wholeIlvl = (score: number): number => Math.round(score);
+
 /** Plain regular gear at one rarity: what the bots in your party wear, and test gear. */
 export function plainLoadout(role: GearKey, rar: Rar, trait?: string): Loadout {
   return loadoutOf(SLOT_IDS.map((slot) => ({ slot, def: ITEMS[gearId(role, slot, rar)], trait: rar === EPIC && slot === 'weapon' ? trait || TRAITS[role][0].id : undefined, unique: false })));
@@ -322,4 +325,11 @@ export function weaponTrait(p: Profile, h: Hero): { trait: string | undefined; r
   const best = bestRegular(h, 'weapon');
   if (best.rar < 2) return null;
   return { trait: best.trait, rar: best.rar, on: !!best.trait && worn(p, h).weapon.trait === best.trait };
+}
+
+/** The boss weapon the Crypt Trial lends a class: the Barrow's own for its role (and class, for the rogue's
+ *  daggers), so the trial always shows the real weapon's power. */
+export function trialWeapon(role: RoleId, cls: ClassId | string | undefined): string | null {
+  const all = Object.values(ITEMS).filter((i) => i.dungeon === 'barrow' && i.kind === 'unique' && i.slot === 'weapon' && i.role === role);
+  return (all.find((i) => i.cls && i.cls === cls) || all.find((i) => !i.cls))?.effect || null;
 }

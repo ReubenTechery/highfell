@@ -268,7 +268,8 @@ function earth(x0: number, y0: number, x1: number, y1: number, c: WorkshopLook):
     o.push(beam(`M${x - 3} ${y0 + len * 0.45} C${x - s * 12} ${y0 + len * 0.55} ${x - s * 18} ${y0 + len * 0.68} ${x - s * 20} ${y0 + len * 0.82}`, WS.root, 3));
     o.push(P(`M${x - 11} ${y0} C${x - 10} ${y0 + len * 0.4} ${x + s * 14} ${y0 + len * 0.6} ${x + s * 4} ${y0 + len} C${x + s * 10} ${y0 + len * 0.6} ${x + 3} ${y0 + len * 0.4} ${x + 11} ${y0} Z`, WS.root, 3));
   }
-  for (const [x, y, k] of [[66, 236, 1], [536, 196, 0.85], [1000, 236, 0.9]]) o.push(bracket(x, y, k, c));
+  // (the middle one over the gap between the second door and the third: the Hall of Doors, halldoors.ts)
+  for (const [x, y, k] of [[66, 236, 1], [536, 150, 0.85], [1000, 236, 0.9]]) o.push(bracket(x, y, k, c));
   return o.join('');
 }
 /** bracket fungi, a little stack of them, growing out of a wall at (x, y): caps with no stems */
@@ -348,11 +349,12 @@ export function workshop(c: WorkshopLook, k: Kit): Record<string, RoomArt> {
     },
     cellar: {
       wall: () => earth(0, CC, W, CW, c) + earthFloor(0, W, FLOORS.cellar, STRIP),
-      // pipes under the ceiling, glowcaps where the candles are, a scrap heap where the bones are, a lamp between the arches
+      // pipes under the ceiling, glowcaps where the candles are, a scrap heap where the bones are, and a lamp hung
+      // between the last door and the stairs (the doors are the Hall of Doors: halldoors.ts)
       furnish: () => pipe(`M0 ${CC + 40} H${W - 210} C${W - 180} ${CC + 40} ${W - 170} ${CC + 50} ${W - 170} ${CC + 80} V${CC + 110}`, c) + valve(W - 170, CC + 110, 16)
         + collar(320, CC + 40, c, 'h') + collar(760, CC + 40, c, 'h')
-        + k.arches() + placeSprite('node_glowcap', 70, FLOORS.cellar - 28, { k: 0.82 }) + scrap(924, FLOORS.cellar - 22, c) + hangLamp(703, CC, 150, c),
-      light: () => glow(300, 280, 460, 'h-green', 0.85) + glow(70, 440, 130, 'h-fly', 0.9) + lamp(703, 200, 260, 0.7),
+        + placeSprite('node_glowcap', 70, FLOORS.cellar - 28, { k: 0.82 }) + scrap(924, FLOORS.cellar - 22, c) + hangLamp(850, CC, 140, c),
+      light: () => glow(70, 440, 130, 'h-fly', 0.9) + lamp(850, 190, 250, 0.7),
       bits: () => spores(),
     },
   };

@@ -4,19 +4,20 @@
  * (logActions) and the closer look at a slot riding over it (logpeek.ts). The sheets mark what you've seen.
  * And the paddock's page: every mount in the game, which the paddock opens when you tap it from far away.
  */
-import { ACHIEVEMENT_LIST, COLLECTIBLES, DUNGEONS } from '../content';
+import { ACHIEVEMENTS, ACHIEVEMENT_LIST, COLLECTIBLES, DUNGEONS, placeName } from '../content';
 import type { RaceId } from '../content/folk';
-import { ROLES } from '../content/roles';
 import type { Tier } from '../content/types';
 import { LORE } from '../content/vale';
-import { maxPoints, points, progress } from '../meta/achievements';
+import { maxPoints, placeOf, points, wearTitle } from '../meta/achievements';
+import { achBrag } from '../meta/brag';
 import { paddock } from '../meta/hearth';
-import type { Profile } from '../meta/profile';
+import { activeHero, type Profile } from '../meta/profile';
 import { skillRank } from '../meta/vale';
-import { esc, fmtDate, fmtN, fmtT } from './dom';
+import { esc, fmtN, fmtT } from './dom';
 import { colourOf, iconOf, nameOf } from './art';
 import { collectionLog, type LogView } from './logbook';
 import { peekCard } from './logpeek';
+import { TIER_WORD, achCard, achRow } from './achcard';
 import { SFX } from './sound';
 import type { App } from './app';
 import type { SheetSpec } from './sheets';
@@ -24,19 +25,20 @@ import type { SheetSpec } from './sheets';
 export type LogTab = 'collection' | 'achievements' | 'lore' | 'stats';
 export const LOG_TABS: LogTab[] = ['collection', 'achievements', 'lore', 'stats'];
 const TIER_ORDER: Tier[] = ['log', 'bronze', 'silver', 'gold', 'meta', 'hidden'];
-const TIER_WORD: Record<Tier, string> = { log: 'Collection logs', bronze: 'Bronze', silver: 'Silver', gold: 'Gold', meta: 'Mastery', hidden: 'Hidden' };
 
 /** The sheet for a tab. `heroic` is whether the collection log shows the heroic logs; a page asked for from
  *  the other version switches it, and the sheet hands back what it is now. `over` is the closer look at a
- *  slot, drawn over the sheet. */
+ *  slot or an achievement, drawn over the sheet. On the achievements tab, `entry` is a place (a dungeon or
+ *  the garden) or an achievement, whose place it shows. */
 export function logsSheet(p: Profile, tab: LogTab, entry: string | undefined, heroic: boolean, view: LogView): { head: string; tabs: string; body: string; heroic: boolean; over: string } {
   const word: Record<LogTab, string> = { collection: 'Collection log', achievements: 'Achievements', lore: 'Story', stats: 'Stats' };
   // the story tab only shows if you found pages of Bramblewick's story back when you rode out
   const tabs = `<div class="tabs" role="tablist">${LOG_TABS.filter((t) => t !== 'lore' || p.vale.lore.length || tab === 'lore').map((t) => `<button type="button" class="tab" role="tab" data-act="tab" data-tab="${t}" aria-selected="${t === tab}">${word[t]}</button>`).join('')}</div>`;
   let body: string, h = heroic;
   if (tab === 'collection') ({ html: body, heroic: h } = collectionLog(p, entry, heroic, view));
-  else body = tab === 'stats' ? stats(p) : tab === 'lore' ? lore(p) : achievements(p);
-  const over = tab === 'collection' && view.peek ? peekCard(p, view.peek, entry?.includes('.set.') ? entry : undefined) : '';
+  else body = tab === 'stats' ? stats(p) : tab === 'lore' ? lore(p) : achievements(p, entry);
+  const over = tab === 'collection' && view.peek ? peekCard(p, view.peek, entry?.includes('.set.') ? entry : undefined)
+    : tab === 'achievements' && view.ach ? achCard(p, view.ach) : '';
   return { head: '<h2>Logs</h2>', tabs, body, heroic: h, over };
 }
 
@@ -44,9 +46,10 @@ export function logsSheet(p: Profile, tab: LogTab, entry: string | undefined, he
 export interface LogHost { app: App; root: HTMLElement; view: LogView; open(spec: SheetSpec): void; refresh(): void; close(): void }
 
 /** the Logs sheet's buttons: its tabs and pages, Try it on, the closer look (focus goes into it, and back to
- *  what opened it), and a finished log's way in */
+ *  what opened it), a finished log's way in, and an achievement's card, its places and Wear it */
 export function logActions(h: LogHost): Record<string, (el: HTMLElement) => void> {
   const reset = (): void => { h.view.tryOn = false; h.view.peek = null; };
+  const top = (): void => h.root.querySelector('.sheet-body')?.scrollTo(0, 0);
   return {
     tab: (el) => { reset(); SFX.play('ui'); h.open({ kind: 'logs', tab: el.dataset.tab as LogTab }); },
     entry: (el) => {
@@ -67,6 +70,25 @@ export function logActions(h: LogHost): Record<string, (el: HTMLElement) => void
     },
     makerace: (el) => { SFX.play('ui'); h.close(); h.app.showCreate(undefined, el.dataset.race as RaceId); },
     putlook: () => { SFX.play('ui'); h.open({ kind: 'looks' }); },
+    // an achievement's card opens over its place's page, from anywhere a sheet can open
+    ach: (el) => {
+      const id = el.dataset.id || '';
+      if (!ACHIEVEMENTS[id]) return;
+      SFX.play('ui');
+      h.open({ kind: 'logs', tab: 'achievements', entry: id });
+      h.root.querySelector<HTMLElement>('.pk-x')?.focus({ preventScroll: true });
+    },
+    achclose: () => {
+      const a = h.view.ach ? ACHIEVEMENTS[h.view.ach] : undefined;
+      SFX.play('ui');
+      h.open({ kind: 'logs', tab: 'achievements', entry: a ? placeOf(a) : undefined });
+      if (a) h.root.querySelector<HTMLElement>(`.ac-hit[data-id="${CSS.escape(a.id)}"]`)?.focus({ preventScroll: true });
+    },
+    achshare: (el) => { if (ACHIEVEMENTS[el.dataset.id || '']) h.app.share.open([achBrag(el.dataset.id || '')]); },
+    achplace: (el) => { SFX.play('ui'); h.open({ kind: 'logs', tab: 'achievements', entry: el.dataset.id }); top(); },
+    // a title goes on the hero you play; the armoury's own list puts one on the hero it shows
+    wear: (el) => { const hero = activeHero(h.app.p); if (hero && wearTitle(h.app.p, hero, el.dataset.id || null)) { SFX.play('equip'); h.app.save(); } else SFX.play('nope'); },
+    titles: () => { const hero = activeHero(h.app.p); if (!hero) return; SFX.play('ui'); h.open({ kind: 'gear', hero: hero.id, tab: 'looks' }); },
   };
 }
 
@@ -104,24 +126,25 @@ function stats(p: Profile): string {
   return out;
 }
 
-function achievements(p: Profile): string {
+/** The achievements of one place at a time (each dungeon with its Heroic, then the garden), chips across the
+ *  top to move between them, each row saying what to do, your progress, what it gives and where it went, and
+ *  when you earned it. Your titles are a tap away. */
+function achievements(p: Profile, entry: string | undefined): string {
   // a retired achievement (it can't be earned any more) shows only for whoever has it
   const shown = ACHIEVEMENT_LIST.filter((a) => !a.retired || p.achievements[a.id]);
-  let out = `<div class="stats"><span class="chip">Points <b>${points(p)}</b> / ${maxPoints()}</span><span class="chip">Earned <b>${Object.keys(p.achievements).length}</b> / ${shown.length}</span><span class="chip">Titles <b>${p.titles.length}</b></span></div>`;
+  const places = [...new Set(shown.map(placeOf))];
+  const asked = entry && ACHIEVEMENTS[entry] ? placeOf(ACHIEVEMENTS[entry]) : entry;
+  const place = asked && places.includes(asked) ? asked : places[0];
+  const earned = (list: typeof shown): number => list.filter((a) => p.achievements[a.id]).length;
+  const word = (id: string): string => (DUNGEONS[id] ? DUNGEONS[id].name.split(' ')[0] : 'Garden');
+  let out = `<div class="stats"><span class="chip">Points <b>${points(p)}</b> / ${maxPoints()}</span><span class="chip">Earned <b>${earned(shown)}</b> / ${shown.length}</span>
+    <button type="button" class="chip ac-titles" data-act="titles">Titles <b>${p.titles.length}</b><span>Wear one</span></button></div>
+    <nav class="lb-chips ac-places" aria-label="Where they are earned">${places.map((id) => { const l = shown.filter((a) => placeOf(a) === id); return `<button type="button" class="lb-chip" data-act="achplace" data-id="${esc(id)}" aria-pressed="${id === place}">${esc(word(id))}<small>${earned(l)}/${l.length}</small></button>`; }).join('')}</nav>
+    <p class="fine ac-where">${esc(placeName(place) || '')}: tap one for what it gives and where it went.</p>`;
+  const list = shown.filter((a) => placeOf(a) === place);
   for (const tier of TIER_ORDER) {
-    const list = shown.filter((a) => a.tier === tier);
-    if (!list.length) continue;
-    out += `<h3 class="section-title">${TIER_WORD[tier]}</h3>`;
-    for (const a of list) {
-      const done = p.achievements[a.id];
-      const secret = tier === 'hidden' && !done;
-      const pr = progress(p, a);
-      const role = a.role ? ` · ${ROLES[a.role].title} only` : '';
-      out += `<div class="ach ${done ? '' : 'locked'}"><span class="medal ${a.tier}" aria-hidden="true">${done ? '✓' : a.points}</span>
-        <div><div class="n">${secret ? '???' : esc(a.name)}</div><div class="h">${secret ? 'Hidden. You will know it when it happens.' : esc(a.how) + esc(role)}</div>${secret ? '' : `<div class="rw">${esc(a.reward.text)}</div>`}</div>
-        <div class="pts">${a.points}<small>${done ? fmtDate(done.at) : 'points'}</small></div>
-        ${pr && !done ? `<div class="bar" role="progressbar" aria-valuenow="${pr.have}" aria-valuemax="${pr.need}" title="${pr.have} / ${pr.need}"><i style="width: ${(pr.have / pr.need) * 100}%"></i></div>` : ''}</div>`;
-    }
+    const l = list.filter((a) => a.tier === tier);
+    if (l.length) out += `<h3 class="section-title">${TIER_WORD[tier]}<small>${earned(l)} of ${l.length}</small></h3>${l.map((a) => achRow(p, a)).join('')}`;
   }
   return out;
 }

@@ -32,7 +32,7 @@ export function pieceCard(p: Profile, h: Hero, x: ShelfPiece): string {
   const share = itemShare(d), slot = ROLE_SLOTS[gk][d.slot].name.toLowerCase();
   const kind = d.kind === 'gear' ? `${look.name} ${slot}` : d.kind === 'set' && d.setId ? `Epic ${slot} · ${SETS[d.setId].name} set` : `Unique ${slot}`;
   const cell = (val: string, label: string, n: number, unit = ''): string => `<span class="pk-s"><b>${val}</b><small>${esc(label)}</small>${on ? '' : tag(n, unit)}</span>`;
-  const nums = cell(String(share.ilvl), 'Item level', c.ilvl[1] - c.ilvl[0]) + cell(`+${share.power}%`, cap(ROLE_STAT[role].short), c.power, '%') + cell(`+${share.health}%`, 'Health', c.health, '%');
+  const nums = cell(String(share.ilvl), 'Power', c.ilvl[1] - c.ilvl[0]) + cell(`+${share.power}%`, cap(ROLE_STAT[role].short), c.power, '%') + cell(`+${share.health}%`, 'Health', c.health, '%');
   // the effects: the set's bonuses have their own row, so they're left out here
   const li = (k: string, mark: string, label: string, desc: string): string => `<li class="${k}"><i aria-hidden="true">${mark}</i><span><b>${esc(label)}</b> ${esc(desc)}</span></li>`;
   const named = (e: Effect, mine: boolean): string => (e.kind === 'trait' ? `${e.name} trait` : mine ? 'When worn' : e.name);
