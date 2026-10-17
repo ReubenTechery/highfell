@@ -11,7 +11,7 @@
    Exposed (+35% damage taken) is every payoff's setup: Cleave Crushes, Icicle and Comet Shatter as on a Chilled
    boss, Shadowstrike hits as if you had five points, and Smite heals double.
    heroes.js fires these (useAbility); press.js times the player's presses; bots.js picks the bots'. The rogue's
-   four are rogue.js; Fire's are fire.js; what talents change in each is specs.js. */
+   four are rogue.js; the ranger's are ranger.js; Fire's are fire.js; what talents change in each is specs.js. */
 import { angDiff, angTo, dist } from '../core/math';
 import { rng } from '../core/rng';
 import { AB, BEAT, MEND, fillerMul } from '../content/roles';
@@ -23,6 +23,7 @@ import { moveEnt } from './world.js';
 import { blockGadgets, chargeGadgets, cleaveGadgets, cometGadgets, gearMul, icicleGadgets, mendGadgets, slamGadgets, sunburstGadgets, wardGadgets } from './gadgets.js';
 import { autoTarget, bestCluster, bombInReach, clampRange, engaged, foesNear, heroBy, isFoe, later, loud, mostHurt, nearestFoe, spawnThrall } from './heroes.js';
 import { ROGUE_BUTTONS } from './rogue.js';
+import { RANGER_BUTTONS } from './ranger.js';
 import { fireboltHit, fireCometLand } from './fire.js';
 import { axeStorm, breach, bulwarkMul, bulwarkPull, chargeCrushes, circleFollows, dawn, finalWord, finish, flashpoint, hailTarget, hardRime, has, hearten, longWinter, miracle, mendMul, onCrush, onPerfect, onSlam, overflow, paybackStun, rallyWard, rimStrike, savageMul, shardburst, slamReach, smiteHealTargets, smiteSear, stunHit, sunlanceTarget, sunpillar, sunstrike, takePayback, twiceStruck, twinWard, unbowed, wideWinter } from './specs.js';
 export { POINT, MAX_POINTS, burnable } from './rogue.js';
@@ -367,6 +368,8 @@ export function projHit(p) {
   if (p.kind === 'icicle') icicleHit(h, t, !!p.half);
   else if (p.kind === 'smite') smiteHit(h, t);
   else if (p.kind === 'firebolt') fireboltHit(h, t);
+  // a shot that says what it does when it lands (the ranger's arrows, ranger.js)
+  else if (p.land) p.land(p);
 }
 function smiteHit(h, t) {
   const got = hurtMob(t, AB.healer.a4.hit * fillerMul(h.bonuses), h, { col: '#FFE08A', size: 20, tier: 'filler', key: 'smite' });
@@ -511,4 +514,5 @@ export const BUTTONS = {
   circle: abCircle, ward: abWard, sunburst: abSunburst, smite: (h, aim) => shot(h, aim, 'smite'),
   blizzard: abBlizzard, nova: abNova, comet: abComet, icicle: (h, aim) => shot(h, aim, 'icicle'),
   ...ROGUE_BUTTONS,
+  ...RANGER_BUTTONS,
 };

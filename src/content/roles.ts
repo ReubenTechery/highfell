@@ -44,13 +44,12 @@ export const AB: Record<AbKey, Record<AbilitySlot, AbilityDef>> = {
     a3: { key: 'flurry', name: 'Fan of Blades', cd: 6.0, desc: 'Whirl knives round you: they stop casts, refresh venom and add a point if they hit.', combo: 'Your interrupt for a pack’s casters' },
     a4: { key: 'shadowstep', name: 'Shadowstep', cd: 8, offBeat: true, desc: 'Blink behind your target, strike it and stop its cast. You swing 35% faster for 3.8 seconds and gain two points.', combo: 'Close the gap, stop a cast, and bank points' },
   },
-  // the ranger (docs/duo.md, names are drafts): the plumbing's placeholder; the ranger's stream gives it its numbers
-  // and builds the buttons in src/dungeon/ranger.js. No hero can be a ranger until CLASS_ORDER offers it.
+  // the ranger (docs/duo.md, names are drafts): what each button does is src/dungeon/ranger.js
   ranger: {
-    a1: { key: 'quickshot', name: 'Quick Shot', cd: 0, filler: true, hit: 60, desc: 'An arrow every beat that marks its foe.', combo: 'Three marks make a Longshot' },
-    a2: { key: 'longshot', name: 'Longshot', cd: 0, desc: 'On a foe with three marks, or an Exposed one, a drawn arrow that hits hard and goes through to the foes behind it.', combo: 'Your payoff' },
-    a3: { key: 'pinshot', name: 'Pin Shot', cd: 8, desc: 'An arrow that stops a cast and Exposes the caster.', combo: 'Your interrupt' },
-    a4: { key: 'snare', name: 'Snare', cd: 10, aim: true, range: 520, desc: 'Throw a trap that roots whatever walks in.', combo: 'Lay it where your mate drags the pack' },
+    a1: { key: 'quickshot', name: 'Quick Shot', cd: 0, filler: true, hit: 64, desc: 'An arrow every beat. It leaves a mark on its foe, up to three, for 8 seconds.', combo: 'Three marks make a Longshot' },
+    a2: { key: 'longshot', name: 'Longshot', cd: 0, hit: 300, desc: 'On a foe with three marks, or an Exposed one: a drawn arrow that hits hard, goes on through two foes behind it and heals you a little.', combo: 'Your payoff. On a foe your mate set up, it’s a COMBO' },
+    a3: { key: 'pinshot', name: 'Pin Shot', cd: 8, desc: 'An arrow that stops a cast and Exposes the caster. A foe that isn’t casting is pinned: slowed right down for 2 seconds.', combo: 'Your interrupt' },
+    a4: { key: 'snare', name: 'Snare', cd: 10, aim: true, range: 520, desc: 'Throw a trap. Foes that walk in are held for 2.5 seconds and bitten; a boss is Staggered.', combo: 'Lay it where your mate drags the pack' },
   },
 };
 
@@ -59,8 +58,9 @@ export function fillerOf(k: AbKey): { slot: AbilitySlot; def: AbilityDef } {
   const slot = SLOTS_AB.find((s) => AB[k][s].filler) || 'a1';
   return { slot, def: AB[k][slot] };
 }
-/** the set pieces that make a filler hit harder, and by how much: the Barrow's and Thimblebriar's helms */
-export const FILLER_PIECES: Record<string, number> = { bg_helm: 1.25, cg_helm: 1.25, cw_helm: 1.3, rb_helm: 1.25, as_helm: 1.25 };
+/** the set pieces that make a filler hit harder, and by how much: the Barrow's and Thimblebriar's helms (the
+ *  ranger's are Quick Shot's) */
+export const FILLER_PIECES: Record<string, number> = { bg_helm: 1.25, cg_helm: 1.25, cw_helm: 1.25, sb_helm: 1.25, rb_helm: 1.25, as_helm: 1.25 };
 /** how much harder these bonuses make a filler hit */
 export function fillerMul(bonuses: Iterable<string>): number {
   let k = 1;

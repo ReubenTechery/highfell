@@ -3,14 +3,14 @@
    weapons, are gnome gadgets built round the bombs (bombs.js). They change what a button does, never add one:
      Clockguard   2: a perfect block (or a Slam that pulls three or more) winds a 150 brass shield. 3: a perfect
                   block drops a lit bomb of yours at the attacker, and a Slam one at the foes it pulled.
-     Sporebloom   2: Mend plants a spore that heals 45 more. 3: Ward leaves a patch-up turret for 6 seconds that
-                  heals the most hurt mate and shoots the nearest foe.
+     Thistledown  (the ranger's) 2: Snare drops a lit bomb of yours in the trap when it springs. 3: Longshot carries
+                  a little bomb that blows where it lands.
      Arcspark     2: Comet into a frozen foe (or a Chilled boss) arcs to 2 more (with nobody else near, back into it).
                   3: Comet splits into four frost bombs.
      Gearshade    2: a crit with Shadowstrike throws a 55 spark (Viper Blades 24). 3: Viper Blades stick a bomb on
                   every foe they cut and Shadowstrike sets them all off.
      Mainspring Maul      Charge winds the spring: the next Cleave hits twice.
-     Sporelight Censer    Mend's spore bursts to heal everyone near it; Sunburst sends the bombs near you flying.
+     Cogspring Bow        Pin Shot sticks a lit bomb of yours on its foe.
      Arcwright's Coil     Icicle chains to 2 more foes; into a frozen foe, each one bounces twice.
      Fusecutters          Shadowstep leaves a lit bomb of yours where you were.
    heroes.js calls in at the moments that matter. A gadget's bomb is yours from the start, and only a bomb
@@ -25,7 +25,7 @@ import { isFoe, engaged } from './heroes.js';
     harder are FILLER_PIECES in content/roles.ts, with the Barrow's */
 const PIECE = {
   cg_shoulders: { charge: 1.35 }, cg_chest: { slam: 1.35 },
-  sb_helm: { mend: 1.15 }, sb_shoulders: { ward: 1.3 }, sb_chest: { circle: 1.25 },
+  sb_helm: { mend: 1.15 }, sb_shoulders: { ward: 1.3, pinshot: 1.4 }, sb_chest: { circle: 1.25 },
   as_shoulders: { nova: 1.4 }, as_chest: { comet: 1.2 },
   gs_helm: { ambush: 1.25 }, gs_shoulders: { flurry: 1.25 }, gs_chest: { venom: 1.3 },
 };
@@ -113,6 +113,29 @@ function drawTurret(ctx, z, drawSpr, fade) {
 export function sunburstGadgets(h) {
   if (h.unique !== 'sporelight') return;
   for (const b of S.mobs) if (b.alive && b.M.bomb && !b.gold && !b.fly && dist(b, h) <= 470) knockBomb(b, h, h.x, h.y);
+}
+
+/* ---------- the ranger (the Thistledown pieces are the cleric's old Sporebloom ones: what the code calls healer
+   gear) ---------- */
+/** Quick Shot hit `t`: the Thistledown Cap slows it */
+export function quickGadgets(h, t) {
+  if (h.bonuses.has('sb_helm') && t.alive) { t.st.slow = Math.max(t.st.slow || 0, 0.3); t.st.slowT = Math.max(t.st.slowT || 0, 2); }
+}
+/** what the Thistledown Coat does to a trap: a third wider, and it waits 4 seconds longer */
+export const thistleTrap = (h) => (h.bonuses.has('sb_chest') ? { r: 4 / 3, wait: 4 } : { r: 1, wait: 0 });
+/** a Snare springs: Thistledown's two pieces drop a lit bomb of yours in it */
+export function springGadgets(h, z) {
+  if (h.bonuses.has('thistledown2')) dropBomb(h, z.x, z.y + 6, { fuse: 0.6 });
+}
+/** a Longshot lands: Thistledown's three pieces blow a little bomb on its foe */
+export function longshotGadgets(h, t) {
+  if (h.bonuses.has('thistledown3') && t.alive) dropBomb(h, t.x, t.y + 6, { fuse: 0.35, small: true });
+}
+/** Pin Shot hit `t`: the Thistledown Mantle keeps it Exposed a second longer, and the Cogspring Bow sticks a lit
+ *  bomb on it that rides along and blows a moment later */
+export function pinGadgets(h, t) {
+  if (h.bonuses.has('sb_shoulders') && t.alive && t.exposed > 0) t.exposed += 1;
+  if (h.unique === 'cogspring' && t.alive && !t.M.thing) { const b = dropBomb(h, t.x, t.y, { fuse: 0.9 }); b.stuck = t; }
 }
 
 /* ---------- the mage ---------- */

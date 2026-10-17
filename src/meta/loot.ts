@@ -9,7 +9,7 @@
  */
 import type { BossLootDef, DropDef, DungeonInfo, Rar, RoleId, SlotId } from '../content/types';
 import { COLLECTIBLES, DUNGEONS, ITEMS, KITS } from '../content';
-import { EPIC, SLOT_IDS, TRAITS, gearId, gearKey } from '../content/gear';
+import { EPIC, SLOT_IDS, TRAITS, gearId, gearKey, itemKey } from '../content/gear';
 import type { Rng } from '../core/rng';
 import { autoPlace } from './hearth';
 import { bagIt, bestRegular, fitsHero, freshForRole } from './gear';
@@ -85,12 +85,14 @@ export const heroicOpen = (p: Profile, dungeon: string): boolean => heroicProgre
 /** whose Marks a dungeon pays: a heroic one pays its normal one's */
 const marksOf = (dg: DungeonInfo): string => dg.heroicOf || dg.id;
 
-/** Each line rolls on its own. Role/class-locked lines only roll for that role/class. */
+/** Each line rolls on its own. Role/class-locked lines only roll for the heroes who wear that gear (the ranger
+ *  wears what the code calls healer gear). */
 export function rollTable(t: BossLootDef, role: RoleId, rng: Rng, cls?: string): DropDef[] {
   const hit: DropDef[] = [];
+  const key = gearKey({ role, cls });
   for (const d of t.drops) {
     const r = rng();
-    const match = !d.role || (d.role === role && (cls === 'rogue' ? d.cls === 'rogue' : !d.cls));
+    const match = !d.role || itemKey({ role: d.role, cls: d.cls }) === key;
     if (match && r < d.rate) hit.push(d);
   }
   return hit;
@@ -281,7 +283,7 @@ export function lootFor(dg: DungeonInfo, role: RoleId, cls?: string): { mine: Dr
   const all = dg.loot.flatMap((t) => t.drops);
   const who = (d: DropDef): { role?: RoleId; cls?: string } => { const it = KITS[d.id] && ITEMS[KITS[d.id].item]; return it ? { role: it.role, cls: it.cls } : d; };
   return {
-    mine: all.filter((d) => { const w = who(d); return w.role === role && (!cls || (cls === 'rogue' ? w.cls === 'rogue' : !w.cls)); }),
+    mine: all.filter((d) => { const w = who(d); return !!w.role && (cls ? itemKey({ role: w.role, cls: w.cls }) === gearKey({ role, cls }) : w.role === role); }),
     shared: all.filter((d) => !who(d).role).sort((a, b) => b.rate - a.rate),
   };
 }

@@ -138,12 +138,13 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     job: 'Melts single bosses with twin daggers, venom & crits (+10% move speed).',
     signature: ['a1', 'a2'],
     blurb: 'Darts in with twin daggers, coats foes in Viper Venom, and carves up single targets faster than anyone.' },
-  // the duo rework's new class (docs/duo.md): not in CLASS_ORDER, so the hero maker doesn't offer it, until the
-  // ranger's stream and its art land. It wears what the code calls healer gear (gearKey), the cleric's old sets.
+  // the duo rework's new class (docs/duo.md): its kit is src/dungeon/ranger.js and talents/ranger.ts. It isn't in
+  // CLASS_ORDER, so the hero maker doesn't offer it, until its art lands (then ready and CLASS_ORDER, one line each).
+  // It wears what the code calls healer gear (gearKey): the cleric's old sets and weapons, now its own.
   ranger: { id: 'ranger', name: 'Ranger', role: 'dps', roleName: 'DPS', icon: 'i_dagger', ready: false,
-    job: 'Marks foes with a bow, lays traps, and looses Longshots from range.',
+    job: 'Marks foes from range, lays traps, and looses Longshots.',
     signature: ['a1', 'a2'],
-    blurb: 'Keeps his distance, marks what you’re both hitting, and drops a snare where the pack is about to be.' },
+    blurb: 'Stays at range, marks what you’re both hitting, and drops a snare where the pack is about to be.' },
 };
 export const CLASS_ORDER: ClassId[] = ['warrior', 'cleric', 'mage', 'rogue'];
 

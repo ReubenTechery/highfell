@@ -9,6 +9,7 @@ import { ROGUE_CRIT } from './entities.js';
 import { burnOf } from './fire.js';
 import { has, lastBreath, miracleFor, rallyWard } from './specs.js';
 import { BURN } from '../content/talents';
+import { MARKS, RANGE as BOW_RANGE, canLongshot, longshotTarget, marksOf, pinMarks } from './ranger.js';
 import { ready } from './press.js';
 import { chainEnds, cutChain, liftCurse, mashCage } from './mobs.js';
 import { canStand, freeSpot, navPoint } from './world.js';
@@ -62,7 +63,7 @@ const kickable = (h, m) => !!(m.cast && m.cast.kick && m.cast.t >= h.bot.react);
    to step in (he's on the tank and between moves, and nobody is caged) */
 export function chillTarget(h) {
   const b = S.boss && S.boss.alive && !S.boss.hidden && S.boss.state === 'fight' ? S.boss : null;
-  if (!b || h.role !== 'dps' || h.cls === 'rogue' || h.cd.a2 > 0.3 || b.st.chill > 0) return null;
+  if (!b || h.role !== 'dps' || h.cls === 'rogue' || h.cls === 'ranger' || h.cd.a2 > 0.3 || b.st.chill > 0) return null;
   const calm = !b.act && b.target && b.target.role === 'tank' && !S.heroes.some((a) => a.st.caged);
   return calm ? b : null;
 }
@@ -263,8 +264,8 @@ export function combatGoal(h) {
     }
     return ringClamp(standNear(h, t, 8), h);
   }
-  // a mage with Rime burst ready steps in to stop a cast near the tank
-  if (h.role === 'dps' && h.cd.a2 <= 0.2) {
+  // a mage with Rime burst ready steps in to stop a cast near the tank (a ranger's Pin Shot reaches from where it is)
+  if (h.role === 'dps' && h.cls !== 'ranger' && h.cd.a2 <= 0.2) {
     const caster = S.mobs.find((m) => isFoe(m) && m.cast && m.cast.kick && dist(m, h) < 420 && m.cast.dur - m.cast.t > 0.6);
     if (caster) return ringClamp(standNear(h, caster, NOVA_REACH * 0.5), h);
   }
@@ -470,8 +471,59 @@ export function rogueActions(h) {
     if (ready(h, 'a1')) { useAbility(h, 'a1', tgt); return; }
   }
 }
+/** about what a Longshot does to this foe now, before a crit */
+const longshotFor = (h, t) => AB.ranger.a2.hit * h.power * (t.exposed > 0 ? 1.35 : 1);
+/* the ranger: Pin Shot stops a cast, Snare goes where the pack is gathered (or what's coming for you, or the boss's
+   feet), Longshot on three marks or an Exposed foe, and Quick Shot on every other beat */
+export function rangerActions(h) {
+  const tank = heroBy('tank');
+  let tgt = null;
+  const cage = S.mobs.find((m) => m.alive && m.cage && m.hero !== h && dist(m, h) < BOW_RANGE);
+  if (cage) tgt = cage;
+  const foes = fightingFoes();
+  if (!tgt) { const caster = foes.find((m) => m.cast && m.cast.kick && dist(m, h) < BOW_RANGE); if (caster) tgt = caster; }
+  if (!tgt) { const first = foes.find((m) => m.M.priority && dist(m, h) < 560); if (first) tgt = first; }
+  if (!tgt) { const caller = foes.find((m) => m.M.kind === 'caller' && dist(m, h) < 560); if (caller) tgt = caller; }
+  if (!tgt) {
+    const onUs = foes.filter((m) => m.target && m.target.role !== 'tank' && dist(m, h) < 560);
+    if (onUs.length) tgt = onUs.sort((a, b) => dist(a, h) - dist(b, h))[0];
+  }
+  if (!tgt && tank && tank.alive && tank.target && isFoe(tank.target) && (engagedByTank(tank.target) || (tank.target.isBoss && tank.target.fightT > 1.5))) tgt = tank.target;
+  if (!tgt && (!tank || !tank.alive)) tgt = foes.sort((a, b) => dist(a, h) - dist(b, h))[0] || null;
+  h.picked = tgt;
+  h.holdFire = !tgt;
+  if (h.st.stun > 0 || h.st.caged || !tgt) return;
+  // Pin Shot: a cast it can stop in time
+  const caster = foes.find((m) => kickable(h, m) && dist(m, h) <= BOW_RANGE + m.r && m.cast.dur - m.cast.t > 0.25);
+  if (caster && ready(h, 'a3')) { useAbility(h, 'a3', caster); return; }
+  // with nothing casting, a Pin Shot that leaves marks (Pinned Down, the Long Night, the Gravewood Mantle) builds a
+  // Longshot on a boss or a big foe
+  if (ready(h, 'a3') && pinMarks(h) && (tgt.isBoss || tgt.M.big) && !tgt.cage && marksOf(tgt) < MARKS.need && !foes.some((m) => m.cast)) { useAbility(h, 'a3', tgt); return; }
+  // Snare: a pack gathered up (once the tank has it), what's coming for you, or a boss between his moves
+  if (ready(h, 'a4')) {
+    const c = bestCluster(h, 100, 520);
+    const held = !tank || !tank.alive || foes.filter((m) => engagedByTank(m)).length >= 2;
+    const onMe = foes.find((m) => m.target === h && !m.isBoss && !m.M.ranged && dist(m, h) < 260);
+    const boss = S.boss && S.boss.alive && !S.boss.hidden && S.boss.state === 'fight' && !S.boss.act && dist(S.boss, h) <= 500 + S.boss.r ? S.boss : null;
+    const at = c && c.score >= 2.5 && held ? c : onMe ? { x: (onMe.x + h.x) / 2, y: (onMe.y + h.y) / 2 } : boss ? { x: boss.x, y: boss.y } : null;
+    if (at) { useAbility(h, 'a4', { x: at.x, y: at.y }); return; }
+  }
+  // Longshot: on three marks or an Exposed foe, the target first, then whatever else is marked
+  if (ready(h, 'a2')) {
+    const t = canLongshot(h, tgt) ? tgt : longshotTarget(h, null);
+    // with Deep Marks, a boss or a big foe gets its five first (unless it's Exposed, or nearly down)
+    const wait = t && has(h, 'lb.deep') && (t.isBoss || t.M.big) && marksOf(t) < MARKS.deep && !(t.exposed > 0) && t.hp > longshotFor(h, t) * 2;
+    if (t && !wait && !pullsBoss(h, t, longshotFor(h, t))) { useAbility(h, 'a2', t); return; }
+  }
+  // otherwise Quick Shot every beat: a cage, a red bomb in reach, then the target
+  if (ready(h, 'a1')) {
+    const t = cage || bombInReach(h) || (tgt && !tgt.M.wisp ? tgt : null);
+    if (t) useAbility(h, 'a1', t);
+  }
+}
 export function dpsActions(h) {
   if (h.cls === 'rogue') { rogueActions(h); return; }
+  if (h.cls === 'ranger') { rangerActions(h); return; }
   const tank = heroBy('tank');
   let tgt = null;
   const cage = S.mobs.find((m) => m.alive && m.cage && m.hero !== h && dist(m, h) < 540);

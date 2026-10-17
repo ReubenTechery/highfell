@@ -10,6 +10,7 @@ import { CURSE_COL, CURSE_TIME } from './mobs.js';
 import { drawAir, drawBurn, drawFireZone, drawFx, drawTexts } from './drawfx.js';
 import { drawMap } from './mapdraw.js';
 import { areaOf } from './world.js';
+import { drawMarks, marksOf } from './ranger.js';
 
 /* ---------- drawing: the crypt, everyone in it, and the effects ---------- */
 /** @type {any} */
@@ -523,6 +524,8 @@ export function drawMob(ctx, m) {
   if (slipped || (m.wild && m.alive && !m.isBoss)) { const yy = m.y - (m.M.big ? 168 : 112) - Math.abs(Math.sin(S.t * (m.wild ? 12 : 7))) * 4; ctx.font = `26px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 6; ctx.strokeStyle = K; ctx.strokeText('!!', m.x, yy); ctx.fillStyle = '#FF6B5E'; ctx.fillText('!!', m.x, yy); }
   if (!m.alive) return;
   if (m.cast) castBar(ctx, m.x, m.y - (m.M.big ? 170 : 122), 80, m.cast.t / m.cast.dur, m.cast.kick ? '#9BE15D' : '#F2C230');
+  // a ranger's marks on it (ranger.js)
+  if (marksOf(m)) drawMarks(ctx, m, x);
   if (!m.isBoss && !m.M.wisp && m.state === 'fight' && m.hp < m.maxHp) {
     const w = m.M.big ? 80 : 48, yy = m.y - (m.M.big ? 158 : 106);
     ctx.fillStyle = '#2A2234'; ctx.strokeStyle = K; ctx.lineWidth = 2.5; roundRect(ctx, x - w / 2, yy, w, 8, 4); ctx.fill(); ctx.stroke();

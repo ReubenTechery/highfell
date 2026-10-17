@@ -59,7 +59,7 @@ export interface SpecButton { name: string; icon: string; desc: string; combo?: 
 /** One of a class's two specs: its own tree, and what picking it changes before any points are in. */
 export interface SpecDef {
   id: string;
-  cls: 'warrior' | 'cleric' | 'mage' | 'rogue';
+  cls: 'warrior' | 'cleric' | 'mage' | 'rogue' | 'ranger';
   name: string;
   /** one line: what it plays like */
   pitch: string;

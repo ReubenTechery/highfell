@@ -939,7 +939,8 @@ test('gear-driven power & boss weapons: power comes strictly from worn gear and 
   // All 4 Barrow Crypt boss weapons surface their signature ability buffs in effectsOf
   const weapons = [
     { id: 'gravekeeper.tank', role: 'tank' as const, cls: 'warrior' as const, race: 'dwarf' as const, effect: 'gravedigger', match: 'Charge primes two Crushes' },
-    { id: 'gravekeeper.healer', role: 'healer' as const, cls: 'cleric' as const, race: 'human' as const, effect: 'longnight', match: 'Sunburst sears nearby foes' },
+    // the ranger's bow now (what the code calls healer gear); a cleric can still wear it until the class retires
+    { id: 'gravekeeper.healer', role: 'healer' as const, cls: 'cleric' as const, race: 'human' as const, effect: 'longnight', match: 'Pin Shot leaves two marks' },
     { id: 'gravekeeper.dps', role: 'dps' as const, cls: 'mage' as const, race: 'elf' as const, effect: 'gravefrost', match: 'Rime burst makes your next two Icicles Shatter' },
     { id: 'gravekeeper.rogue', role: 'dps' as const, cls: 'rogue' as const, race: 'elf' as const, effect: 'cryptfangs', match: 'Shadowstep gives you one more point' },
   ];

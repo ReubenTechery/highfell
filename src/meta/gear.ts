@@ -4,7 +4,7 @@ import type { GearKey, ItemDef, Rar, RoleId, SlotId } from '../content/types';
 import type { RegularSlot } from './profile';
 import { ITEMS, KITS, SETS } from '../content';
 import { gilded } from '../content/kits';
-import { EPIC, RARITY, SLOTS, SLOT_IDS, TRAITS, gearId, gearKey, hpMultiplier, powerFromScore, traitDef, weightedScore } from '../content/gear';
+import { EPIC, RARITY, SLOTS, SLOT_IDS, TRAITS, gearId, gearKey, hpMultiplier, itemKey, powerFromScore, traitDef, weightedScore } from '../content/gear';
 import type { ClassId, RaceId } from '../content/folk';
 import { fillerMul, fillerOf } from '../content/roles';
 import { activeHero, createHero, roleOf, type Hero, type Profile } from './profile';
@@ -20,11 +20,11 @@ export interface Loadout {
   score: number;
 }
 
-/** Whether an item belongs to this hero's class/role (Rogue uses cls: 'rogue'; Mage uses role: 'dps' without cls). */
+/** Whether an item belongs to this hero's class/role: its gear key (Rogue uses cls: 'rogue'; Mage uses role: 'dps'
+ *  without cls; the ranger wears what the code calls healer gear). */
 export const fitsHero = (def: ItemDef, h: { role?: RoleId; cls?: string } | Hero): boolean => {
   const role = 'id' in h ? roleOf(h) : (h.role || 'dps');
-  if (def.role !== role) return false;
-  return h.cls === 'rogue' ? def.cls === 'rogue' : !def.cls;
+  return itemKey(def) === gearKey({ role, cls: h.cls });
 };
 
 /** The four things a hero has on right now. A weapon trait unlocked at Rare+ stays active even when wearing a unique weapon. */
@@ -159,7 +159,7 @@ export function compareFor(p: Profile, h: Hero, id: string): Compare | null {
 }
 /** What a new hero of a role starts in: the shared gear, nothing unique on. */
 export function floorWorn(p: Profile, role: RoleId, cls?: string): Record<SlotId, Worn> {
-  const gKey: GearKey = cls === 'rogue' ? 'rogue' : role;
+  const gKey: GearKey = gearKey({ role, cls });
   const out = {} as Record<SlotId, Worn>;
   for (const slot of SLOT_IDS) { const r = p.warband[role][slot]; out[slot] = { slot, def: ITEMS[gearId(gKey, slot, r.rar)], trait: r.rar >= 2 ? r.trait : undefined, unique: false }; }
   return out;
@@ -340,9 +340,9 @@ export function weaponTrait(p: Profile, h: Hero): { trait: string | undefined; r
   return { trait: best.trait, rar: best.rar, on: !!best.trait && worn(p, h).weapon.trait === best.trait };
 }
 
-/** The boss weapon the Crypt Trial lends a class: the Barrow's own for its role (and class, for the rogue's
- *  daggers), so the trial always shows the real weapon's power. */
+/** The boss weapon the Crypt Trial lends a class: the Barrow's own for the gear it wears (the rogue's daggers, the
+ *  ranger's bow), so the trial always shows the real weapon's power. */
 export function trialWeapon(role: RoleId, cls: ClassId | string | undefined): string | null {
-  const all = Object.values(ITEMS).filter((i) => i.dungeon === 'barrow' && i.kind === 'unique' && i.slot === 'weapon' && i.role === role);
-  return (all.find((i) => i.cls && i.cls === cls) || all.find((i) => !i.cls))?.effect || null;
+  const key = gearKey({ role, cls });
+  return Object.values(ITEMS).find((i) => i.dungeon === 'barrow' && i.kind === 'unique' && i.slot === 'weapon' && itemKey(i) === key)?.effect || null;
 }

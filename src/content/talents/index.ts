@@ -13,12 +13,13 @@ import { AXE, SHIELD } from './warrior';
 import { MERCY, WRATH } from './cleric';
 import { FIRE, FROST } from './mage';
 import { BLADES, VENOM } from './rogue';
+import { LONGBOW, TRAPPER } from './ranger';
 
 export { TALENT_STATS, statLine } from './make';
 export { BURN } from './mage';
 
 /** every spec, two a class, the class's first one first */
-export const SPEC_LIST: SpecDef[] = [SHIELD, AXE, MERCY, WRATH, FROST, FIRE, VENOM, BLADES];
+export const SPEC_LIST: SpecDef[] = [SHIELD, AXE, MERCY, WRATH, FROST, FIRE, VENOM, BLADES, LONGBOW, TRAPPER];
 export const SPECS: Record<string, SpecDef> = Object.fromEntries(SPEC_LIST.map((s) => [s.id, s]));
 /** a class's two specs */
 export const specsFor = (cls: string): SpecDef[] => SPEC_LIST.filter((s) => s.cls === cls);

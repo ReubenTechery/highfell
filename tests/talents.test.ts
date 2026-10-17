@@ -19,7 +19,8 @@ const T0 = Date.UTC(2026, 9, 17, 9);
 const atLevel = (lv: number, cls = 'mage'): { p: Profile; h: Hero } => {
   const p = freshProfile(T0);
   const race = cls === 'warrior' ? 'dwarf' : cls === 'mage' ? 'elf' : 'human';
-  const h = newHero(p, { name: 'Test Hero', race: race as 'elf', cls: cls as 'mage' })!;
+  // a class nobody can make yet (the ranger, until its art lands) is a hero switched to it
+  const h = newHero(p, { name: 'Test Hero', race: race as 'elf', cls: cls as 'mage' }) ?? Object.assign(newHero(p, { name: 'Test Hero', race: 'elf', cls: 'mage' })!, { cls });
   p.xp = xpForLevel(lv);
   return { p, h };
 };
@@ -33,7 +34,7 @@ const fill = (p: Profile, h: Hero, spec: string): number => {
 
 test('talents: two specs a class, a tree of 29 points each, in five rows', () => {
   assert.deepEqual(checkContent(), []);
-  for (const cls of ['warrior', 'cleric', 'mage', 'rogue']) assert.equal(specsFor(cls).length, 2, cls);
+  for (const cls of ['warrior', 'cleric', 'mage', 'rogue', 'ranger']) assert.equal(specsFor(cls).length, 2, cls);
   for (const s of SPEC_LIST) {
     assert.equal(treePoints(s), TREE_POINTS, s.id);
     assert.equal(s.talents.filter((t) => t.capstone && t.row === 5).length, 2, `${s.id} has two capstones to pick from, at the bottom`);

@@ -10,6 +10,8 @@ import { CLASSES, type ClassId } from './folk';
 
 export const gearKey = (h: RoleId | GearKey | { role?: RoleId; cls?: string }): GearKey =>
   typeof h === 'string' ? h : h.cls === 'rogue' ? 'rogue' : h.cls === 'ranger' ? 'healer' : (h.role ?? CLASSES[(h.cls as ClassId) || 'warrior']?.role ?? 'dps');
+/** whose gear an item is: the rogue's are the ones that say so, the rest go by their role */
+export const itemKey = (def: { role: RoleId; cls?: string }): GearKey => (def.cls === 'rogue' ? 'rogue' : def.role);
 /** a class's gear key: the ranger wears what the code calls healer gear (the cleric's old sets and weapons become
  *  his, so nobody's save moves; docs/duo-agents.md) */
 export const gearKeyOf = (cls: string): GearKey => gearKey({ cls });
@@ -32,7 +34,8 @@ export const SLOT_IDS: SlotId[] = SLOTS.map((s) => s.id);
 
 export const ROLE_SLOTS: Record<GearKey, Record<SlotId, RoleSlotDef>> = {
   tank: { weapon: { name: 'Axe', icon: 'i_axe' }, helm: { name: 'Helm', icon: 'i_helm' }, shoulders: { name: 'Pauldrons', icon: 'i_pauldrons' }, chest: { name: 'Plate', icon: 'i_plate' } },
-  healer: { weapon: { name: 'Staff', icon: 'i_sunstaff' }, helm: { name: 'Hood', icon: 'i_hood' }, shoulders: { name: 'Mantle', icon: 'i_mantle' }, chest: { name: 'Robe', icon: 'i_robe' } },
+  // the ranger's (the cleric's old seat): its own pictures come with the art stream
+  healer: { weapon: { name: 'Bow', icon: 'i_sunstaff' }, helm: { name: 'Hood', icon: 'i_hood' }, shoulders: { name: 'Mantle', icon: 'i_mantle' }, chest: { name: 'Leathers', icon: 'i_robe' } },
   dps: { weapon: { name: 'Staff', icon: 'i_icestaff' }, helm: { name: 'Hat', icon: 'i_hat' }, shoulders: { name: 'Mantle', icon: 'i_mantle' }, chest: { name: 'Robe', icon: 'i_robe' } },
   rogue: { weapon: { name: 'Twin Daggers', icon: 'i_dagger' }, helm: { name: 'Mask', icon: 'i_mask' }, shoulders: { name: 'Spaulders', icon: 'i_spaulders' }, chest: { name: 'Jerkin', icon: 'i_jerkin' } },
 };
@@ -44,11 +47,12 @@ const NAMES: Record<GearKey, Record<SlotId, [string, string, string, string]>> =
     shoulders: ['Burlap Shoulder Wraps', 'Iron Pauldrons', 'Crypt Warden Pauldrons', 'Pauldrons of the Long Watch'],
     chest: ['Patched Rag Tunic', 'Iron Chainmail', 'Crypt Warden Plate', 'Plate of the Long Watch'],
   },
+  // the ranger wears what the code calls healer gear (gearKey)
   healer: {
-    weapon: ['Gnarled Branch', 'Sunwood Staff', 'Dawnbringer', 'Staff of First Light'],
-    helm: ['Frayed Rag Hood', 'Pilgrim Hood', 'Hood of Quiet Mercy', 'Circlet of the Sun'],
-    shoulders: ['Patchwork Shawl', 'Pilgrim Mantle', 'Mantle of Quiet Mercy', 'Mantle of the Sun'],
-    chest: ['Tattered Sackcloth', 'Pilgrim Robe', 'Robe of Quiet Mercy', 'Vestments of the Sun'],
+    weapon: ['Bent Yew Shortbow', 'Ashwood Bow', 'Gravewatch Longbow', 'Bow of the Last Light'],
+    helm: ['Frayed Rag Hood', 'Trapper’s Hood', 'Hood of the Far Watch', 'Hood of the Last Light'],
+    shoulders: ['Patchwork Shawl', 'Trapper’s Mantle', 'Mantle of the Far Watch', 'Mantle of the Last Light'],
+    chest: ['Tattered Sackcloth', 'Trapper’s Leathers', 'Leathers of the Far Watch', 'Leathers of the Last Light'],
   },
   dps: {
     weapon: ['Splintered Wand', 'Frostwood Staff', 'Rimecaller', 'Winter’s Edge'],
@@ -71,10 +75,11 @@ export const TRAITS: Record<GearKey, TraitDef[]> = {
     { id: 'ringing', name: 'Ringing Blow', desc: 'Charge hits twice, and everything it hits turns on you.' },
     { id: 'headsman', name: 'Headsman', desc: 'Hits on stunned mobs, or a Staggered boss, always crit.' },
   ],
+  // the ranger's, in place of the cleric's (CLERIC_TRAITS)
   healer: [
-    { id: 'sunflare', name: 'Sunflare', desc: 'Mend also heals the next most hurt ally for half.' },
-    { id: 'quickhands', name: 'Quick Hands', desc: 'Mend never starts the beat, so your next button can follow it straight away.' },
-    { id: 'kindle', name: 'Kindle', desc: 'A Ward that breaks heals its target for 80 and bursts for 80 on the foes round it.' },
+    { id: 'cleanthrough', name: 'Clean Through', desc: 'Longshot hits the foes behind its target as hard as the target itself.' },
+    { id: 'keenfletch', name: 'Keen Fletching', desc: 'A Quick Shot crit leaves two marks.' },
+    { id: 'steadyaim', name: 'Steady Aim', desc: 'Quick Shot crits half again as often while you stand still.' },
   ],
   dps: [
     { id: 'shatterlance', name: 'Shatterlance', desc: 'Comet on a frozen target hits three times as hard, and on a Chilled boss twice as hard.' },
@@ -87,8 +92,15 @@ export const TRAITS: Record<GearKey, TraitDef[]> = {
     { id: 'nightstalker', name: 'Nightstalker', desc: 'Shadowstep makes your next Shadowstrike deal 30% bonus damage.' },
   ],
 };
+/** the cleric's old traits: the ranger's took their place, and a cleric's weapon still says what its one does until
+ *  the class retires */
+export const CLERIC_TRAITS: TraitDef[] = [
+  { id: 'sunflare', name: 'Sunflare', desc: 'Mend also heals the next most hurt ally for half.' },
+  { id: 'quickhands', name: 'Quick Hands', desc: 'Mend never starts the beat, so your next button can follow it straight away.' },
+  { id: 'kindle', name: 'Kindle', desc: 'A Ward that breaks heals its target for 80 and bursts for 80 on the foes round it.' },
+];
 export const traitDef = (role: GearKey, id: string | undefined): TraitDef | undefined =>
-  TRAITS[role]?.find((t) => t.id === id) || Object.values(TRAITS).flat().find((t) => t.id === id);
+  TRAITS[role]?.find((t) => t.id === id) || [...Object.values(TRAITS).flat(), ...CLERIC_TRAITS].find((t) => t.id === id);
 
 /** Regular gear: the Common to Epic ladder. Ids look like gear.tank.helm.2 or gear.rogue.weapon.2 */
 export const gearId = (role: GearKey, slot: SlotId, rar: Rar): string => `gear.${role}.${slot}.${rar}`;
