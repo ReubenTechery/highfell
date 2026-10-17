@@ -1,7 +1,7 @@
 /**
- * Settings: sound and the music's volume (kept on this device), your keys on a computer (kept in this browser), where your
- * save lives, the testing switches (the reveal and the lantern's tells, the garden's instant growth and luck, every house
- * look) and starting over. The sheets wire up its buttons.
+ * Settings: sound and the music's volume (kept on this device), the live meter in a run and your keys on a computer
+ * (kept in this browser), where your save lives, the testing switches (the reveal and the lantern's tells, the
+ * garden's instant growth and luck, every house look) and starting over. The sheets wire up its buttons.
  */
 import type { SyncState } from '../core/store';
 import type { Profile } from '../meta/profile';
@@ -14,6 +14,7 @@ import type { AbKey, AbilitySlot } from '../content/types';
 import { buttonFor } from '../content/talents';
 import { tile } from './art';
 import { KEYWAIT, ownKeys } from './keybinds';
+import { meterOn } from './meter';
 
 /** Your keys: each of your class's four buttons (as your spec has them: Fire's are fire) and the dodge, E, Q, F, R
  *  order. Tap one, then press a key. */
@@ -43,6 +44,8 @@ export function settingsSheet(p: Profile, st: SyncState, dev: Dev, resetArmed: b
   const body = `
     <div class="box"><h3 class="section-title">Sound</h3><div class="actions vol-row"><button type="button" class="btn small" data-act="sound">${p.settings.sound ? GLYPH.sound + 'Sound on' : GLYPH.mute + 'Sound off'}</button>
       <label class="vol"><span>Music</span><input type="range" min="0" max="100" step="5" value="${Math.round(MUSIC.volume * 100)}" data-act="music" aria-label="Music volume"></label></div></div>
+    <div class="box"><h3 class="section-title">In a run</h3><p class="fine">The live meter: your damage and your mate’s as the run goes. The duel card at the chest shows it either way.</p>
+      <div class="seg"><button type="button" class="sg" role="switch" data-act="meter" aria-checked="${meterOn()}">Live meter</button></div></div>
     ${keys ? keysBox(keys.k, keys.cls, keys.spec) : ''}
     <div class="box"><h3 class="section-title">Your save</h3><p class="fine">${esc(where)}</p><p class="fine">Save ${fmtN(p.rev)} · started ${fmtDate(p.createdAt)} · ${p.roster.length} hero${p.roster.length === 1 ? '' : 'es'}</p></div>
     <div class="box"><h3 class="section-title">For testing</h3>

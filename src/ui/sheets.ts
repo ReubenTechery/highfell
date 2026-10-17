@@ -28,6 +28,7 @@ import { markSeen } from '../meta/logs';
 import { looksSheet, pickedLook } from './lookssheet';
 import { settingsSheet } from './settingssheet';
 import { resetKeys, stopWaiting, waitForKey } from './keybinds';
+import { meterOn, setMeter } from './meter';
 import type { BindSlot } from '../content/keys';
 import { abKey } from '../content/roles';
 import { CLASSES } from '../content/folk';
@@ -116,6 +117,7 @@ export class Sheets {
       gild: (el) => { if (setGilded(this.app.p, el.dataset.id!, el.dataset.v === '1')) { SFX.play(el.dataset.v === '1' ? 'gild' : 'ui'); this.app.save(); } else SFX.play('nope'); },
       place: (el) => { const s = this.spec; if (!s || s.kind !== 'picker') return; if (place(this.app.p, s.spot, el.dataset.id || null)) { SFX.play('place'); this.app.save(); this.close(); } },
       sound: () => { const p = this.app.p; p.settings.sound = !p.settings.sound; SFX.on = p.settings.sound; if (SFX.on) SFX.play('ui'); this.app.save(); },
+      meter: () => { setMeter(!meterOn()); SFX.play('ui'); this.refresh(); },
       rebind: (el) => { const k = this.keysClass(); if (!k) return; SFX.play('ui'); waitForKey(k.k, el.dataset.slot as BindSlot, () => { SFX.play('ui'); this.refresh(); }); this.refresh(); },
       keysreset: () => { const k = this.keysClass(); if (!k) return; stopWaiting(); resetKeys(k.k); SFX.play('ui'); this.refresh(); },
       reset: () => {
@@ -221,7 +223,7 @@ export class Sheets {
     const scroll = this.root.querySelector('.sheet-body')?.scrollTop || 0;
     let head = '', tabs = '', body = '', foot = '', over = '', wide = false;
     switch (s.kind) {
-      case 'dungeon': ({ head, body, foot } = dungeonSheet(this.app.p, this.pick, this.app.dev.allOpen)); wide = true; break;
+      case 'dungeon': ({ head, body, foot } = dungeonSheet(this.app.p, this.pick, this.app.dev.allOpen, this.app.dev.duo)); wide = true; break;
       case 'hero': {
         const h = heroById(this.app.p, s.hero);
         if (!h) { this.close(); return; }

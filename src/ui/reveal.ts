@@ -36,8 +36,10 @@ import { SFX } from './sound';
 import { achRow } from './achcard';
 import { cardWords } from './sharecard';
 import type { RunOpts } from './run';
+import type { DuelResult } from '../meta/duel';
 
-export interface RevealExtra { unlocked: string[]; hero: string | null; role: RoleId; deaths: number; again: RunOpts | null; preview?: boolean; intro?: boolean }
+/** `duel`: a run with two seats has a duel card (meta/duel.ts) */
+export interface RevealExtra { unlocked: string[]; hero: string | null; role: RoleId; deaths: number; again: RunOpts | null; preview?: boolean; intro?: boolean; duel?: DuelResult }
 
 /** rarest last: regular gear, the pages, then table drops and tomes from most to least common */
 const order = (d: Drop): number => (d.source === 'regular' ? 0 : d.source === 'xp' && !d.rate ? 1 : 2 + (1 - (d.rate || 0)) * 1000);

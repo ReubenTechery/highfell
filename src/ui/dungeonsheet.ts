@@ -86,7 +86,8 @@ export function pickedDungeon(p: Profile, pick: DungeonPick, allOpen: boolean): 
 const statLine = (clears: number, kc: number, pb: number | null | undefined): string =>
   clears ? `<b>${clears}</b> clear${clears === 1 ? '' : 's'} · KC <b>${kc}</b> · best <b>${fmtT(pb)}</b>` : 'No clears yet';
 
-export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean): { head: string; body: string; foot: string } {
+/** `duo`: the duo rework's two seats (Settings > Duo seats, until two seats are the default): you and your companion */
+export function dungeonSheet(p: Profile, pick: DungeonPick, allOpen: boolean, duo = false): { head: string; body: string; foot: string } {
   // a dungeon that's built has its door; one still coming has a door that says what it will ask of you
   const base = DUNGEONS[pick.dungeon || 'barrow'] || DUNGEONS.barrow;
   const meta = ACT1_DUNGEONS.find((m) => m.id === base.id) || ACT1_DUNGEONS[0];
