@@ -17,7 +17,7 @@ export function spawnThrall(h, kind, x, y, dur) {
   const cap = kind === 'frost' ? 3 : 2;
   const same = S.thralls.filter((tr) => tr.alive && tr.owner === h && tr.kind === kind);
   if (same.length >= cap) same[0].alive = false;
-  const sp = kind === 'shade' ? (h.sprite || 'rogue') : 'rattler';
+  const sp = kind === 'shade' ? h.sprite : 'rattler';
   const tr = {
     id: 'tr' + S.seq++,
     kind,

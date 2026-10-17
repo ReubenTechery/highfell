@@ -34,7 +34,7 @@ function boxOf(svg: string): number[] {
 const inside = (b: number[], vb: number[]): boolean => b[0] >= vb[0] - 0.5 && b[1] >= vb[1] - 0.5 && b[2] <= vb[0] + vb[2] + 0.5 && b[3] <= vb[1] + vb[3] + 0.5;
 
 test('heroes in layers: every body that is drawn has its front and back, its box, its head and every anchor its class needs', () => {
-  assert.ok(BODIES.length >= 8, 'the warriors at least');
+  assert.equal(BODIES.length, Object.keys(HERO_ART_SEX).length, 'every hero is drawn in layers');
   for (const { combo, art } of BODIES) {
     const [race, cls, sex] = combo.split('.');
     assert.equal(art, bodyId(race, cls, sex), `${combo} wears its own body`);
@@ -129,13 +129,11 @@ test('the run bakes only its own heroes and lets them go when it ends', async ()
   dropHeroes();
   assert.ok(!spr['hero.test_f'] && !art['hero.test_b'], 'gone when it ends');
   assert.equal(Object.keys(SPR).length, before);
-  // the old whole-body heroes of every class drawn in layers are gone from the sprites the run bakes at start
-  const gone = [...new Set(BODIES.map((b) => b.combo.split('.')[1]))];
-  const old: Record<string, RegExp> = { warrior: /^(tank|gnome_tank|goblin_tank|risen_tank)/, cleric: /^(healer|gnome_healer|goblin_healer|risen_healer)/, mage: /^(dps|gnome_dps|goblin_dps|risen_dps)/ };
-  for (const name of Object.keys(RUN_ART)) for (const cls of gone) assert.ok(!old[cls]?.test(name), `${name} is still baked`);
+  // the old whole-body heroes are gone from the sprites the run bakes at start
+  for (const name of Object.keys(RUN_ART)) assert.ok(!/^(gnome_|goblin_|risen_)?(tank|healer|dps|rogue)(_m)?(_rags|_iron|_gilded)?_[fb]$/.test(name), `${name} is still baked`);
   // and every slot each class wears has a layer, at every rarity, for the bots and test gear (Epic wears the Rare look)
-  for (const cls of gone) for (const rar of [0, 1, 2, 3] as const) {
-    for (const [slot, id] of Object.entries(plainSlots(CLASSES[cls as ClassId].role, cls, rar))) assert.ok(H.layers[id!], `${cls}: ${slot} at ${rar}`);
+  for (const cls of Object.keys(CLASSES) as ClassId[]) for (const rar of [0, 1, 2, 3] as const) {
+    for (const [slot, id] of Object.entries(plainSlots(CLASSES[cls].role, cls, rar))) assert.ok(H.layers[id!], `${cls}: ${slot} at ${rar}`);
   }
   const s: SlotId = 'helm';
   assert.equal(plainSlots('tank', 'warrior', 3)[s], 'gear.tank.helm.2');

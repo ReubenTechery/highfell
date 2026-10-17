@@ -28,8 +28,8 @@ export const brewFx = (id) => (id && BREW_FX[id]) || {};
 
 /* loadout: what the meta layer worked out from the hero's gear.
    { power, traits: Set, bonuses: Set, weaponRar, unique, name?, sprite?, fit?, brew?, brewCol? }
-   name and sprite are your hero's; the bots in the other seats use the role's own. fit is a layered hero's
-   weapon glow and head top (render.js heroFit). */
+   name is your hero's (a bot's is its role's); sprite is the hero's picture for this run, composed in layers by the
+   run screen, and fit its weapon glow and head top (render.js heroFit). */
 export function makeHero(role, isPlayer, loadout) {
   const R = ROLES[role];
   const L = loadout || {};
@@ -39,7 +39,7 @@ export function makeHero(role, isPlayer, loadout) {
   const maxHp = Math.round(R.hp * hpMultiplier(power));
   const B = brewFx(L.brew);
   return {
-    id: 'h_' + role, kind: 'hero', role, cls, name: L.name || R.name, sprite: L.sprite || (isRogue ? 'rogue' : R.sprite), fit: L.fit || null, isPlayer, x: 0, y: 0, r: R.r,
+    id: 'h_' + role, kind: 'hero', role, cls, name: L.name || R.name, sprite: L.sprite || '', fit: L.fit || null, isPlayer, x: 0, y: 0, r: R.r,
     face: -Math.PI / 2, back: true, flip: false, hp: maxHp, maxHp, armor: R.armor, power,
     traits: new Set(L.traits || []), bonuses: new Set(L.bonuses || []), unique: L.unique || null,
     weaponRar: L.weaponRar || 0, threatMod: R.threat * (B.threat || 1), speed: R.speed * (isRogue ? 1.1 : 1) * (B.speed || 1), alive: true,

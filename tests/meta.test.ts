@@ -103,8 +103,9 @@ test('heroes: race and class are fixed, male or female look is saved, names are 
   assert.equal(heroArt('human', 'cleric', 'm'), 'human.cleric.m');
   assert.equal(heroArt('elf', 'mage', 'f'), 'elf.mage.f');
   assert.equal(heroArt('elf', 'mage', 'm'), 'elf.mage.m');
-  assert.equal(heroArt('human', 'rogue', 'f'), 'rogue');
-  assert.equal(heroArt('human', 'rogue', 'm'), 'rogue_m');
+  assert.equal(heroArt('human', 'rogue', 'f'), 'human.rogue.f');
+  assert.equal(heroArt('human', 'rogue', 'm'), 'human.rogue.m');
+  assert.equal(heroArt('elf', 'rogue', 'm'), 'elf.rogue.m', 'an elf rogue is an elf');
   for (const r of ['gnome', 'goblin', 'risen'] as const) {
     assert.equal(heroArt(r, 'warrior', 'm'), `${r}.warrior.m`);
     assert.equal(heroArt(r, 'warrior', 'f'), `${r}.warrior.f`);
@@ -112,8 +113,8 @@ test('heroes: race and class are fixed, male or female look is saved, names are 
     assert.equal(heroArt(r, 'cleric', 'm'), `${r}.cleric.m`);
     assert.equal(heroArt(r, 'mage', 'f'), `${r}.mage.f`);
     assert.equal(heroArt(r, 'mage', 'm'), `${r}.mage.m`);
-    assert.equal(heroArt(r, 'rogue', 'f'), `${r}_rogue`);
-    assert.equal(heroArt(r, 'rogue', 'm'), `${r}_rogue_m`);
+    assert.equal(heroArt(r, 'rogue', 'f'), `${r}.rogue.f`);
+    assert.equal(heroArt(r, 'rogue', 'm'), `${r}.rogue.m`);
   }
   assert.equal(cleanName('  Wren   Copperkettle '), 'Wren Copperkettle');
   assert.equal(cleanName('x'), null);

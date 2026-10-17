@@ -24,7 +24,7 @@ import { addHeroes, dropHeroes, dropVariants } from '../dungeon/art.js';
 import { roomIndexOf } from '../dungeon/world.js';
 import { lootGlint, startWalkout } from '../dungeon/walkout.js';
 import { Achiever } from '../meta/achievements';
-import { gildedOn, loadoutFor, partyRar, plainLoadout, worn } from '../meta/gear';
+import { loadoutFor, partyRar, plainLoadout, worn } from '../meta/gear';
 import { countBossWipe, countRunStart, gildOf, resolveClear, resolveKill, runLoot, tellOf, type ClearLoot, type KillLoot } from '../meta/loot';
 import { pourFor, seatsFor } from '../meta/party';
 import { activeHero, countClassRun, countLift, finishCurseTip, finishIntroRun, heroById, learnGlow, markClassTrial, needsClassTrial, needsCurseTip, needsSwipeHint, roleOf, type Hero } from '../meta/profile';
@@ -34,7 +34,6 @@ import { broughtBrew, spendBottle } from '../meta/vale';
 import type { App } from './app';
 import { $, esc, flash, fmtT } from './dom';
 import { ART, botSprite, heroImg, heroSprite, nameOf, plainSprite, spriteFit, spriteURL, tile } from './art';
-import { layered } from './heroart';
 import { IN, aimPoint, bindFrameSwipes, bindInput, mashCage, playerIntent, resetInput, type InputUI } from './input';
 import { MUSIC, runMusic } from './music';
 import { SFX } from './sound';
@@ -321,11 +320,9 @@ export class RunScene implements InputUI {
     const baseDg = DUNGEONS[baseId] || BARROW;
     const dg = this.dg = o.heroic ? (heroicVersion(baseDg.id) || baseDg) : baseDg;
     const engine = DUNGEON_ENGINES[baseDg.id] || BARROW_ENGINE;
-    // gold in the dungeon: the old Gravegold Dye on a Barrow set, or a gilded piece you wear (its kit is yours and
-    // on) on a hero not yet drawn in layers (in layers the piece itself is gold). The rarer Ghostly Dye wins:
-    // switch it off in Looks to shine gold
-    const gildedWorn = !!h && !layered(h.race, h.cls, h.sex) && Object.values(worn(p, h)).some((w) => w.unique && gildedOn(p, w.def.id));
-    const gilded = !test && !ghostly && (gildedWorn || (looks.includes('dye.ghostly.gilded') && wornSet));
+    // gold in the dungeon: the old Gravegold Dye on a Barrow set (a gilded piece is gold in its own layer). The
+    // rarer Ghostly Dye wins: switch it off in Looks to shine gold
+    const gilded = !test && !ghostly && looks.includes('dye.ghostly.gilded') && wornSet;
     const sporeglow = !test && !ghostly && !gilded && looks.includes('dye.sporeglow') && wornSetOf('thimblebriar');
     if (!this.practice) countRunStart(p, dg);
     // a class's first runs glow the button whose moment has come (the trial teaches its own way)

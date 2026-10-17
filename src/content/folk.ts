@@ -141,27 +141,26 @@ export const CLASSES: Record<ClassId, ClassDef> = {
 };
 export const CLASS_ORDER: ClassId[] = ['warrior', 'cleric', 'mage', 'rogue'];
 
-/** Which race and class combos have in-game art, and what draws them: a whole-body sprite set, or (a name with
- *  dots) the body in art/heroes.json that a hero drawn in layers wears its gear on. Classes move to layers one
- *  at a time. */
+/** Which race and class combos have in-game art: the body in art/heroes.json (race, class and sex) that a hero
+ *  wears its gear on, a layer for each slot (src/ui/heroart.ts). */
 export const HERO_ART: Partial<Record<`${RaceId}.${ClassId}`, string>> = {
   'dwarf.warrior': 'dwarf.warrior.m',
   'human.cleric': 'human.cleric.f',
   'elf.mage': 'elf.mage.f',
-  'human.rogue': 'rogue',
-  'elf.rogue': 'rogue',
+  'human.rogue': 'human.rogue.f',
+  'elf.rogue': 'elf.rogue.f',
   'gnome.warrior': 'gnome.warrior.m',
   'gnome.cleric': 'gnome.cleric.f',
   'gnome.mage': 'gnome.mage.f',
-  'gnome.rogue': 'gnome_rogue',
+  'gnome.rogue': 'gnome.rogue.f',
   'goblin.warrior': 'goblin.warrior.m',
   'goblin.cleric': 'goblin.cleric.f',
   'goblin.mage': 'goblin.mage.f',
-  'goblin.rogue': 'goblin_rogue',
+  'goblin.rogue': 'goblin.rogue.f',
   'risen.warrior': 'risen.warrior.m',
   'risen.cleric': 'risen.cleric.f',
   'risen.mage': 'risen.mage.f',
-  'risen.rogue': 'risen_rogue',
+  'risen.rogue': 'risen.rogue.f',
 };
 export const HERO_ART_SEX: Partial<Record<`${RaceId}.${ClassId}.${SexId}`, string>> = {
   'dwarf.warrior.m': 'dwarf.warrior.m',
@@ -170,34 +169,34 @@ export const HERO_ART_SEX: Partial<Record<`${RaceId}.${ClassId}.${SexId}`, strin
   'human.cleric.m': 'human.cleric.m',
   'elf.mage.f': 'elf.mage.f',
   'elf.mage.m': 'elf.mage.m',
-  'human.rogue.f': 'rogue',
-  'human.rogue.m': 'rogue_m',
-  'elf.rogue.f': 'rogue',
-  'elf.rogue.m': 'rogue_m',
+  'human.rogue.f': 'human.rogue.f',
+  'human.rogue.m': 'human.rogue.m',
+  'elf.rogue.f': 'elf.rogue.f',
+  'elf.rogue.m': 'elf.rogue.m',
   'gnome.warrior.m': 'gnome.warrior.m',
   'gnome.warrior.f': 'gnome.warrior.f',
   'gnome.cleric.f': 'gnome.cleric.f',
   'gnome.cleric.m': 'gnome.cleric.m',
   'gnome.mage.f': 'gnome.mage.f',
   'gnome.mage.m': 'gnome.mage.m',
-  'gnome.rogue.f': 'gnome_rogue',
-  'gnome.rogue.m': 'gnome_rogue_m',
+  'gnome.rogue.f': 'gnome.rogue.f',
+  'gnome.rogue.m': 'gnome.rogue.m',
   'goblin.warrior.m': 'goblin.warrior.m',
   'goblin.warrior.f': 'goblin.warrior.f',
   'goblin.cleric.f': 'goblin.cleric.f',
   'goblin.cleric.m': 'goblin.cleric.m',
   'goblin.mage.f': 'goblin.mage.f',
   'goblin.mage.m': 'goblin.mage.m',
-  'goblin.rogue.f': 'goblin_rogue',
-  'goblin.rogue.m': 'goblin_rogue_m',
+  'goblin.rogue.f': 'goblin.rogue.f',
+  'goblin.rogue.m': 'goblin.rogue.m',
   'risen.warrior.m': 'risen.warrior.m',
   'risen.warrior.f': 'risen.warrior.f',
   'risen.cleric.f': 'risen.cleric.f',
   'risen.cleric.m': 'risen.cleric.m',
   'risen.mage.f': 'risen.mage.f',
   'risen.mage.m': 'risen.mage.m',
-  'risen.rogue.f': 'risen_rogue',
-  'risen.rogue.m': 'risen_rogue_m',
+  'risen.rogue.f': 'risen.rogue.f',
+  'risen.rogue.m': 'risen.rogue.m',
 };
 export const defaultSex = (_race: string, cls: string): SexId => (cls === 'cleric' || cls === 'mage' || cls === 'rogue' ? 'f' : 'm');
 export const heroArt = (race: string, cls: string, sex?: string): string | null => {

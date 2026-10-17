@@ -280,6 +280,70 @@ def risen_mage(fem):
     return {'race': 'risen', 'cls': 'mage', 'fem': fem, 'f': {'z': f, 'fit': fit('f')}, 'b': {'z': b, 'fit': fit('b')}}
 
 
+# ---------------------------------------------------------------- the rogue's stance (the human is its reference); a dagger in each hand
+G.ref('rogue', head=(0, -94.4), sh=-81.6, main=(-28.8, -49.6), off=(28.8, -49.6), arm=(-12.8, -75.2), arm2=(12.8, -75.2))
+RG_TORSO = 'M-15 -102 C-18 -88 -17 -76 -14 -66 H14 C17 -76 18 -88 15 -102 Z'
+RG_LEG = 'M-13 -66 L-15 -16 H-4 L-3 -66 Z'
+RG_SLEEVE = 'M-18 -98 C-27 -90 -33 -78 -36 -64 L-28 -60 C-26 -72 -22 -82 -14 -90 Z'
+RG_BELT = 'M-16 -70 H16 V-62 H-16 Z'
+
+
+def rogue(race, fem):
+    """a human (the rogue's reference body) or an elf, standing the same, in a linen shirt and breeches, boots on,
+    a hand ready either side"""
+    skin = H.HSKIN if race == 'human' else H.ESKIN
+    f, b = {}, {}
+    f['legs'] = b['legs'] = both('M-14 -16 H-4 V0 H-18 C-19 -5 -17 -12 -14 -16 Z', BOOT) + both(RG_LEG, LINEN_D)
+    f['torso'] = b['torso'] = s(RG_TORSO, LINEN) + s(RG_BELT, LINEN_D, 3.2)
+    f['arms'] = b['arms'] = both(RG_SLEEVE, LINEN)
+    f['hands'] = b['hands'] = c(-36, -62, 5.2, skin, 3.2) + c(36, -62, 5.2, skin, 3.2)
+    neck = s('M-5 -106 H5 V-99 H-5 Z', skin, 2.8)
+    if race == 'human':
+        f['head'] = neck + head(0, -118, H.human_head(Z, bun=fem, circlet=False, fem=fem))
+        b['head'] = neck + head(0, -118, H.human_back(Z, bun=fem, circlet=False))
+    else:
+        hair, face = H.elf_head(Z, back_len=30, fem=fem)
+        if fem:
+            f['mane'] = head(0, -118, hair)
+        f['head'] = neck + head(0, -118, face)
+        b['head'] = neck + head(0, -118, H.elf_back(Z, back_len=30, fem=fem))
+    return {'race': race, 'cls': 'rogue', 'fem': fem, 'f': {'z': f, 'fit': G.identity_fit('rogue', 'f')}, 'b': {'z': b, 'fit': G.identity_fit('rogue', 'b')}}
+
+
+def pint_rogue(race, fem):
+    """a gnome or goblin rogue: the human's stance on a pint-sized body with a big head (a goblin keeps its coin pouch)"""
+    skin = pint_skin(race)
+    f, b = {}, {}
+    f['legs'] = b['legs'] = both('M-13 -12 H-3.5 V0 H-17 C-18 -4 -16 -9 -13 -12 Z', BOOT) + both('M-12 -42 L-14 -12 H-4 L-3 -42 Z', LINEN_D)
+    f['torso'] = b['torso'] = s('M-14 -66 C-17 -56 -16 -48 -13 -42 H13 C16 -48 17 -56 14 -66 Z', LINEN) + s('M-15 -45 H15 V-39 H-15 Z', LINEN_D, 2.8)
+    if race == 'goblin':
+        f['trim'] = s('M9 -43 C8 -36 16 -36 15 -43 Z', '#8A5A34', 2.2) + c(12, -39, 1.5, GOLD, 0)
+    f['arms'] = b['arms'] = both('M-15 -63 C-23 -57 -28 -49 -30 -40 L-23 -37 C-21 -45 -18 -52 -12 -58 Z', LINEN)
+    f['hands'] = b['hands'] = c(-30, -40, 4.8, skin, 3.0) + c(30, -40, 4.8, skin, 3.0)
+    f['head'] = head(0, -78, pint_face(race, fem=fem))
+    b['head'] = head(0, -78, pint_back_head(race, fem=fem))
+    spine = ([0, 0, 0.93], [-52.8, -33.6, 0.93], [-81.6, -52.8, 0.93])
+    fit = lambda view: G.fit('rogue', view, spine, head=[0, -62.4, 1.1], sh=[-51.6, 0.86], main=[-24, -32, 0.95],
+                             off=[24, -32, 0.95], arm=[-10.8, -48.4], arm2=[10.8, -48.4])
+    return {'race': race, 'cls': 'rogue', 'fem': fem, 'f': {'z': f, 'fit': fit('f')}, 'b': {'z': b, 'fit': fit('b')}}
+
+
+def risen_rogue(fem):
+    """a Risen rogue: bones in linen breeches, a little taller, a green light in the skull"""
+    f, b = {}, {}
+    shins = ''.join(bone_limb(f'M{sx * 9.5} -22 L{sx * 10} -6', 4.6) for sx in (-1, 1))
+    f['legs'] = b['legs'] = shins + both('M-13 -7 H-4 V0 H-16 C-17 -3 -16 -6 -13 -7 Z', BONE, 3) + both(RG_LEG, LINEN_D)
+    f['torso'] = b['torso'] = beam('M0 -76 V-68', BONE, 4.2, 3) + ribcage(0, -104, 24, 28) + s(RG_BELT, LINEN_D, 3.2)
+    f['arms'] = b['arms'] = bone_limb('M-26 -96 L-34 -78 L-36 -64', 4.2) + bone_limb('M26 -96 L34 -78 L36 -64', 4.2)
+    f['hands'] = b['hands'] = bone_hand(-36, -62, 4.8) + bone_hand(36, -62, 4.8)
+    f['head'] = head(0, -124, H.risen_head(Z, fem=fem))
+    b['head'] = head(0, -124, H.risen_back(Z))
+    spine = ([0, 0, 1.0], [-52.8, -52.8, 1.0], [-81.6, -83.2, 1.0])
+    fit = lambda view: G.fit('rogue', view, spine, head=[0, -99.2, 1.05], sh=[-83.2, 1.0], main=[-28.8, -49.6, 1.0],
+                             off=[28.8, -49.6, 1.0], arm=[-12.8, -75.2], arm2=[12.8, -75.2])
+    return {'race': 'risen', 'cls': 'rogue', 'fem': fem, 'f': {'z': f, 'fit': fit('f')}, 'b': {'z': b, 'fit': fit('b')}}
+
+
 BODIES = {
     'dwarf.warrior.m': lambda: dwarf_warrior(False),
     'dwarf.warrior.f': lambda: dwarf_warrior(True),
@@ -305,4 +369,14 @@ BODIES = {
     'goblin.mage.m': lambda: pint_mage('goblin', False),
     'risen.mage.f': lambda: risen_mage(True),
     'risen.mage.m': lambda: risen_mage(False),
+    'human.rogue.f': lambda: rogue('human', True),
+    'human.rogue.m': lambda: rogue('human', False),
+    'elf.rogue.f': lambda: rogue('elf', True),
+    'elf.rogue.m': lambda: rogue('elf', False),
+    'gnome.rogue.f': lambda: pint_rogue('gnome', True),
+    'gnome.rogue.m': lambda: pint_rogue('gnome', False),
+    'goblin.rogue.f': lambda: pint_rogue('goblin', True),
+    'goblin.rogue.m': lambda: pint_rogue('goblin', False),
+    'risen.rogue.f': lambda: risen_rogue(True),
+    'risen.rogue.m': lambda: risen_rogue(False),
 }

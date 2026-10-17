@@ -14,7 +14,7 @@ export type GearKey = RoleId | 'rogue';
 export interface RoleDef {
   id: RoleId; name: string; title: string;
   hp: number; armor: number; speed: number; r: number; threat: number;
-  color: string; sprite: string; blurb: string;
+  color: string; blurb: string;
 }
 
 export interface AbilityDef {

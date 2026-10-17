@@ -125,7 +125,7 @@ test('balance: heroic in Common gear gets buried', () => {
 test('balance: rogue melts single-target bosses faster than mage and tank, clears cleanly with a party, and dies solo before Sir Rattlebones', () => {
   const rogueLoadout = (rar: Rar) => ({
     ...gear(rar),
-    dps: { ...plainLoadout('dps', rar, 'rogue'), cls: 'rogue', sprite: rar === 0 ? 'rogue_rags' : rar === 1 ? 'rogue_iron' : 'rogue' },
+    dps: { ...plainLoadout('dps', rar, 'rogue'), cls: 'rogue' },
   });
 
   // 1. Single-target boss fight (Gravekeeper): Rogue melts the boss faster than Mage, and DPS deals more boss damage than Tank

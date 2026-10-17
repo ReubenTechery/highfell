@@ -286,8 +286,8 @@ def pair_scale(svg, k, px, py):
 # ---------------------------------------------------------------- art/heroes.json
 def class_modules():
     """each class drawn in layers, and the tool that draws its gear"""
-    import art_gear_tank, art_gear_healer, art_gear_mage
-    return {'warrior': art_gear_tank, 'cleric': art_gear_healer, 'mage': art_gear_mage}
+    import art_gear_tank, art_gear_healer, art_gear_mage, art_gear_rogue
+    return {'warrior': art_gear_tank, 'cleric': art_gear_healer, 'mage': art_gear_mage, 'rogue': art_gear_rogue}
 
 
 def classes():

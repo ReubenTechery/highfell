@@ -9,12 +9,11 @@ import VALE_ICONS from '../../art/vale_icons.json';
 import WARDROBE from '../../art/wardrobe.json';
 import { COLLECTIBLES, ITEMS, KITS, itemOf } from '../content';
 import { RARITY, ROLE_SLOTS, gearKey } from '../content/gear';
-import { FOUNDERS, defaultSex, heroArt } from '../content/folk';
-import { ROLES } from '../content/roles';
+import { FOUNDERS, defaultSex } from '../content/folk';
 import type { Rar, RoleId, SlotId } from '../content/types';
 import { gildedOn, worn } from '../meta/gear';
 import type { Hero, Profile } from '../meta/profile';
-import { bodyId, composeLook, fitOfLook, layerOf, layered, lookName, plainSlots, weaponByEffect, type HeroFitOut, type Look } from './heroart';
+import { bodyId, composeLook, fitOfLook, layerOf, lookName, plainSlots, weaponByEffect, type HeroFitOut, type Look } from './heroart';
 
 type Sprite = { svg: string; vb: number[] };
 export const TILES: Record<string, string> = { ...(ICONS as Record<string, string>), ...(COLLECT_ICONS as Record<string, string>), ...(VALE_ICONS as Record<string, string>) };
@@ -170,7 +169,7 @@ function forget(name: string): void {
   for (const v of ['_f', '_b']) { delete ART[name + v]; delete urls[name + v]; delete inner[name + v]; delete shaded[name + v]; }
   delete FITS[name];
 }
-/** A layered sprite's weapon glow and head top, for the run (null for a whole-body sprite). */
+/** A hero sprite's weapon glow and head top, for the run (null for any other sprite). */
 export const spriteFit = (name: string): HeroFitOut | null => FITS[name] || null;
 
 type HeroLike = { race: string; cls: string; sex?: string; regular?: Record<string, { rar: number }>; equip?: Partial<Record<string, string | null>> };
@@ -188,33 +187,14 @@ function heroLook(h: HeroLike, role: RoleId, p?: Profile): Look {
   } else Object.assign(slots, plainSlots(role, h.cls, h.regular || 0));
   return { body: bodyId(h.race, h.cls, sexOf(h)), slots, gold, race: p && gildedRace(p, h.race) ? h.race : null };
 }
-/** The sprite a hero is drawn with: in layers (their body and what they wear in each slot) once their class is
- *  drawn that way, or the old whole-body sets, stepped from starter rags (`_rags` at Common) to iron (`_iron` at
- *  Uncommon) to full plate or robes (Rare+), or gilded when its race's gold look is on. */
-export function heroSprite(h: HeroLike, role: RoleId, p?: Profile): string {
-  if (layered(h.race, h.cls, sexOf(h))) return lookSprite(heroLook(h, role, p));
-  const art = heroArt(h.race, h.cls, h.sex) || ROLES[role].sprite;
-  if (p && gildedRace(p, h.race)) return `${art}_gilded`;
-  let maxRar = 0;
-  if (h.regular) {
-    for (const s of Object.values(h.regular)) if (s && s.rar > maxRar) maxRar = s.rar;
-  }
-  if (h.equip) {
-    for (const uid of Object.values(h.equip)) {
-      if (uid && ITEMS[uid] && (!p || p.collection[uid])) maxRar = Math.max(maxRar, ITEMS[uid].rar);
-    }
-  }
-  return tierSprite(art, maxRar as Rar);
-}
-const tierSprite = (art: string, rar: Rar): string => { const s = `${art}${rar <= 0 ? '_rags' : rar === 1 ? '_iron' : ''}`; return ART[`${s}_f`] ? s : art; };
+/** The sprite a hero is drawn with: their body and what they wear in each slot, in layers. */
+export const heroSprite = (h: HeroLike, role: RoleId, p?: Profile): string => lookSprite(heroLook(h, role, p));
 /** A hero in plain gear at one rarity (test runs, the Crypt Trial), holding a boss weapon when the run hands
  *  one out (by its effect). */
 export function plainSprite(h: { race: string; cls: string; sex?: string }, role: RoleId, rar: Rar, unique?: string | null): string {
-  const sex = sexOf(h);
-  if (!layered(h.race, h.cls, sex)) return tierSprite(heroArt(h.race, h.cls, sex) || ROLES[role].sprite, rar);
   const slots = plainSlots(role, h.cls, rar), wid = weaponByEffect(unique);
   if (wid) slots.weapon = wid;
-  return lookSprite({ body: bodyId(h.race, h.cls, sex), slots, gold: [] });
+  return lookSprite({ body: bodyId(h.race, h.cls, sexOf(h)), slots, gold: [] });
 }
 /** A bot in plain gear: the founder of its role (Brannoc, Maren, Ivy). */
 export const botSprite = (role: RoleId, rar: Rar, unique?: string | null): string => plainSprite(FOUNDERS[role], role, rar, unique);

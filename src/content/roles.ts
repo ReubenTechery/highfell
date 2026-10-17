@@ -9,11 +9,11 @@ export const abKey = (h: RoleId | GearKey | { role?: RoleId; cls?: string }): Ge
   typeof h === 'string' ? h : h.cls === 'rogue' ? 'rogue' : (h.role ?? CLASSES[(h.cls as ClassId) || 'warrior']?.role ?? 'dps');
 
 export const ROLES: Record<RoleId, RoleDef> = {
-  tank: { id: 'tank', name: 'Brannoc', title: 'Tank', hp: 1250, armor: 0.44, speed: 176, r: 18, threat: 1.3, color: '#4F6FA8', sprite: 'tank',
+  tank: { id: 'tank', name: 'Brannoc', title: 'Tank', hp: 1250, armor: 0.44, speed: 176, r: 18, threat: 1.3, color: '#4F6FA8',
     blurb: 'Cleave through packs, Slam to yank foes into a whirlwind, Charge stragglers, block big hits.' },
-  healer: { id: 'healer', name: 'Maren', title: 'Healer', hp: 820, armor: 0.2, speed: 182, r: 16, threat: 1, color: '#E7B53C', sprite: 'healer',
+  healer: { id: 'healer', name: 'Maren', title: 'Healer', hp: 820, armor: 0.2, speed: 182, r: 16, threat: 1, color: '#E7B53C',
     blurb: 'Tap a frame to heal. Smite when everyone is topped up.' },
-  dps: { id: 'dps', name: 'Ivy', title: 'DPS', hp: 720, armor: 0.15, speed: 186, r: 16, threat: 1, color: '#3D7FC1', sprite: 'dps',
+  dps: { id: 'dps', name: 'Ivy', title: 'DPS', hp: 720, armor: 0.15, speed: 186, r: 16, threat: 1, color: '#3D7FC1',
     blurb: 'Stand still to cast. Freeze them, then shatter them.' },
 };
 

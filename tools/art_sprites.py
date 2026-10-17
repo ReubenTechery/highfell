@@ -101,7 +101,7 @@ def sprite(name, vb, body, note=''):
 
 
 # ====================================================================== heroes
-# The heroes (and the Risen, gilded too) are drawn in art_heroes.py; build() adds them to SPRITES.
+# The heroes are drawn in layers, a body and its gear, into art/heroes.json by art_gear.py: not sprites.
 
 
 # ====================================================================== mobs
@@ -529,9 +529,7 @@ def projectiles():
 
 
 def build():
-    import art_heroes  # here, not at the top: it imports this file's helpers
-    import art_thimble  # Thimblebriar Hollow's mobs, bosses, bombs, props and cuckoo clock (same reason)
-    SPRITES.update(art_heroes.build())
+    import art_thimble  # Thimblebriar's mobs, bosses, bombs and props: here, not at the top, as it imports this file
     SPRITES.update(art_thimble.build())
     rattler(); rattler(True); archer(); brute(); caller(); wisp(); knight(); keeper(); keeper_smash()
     pillar(); coffin(); coffin(True); torch(); candles(); bones(); skullpile(); urn(); banner()
