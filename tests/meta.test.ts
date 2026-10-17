@@ -180,8 +180,8 @@ test('loot: each line rolls at its own rate and role locks hold', () => {
     const exp = N * rate, sd = Math.sqrt(N * rate * (1 - rate));
     assert.ok(Math.abs((hits[id] || 0) - exp) < 4 * sd + 2, `${id}: got ${hits[id] || 0}, expected about ${exp.toFixed(0)}`);
   };
-  near('barrowguard.helm', 1 / 35);
-  near('gravekeeper.tank', 1 / 50);
+  near('barrowguard.helm', 1 / 25);
+  near('gravekeeper.tank', 1 / 40);
   near('mount.gravehound', 1 / 1000);
   near('pet.pint_gravekeeper', 1 / 2500);
   assert.equal(hits['candlewake.helm'] || 0, 0);

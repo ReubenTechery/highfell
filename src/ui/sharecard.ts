@@ -10,6 +10,7 @@ import WARDROBE from '../../art/wardrobe.json';
 import { ACHIEVEMENTS, COLLECTIBLES, DUNGEONS, GAME_NAME, ITEMS, KITS, PLAY_URL, SETS, TITLES, heroicVersion } from '../content';
 import { CLASSES, RACES, type ClassId, type RaceId } from '../content/folk';
 import type { DungeonStage, StagePiece } from '../content/types';
+import { SET_RATE } from '../content/_template/loot';
 import type { Brag } from '../meta/brag';
 import { loadoutFor } from '../meta/gear';
 import { logSlots, standsOf } from '../meta/logs';
@@ -154,7 +155,7 @@ function scene(b: Brag, who: CardHero): { body: string; at: [number, number] } {
  *  stand on it. */
 export function cardArt(b: Brag, who: CardHero): string {
   const st = stageOf(b.dungeon), light = lightOf(b, who), { body, at } = scene(b, who);
-  const big = b.kind === 'pet' || b.kind === 'log' || b.kind === 'set' || (b.kind === 'unique' && (b.rate || 1) <= 1 / 35);
+  const big = b.kind === 'pet' || b.kind === 'log' || b.kind === 'set' || (b.kind === 'unique' && (b.rate || 1) <= SET_RATE);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_W}" height="${CARD_H}" viewBox="0 0 ${CARD_W} ${CARD_H}"><defs>
     <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2E2A55"/><stop offset="0.72" stop-color="${st?.bg || '#241C33'}"/></linearGradient>
     <radialGradient id="glow"><stop offset="0" stop-color="${light}" stop-opacity="0.55"/><stop offset="0.45" stop-color="${light}" stop-opacity="0.2"/><stop offset="1" stop-color="${light}" stop-opacity="0"/></radialGradient>

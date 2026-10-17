@@ -10,7 +10,7 @@ import { resolveRun } from '../src/meta/loot';
 import { createHero, freshProfile, type Profile } from '../src/meta/profile';
 
 const run = (o: Partial<RunLoot> = {}): RunLoot => ({ dungeon: 'barrow', role: 'tank', hero: 'h', drops: [], tell: 'normal', kc: { knight: 41, keeper: 42 }, marks: 1, clears: 42, time: 200, pb: 200, newPb: false, firstClear: false, ...o });
-const drop = (id: string, o: Partial<Drop> = {}): Drop => ({ id, source: 'table', boss: 'keeper', rate: 1 / 35, kc: 42, isNew: true, dupe: false, marks: 0, ...o });
+const drop = (id: string, o: Partial<Drop> = {}): Drop => ({ id, source: 'table', boss: 'keeper', rate: 1 / 25, kc: 42, isNew: true, dupe: false, marks: 0, ...o });
 /** what the game does with a new drop: it's in the collection before the chest opens */
 const owned = (p: Profile, ...ids: string[]): void => { for (const id of ids) p.collection[id] = { n: 1, kc: 1, at: 1 }; };
 const kinds = (p: Profile, l: RunLoot, unlocked: string[] = []): string[] => bragsOf(p, l, unlocked).map((b) => b.kind);
@@ -33,7 +33,7 @@ test('brags: a new unique keeps its rate and kill count; a pet or a mount counts
   const p = freshProfile(1);
   owned(p, 'rimebone.helm', 'pet.pint_gravekeeper', 'mount.gravehound');
   const [helm] = bragsOf(p, run({ drops: [drop('rimebone.helm', { kc: 42 })] }), []);
-  assert.deepEqual(helm, { kind: 'unique', dungeon: 'barrow', id: 'rimebone.helm', rate: 1 / 35, kc: 42, boss: 'keeper' });
+  assert.deepEqual(helm, { kind: 'unique', dungeon: 'barrow', id: 'rimebone.helm', rate: 1 / 25, kc: 42, boss: 'keeper' });
   const pet = drop('pet.pint_gravekeeper', { rate: 1 / 2500, kc: 412, isNew: false, dupe: true, marks: 3 });
   const hound = drop('mount.gravehound', { rate: 1 / 1000, kc: 412, isNew: false, dupe: true, marks: 3 });
   assert.deepEqual(kinds(p, run({ drops: [pet, hound] })), ['pet', 'unique']);
@@ -65,7 +65,7 @@ test('brags: Heroic finishes a gilded set with kits, and its normal pieces count
   const brags = bragsOf(p, run({ dungeon: 'barrow-heroic', drops: [piece, kit] }), []);
   const sets = brags.filter((b) => b.kind === 'set');
   assert.deepEqual(sets.map((b) => [b.id, b.gilded, b.kc, b.dungeon]), [['candlewake', true, 12, 'barrow-heroic'], ['rimebone', false, 150, 'barrow-heroic']]);
-  assert.deepEqual(brags.filter((b) => b.kind === 'unique').map((b) => b.id), ['rimebone.chest', gilded('candlewake.chest')], 'the rarest first: a set piece is 1 in 35, a kit 1 in 20');
+  assert.deepEqual(brags.filter((b) => b.kind === 'unique').map((b) => b.id), ['rimebone.chest', gilded('candlewake.chest')], 'the rarest first: a set piece is 1 in 25, a kit 1 in 20');
 });
 
 test('brags: best first, the pet, a whole log, a set, uniques (rarest first), a best time, then achievements', () => {
@@ -75,7 +75,7 @@ test('brags: best first, the pet, a whole log, a set, uniques (rarest first), a 
   const drops = [drop('trophy.rattlebones_plume', { boss: 'knight', rate: 1 / 50 }), drop('shadeveil.chest'), drop('mount.gravehound', { rate: 1 / 1000 }), drop('pet.pint_gravekeeper', { rate: 1 / 2500 })];
   const brags = bragsOf(p, run({ drops, newPb: true }), ['barrow.sprint', 'barrow.log']);
   assert.deepEqual(brags.map((b) => b.kind), ['pet', 'log', 'set', 'unique', 'unique', 'unique', 'pb', 'ach']);
-  assert.deepEqual(brags.filter((b) => b.kind === 'unique').map((b) => b.id), ['mount.gravehound', 'trophy.rattlebones_plume', 'shadeveil.chest'], '1 in 1,000, then 1 in 50, then 1 in 35');
+  assert.deepEqual(brags.filter((b) => b.kind === 'unique').map((b) => b.id), ['mount.gravehound', 'trophy.rattlebones_plume', 'shadeveil.chest'], '1 in 1,000, then 1 in 50, then 1 in 25');
   assert.deepEqual(brags[1], { kind: 'log', dungeon: 'barrow', id: 'barrow.log' });
   assert.deepEqual(achBrag('vale.first'), { kind: 'ach', dungeon: 'garden', id: 'vale.first' }, 'an achievement outside a run says where it is from');
 });

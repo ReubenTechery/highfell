@@ -32,7 +32,8 @@ import { CLASSES, type ClassId } from '../content/folk';
 import { RECIPES } from '../content/vale';
 import { broughtBrew, spendBottle } from '../meta/vale';
 import type { App } from './app';
-import { $, esc, flash, fmtT, GLYPH } from './dom';
+import { $, esc, flash, fmtRate, fmtT, GLYPH } from './dom';
+import { SET_RATE } from '../content/_template/loot';
 import { ART, botSprite, heroImg, heroSprite, nameOf, plainSprite, spriteFit, spriteURL, tile } from './art';
 import { IN, aimPoint, bindFrameSwipes, bindInput, mashCage, playerIntent, resetInput, type InputUI } from './input';
 import { MUSIC, runMusic } from './music';
@@ -427,7 +428,7 @@ export class RunScene implements InputUI {
       </div>
       ${offer ? '' : `<div class="wk-pills">
         <span class="wk-pill"><span class="tile">${tile('shield')}</span><b>4-Min Runs</b></span>
-        <span class="wk-pill"><span class="tile">${tile('u_gravedigger')}</span><b>1/50 Uniques</b></span>
+        <span class="wk-pill"><span class="tile">${tile('u_gravedigger')}</span><b>${fmtRate(SET_RATE)} Uniques</b></span>
         <span class="wk-pill"><span class="tile">${tile('c_pet_keeper')}</span><b>Pets & Hearth</b></span>
       </div>`}`;
     const acts = $('msg-actions');

@@ -18,7 +18,7 @@ Highfell uses an honest, old-school buy-once model: **a generous 3-dungeon Free 
 
 ## 2. The Act 1 Stepped Treadmill: "Dungeon Uniques ARE the Ladder"
 
-All 3 Free Trial dungeons are **open from Clear 0** (no artificial lock icons), but they are tuned as a **true OSRS-style Stepped Gear Treadmill (`1 → 2 → 3`)** where your hero and your bunk-room Warband companions need the previous dungeon's `1/35` Epic Sets and `1/50` Boss Weapons to survive the next dungeon:
+All 3 Free Trial dungeons are **open from Clear 0** (no artificial lock icons), but they are tuned as a **true OSRS-style Stepped Gear Treadmill (`1 → 2 → 3`)** where your hero and your bunk-room Warband companions need the previous dungeon's `1/25` Epic Sets and `1/40` Boss Weapons to survive the next dungeon:
 
 | Tier | Dungeon | Entry Gear Needed | Drops (Set & Weapon ilvl) | Scenery & Signature Toys | 3-Piece Set Fantasy | Log Completion Prizes | Garden Seed (final boss) |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -116,7 +116,7 @@ Four sets, one per class, each three pieces (helm, shoulders, chest), at item le
 | **Arcspark** | Mage (DPS) | A copper filament crown, coil shoulders, star-threaded robes | Comet on a frozen foe arcs to 2 more | Comet splits into four small frost bombs that blow a moment later |
 | **Gearshade** | Rogue (DPS) | A clockwork lens visor, spring-blade spaulders, a velvet burrower's coat | Crits with Shadowstrike or Viper Blades throw a 55 spark | Viper Blades stick a little bomb on the target, and Shadowstrike sets it off |
 
-The Tinker King's weapons, one per class (1/50 each):
+The Tinker King's weapons, one per class (1/40 each):
 
 | Weapon | Class | Looks like | What it does |
 | --- | --- | --- | --- |
@@ -130,7 +130,7 @@ works, never adds one.
 
 #### The log
 
-- Every drop rolls on its own, at the Barrow's rates: set pieces 1/35 each, weapons 1/50, Old Toadstool's
+- Every drop rolls on its own, at the Barrow's rates: set pieces 1/25 each, weapons 1/40, Old Toadstool's
   trophy (**Toadstool's Cap**) 1/50, the **Sporeglow Dye** 1/1,000, the **Clockwork Beetle** mount 1/1,000,
   the **Pint-sized Tinker King** pet 1/2,500. The pet, mount and dye are bonus slots.
 - **The prize: the Gnome race,** as any class (gnome heroes are already drawn). Plus the house look
