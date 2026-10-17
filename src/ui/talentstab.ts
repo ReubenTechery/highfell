@@ -181,7 +181,7 @@ function card(p: Profile, h: Hero, spec: SpecDef, t: TalentDef): string {
   const what = t.stat ? `${n ? `Now ${statLine(t.stat, n)}` : 'None in yet'}${t.ranks > 1 && n < t.ranks ? ` · all ${t.ranks}: ${statLine(t.stat, t.ranks)}` : ''}`
     : t.slot === 'mend' ? `Changes Mend (${MEND.heal} healing)` : t.slot ? `Changes ${buttonFor(AB[ak][t.slot], spec.id, t.slot).name}` : '';
   const pair = t.choice ? spec.talents.find((x) => x !== t && x.choice === t.choice) : undefined;
-  const tag = t.capstone ? 'The top of the tree' : pair ? `Or ${pair.name}: one of the two` : `Row ${t.row}`;
+  const tag = t.capstone ? `The top of the tree${pair ? `, or ${pair.name}` : ''}` : pair ? `Or ${pair.name}: one of the two` : `Row ${t.row}`;
   const left = unspent(p, h);
   const whyText = why === 'No points left' ? (pointsOf(p) >= TREE_POINTS ? 'Every point is in' : `No points left · more at level ${levelProgress(p.xp).level + 1}`) : why;
   return `<div class="tn-card${t.capstone ? ' cap' : ''}" style="--sc: ${spec.color}">

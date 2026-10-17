@@ -3,9 +3,10 @@
  * level 2, the same points to every hero of yours; each hero picks a spec and spends them in its tree, and
  * each spec keeps its own points, so switching back is free. A tree has five rows: the top one is open, and a
  * row opens once enough points are in the rows above it (ROW_NEED). Stat talents take several points; the rest
- * take one and change how a button works (four buttons, never more); row 3 is a pick of one from two, and row 5
- * holds the capstone. A full tree is TREE_POINTS points, at level 30. The rules are src/meta/talents.ts; what
- * each talent does in a run is src/dungeon/specs.js (and fire.js for Fire's buttons).
+ * take one and change how a button works (four buttons, never more). Rows 2 to 5 each offer two that change a
+ * button and you take one of them (row 5's two are the capstones), so a full tree is four picks: sixteen builds
+ * a spec (the owner's call, 18 Oct). A full tree is TREE_POINTS points, at level 30. The rules are
+ * src/meta/talents.ts; what each talent does in a run is src/dungeon/specs.js (and fire.js for Fire's buttons).
  */
 import type { AbilityDef, AbilitySlot, SpecButton, SpecDef, TalentDef } from '../types';
 import { AXE, SHIELD } from './warrior';
@@ -63,7 +64,13 @@ export function checkTalents(): string[] {
       if (above < ROW_NEED[t.row]) bad.push(`${t.id} row ${t.row} can't open`);
     }
     for (const [c, n] of Object.entries(pairs)) if (n !== 2) bad.push(`${s.id} pair ${c} has ${n}`);
-    if (s.talents.filter((t) => t.capstone).length !== 1) bad.push(`${s.id} capstones`);
+    // rows 2 to 5 are each a pick of two talents that change a button, and row 5's pair are the capstones
+    for (const row of [2, 3, 4, 5]) {
+      const picks = s.talents.filter((t) => t.row === row && !t.stat);
+      if (picks.length !== 2 || !picks[0].choice || picks[0].choice !== picks[1].choice) bad.push(`${s.id} row ${row} isn't a pick of two`);
+      if (picks.some((t) => !!t.capstone !== (row === 5))) bad.push(`${s.id} row ${row} capstones`);
+    }
+    if (s.talents.filter((t) => t.capstone).length !== 2) bad.push(`${s.id} capstones`);
     if (/stroke/i.test(s.pitch + (s.base || ''))) bad.push(`${s.id} words`);
   }
   return bad;

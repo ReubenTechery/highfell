@@ -4,7 +4,8 @@
    keys, so gear that makes a button better makes its fire one better too (gearMul, the set pieces, the traits).
    Foes burn instead of freezing: each stack of Burn hurts every half second (BURN), a new one starts it again,
    and a Comet on a foe with 3 or more Combusts like a Shatter (twice as hard, half again on a boss) and spreads
-   its Burn to the foes round it. Its talents (Kindling, Wildfire, Searing, Afterburn, Comet Shower) are here. */
+   its Burn to the foes round it. Its talents are here: Stoked (fi.kindling), Flash Fire, Brushfire (fi.wildfire),
+   Searing, Afterburn, Flashover, Comet Shower and Pyre. */
 import { angTo, dist } from '../core/math';
 import { rng } from '../core/rng';
 import { AB, fillerMul } from '../content/roles';
@@ -25,7 +26,7 @@ export const COMBUST = 1.75, COMBUST_LANCE = 2.5, BOSS_COMBUST = 1.2, BOSS_COMBU
 /* ---------- Burn ---------- */
 /** a foe's Burn stacks now (0 when it isn't burning) */
 export const burnOf = (m) => (m.burn && m.burn.left > 0 ? m.burn.n : 0);
-/** Add Burn to a foe: `k` stacks, up to five (seven with Kindling), and it starts again from full */
+/** Add Burn to a foe: `k` stacks, up to four (six with Stoked), and it starts again from full */
 export function addBurn(h, m, k) {
   if (!m.alive || m.cage || m.M.wisp || m.M.thing) return;
   const max = has(h, 'fi.kindling') ? BURN.kindling : BURN.max;
@@ -45,15 +46,6 @@ export function burnTick(m, dt) {
   }
   return false;
 }
-/** Wildfire: a foe that dies burning gives its Burn to every foe near it */
-export function onBurnDeath(m) {
-  const b = m.burn;
-  if (!b || b.left <= 0 || !has(b.src, 'fi.wildfire')) return;
-  let n = 0;
-  for (const o of foesNear(m.x, m.y, 130, false)) if (o !== m && !o.cage) { addBurn(b.src, o, b.n); n++; }
-  if (n) { fx({ type: 'ring', x: m.x, y: m.y, r0: 16, r1: 130, col: FIRE_COL, dur: 0.3, w: 6, ground: true }); bits(m.x, m.y - 30, 'ember', 6, 200); }
-}
-
 /* ---------- Firebolt (Icicle's button) ---------- */
 /** Firebolt: an instant bolt at your target, every beat */
 function firebolt(h, aim) {
@@ -74,6 +66,8 @@ export function fireboltHit(h, t) {
   const crit = LAST.crit;
   if (crit && !flares) { h.shatter = Math.max(h.shatter, 1); if (h.isPlayer) fxText(h.x, h.y - 130, 'Flare ready', '#FFB347', 18, { dur: 0.9 }); }
   if (t.alive) addBurn(h, t, crit ? 2 : 1);
+  // Flash Fire: a crit sets every foe near its target burning too
+  if (crit && has(h, 'fi.flash')) for (const o of foesNear(t.x, t.y, 110, false)) if (o !== t && !o.cage) addBurn(h, o, 1);
   icicleGadgets(h, t, flares);
   // Splinter (30% of the hit) and the Rimebone Crown (15) splash a second foe, as they do for Icicle
   const o = S.mobs.find((m) => m !== t && isFoe(m) && engaged(m) && !m.cage && !m.M.thing && dist(m, t) < 200);
@@ -106,6 +100,8 @@ export function fireCometLand(h, t, cd) {
       // its Burn spreads to the foes round it (at least the 3 it took)
       for (const o of foesNear(tx, ty, 130, false)) if (o !== t && !o.cage && burnOf(o) < Math.max(n, BURN.combust)) addBurn(h, o, Math.max(n, BURN.combust) - burnOf(o));
       if (h.bonuses.has('rimebone2')) h.cd.a3 = Math.min(h.cd.a3, cd / 2);
+      // Flashover: a Combust makes Ember burst ready again
+      if (has(h, 'fi.flashover') && h.cd.a2 > 0) { h.cd.a2 = 0; if (h.isPlayer) fxText(h.x, h.y - 130, 'Flashover', '#FFB347', 17, { dur: 0.8 }); }
       // Afterburn: the ground where it Combusted burns for 4 seconds
       if (has(h, 'fi.afterburn')) S.zones.push({ kind: 'firestorm', x: tx, y: ty, r: 95, t: 0, dur: 4, tick: 0.5, tickT: 0.25, val: 12, src: h, seed: rng() * 100 });
     } else if (t.alive) addBurn(h, t, 1);
@@ -146,22 +142,28 @@ function firestorm(h, aim) {
   else { const c = bestCluster(h, 120, 560); if (c) p = { x: c.x, y: c.y }; else { const t = autoTarget(h); if (t) p = { x: t.x, y: t.y }; } }
   if (!p) { if (loud(h)) fxText(h.x, h.y - 100, 'Nothing to burn', '#FFD2A0', 16); return false; }
   p = clampRange(h, p.x, p.y, 520);
-  // the Rimebone Robe and the set's three pieces make it hit harder (and the three raise a frost skeleton in it)
+  // the Rimebone Robe and the set's three pieces make it hit harder (and the three raise a frost skeleton in it);
+  // Pyre: it follows your target and grows hotter
   const chestMul = h.bonuses.has('rb_chest') ? 1.25 : 1, rb3Mul = h.bonuses.has('rimebone3') ? 1.3 : 1;
-  S.zones.push({ kind: 'firestorm', x: p.x, y: p.y, r: 124, t: 0, dur: 5 + (h.bonuses.has('rb_chest') ? 1 : 0), tick: 0.5, tickT: 0.15, val: Math.round(16 * chestMul * rb3Mul), src: h, seed: rng() * 100 });
+  const pyre = has(h, 'fi.pyre') ? autoTarget(h, true) : null;
+  if (pyre) p = { x: pyre.x, y: pyre.y };
+  S.zones.push({ kind: 'firestorm', x: p.x, y: p.y, r: 124, t: 0, dur: 5 + (h.bonuses.has('rb_chest') ? 1 : 0), tick: 0.5, tickT: 0.15, val: Math.round(16 * chestMul * rb3Mul), src: h, seed: rng() * 100, ...(pyre ? { follow: pyre, pyre: true } : {}) });
   if (h.bonuses.has('rimebone3')) spawnThrall(h, 'frost', p.x, p.y + 24, 6);
   h.face = Math.atan2(p.y - h.y, p.x - h.x); h.lunge = 0.14; h.lungeA = h.face;
   sfx('firestorm', 0.6); sfx('whoosh', 0.4);
   return true;
 }
-/** a Firestorm's tick: it hits everything in it, and every other tick adds a Burn (one a second) */
+/** a Firestorm's tick: it hits everything in it, and every other tick adds a Burn (one a second; every tick with
+ *  Brushfire). Pyre's grows 10% hotter a second, up to twice as hot. */
 export function firestormTick(z) {
   z.n = (z.n || 0) + 1;
+  const heat = z.pyre ? Math.min(2, 1 + 0.1 * z.t) : 1, brush = has(z.src, 'fi.wildfire');
   for (const m of S.mobs) {
     if (!isFoe(m) || m.cage || Math.hypot(m.x - z.x, m.y - z.y) > z.r + m.r * 0.5) continue;
-    hurtMob(m, z.val || 16, z.src, { crit: 0.06, size: 17, col: '#FFD2A0', tier: 'tick', key: 'firestorm' });
-    if (m.alive && z.n % 2 === 1) addBurn(z.src, m, 1);
+    hurtMob(m, (z.val || 16) * heat, z.src, { crit: 0.06, size: 17, col: '#FFD2A0', tier: 'tick', key: 'firestorm' });
+    if (m.alive && (brush || z.n % 2 === 1)) addBurn(z.src, m, 1);
   }
+  // Rimebone's three pieces raise what dies in a Firestorm too (entities.js)
 }
 
 /* ---------- Ember burst (Rime burst's button) ---------- */

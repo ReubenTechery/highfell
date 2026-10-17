@@ -7,7 +7,7 @@ import { bestCluster, bombInReach, doDodge, heroBy, isFoe, useAbility } from './
 import { MAX_POINTS, POINT, burnable, mend } from './buttons.js';
 import { ROGUE_CRIT } from './entities.js';
 import { burnOf } from './fire.js';
-import { miracleFor } from './specs.js';
+import { has, lastBreath, miracleFor, rallyWard } from './specs.js';
 import { BURN } from '../content/talents';
 import { ready } from './press.js';
 import { chainEnds, cutChain, liftCurse, mashCage } from './mobs.js';
@@ -398,6 +398,10 @@ export function healerActions(h) {
   if (ready(h, 'a3') && mana >= 22 && (hurt >= 2 || (bad && hurt >= 1))) { useAbility(h, 'a3'); return; }
   if (tank && tank.alive && ready(h, 'a2') && mana >= 10 && tank.absorb <= 0 && S.hazards.some((z) => z.tankBuster && !z.fired && (z.followT === tank || inHaz(z, tank.x, tank.y, tank.r)))) { useAbility(h, 'a2', tank); return; }
   if (tank && tank.alive && ready(h, 'a1') && mana >= 34 && pct(tank) < 0.86 && dist(tank, h) < 500 && tank.moving <= 0) { useAbility(h, 'a1', { x: tank.x, y: tank.y }); return; }
+  // the talents that make the party hit harder or bring light down on the foe: Rally Wards the DPS when nobody is
+  // hurt, and Dawn's and Sunpillar's Sunburst goes off in a big fight, not only to heal
+  if (has(h, 'me.rally') && ready(h, 'a2') && mana >= 30) { const d = rallyWard(h); if (d && dist(d, h) <= MEND.range && useAbility(h, 'a2', d)) return; }
+  if ((has(h, 'me.dawn') || has(h, 'wr.pillar')) && ready(h, 'a3') && mana >= 40 && S.inCombat && ((S.boss && S.boss.alive && !S.boss.hidden) || fightingFoes().length >= 3)) { useAbility(h, 'a3'); return; }
   // a blessed Mend (after a Smite crit) is free and bigger: spend it on whoever is lowest
   if (canMend && h.mendUp && pct(low[0]) < 0.9 && mend(h, low[0])) return;
   if (canMend && tank && tank.alive && pct(tank) < 0.76 && mana >= 7 && mend(h, tank)) return;
@@ -458,8 +462,9 @@ export function rogueActions(h) {
     if (needGap || kick || bank) { useAbility(h, 'a4', tgt); return; }
   }
   if (d <= 95 + tgt.r) {
-    // Shadowstrike at five points, or three if it will finish the target, or any on an Exposed one
-    const spend = h.points >= MAX_POINTS || (h.points >= 3 && tgt.hp <= strikeFor(h, tgt)) || (burnable(h, tgt) && tgt.exposed > 0.3 && !tgt.cage);
+    // Shadowstrike at five points, or three if it will finish the target, or any on an Exposed one, or (Last
+    // Breath) any on a foe low enough to finish, keeping the points
+    const spend = h.points >= MAX_POINTS || (h.points >= 3 && tgt.hp <= strikeFor(h, tgt)) || (burnable(h, tgt) && tgt.exposed > 0.3 && !tgt.cage) || (h.points >= 1 && !tgt.isBoss && lastBreath(h, tgt));
     if (ready(h, 'a2') && !tgt.cage && spend && !pullsBoss(h, tgt, strikeFor(h, tgt) / 2)) { useAbility(h, 'a2', tgt); return; }
     // otherwise Viper Blades every beat (it breaks a cage too)
     if (ready(h, 'a1')) { useAbility(h, 'a1', tgt); return; }

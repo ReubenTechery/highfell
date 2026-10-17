@@ -11,7 +11,7 @@ import { tickPress } from './press.js';
 import { chainTick, curseTick, mobTick, nearestHeroTo, spawnMob } from './mobs.js';
 import { canStand, inWalk, moveEnt, roomIndexOf, walkTo } from './world.js';
 import { tickWalkout } from './walkout.js';
-import { frostbite, has, holyGround } from './specs.js';
+import { frostbite, has, holyGround, icefall } from './specs.js';
 import { firestormTick } from './fire.js';
 
 /* dg: a dungeon definition (map, mobs, packs, script). opts:
@@ -130,7 +130,7 @@ export function respawn() {
   const cp = cps[Math.min(room, cps.length - 1)];
   S.hazards = []; S.zones = []; S.thralls = []; S.projs = []; S.rings = []; S.chains = []; S.timers = []; S.ring = null; S.dark = 0; S.darkTarget = 0;
   for (const h of S.heroes) {
-    Object.assign(h, { alive: true, hp: h.maxHp, mana: h.maxMana, absorb: 0, absorbT: 0, dodgeT: 0, dash: null, cast: null, blocking: false, target: null, picked: null, holdFire: false, hots: [], ghostSaved: false, beat: 0, next: null, crush: 0, shatter: 0, points: 0, mendUp: false, payback: false, fury: 0, furyT: 0, stormT: 0 });
+    Object.assign(h, { alive: true, hp: h.maxHp, mana: h.maxMana, absorb: 0, absorbT: 0, dodgeT: 0, dash: null, cast: null, blocking: false, target: null, picked: null, holdFire: false, hots: [], ghostSaved: false, beat: 0, next: null, crush: 0, shatter: 0, points: 0, mendUp: false, payback: false, fury: 0, furyT: 0, stormT: 0, bulwark: 0, heartT: 0, dawnT: 0 });
     h.st = { stun: 0, root: 0, haunt: 0, air: 0, ghost: 0, surge: 0, zeal: 0, kx: 0, ky: 0, chained: null, caged: null, curse: null };
     for (const k in h.cd) h.cd[k] = 0;
     h.bot.ignore = new Set(); h.bot.seen = new Set();
@@ -152,7 +152,7 @@ export function respawn() {
     p.mobs = p.mobs.filter((m) => m.alive && !m.extra);
     for (const m of p.mobs) {
       // its burn, venom, sear and mark go too: a tick after the wipe would pull it straight back into the fight
-      Object.assign(m, { x: m.home0 ? m.home0.x : m.home.x, y: m.home0 ? m.home0.y : m.home.y, hp: m.maxHp, state: 'idle', target: null, forced: null, forcedT: 0, wind: 0, cast: null, busy: 0, act: null, pose: null, ab: {}, phase: 1, armorUp: 0, exposed: 0, dmgMul: 1, hidden: false, untargetable: false, jumpZ: 0, calmUntil: S.t + 4, burn: null, bleed: null, sear: null, markBy: null, markUntil: 0 });
+      Object.assign(m, { x: m.home0 ? m.home0.x : m.home.x, y: m.home0 ? m.home0.y : m.home.y, hp: m.maxHp, state: 'idle', target: null, forced: null, forcedT: 0, wind: 0, cast: null, busy: 0, act: null, pose: null, ab: {}, phase: 1, armorUp: 0, exposed: 0, dmgMul: 1, hidden: false, untargetable: false, jumpZ: 0, calmUntil: S.t + 4, burn: null, bleed: null, sear: null, cut: null, markBy: null, markUntil: 0, windBy: null, windUntil: 0 });
       m.threat = new Map(); m.st = { stun: 0, freeze: 0, chill: 0, stagger: 0, slow: 0, slowT: 0, kx: 0, ky: 0 };
       m.speed = m.M.speed;
       if (m.home0) m.home = { x: m.home0.x, y: m.home0.y };
@@ -410,7 +410,7 @@ function tickZones(dt) {
         for (const m of S.mobs) if (isFoe(m) && !m.cage && !m.isBoss && !m.M.wisp && !z.hit.has(m.id) && distXY(m.x, m.y, z.x, z.y) <= z.r + m.r) { z.hit.add(m.id); m.st.freeze = Math.max(m.st.freeze, 1.5); m.wind = 0; }
       }
     }
-    if (z.t >= z.dur) S.zones.splice(i, 1);
+    if (z.t >= z.dur) { icefall(z); S.zones.splice(i, 1); }
   }
 }
 function tickRings(dt) {

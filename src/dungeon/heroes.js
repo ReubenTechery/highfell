@@ -8,7 +8,7 @@ import { canStand, moveEnt } from './world.js';
 import { gearMul } from './gadgets.js';
 import { BUTTONS, dashTick, finishCast } from './buttons.js';
 import { FIRE_BUTTONS } from './fire.js';
-import { has, knifeStorm, venomStacks } from './specs.js';
+import { has, knifeStorm, unbowed, venomStacks } from './specs.js';
 
 export const heroBy = (role) => S.heroes.find((h) => h.role === role) || null;
 export const aliveHeroes = () => S.heroes.filter((h) => h.alive);
@@ -111,6 +111,8 @@ export function heroTick(h, dt) {
   if (h.beat > 0) h.beat = Math.max(0, h.beat - dt * cdRate);
   if (h.furyT > 0) h.furyT = Math.max(0, h.furyT - dt);
   if (h.stormT > 0) h.stormT = Math.max(0, h.stormT - dt);
+  if (h.heartT > 0) h.heartT = Math.max(0, h.heartT - dt);
+  if (h.dawnT > 0) h.dawnT = Math.max(0, h.dawnT - dt);
   h.gcd -= dt; h.iframe -= dt; h.flash -= dt; h.hurtT -= dt; h.lunge -= dt; h.sayT -= dt; h.moving -= dt;
   if (h.frenzyT > 0) h.frenzyT = Math.max(0, h.frenzyT - dt);
   if (h.nightstalkerT > 0) h.nightstalkerT = Math.max(0, h.nightstalkerT - dt);
@@ -227,9 +229,11 @@ function heroAuto(h, dt) {
 
 export function abCd(h, slot) {
   const def = AB[abKey(h)][slot];
-  // Quick Charge and Whirling Edges bring their button back sooner
+  // Quick Charge and Whirling Edges bring their button back sooner, and Unbowed brings Slam back in half the time
+  // with three or more foes on you
   if (slot === 'a2' && has(h, 'ax.quick')) return 6;
   if (slot === 'a3' && has(h, 'bl.whirl')) return 4;
+  if (slot === 'a3' && def && def.key === 'slam' && unbowed(h)) return def.cd / 2;
   return def && def.cd ? def.cd : 0;
 }
 export function abMana(h, slot) {

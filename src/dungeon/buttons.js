@@ -24,7 +24,7 @@ import { blockGadgets, chargeGadgets, cleaveGadgets, cometGadgets, gearMul, icic
 import { autoTarget, bestCluster, bombInReach, clampRange, engaged, foesNear, heroBy, isFoe, later, loud, mostHurt, nearestFoe, spawnThrall } from './heroes.js';
 import { ROGUE_BUTTONS } from './rogue.js';
 import { fireboltHit, fireCometLand } from './fire.js';
-import { axeStorm, circleFollows, deepFreeze, hailTarget, has, miracle, mendMul, onCrush, onPerfect, onSlam, overflow, paybackStun, shardburst, smiteHealTargets, smiteSear, sunlanceTarget, sunstrike, takePayback, twinWard } from './specs.js';
+import { axeStorm, breach, bulwarkMul, bulwarkPull, chargeCrushes, circleFollows, dawn, finalWord, finish, flashpoint, hailTarget, hardRime, has, hearten, longWinter, miracle, mendMul, onCrush, onPerfect, onSlam, overflow, paybackStun, rallyWard, rimStrike, savageMul, shardburst, slamReach, smiteHealTargets, smiteSear, stunHit, sunlanceTarget, sunpillar, sunstrike, takePayback, twiceStruck, twinWard, unbowed, wideWinter } from './specs.js';
 export { POINT, MAX_POINTS, burnable } from './rogue.js';
 
 /** Cleave's Crush */
@@ -55,17 +55,23 @@ function abCleave(h, aim) {
   const back = takePayback(h), storm = axeStorm(h, primed);
   const hits = foesNear(h.x, h.y, 126, false).filter((m) => !m.cage && (storm || Math.abs(angDiff(h.face, angTo(h, m))) < (wide ? 1.42 : 1.25)));
   if (primed) h.crush--;
-  const mul = fillerMul(h.bonuses), hit = AB.tank.a1.hit;
+  // Bulwark: the foes the last Slam pulled make this Cleave harder; Rim Strike: every third Cleave stuns
+  const mul = fillerMul(h.bonuses) * (hits.length ? bulwarkMul(h) : 1), hit = AB.tank.a1.hit, rim = hits.length > 0 && rimStrike(h);
   let crushed = 0, critPrime = false, dealt = 0;
   for (const m of hits) {
     const c = back || primed || stunned(m) || m.exposed > 0;
-    const k = back ? 3 : c ? CRUSH * (storm ? 1.15 : 1) : 1;
+    // Final Word: a Crush on a foe under a fifth of its health finishes it (a boss takes it twice as hard)
+    const last = c && !back && finalWord(h, m);
+    const k = (back ? 3 : c ? CRUSH * (storm ? 1.15 : 1) : 1) * savageMul(h, m) * (last && m.isBoss ? 2 : 1);
     // Cleave is the tank's threat engine: 2× threat, a Crush 3×, so a mage's Comet on an Exposed boss can't take him
     const got = hurtMob(m, hit * mul * k, h, { knock: c ? 130 : 80, crit: 0.2, threat: c ? 3 : 2, tier: c ? 'payoff' : 'filler', key: back ? 'payback' : c ? 'crush' : 'cleave' });
     if (c) { crushed++; dealt += got; }
     else if (LAST.crit) critPrime = true;
     if (back) paybackStun(m);
+    if (last) finish(h, m, 'Final Word!');
+    if (rim) stunHit(m, 1);
   }
+  if (rim && h.isPlayer) fxText(h.x, h.y - 130, 'Rim Strike!', '#C9D2DC', 18, { dur: 0.8 });
   // a Cleave crit primes the next Cleave's Crush (a Crush's own crit doesn't chain)
   if (critPrime) h.crush = Math.max(h.crush, 1);
   if (crushed) onCrush(h, dealt);
@@ -96,7 +102,7 @@ function gravedig(h) {
 /* Slam: drag everything around you in, make it turn on you, spin a whirlwind through the pack, and prime Crush */
 function abSlam(h) {
   let n = 0;
-  const R = 210, wR = 118;
+  const R = 210 * slamReach(h), wR = 118;
   const chestMul = (h.bonuses.has('bg_chest') ? 1.35 : 1) * gearMul(h, 'slam');
   for (const m of S.mobs) {
     if (!isFoe(m) || m.cage || m.M.wisp || dist(m, h) > R + m.r || Math.abs(m.y - h.y) > 600) continue;
@@ -114,6 +120,7 @@ function abSlam(h) {
   }
   h.crush = Math.max(h.crush, 1);
   onSlam(h);
+  bulwarkPull(h, n);
   say(h, n ? (rng() < 0.5 ? 'Oi!' : 'Over here!') : 'Oi?', 0.9);
   // an inward ring, then the whirlwind
   fx({ type: 'ring', x: h.x, y: h.y, r0: R + 12, r1: 24, col: '#F2C230', dur: 0.25, w: 9, ground: true });
@@ -123,8 +130,8 @@ function abSlam(h) {
   h.whirlDur = 0.42;
   h.whirlT = h.whirlDur;
   fx({ type: 'whirl', h, x: h.x, y: h.y, r: wR, dur: h.whirlDur, col: '#F2C230' });
-  // Spinning Axe: the whirlwind hits twice as hard
-  const spin = has(h, 'ax.spin') ? 2 : 1;
+  // Spinning Axe: the whirlwind hits twice as hard; Unbowed: twice as hard again with three or more foes on you
+  const spin = (has(h, 'ax.spin') ? 2 : 1) * (unbowed(h) ? 2 : 1);
   const spinSlice = (finalSpin) => {
     if (!h.alive || S.over) return;
     sfx('sweep', 0.65);
@@ -205,6 +212,7 @@ function chargeImpact(h, d) {
     if (m.cast) interruptCast(m, h);
     if (m.isBoss) staggerBoss(m, STAGGER);
     else { m.st.stun = Math.max(m.st.stun, stunDur); m.wind = 0; }
+    breach(h, m);
   }
   if (h.bonuses.has('bg_shoulders')) {
     h.absorb = Math.max(h.absorb, Math.round(80 * h.power));
@@ -212,8 +220,8 @@ function chargeImpact(h, d) {
     if (h.isPlayer) fxText(h.x, h.y - 116, 'Skull Guard', '#FFE08A', 18);
   }
   chargeGadgets(h);
-  // Charge primes Crush; the Gravedigger primes two
-  h.crush = Math.max(h.crush, h.unique === 'gravedigger' ? 2 : 1);
+  // Charge primes Crush (Headlong two); the Gravedigger one more
+  h.crush = Math.max(h.crush, chargeCrushes(h) + (h.unique === 'gravedigger' ? 1 : 0));
   if (d.mob) h.picked = d.mob.alive ? d.mob : null;
   fx({ type: 'ring', x: h.x, y: h.y, r0: 16, r1: 108, col: '#F2C230', dur: 0.28, w: 9, ground: true });
   dots(h.x, h.y, '#C9B79A', 10, 180);
@@ -257,6 +265,7 @@ export function mend(h, t) {
   const amt = MEND.heal * gearMul(h, 'mend') * (blessed ? 1.5 : 1) * mendMul(h, t);
   const real = healHero(h, t, amt);
   overflow(h, t, (LAST.healAmt || 0) - real);
+  hearten(h, t);
   if (blessed) payoff(h, 'Blessed!', t.x, t.y - 120, '#F2C230');
   if (blessed && h.isPlayer) hold(0.07, h, t);
   mendGadgets(h, t);
@@ -285,7 +294,8 @@ function abWard(h, aim) {
   if (!t) {
     const tank = heroBy('tank');
     const low = mostHurt(h, null);
-    t = low && low.hp / low.maxHp < 0.7 ? low : tank && tank.alive && dist(tank, h) < MEND.range ? tank : low;
+    // Rally: with nobody badly hurt, it goes on the mate who hits hardest
+    t = low && low.hp / low.maxHp < 0.7 ? low : rallyWard(h) || (tank && tank.alive && dist(tank, h) < MEND.range ? tank : low);
   }
   if (!t || dist(t, h) > MEND.range + 40) return false;
   const shMul = (h.bonuses.has('cw_shoulders') ? 1.3 : 1) * gearMul(h, 'ward');
@@ -307,6 +317,7 @@ function abSunburst(h) {
     healHero(h, a, 210, { show: true });
     a.st.root = 0; a.st.haunt = 0;
     if (a.st.curse) liftCurse(a, h);
+    dawn(h, a);
     if (h.unique === 'longnight') {
       a.absorb = Math.max(a.absorb, Math.round(75 * h.power));
       a.absorbT = Math.max(a.absorbT, 6);
@@ -316,6 +327,8 @@ function abSunburst(h) {
   if (h.unique === 'longnight') {
     for (const m of foesNear(h.x, h.y, 180, false)) if (!m.cage) hurtMob(m, 90, h, { col: '#FFE08A', size: 19, noCrit: true });
   }
+  // Sunpillar: a pillar of light on the tank's target (or yours)
+  if (has(h, 'wr.pillar')) sunpillar(h, smiteTarget(h));
   sunburstGadgets(h);
   fx({ type: 'ring', x: h.x, y: h.y - 30, r0: 30, r1: 470, col: '#F2C230', dur: 0.5, w: 9 });
   dots(h.x, h.y - 60, '#FFE08A', 16, 220);
@@ -355,6 +368,8 @@ export function projHit(p) {
 function smiteHit(h, t) {
   const got = hurtMob(t, AB.healer.a4.hit * fillerMul(h.bonuses), h, { col: '#FFE08A', size: 20, tier: 'filler', key: 'smite' });
   const crit = LAST.crit;
+  // Twice Struck: every third Smite strikes again a moment later
+  if (twiceStruck(h)) later(0.12, () => { if (t.alive && h.alive) hurtMob(t, AB.healer.a4.hit * fillerMul(h.bonuses), h, { col: '#FFE08A', size: 20, tier: 'filler', key: 'twice' }); });
   // Sunlance: it goes on into one more foe, and that hit heals too
   const o = got > 0 ? sunlanceTarget(h, t) : null;
   const more = o ? hurtMob(o, AB.healer.a4.hit * fillerMul(h.bonuses), h, { col: '#FFE08A', size: 18, tier: 'filler', key: 'lance' }) : 0;
@@ -366,7 +381,7 @@ function smiteHit(h, t) {
     fx({ type: 'beam', x: t.x, y: t.y - 50, x2: low.x, y2: low.y - 40, col: '#FFE08A', dur: 0.22 });
   }
   smiteSear(h, t);
-  if (crit) sunstrike(h, got);
+  if (crit) { sunstrike(h, got); flashpoint(h, t, got); }
   // it pulses your Prayer circles
   for (const z of S.zones) if (z.kind === 'heal' && z.src === h) {
     fx({ type: 'ring', x: z.x, y: z.y, r0: 24, r1: z.r, col: '#FFE08A', dur: 0.28, w: 6, ground: true });
@@ -390,7 +405,7 @@ function icicleHit(h, t, half = false) {
   // Hailstorm's second shard is a third as strong, and neither uses up nor primes a Shatter
   const sh = icicleShatter(h, t), primed = sh.primed && !half, k = half && sh.primed ? 1 : sh.k, shatters = k > 1;
   if (primed) h.shatter--;
-  const got = hurtMob(t, AB.dps.a4.hit * fillerMul(h.bonuses) * k * (half ? 1 / 3 : 1), h, { crit: 0.25, col: shatters ? '#8FD6FF' : '#DDF3FF', tier: shatters ? 'payoff' : 'filler', shard: 'shard_ice', key: half ? 'hail' : 'icicle' });
+  const got = hurtMob(t, AB.dps.a4.hit * fillerMul(h.bonuses) * k * hardRime(h, t) * (half ? 1 / 3 : 1), h, { crit: 0.25, col: shatters ? '#8FD6FF' : '#DDF3FF', tier: shatters ? 'payoff' : 'filler', shard: 'shard_ice', key: half ? 'hail' : 'icicle' });
   if (half) { if (shatters) shardburst(h, t, got); bits(t.x, t.y - 40, 'shard_ice', 3, 160); return; }
   // an Icicle crit primes the next one to Shatter anything (a Shattering Icicle's own crit doesn't chain)
   if (LAST.crit && !shatters) { h.shatter = Math.max(h.shatter, 1); if (h.isPlayer) fxText(h.x, h.y - 130, 'Shatter ready', '#8FD6FF', 18, { dur: 0.9 }); }
@@ -415,7 +430,8 @@ function abBlizzard(h, aim) {
   p = clampRange(h, p.x, p.y, 520);
   const chestMul = h.bonuses.has('rb_chest') ? 1.25 : 1;
   const rb3Mul = h.bonuses.has('rimebone3') ? 1.3 : 1;
-  S.zones.push({ kind: 'blizzard', x: p.x, y: p.y, r: 124, t: 0, dur: 5 + (h.bonuses.has('rb_chest') ? 1 : 0), tick: 0.5, tickT: 0.15, val: Math.round(22 * chestMul * rb3Mul), src: h, seed: rng() * 100 });
+  const wide = wideWinter(h);
+  S.zones.push({ kind: 'blizzard', x: p.x, y: p.y, r: Math.round(124 * wide.r), t: 0, dur: 5 + (h.bonuses.has('rb_chest') ? 1 : 0) + wide.dur, tick: 0.5, tickT: 0.15, val: Math.round(22 * chestMul * rb3Mul), src: h, seed: rng() * 100 });
   if (h.bonuses.has('rimebone3')) spawnThrall(h, 'frost', p.x, p.y + 24, 6);
   h.face = Math.atan2(p.y - h.y, p.x - h.x); h.lunge = 0.14; h.lungeA = h.face;
   sfx('blizzard');
@@ -423,7 +439,7 @@ function abBlizzard(h, aim) {
 }
 function abNova(h) {
   const R = AB.dps.a2.range;
-  const deep = deepFreeze(h), shMul = (h.bonuses.has('rb_shoulders') ? 1.4 : 1) * gearMul(h, 'nova'), longer = (h.bonuses.has('as_shoulders') ? 1 : 0) + deep.freeze;
+  const shMul = (h.bonuses.has('rb_shoulders') ? 1.4 : 1) * gearMul(h, 'nova'), longer = h.bonuses.has('as_shoulders') ? 1 : 0;
   for (const m of S.mobs) {
     if (!isFoe(m) || m.cage || dist(m, h) > R + m.r) continue;
     aggro(m, h, 0);
@@ -431,7 +447,7 @@ function abNova(h) {
     if (!m.alive || m.M.thing) continue;
     // it stops casts, a boss's too (a boss is only Chilled)
     if (m.cast) interruptCast(m, h);
-    if (m.isBoss) { m.st.slow = 0.4; m.st.slowT = 3; chillBoss(m, CHILL + longer + deep.chill - deep.freeze); }
+    if (m.isBoss) { m.st.slow = 0.4; m.st.slowT = 3; chillBoss(m, CHILL + longer); }
     else if (!m.M.wisp) { m.st.freeze = 4 + longer; m.wind = 0; }
   }
   if (h.bonuses.has('rb_shoulders')) h.cd.a3 = Math.max(0, h.cd.a3 - 1.5);
@@ -466,7 +482,9 @@ export function finishCast(h) {
   fx({ type: 'comet', x: tx, y: ty, dur: 0.32 });
   sfx('whoosh');
   later(0.32, () => {
-    const frozen = t.alive && t.st.freeze > 0, chill = t.alive && (t.st.chill > 0 || t.exposed > 0);
+    // Long Winter: a Comet into your Blizzard Shatters as if its foe were frozen (a boss as if Chilled)
+    const lw = t.alive && longWinter(h, t);
+    const frozen = t.alive && (t.st.freeze > 0 || (lw && !t.isBoss)), chill = t.alive && (t.st.chill > 0 || t.exposed > 0 || (lw && t.isBoss));
     const lance = h.traits.has('shatterlance');
     // 2× a frozen foe (3× with Shatterlance), 1.5× a Chilled boss or anything Exposed (2× with Shatterlance)
     const k = frozen ? (lance ? 3 : 2) : chill ? (lance ? SHATTERLANCE_CHILL : CHILL_SHATTER) : 1, shatters = k > 1;

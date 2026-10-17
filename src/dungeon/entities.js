@@ -7,8 +7,7 @@ import { HOOKS, S, SHARED_MOBS, emit } from './state.js';
 import { onBossDead, checkPack, startBoss } from './game.js';
 import { breakCage, cutChain, interruptCast } from './mobs.js';
 import { onPerfectBlock } from './buttons.js';
-import { onBlock, talentHitMul, talentStats, wallMul } from './specs.js';
-import { onBurnDeath } from './fire.js';
+import { spikes, talentHitMul, talentStats, wallMul } from './specs.js';
 import { killXp } from '../content/xp';
 
 /* play a sound; during the pet walkout everything is hushed except what forces through */
@@ -63,8 +62,9 @@ export function makeHero(role, isPlayer, loadout) {
     // only drawn: held still on impact, the green glow of a heal
     holdT: 0, healGlow: 0,
     frenzyT: 0, nightstalkerT: 0, ghostSaved: false,
-    // talents (specs.js): Payback readied, Rising Fury's stacks, Knife Storm, Miracle used
-    payback: false, fury: 0, furyT: 0, stormT: 0, miracleUsed: false,
+    // talents (specs.js): Payback readied, Rising Fury's stacks, Knife Storm, Miracle used, the Cleaves and Smites
+    // counted (Rim Strike, Twice Struck), Bulwark's pull, Heartening and Dawn from a Mercy healer
+    payback: false, fury: 0, furyT: 0, stormT: 0, miracleUsed: false, rims: 0, smites: 0, bulwark: 0, heartT: 0, dawnT: 0,
     target: null, picked: null, stillT: 1, dodgeT: 0, dodgeX: 0, dodgeY: -1, iframe: 0,
     blocking: false, blockT: 9, dash: null, cast: null,
     st: { stun: 0, root: 0, haunt: 0, air: 0, ghost: 0, surge: 0, zeal: 0, kx: 0, ky: 0, chained: null, caged: null, curse: null },
@@ -265,12 +265,13 @@ export function hurtHero(h, amt, src, o) {
         a *= 0.25; h.stats.blocks++;
         if (h.isPlayer) fxText(h.x, h.y - 90, 'Blocked', '#C9D2DC', 18);
         sfx('block');
-        onBlock(h, src);
         fx({ type: 'ring', x: h.x + Math.cos(h.face) * 22, y: h.y - 30 + Math.sin(h.face) * 12, r0: 6, r1: 40, col: '#FFFFFF', dur: 0.2, w: 4 });
         emit({ type: 'block', perfect: false, player: !!h.isPlayer, smash: !!o.smash });
       }
     }
   }
+  // Spiked Shield: a foe's swing that lands, blocked or not, hurts it back (a telegraph's hit isn't a swing)
+  if (!o.hazard && !o.ground && a > 0) spikes(h, src, blocked);
   if (!o.pierce && (!o.hazard || blocked)) a *= 1 - h.armor * (o.magic ? 0.4 : 1);
   // talents: a tank's thicker skin, and a mate behind an Iron Wall
   if (h.ts) a *= h.ts.armor;
@@ -423,8 +424,6 @@ export function killMob(m, src) {
   // a wisp that reaches you and bursts was never killed: no XP for being haunted
   const xp = m.M.wisp && !src ? 0 : killXpOf(m);
   emit({ type: 'mob.killed', mob: m.type, boss: !!m.isBoss, undead: !!m.M.skeleton, byPlayer: !!(src && src.isPlayer), x: m.x, y: m.y, xp, ...(m.M.tally ? { tally: m.M.tally } : {}) });
-  // Wildfire: a foe that dies burning passes its Burn on
-  if (m.burn) onBurnDeath(m);
   if (m.M.wisp) {
     dots(m.x, m.y - 40, '#C8F5E8', 10, 160); fx({ type: 'ring', x: m.x, y: m.y - 40, r0: 8, r1: 46, col: '#C8F5E8', dur: 0.25, w: 4 }); sfx('pop');
     // Soul Spark backlash: banishing a wisp during a boss fight zaps the boss and restores healer mana
@@ -437,9 +436,9 @@ export function killMob(m, src) {
     }
     return;
   }
-  // Rimebone 3pc: anything dying inside Blizzard rises as a frost skeleton for 6s
+  // Rimebone 3pc: anything dying inside Blizzard (or Fire's Firestorm, its button) rises as a frost skeleton for 6s
   if (!m.isBoss && S.zones && S.thralls) {
-    const bz = S.zones.find((z) => z.kind === 'blizzard' && z.src && z.src.bonuses && z.src.bonuses.has('rimebone3') && Math.hypot(m.x - z.x, m.y - z.y) <= z.r + m.r + 20);
+    const bz = S.zones.find((z) => (z.kind === 'blizzard' || z.kind === 'firestorm') && z.src && z.src.bonuses && z.src.bonuses.has('rimebone3') && Math.hypot(m.x - z.x, m.y - z.y) <= z.r + m.r + 20);
     if (bz && S.thralls.filter((tr) => tr.alive && tr.kind === 'frost').length < 3) {
       S.thralls.push({ id: 'tr' + (S.seq++), kind: 'frost', owner: bz.src, sp: 'rattler', x: m.x, y: m.y, r: 15, life: 6, maxLife: 6, atkT: 0.3, face: -Math.PI / 2, flip: false, walkT: 0, moving: 0, lunge: 0, lungeA: 0, rise: 0.35, alive: true });
       fxText(m.x, m.y - 84, 'Frost Skeleton!', '#8FD6FF', 18, { dur: 1.0 });

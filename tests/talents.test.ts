@@ -1,8 +1,8 @@
 /// <reference types="node" />
 /**
  * Talents: every hero gets your level's points; a hero picks one of its class's two specs (free to change, each
- * keeping its points) and spends them in that tree, row by row, one of row 3's pair, and the capstone at the
- * bottom. Taking points back is free, except one a row below still needs.
+ * keeping its points) and spends them in that tree, row by row, one of each pair on rows 2 to 5 (row 5's are the
+ * two capstones). Taking points back is free, except one a row below still needs.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -36,8 +36,9 @@ test('talents: two specs a class, a tree of 29 points each, in five rows', () =>
   for (const cls of ['warrior', 'cleric', 'mage', 'rogue']) assert.equal(specsFor(cls).length, 2, cls);
   for (const s of SPEC_LIST) {
     assert.equal(treePoints(s), TREE_POINTS, s.id);
-    assert.equal(s.talents.filter((t) => t.capstone && t.row === 5).length, 1, `${s.id} has one capstone, at the bottom`);
-    assert.equal(s.talents.filter((t) => t.choice).length, 2, `${s.id} has one pair`);
+    assert.equal(s.talents.filter((t) => t.capstone && t.row === 5).length, 2, `${s.id} has two capstones to pick from, at the bottom`);
+    assert.equal(s.talents.filter((t) => t.choice).length, 8, `${s.id} has a pair on each of rows 2 to 5`);
+    for (const row of [2, 3, 4, 5]) assert.equal(new Set(s.talents.filter((t) => t.row === row && t.choice).map((t) => t.choice)).size, 1, `${s.id} row ${row}: one pair`);
   }
   assert.equal(pointsAt(1), 0);
   assert.equal(pointsAt(2), 1);
@@ -89,13 +90,14 @@ test('talents: rows open as points go in above them, and a point needs points le
   assert.match(addProblem(p, h, s, s.talents.find((t) => t.id === 'fr.swift')!) || '', /No points/);
 });
 
-test('talents: of row 3’s pair you can have one; taking one back is free, unless a row below needs it', () => {
+test('talents: of each row’s pair you can have one; taking one back is free, unless a row below needs it', () => {
   const { p, h } = atLevel(30, 'rogue');
   pickSpec(h, 'venom');
   const s = SPECS.venom;
   for (let i = 0; i < 5; i++) addPoint(p, h, 'venom', 've.edge');
   for (let i = 0; i < 5; i++) addPoint(p, h, 'venom', 've.eye');
   assert.ok(addPoint(p, h, 'venom', 've.deadly'));
+  assert.match(addProblem(p, h, s, s.talents.find((t) => t.id === 've.bitter')!) || '', /other one/, 'row 2 is a pick too');
   assert.ok(addPoint(p, h, 'venom', 've.burst'), 'row 3 at 10 above: there are 11');
   assert.match(addProblem(p, h, s, s.talents.find((t) => t.id === 've.mark')!) || '', /other one/);
   assert.equal(addPoint(p, h, 'venom', 've.mark'), false);
@@ -112,7 +114,7 @@ test('talents: of row 3’s pair you can have one; taking one back is free, unle
   assert.equal(takeBack(h, 'venom', 've.lethal'), false, 'nothing in it');
 });
 
-test('talents: a full tree takes every point at level 30, its capstone too, and adds up for the run', () => {
+test('talents: a full tree takes every point at level 30, a capstone too, and adds up for the run', () => {
   for (const spec of SPEC_LIST) {
     const { p, h } = atLevel(30, spec.cls);
     pickSpec(h, spec.id);
@@ -123,7 +125,7 @@ test('talents: a full tree takes every point at level 30, its capstone too, and 
     const L = talentLoadout(p, h);
     assert.equal(L.spec, spec.id);
     assert.ok(L.tal.includes(cap.id));
-    assert.equal(L.tal.length, 4, 'the talents that change a button: row 2’s, one of the pair, row 4’s and the capstone');
+    assert.equal(L.tal.length, 4, 'the talents that change a button: one of each pair on rows 2 to 5');
     const statPoints = spec.talents.filter((t) => t.stat).reduce((a, t) => a + t.ranks, 0);
     assert.equal(statPoints, TREE_POINTS - 4);
     assert.ok(Object.values(L.ts).every((v) => v! > 0 && v! < 0.5), `${spec.id} stats ${JSON.stringify(L.ts)}`);

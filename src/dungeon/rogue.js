@@ -11,8 +11,8 @@ import { LAST, aggro, dots, fx, fxText, healHero, hurtMob, sfx } from './entitie
 import { interruptCast } from './mobs.js';
 import { canStand } from './world.js';
 import { ambushGadgets, critSpark, gearMul, stepGadgets, viperGadgets } from './gadgets.js';
-import { applyBleed, autoTarget, isFoe, later, loud, nearestFoe, spawnThrall } from './heroes.js';
-import { deathMark, fanVenom, has, scatter, sweepFoes, toxicBurst } from './specs.js';
+import { applyBleed, autoTarget, foesNear, isFoe, later, loud, nearestFoe, spawnThrall } from './heroes.js';
+import { KNIFE_STORM, bitterMul, cuttingWind, deathMark, fanVenom, finish, has, knifeStorm, lastBreath, lingeringCut, scatter, secondRing, sweepFoes, toxicBurst, twinEdge } from './specs.js';
 
 /** Shadowstrike's damage a point, and the most points a rogue holds */
 export const POINT = 28, MAX_POINTS = 5;
@@ -34,17 +34,23 @@ function rogueMeleeTarget(h, aim, maxRange) {
   return t && dist(h, t) <= h.r + t.r + maxRange ? t : null;
 }
 /* Viper Blades: the filler, a twin-dagger slash that poisons and adds a point (two on a crit). With Sweeping
-   Blades it slashes every foe in front of you; only its target gives points. */
+   Blades it slashes every foe in front of you, and in a Knife Storm every foe round you; only its target gives
+   points. Bitter Edge makes it hit a poisoned foe harder; Twin Edge strikes twice, each 60% as hard. */
 function abViper(h, aim) {
   const t = rogueMeleeTarget(h, aim, 78);
   if (!t) { if (loud(h)) fxText(h.x, h.y - 100, 'Too far', '#7CF06A', 16); return false; }
   h.face = angTo(h, t); h.lunge = 0.18; h.lungeA = h.face; h.swingT = 0.2;
-  const hit = AB.rogue.a1.hit * fillerMul(h.bonuses);
-  hurtMob(t, hit, h, { crit: 0.22, col: '#7CF06A', tier: 'filler', key: 'viper' });
-  const crit = LAST.crit;
+  const hit = AB.rogue.a1.hit * fillerMul(h.bonuses), twice = twinEdge(h);
+  const each = hit * bitterMul(h, t) * (twice ? 0.6 : 1);
+  hurtMob(t, each, h, { crit: 0.22, col: '#7CF06A', tier: 'filler', key: 'viper' });
+  let crit = LAST.crit;
+  if (twice && t.alive) { hurtMob(t, each, h, { crit: 0.22, col: '#7CF06A', tier: 'filler', key: 'twin' }); crit = crit || LAST.crit; }
   if (t.alive) applyBleed(h, t);
   if (!t.cage) addPoints(h, crit ? 2 : 1);
-  for (const o of sweepFoes(h, t)) { hurtMob(o, hit, h, { crit: 0.22, col: '#7CF06A', tier: 'filler', key: 'sweep' }); if (o.alive) applyBleed(h, o); }
+  const storm = knifeStorm(h);
+  const more = storm ? foesNear(h.x, h.y, 120, false).filter((o) => o !== t && !o.cage) : sweepFoes(h, t);
+  for (const o of more) { hurtMob(o, hit, h, { crit: 0.22, col: storm ? '#B79CFF' : '#7CF06A', tier: 'filler', key: storm ? 'storm' : 'sweep' }); if (o.alive) applyBleed(h, o); }
+  if (storm) fx({ type: 'whirl', h, x: h.x, y: h.y, r: 120, dur: 0.2, col: '#B79CFF' });
   // the set's crit sparks, scaled for a filler (it crits far more often than Shadowstrike)
   if (crit && h.bonuses.has('shadeveil2') && t.alive) hurtMob(t, 24, h, { col: '#B79CFF', size: 19, noCrit: true });
   if (crit) critSpark(h, t, 24);
@@ -55,14 +61,14 @@ function abViper(h, aim) {
   return true;
 }
 /* Shadowstrike: spends every point on one strike (POINT a point); on a poisoned foe it always crits and hits
-   35% harder; on an Exposed one it hits as if you had five. Venom: Toxic Burst, Ruthless, Twin Fangs; Blades:
-   Scatter. */
+   35% harder; on an Exposed one it hits as if you had five. Venom: Toxic Burst, Encore (ve.ruthless), Lingering
+   Cut, Twin Fangs, Last Breath; Blades: Scatter. */
 function abAmbush(h, aim) {
   const t = rogueMeleeTarget(h, aim, 84);
   if (!t) { if (loud(h)) fxText(h.x, h.y - 100, 'Too far', '#FF6B6B', 16); return false; }
   // an Exposed foe takes one Shadowstrike of yours as if you had five points (one a window: it's a burn, not a loop)
   const free = burnable(h, t);
-  const pts = free ? MAX_POINTS : h.points || 0;
+  const had = h.points || 0, pts = free ? MAX_POINTS : had;
   if (pts < 1) { if (loud(h)) fxText(h.x, h.y - 100, 'No points', '#FF6B6B', 16); return false; }
   const bleeding = !!(t.bleed && t.bleed.left > 0);
   const full = pts >= MAX_POINTS;
@@ -70,15 +76,19 @@ function abAmbush(h, aim) {
   const helmMul = (h.bonuses.has('sv_helm') ? 1.25 : 1) * gearMul(h, 'ambush');
   const nsMul = h.nightstalkerT > 0 ? 1.3 : 1;
   h.nightstalkerT = 0;
-  const dmg = POINT * pts * helmMul * nsMul * (bleeding ? 1.35 : 1);
+  // Last Breath: a foe under a fifth of its health is finished and you keep your points (a boss takes half again)
+  const last = lastBreath(h, t);
+  const dmg = POINT * pts * helmMul * nsMul * (bleeding ? 1.35 : 1) * (last && t.isBoss ? 1.5 : 1);
   const strike = () => hurtMob(t, dmg, h, { crit: bleeding ? 1 : 0.35, col: bleeding ? '#FF6B6B' : '#FFE08A', tier: full ? 'payoff' : 'hit', key: free ? 'strike_free' : 'strike' });
-  strike();
+  const got = strike();
   const crit = LAST.crit;
   h.points = 0;
+  if (last && !t.isBoss) { finish(h, t, 'Last Breath!'); h.points = had; }
   if (free) (t.burned ||= new Set()).add(h.id);
-  // Venomrush: a poisoned Shadowstrike gives a point back; Ruthless: a five-point one gives one
+  // Venomrush: a poisoned Shadowstrike gives a point back; Encore: a five-point one gives one
   if (bleeding && h.traits.has('arterial')) addPoints(h, 1);
   if (full && has(h, 've.ruthless')) addPoints(h, 1);
+  if (bleeding) lingeringCut(h, t, got);
   if (crit && h.bonuses.has('sv_helm')) healHero(h, h, 25, { size: 16 });
   if (crit && h.bonuses.has('shadeveil2') && t.alive) hurtMob(t, 55, h, { col: '#B79CFF', size: 19, noCrit: true });
   if (crit) critSpark(h, t, 55);
@@ -98,24 +108,31 @@ function abAmbush(h, aim) {
 function abFlurry(h) {
   const R = 140 * (h.bonuses.has('gs_shoulders') ? 1.25 : 1), fanMul = gearMul(h, 'flurry');
   h.whirlDur = 0.28; h.whirlT = 0.28;
-  let hit = false;
-  for (const m of S.mobs) {
-    if (!isFoe(m) || m.cage || dist(m, h) > R + m.r) continue;
-    aggro(m, h, 0);
-    if (m.cast) interruptCast(m, h);
-    hurtMob(m, 50 * fanMul, h, { col: '#D7DEE6', size: 18, key: 'fan' });
-    if (!m.M.thing) hit = true;
-    fanVenom(h, m);
-  }
-  if (hit) addPoints(h, 1);
-  fx({ type: 'whirl', h, x: h.x, y: h.y, r: R, dur: 0.28, col: '#B79CFF' });
-  fx({ type: 'ring', x: h.x, y: h.y - 26, r0: 18, r1: R, col: '#D7DEE6', dur: 0.24, w: 5 });
-  sfx('sweep', 0.8);
+  // one ring of knives: it stops casts, poisons with Venom Spray and cuts with Cutting Wind
+  const ring = (key) => {
+    let hit = false;
+    for (const m of S.mobs) {
+      if (!isFoe(m) || m.cage || dist(m, h) > R + m.r) continue;
+      aggro(m, h, 0);
+      if (m.cast) interruptCast(m, h);
+      hurtMob(m, 50 * fanMul, h, { col: '#D7DEE6', size: 18, key });
+      if (!m.M.thing) hit = true;
+      fanVenom(h, m);
+      cuttingWind(h, m);
+    }
+    fx({ type: 'whirl', h, x: h.x, y: h.y, r: R, dur: 0.28, col: '#B79CFF' });
+    fx({ type: 'ring', x: h.x, y: h.y - 26, r0: 18, r1: R, col: '#D7DEE6', dur: 0.24, w: 5 });
+    sfx('sweep', 0.8);
+    return hit;
+  };
+  if (ring('fan')) addPoints(h, 1);
+  // Second Ring: another a moment later (no point of its own)
+  if (secondRing(h)) later(0.3, () => { if (h.alive && !S.over) ring('ring'); });
   return true;
 }
 /* Shadowstep: blink behind your target, strike it, stop its cast, swing faster for a while, and gain two points
-   (three with the Cryptfangs, and one more with the Shadeveil Spaulders). Death Mark marks it; Knife Storm makes
-   your swings hit everything round you for 4 seconds. */
+   (three with the Cryptfangs, and one more with the Shadeveil Spaulders). Grave Mark marks it; Knife Storm makes
+   Viper Blades and your swings hit everything round you for 6 seconds. */
 function abShadowstep(h, aim) {
   let t = aim && aim.kind === 'mob' && isFoe(aim) ? aim : autoTarget(h);
   if (!t || dist(h, t) > 380) t = nearestFoe(h, 380, false);
@@ -144,7 +161,7 @@ function abShadowstep(h, aim) {
   h.frenzyT = 3.8;
   if (h.traits.has('nightstalker')) h.nightstalkerT = 3.5;
   deathMark(h, t);
-  if (has(h, 'bl.storm')) { h.stormT = 4; if (h.isPlayer) fxText(h.x, h.y - 125, 'Knife Storm!', '#B79CFF', 20); }
+  if (has(h, 'bl.storm')) { h.stormT = KNIFE_STORM; if (h.isPlayer) fxText(h.x, h.y - 125, 'Knife Storm!', '#B79CFF', 20); }
   addPoints(h, 2 + (h.unique === 'cryptfangs' ? 1 : 0) + (h.bonuses.has('sv_shoulders') ? 1 : 0));
   h.picked = t.alive ? t : null;
   sfx('dodge', 0.8); sfx('swing', 0.7);

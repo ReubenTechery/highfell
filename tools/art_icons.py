@@ -643,6 +643,36 @@ T['cap_fangs'] = tile(BG_VENOM, '<path d="M4 26 C18 14 32 8 46 6 M18 60 C32 46 4
 T['cap_knifestorm'] = tile(BG_BLADES, glow(32, 32, 14, FLAME, 0.4) + F(whirl(32, 32, 9, 0, 150, 0.5, 4.5), '#F2C230', 2.2) + F(whirl(32, 32, 9, 180, 330, 0.5, 4.5), '#F2C230', 2.2) +
                            ''.join(turned(32, 32, k * 72, turned(0, -20, 0, knife(0.78))) for k in range(5)))
 
+# ---- the second capstone of each spec (row 5 is a pick of two, 18 Oct)
+SKULL = ('M0 -12 C8 -12 13 -7 13 0 C13 5 10 8 7 9 V13 H-7 V9 C-10 8 -13 5 -13 0 C-13 -7 -8 -12 0 -12 Z')
+T['cap_unbowed'] = tile(BG_SHIELD, F(whirl(32, 34, 25, 200, 340, 0.5, 6), '#F2C230', 2.6) + F(whirl(32, 34, 25, 20, 160, 0.5, 6), '#F2C230', 2.6) +
+                        turned(32, 34, 0, tower(0.62)) +
+                        ''.join(turned(x, y, a, F('M0 -7 L5 4 L-5 4 Z', '#E8505B', 2.4)) for x, y, a in ((8, 22, 60), (56, 22, -60), (32, 62, 180))))
+T['cap_finalword'] = tile(BG_AXE, glow(22, 46, 16, FLAME, 0.45) + F(burst(22, 46, (17, 7, 13, 7), 8, -80), '#F2C230', 2.8) +
+                          turned(22, 47, 0, F(sc(SKULL, 0.75), '#F0E8D2', 2.6) + C(-3.5, -1, 2.2, K, 0) + C(3.5, -1, 2.2, K, 0)) +
+                          turned(41, 33, -38, great_axe(0.56)))
+T['cap_dawn'] = tile(BG_MERCY, glow(32, 44, 26, FLAME, 0.35) + spokes(32, 44, 20, 28, (-170, -145, -120, -95, -70, -45, -20), '#F2C230', 3.2) +
+                     F('M14 44 C14 34 22 26 32 26 C42 26 50 34 50 44 Z', '#F2C230', 3.4) + P('M22 36 C24 32 27 30 31 29.5', '#FFFFFF', 2.4) +
+                     F('M-4 44 H68 V68 H-4 Z', '#4F3780', 3.5) +
+                     ''.join(inked(f'M{x - 5} {y + 3} L{x} {y - 2} L{x + 5} {y + 3}', '#FFF3C4', 2.6) for x, y in ((14, 55), (32, 53), (50, 55))))
+T['cap_flashpoint'] = tile(BG_WRATH, glow(32, 32, 26, FLAME, 0.4) + F(boom(32, 32, (27, 21, 25, 20), 12), '#F2C230', 3) +
+                           F(boom(32, 32, (15, 12), 10, -72), '#FFF3C4', 2.4) + C(32, 32, 6, '#FFFFFF', 2.4) +
+                           ''.join(F(star4(x, y, r), '#FFF3C4', 1.8) for x, y, r in ((9, 9, 5), (55, 10, 4.5), (8, 55, 4), (56, 54, 5))))
+_dshard = lambda x, y, k: turned(x, y, 135, F(sc('M-17 0 L9 -6 L15 0 L9 6 Z', k), '#DDF3FF', 2.8) + P(sc('M-11 0 L10 0', k), '#8FD6FF', 2))
+T['cap_icefall'] = tile(BG_FROST, F('M10 20 C4 20 4 11 11 10 C11 3 22 0 26 6 C30 -1 44 1 44 9 C52 8 56 17 49 20 Z', '#C9D2DC', 3) + P('M15 16 H43', '#E8EEF3', 2.4) +
+                        _dshard(18, 34, 0.75) + _dshard(34, 30, 0.95) + _dshard(48, 36, 0.7) +
+                        F(burst(32, 55, (11, 5, 9, 5), 8), '#8FD6FF', 2.6) + F(star4(54, 52, 5), '#F2C230', 1.8) + F(star4(10, 50, 4), '#F2C230', 1.6))
+T['cap_pyre'] = tile(BG_FIRE, glow(32, 44, 26, FIRE, 0.3) + '<ellipse cx="32" cy="55" rx="25" ry="7" style="fill: #3A120F; stroke: #1E1A1A; stroke-width: 3"/>' +
+                     blaze(14, 57, 10, 14, -1, 2.6) + blaze(30, 58, 14, 25, 1, 2.8) + blaze(48, 58, 17, 36, 2, 3) +
+                     inked('M14 30 L30 22 L45 12', '#FFF3C4', 2.4) + F('M41 9 L50 9 L45 17 Z', '#FFF3C4', 2))
+T['cap_lastbreath'] = tile(BG_VENOM, glow(40, 44, 16, VEN, 0.3) +
+                           turned(40, 46, 0, F(sc(SKULL, 0.9), '#F0E8D2', 2.8) + C(-4, -1, 2.6, K, 0) + C(4, -1, 2.6, K, 0) + P('M-3 9 V12 M0 9 V12 M3 9 V12', K, 1.4)) +
+                           P('M28 40 C20 38 16 30 22 25 C27 21 33 26 28 30 C24 33 18 28 18 22', '#E9FFE4', 3) +
+                           turned(22, 22, 135, turned(0, 0, 0, knife(1.05))) + F(star4(54, 14, 5), '#F2C230', 1.8))
+T['cap_cuttingwind'] = tile(BG_BLADES, ''.join(F(whirl(32, 32, r, a, a + 120, 0.5, w), '#BDF5E6', 2.2) for r, a, w in ((26, -150, 5.5), (19, 10, 4.5), (12, 150, 3.5))) +
+                            turned(32, 32, 0, turned(0, -22, 90, knife(0.85))) + turned(32, 32, 130, turned(0, -22, 90, knife(0.85))) +
+                            turned(32, 32, 250, turned(0, -22, 90, knife(0.85))) + C(32, 32, 4, '#E8505B', 2.4))
+
 # ---- experience, and the tomes that teach talents
 T['xp'] = tile('#2E2A55', glow(32, 32, 24, '#B98CFF', 0.3) + F(star4(32, 32, 26), '#B98CFF', 3.5) + P('M29.5 14 C29 19 28 22 26 24.5', '#FFFFFF', 2.4) +
                F(star4(53, 12, 6.5), '#B98CFF', 2.2) + F(star4(11, 52, 5), '#B98CFF', 2))
