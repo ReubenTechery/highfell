@@ -6,7 +6,7 @@ import { ROLES } from '../content/roles';
 import { HOOKS, S, SHARED_MOBS, emit } from './state.js';
 import { onBossDead, checkPack, startBoss } from './game.js';
 import { breakCage, cutChain, interruptCast } from './mobs.js';
-import { onPerfectBlock } from './heroes.js';
+import { onPerfectBlock } from './buttons.js';
 
 /* play a sound; during the pet walkout everything is hushed except what forces through */
 export const sfx = (n, v, force) => { if (S && !S.quiet && (!S.hush || force)) HOOKS.sound(n, v); };
@@ -48,6 +48,10 @@ export function makeHero(role, isPlayer, loadout) {
     mana: 100, maxMana: 100, cd: { a1: 0, a2: 0, a3: 0, a4: 0, dodge: 0 }, gcd: 0, atkT: 0.4,
     // the beat the four buttons share, and the one press waiting for it (press.js)
     beat: 0, next: null,
+    // the payoffs a class sets up (buttons.js): Crushes primed, Shatters primed, a rogue's points, an empowered Mend
+    crush: 0, shatter: 0, points: 0, mendUp: false, cleaves: 0,
+    // only drawn: held still on impact, the green glow of a heal
+    holdT: 0, healGlow: 0,
     frenzyT: 0, nightstalkerT: 0, ghostSaved: false,
     target: null, picked: null, stillT: 1, dodgeT: 0, dodgeX: 0, dodgeY: -1, iframe: 0,
     blocking: false, blockT: 9, dash: null, cast: null,
@@ -60,6 +64,9 @@ export function makeHero(role, isPlayer, loadout) {
   };
 }
 
+/** how hard a mob of this type swings for this dungeon's tuning (tune.dmg names a mob's own, on top of `hit` for
+    everything): only its ordinary swings, never its moves or its bombs */
+export const tunedDmg = (type) => (S.tune.dmg && S.tune.dmg[type]) || 1;
 export function makeMob(type, x, y, pack) {
   const M = S.dg.mobs[type] || SHARED_MOBS[type];
   // the dungeon's tuning: ordinary mobs get its health multiplier, bosses theirs (as written outside heroic),
@@ -72,7 +79,7 @@ export function makeMob(type, x, y, pack) {
     threat: new Map(), target: null, forced: null, forcedT: 0,
     atkT: rand(0.3, 0.9), wind: 0, ab: {}, cast: null, busy: 0,
     st: { stun: 0, freeze: 0, chill: 0, stagger: 0, slow: 0, slowT: 0, kx: 0, ky: 0 },
-    flash: 0, lunge: 0, lungeA: 0, face: Math.PI / 2, flip: rng() < 0.5, walkT: rand(0, 6), squash: 0, rise: 0, deadT: 0, moving: 0,
+    flash: 0, lunge: 0, lungeA: 0, face: Math.PI / 2, flip: rng() < 0.5, walkT: rand(0, 6), squash: 0, holdT: 0, rise: 0, deadT: 0, moving: 0,
     isBoss: !!M.boss, phase: 1, armorUp: 0, exposed: 0, untargetable: false, hidden: false, pose: null, dmgMul: 1, ghostProps: !!M.wisp,
   };
 }
@@ -96,18 +103,53 @@ export const stunned = (m) => !!m.st && (m.st.stun > 0 || m.st.stagger > 0);
 /* Icicle and Comet shatter what is frozen, and a Chilled boss */
 export const shatterable = (m) => !!m.st && (m.st.freeze > 0 || m.st.chill > 0);
 
+/* Exposed: +35% damage taken, and it counts as the setup for every class's payoff (Cleave Crushes, Icicle and Comet
+   Shatter as on a Chilled boss, Shadowstrike hits as if you had five points, Smite heals double). A boss's window
+   is called out to the whole party: the gold buttons light up together. */
 export function exposeMob(m, dur, label) {
   if (!m || !m.alive || m.cage || m.M.wisp) return;
+  const was = m.exposed > 0;
   m.exposed = Math.max(m.exposed || 0, dur || 3.0);
   fxText(m.x, m.y - (m.isBoss ? 210 : 120), label || 'Exposed!', '#FFE08A', 24, { dur: 1.3 });
   fx({ type: 'ring', x: m.x, y: m.y - 30, r0: 24, r1: m.r + 74, col: '#F2C230', dur: 0.35, w: 6 });
+  if (m.isBoss && !was) { call('EXPOSED! Hit him now!', 'good', 1.4); sfx('exposed'); }
 }
 
 /* ---------- floating text and effects ---------- */
-export function fxText(x, y, str, col, size, o) { S.texts.push(Object.assign({ x: x + vrand(-8, 8), y, str, col, size: size || 22, t: 0, dur: 1.0, vy: -70 }, o || {})); }
+export function fxText(x, y, str, col, size, o) {
+  const t = Object.assign({ x: x + vrand(-8, 8), y, str, col, size: size || 22, t: 0, dur: 1.0, vy: -70 }, o || {});
+  // a number steps up over one still rising from the same spot, instead of piling on it; a crit's tilts
+  if (t.num) for (let i = 0; i < 4; i++) {
+    const under = S.texts.find((u) => u.num && u.t < 0.4 && Math.abs(u.x - t.x) < 48 && Math.abs(u.y - t.y) < t.size * 0.8);
+    if (!under) break;
+    t.y = under.y - t.size * 0.85;
+  }
+  if (t.crit) t.tilt = vrand(-0.2, 0.2);
+  S.texts.push(t);
+}
 export function fx(o) { o.t = 0; S.fx.push(o); return o; }
 export function shake(a) { S.shake = Math.max(S.shake, a); }
-export function hitstop(t) { S.hitstop = Math.max(S.hitstop, t); }
+/* the freeze on impact is drawn, not played: the hitter and the target are held still on screen for a moment
+   while the fight goes on (render.js), so the beat stays steady. Several at once take the longest. */
+export function hold(t, ...who) {
+  for (const e of who) {
+    if (!e) continue;
+    if (!(e.holdT > 0)) { e.holdX = e.x; e.holdY = e.y; }
+    e.holdT = Math.max(e.holdT || 0, t);
+  }
+}
+/* How your own hits feel (bots never shake or freeze the screen). A hit's tier: 'tick' (an auto swing, a venom or
+   Blizzard tick), 'filler' (the class's filler), 'hit' (any other button), 'payoff' (Crush, Shatter, a five-point
+   Shadowstrike); a crit lifts anything but a payoff to 'crit'. */
+export const FEEL = {
+  tick: { hold: 0, flash: 0.05, shake: 0, size: 17 },
+  filler: { hold: 0.025, flash: 0.08, shake: 0, size: 21, flinch: true },
+  hit: { hold: 0.025, flash: 0.08, shake: 0, size: 21, flinch: true },
+  crit: { hold: 0.05, flash: 0.1, shake: 1.5, size: 30, flinch: true, sparks: 4 },
+  payoff: { hold: 0.07, flash: 0.12, shake: 3.5, size: 34, flinch: true, shards: 8 },
+};
+/** the last hit hurtMob landed: whether it crit and how it felt (the buttons read it to prime their payoffs) */
+export const LAST = { crit: false, tier: 'hit', amt: 0 };
 export function bits(x, y, sp, n, spd, o) {
   for (let i = 0; i < n; i++) {
     const a = vrand(0, TAU), v = vrand(spd * 0.4, spd);
@@ -182,7 +224,8 @@ export function hurtHero(h, amt, src, o) {
           src.wind = 0; src.busy = 0;
           exposeMob(src, src.isBoss ? 3.5 : 2.5, intro && src.isBoss ? 'Staggered!' : 'Exposed!');
         }
-        sfx('perfect'); shake(6); hitstop(0.08);
+        sfx('perfect', h.isPlayer ? 1 : 0.6);
+        if (h.isPlayer) { shake(6); hold(0.08, h, src); }
         fx({ type: 'ring', x: h.x, y: h.y - 30, r0: 20, r1: 110, col: '#F2C230', dur: 0.35, w: 6 });
         if (o.smash && S.bossFight && h.isPlayer) S.bossFight.smashPerfect++;
         emit({ type: 'block', perfect: true, player: !!h.isPlayer, smash: !!o.smash });
@@ -266,8 +309,17 @@ export function killHero(h) {
 }
 
 /* ---------- damage to mobs ---------- */
+/** the crit chance gear and Lantern Zeal add to a hero's own (up to +14% from Power, +10% in the Zeal) */
+export function critBonus(src) {
+  if (!src || src.kind !== 'hero') return 0;
+  return (src.power > 1 ? Math.min(0.14, (src.power - 1) * 0.14) : 0) + (src.st && src.st.zeal > 0 ? 0.1 : 0);
+}
+/** A hit on a mob. o: { raw (no Power), crit (its chance; 1 always), noCrit, shatter / chillShatter (Shatter
+ *  multipliers), knock, threat (×), tier (how it feels: FEEL), auto (an automatic swing, counted apart), col,
+ *  size, quiet }. Returns the damage done; LAST says whether it crit. */
 export function hurtMob(m, amt, src, o) {
   o = o || {};
+  LAST.crit = false; LAST.amt = 0;
   if (!m.alive || m.untargetable || S.over) return 0;
   // something that isn't a fighter (a bomb) turns a hit into its own thing
   if (m.M.onHit) return m.M.onHit(m, amt, src, o) || 0;
@@ -283,9 +335,7 @@ export function hurtMob(m, amt, src, o) {
   let crit = false;
   // the party's brew: Glowcap Draught and Starlight Elixir hit harder
   if (src && src.brew) a *= brewFx(src.brew).dmg || 1;
-  const gearCrit = src && src.power > 1 ? Math.min(0.14, (src.power - 1) * 0.14) : 0;
-  const zealCrit = src && src.st && src.st.zeal > 0 ? 0.1 : 0;
-  const critChance = (o.crit === undefined ? 0.12 : o.crit) + (o.crit === 1 ? 0 : gearCrit + zealCrit);
+  const critChance = o.crit === 1 ? 1 : (o.crit === undefined ? 0.12 : o.crit) + critBonus(src);
   if (!o.noCrit && rng() < critChance) { a *= 2; crit = true; }
   else if (!o.noCrit && src && src.traits && src.traits.has('headsman') && stunned(m)) { a *= 2; crit = true; }
   const shattered = !!o.shatter && shatterable(m);
@@ -293,16 +343,42 @@ export function hurtMob(m, amt, src, o) {
   if (m.armorUp > 0) a *= 1 - m.armorUp;
   a = Math.round(a);
   if (a <= 0) return 0;
+  LAST.crit = crit; LAST.amt = a;
   m.hp -= a;
-  if (!m.isBoss || crit || shattered || a >= 200) m.flash = m.isBoss ? 0.07 : 0.08;
-  if (m.cast && m.cast.kick) { m.cast.taken += a; if (m.cast.taken >= m.cast.kick) interruptCast(m); }
-  if (src && src.kind === 'hero') { aggro(m, src, 0); addThreat(m, src, a * src.threatMod * (o.threat || 1)); src.stats.dmg += a; }
-  const big = crit || a >= 250;
-  const iceCrit = crit && src && src.isPlayer && S.looks && S.looks.has('cosmetic.crit_ice');
+  const mineHit = !!(src && src.isPlayer);
+  const tier = crit && o.tier !== 'payoff' ? 'crit' : o.tier || 'hit';
+  LAST.tier = tier;
+  const F = FEEL[tier];
+  // every hit flashes a small mob; a boss flashes briefly on your filler, crits and payoffs, never on swings and
+  // ticks (so he doesn't strobe), and on any hit of 200 or more
+  if (!m.isBoss) { m.flash = Math.max(m.flash, F.flash); m.flashMax = Math.max(m.flash, 0.05); m.flashGold = tier === 'payoff'; }
+  else if ((mineHit && tier !== 'tick' && tier !== 'hit') || a >= 200) { m.flash = Math.max(m.flash, tier === 'payoff' ? 0.12 : 0.05); m.flashMax = m.flash; m.flashGold = tier === 'payoff'; }
+  // small mobs squash for two frames and are nudged back (only drawn)
+  if (F.flinch && !m.isBoss && !m.M.big) { m.squash = 0.035; if (src) m.nudgeA = Math.atan2(m.y - src.y, m.x - src.x); }
+  if (src && src.kind === 'hero') {
+    aggro(m, src, 0); addThreat(m, src, a * src.threatMod * (o.threat || 1)); src.stats.dmg += a;
+    if (o.auto) src.stats.auto = (src.stats.auto || 0) + a;
+    // what did it: the sims break a hero's damage down by button (npm run sim)
+    if (o.key) { const by = src.stats.by || (src.stats.by = {}); by[o.key] = (by[o.key] || 0) + a; }
+  }
+  const iceCrit = crit && mineHit && S.looks && S.looks.has('cosmetic.crit_ice');
   if (iceCrit) bits(m.x, m.y - (m.isBoss ? 150 : 60), 'shard_ice', 6, 220);
-  if (!o.quiet && src && src.isPlayer) fxText(m.x, m.y - (m.isBoss ? 170 : m.M.big ? 120 : 70), (crit ? a + '!' : '' + a), iceCrit ? '#8FD6FF' : o.col || (crit || m.exposed > 0 ? '#F2C230' : '#FFFFFF'), o.size || (a >= 600 ? 40 : big ? 30 : 21), { dur: big ? 1.15 : 0.9, crit });
+  if (!o.quiet && mineHit) {
+    const big = tier === 'crit' || tier === 'payoff';
+    const size = big ? (a >= 600 ? 40 : F.size) : o.size || (a >= 600 ? 40 : a >= 250 ? 26 : F.size);
+    const col = iceCrit ? '#8FD6FF' : big || m.exposed > 0 ? '#F2C230' : o.col || '#FFFFFF';
+    fxText(m.x, m.y - (m.isBoss ? 170 : m.M.big ? 120 : 70), crit ? a + '!' : '' + a, col, size, { dur: big ? 1.15 : 0.9, crit, num: true });
+  }
   if (o.knock && !m.isBoss && !m.M.big) { const an = Math.atan2(m.y - src.y, m.x - src.x); m.st.kx += Math.cos(an) * o.knock; m.st.ky += Math.sin(an) * o.knock; }
-  if (crit && src && src.isPlayer) { hitstop(0.035); if (!o.quiet) sfx('crit', 0.9); }
+  if (mineHit) {
+    if (F.hold) hold(F.hold, src, m);
+    if (F.shake) shake(F.shake);
+    if (F.sparks) dots(m.x, m.y - (m.isBoss ? 130 : 50), '#FFE08A', F.sparks, 170);
+    if (F.shards) bits(m.x, m.y - (m.isBoss ? 130 : 50), o.shard || m.M.shard || 'shard_bone', F.shards, 240);
+    if (crit && !o.quiet) sfx('crit', 0.9);
+    // auto swings and ticks get a soft tick, at most one every 0.1 s
+    if (tier === 'tick' && !o.quiet && S.t - (S.tickSfx ?? -1) >= 0.1) { S.tickSfx = S.t; sfx('tap', 0.5); }
+  }
   if (crit && src && src.kind === 'hero') emit({ type: 'crit', amount: a, player: !!src.isPlayer });
   if (m.hp <= 0) killMob(m, src);
   return a;
@@ -346,17 +422,23 @@ export function killMob(m, src) {
   bits(m.x, m.y - (big ? 70 : 40), m.M.shard || 'shard_bone', big ? 10 : 5, big ? 260 : 190);
   if (!m.M.shard) bits(m.x, m.y - (big ? 90 : 60), 'shard_skull', 1, 150);
   sfx(big ? 'bigdie' : 'die');
-  if (src && src.isPlayer) hitstop(big ? 0.09 : 0.04);
+  // a kill flings a small mob away from whoever landed it; a big one collapses where it stands (render.js)
+  m.dieA = src ? Math.atan2(m.y - src.y, m.x - src.x) : -Math.PI / 2;
+  if (src && src.isPlayer) { hold(big ? 0.09 : 0.04, src, m); if (big) shake(3); }
   if (m.isBoss) onBossDead(m);
   if (m.pack) checkPack(m.pack);
 }
 
 /* ---------- healing ---------- */
+/** A heal. o: { raw (no Power and no crit), noCrit, show (a number even at full health), size }. Heals from a hero
+ *  crit for 1.5x on the same chance as a hit. Returns what it really healed. */
 export function healHero(src, t, amt, o) {
   o = o || {};
   if (!t.alive) return 0;
   const before = t.hp / t.maxHp;
-  const a = Math.round(amt * (o.raw ? 1 : (src && src.power) || 1));
+  const crit = !o.raw && !o.noCrit && !!src && src.kind === 'hero' && rng() < 0.12 + critBonus(src);
+  const a = Math.round(amt * (o.raw ? 1 : (src && src.power) || 1) * (crit ? 1.5 : 1));
+  LAST.healCrit = crit;
   const real = Math.min(a, t.maxHp - t.hp);
   t.hp += real;
   if (t.st && t.st.ghost > 0 && t.hp >= t.maxHp * 0.85) {
@@ -364,7 +446,10 @@ export function healHero(src, t, amt, o) {
     fxText(t.x, t.y - 106, 'Restored!', '#FFE08A', 22, { dur: 1.1 });
   }
   if (src) { src.stats.heal += real; src.stats.overheal += a - real; }
-  if ((real > 0 || o.show) && mine(src, t)) fxText(t.x, t.y - 74, '+' + a, '#7BE05A', o.size || (a >= 150 ? 22 : 18), { dur: 0.9 });
+  if ((real > 0 || o.show) && mine(src, t)) fxText(t.x, t.y - 74, '+' + a + (crit ? '!' : ''), '#7BE05A', crit ? (a >= 300 ? 30 : 26) : o.size || (a >= 150 ? 22 : 18), { dur: crit ? 1.1 : 0.9, crit, num: true });
+  // the mate your heal lands on glows green a moment, and your own heal's crit chimes
+  if (real > 0 && src && src.isPlayer) t.healGlow = 0.22;
+  if (crit && src && src.isPlayer && !o.quiet) sfx('healcrit', 0.8);
   // healing pulls a little threat from everything in the fight
   if (src && real > 0) { const fighting = S.mobs.filter((m) => m.alive && m.state === 'fight' && !m.cage && !m.M.wisp); fighting.forEach((m) => addThreat(m, src, (real * 0.5) / Math.max(1, fighting.length))); }
   // a save: the player catches someone under 15% and they are still up three seconds later
@@ -374,7 +459,7 @@ export function healHero(src, t, amt, o) {
       fxText(t.x, t.y - 130, 'SAVED!', '#F2C230', 30, { dur: 1.3 });
       fx({ type: 'ring', x: t.x, y: t.y - 40, r0: 16, r1: 110, col: '#F2C230', dur: 0.4, w: 7 });
       dots(t.x, t.y - 50, '#FFE08A', 14, 200);
-      sfx('saved'); hitstop(0.12);
+      sfx('saved'); hold(0.12, src, t);
     }
     S.timers.push({ t: 3, fn: () => { if (t.alive) { S.stats.saves = (S.stats.saves || 0) + 1; emit({ type: 'heal.save', player: true }); } } });
   }

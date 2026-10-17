@@ -1,6 +1,6 @@
 # The dungeon template
 
-Copy this folder to start a new dungeon. It is a small, working dungeon: bots clear it in about 3:10 in Common
+Copy this folder to start a new dungeon. It is a small, working dungeon: bots clear it in about 3:15 in Common
 gear, the Warden takes about 40 seconds and the Sovereign about 80 (`tests/template.test.ts` keeps it so). It is
 not in the game. Its names, numbers and art are stand-ins.
 
@@ -10,12 +10,17 @@ not in the game. Its names, numbers and art are stand-ins.
    the packs teach it and the fights test it. It lives in `signature.js` and the engine def names it
    (`signature` in `engine.ts`). The example is beacons: they pulse the party until a DPS breaks them, and
    shield the boss who planted them.
-2. **One or two new enemy types.** Everything else is the shared kinds (`melee`, `ranged`, `brute`) dressed
-   as this dungeon's own. The example's new type is the Beaconkeeper, which carries the signature.
+2. **One or two new enemy types.** Everything else is the shared kinds (`melee`, `ranged`, `brute`, `caller`,
+   `mender`) dressed as this dungeon's own. Every mob has one job: fodder, a shooter, a brute, a caster or a
+   mender (a 2 s cast the tank or a DPS can stop), a curser, or the signature. Each pack is fodder plus one or
+   two of the others, so every pull asks something of every seat. The example's new type is the Beaconkeeper,
+   which carries the signature; its mender is the shared kind (pack D).
 3. **Two bosses of two or three moves each.** The mini boss takes about 40 seconds. The final boss has two
    phases and takes about 80 seconds. Build every move from the shared parts in `src/dungeon/moves.js`: cone,
-   line and circle telegraphs, Exposed windows, adds, a party pulse. In each fight every role gets one clear
-   job (tank, healer, DPS). Write the job on the move (`job`).
+   line and circle telegraphs, Exposed windows, adds, a party pulse, a cast. In each fight every role gets one
+   clear job (tank, healer, DPS). Write the job on the move (`job`). Every boss has a tank buster to block and a
+   window to burn (Exposed lights every class's payoff), and a hit on the whole party is a cast to stop
+   (`cast()`, with the pulse as what lands if nobody does), as on the Barrow's and Thimblebriar's bosses.
 4. **A different layout shape.** Not another line of rooms. Layouts are data (`map.js`, built by
    `src/dungeon/layout.js`): any number of rooms, doors on any side, branches, side rooms, round rooms.
 5. **No puzzle on Normal.** The three-seat seal is a Heroic-only hook (`seal` in `script.js`). Normal never

@@ -12,45 +12,60 @@ export const ROLES: Record<RoleId, RoleDef> = {
   tank: { id: 'tank', name: 'Brannoc', title: 'Tank', hp: 1250, armor: 0.44, speed: 176, r: 18, threat: 1.3, color: '#4F6FA8',
     blurb: 'Cleave through packs, Slam to yank foes into a whirlwind, Charge stragglers, block big hits.' },
   healer: { id: 'healer', name: 'Maren', title: 'Healer', hp: 820, armor: 0.2, speed: 182, r: 16, threat: 1, color: '#E7B53C',
-    blurb: 'Tap a frame to heal. Smite when everyone is topped up.' },
+    blurb: 'Tap a name to Mend. Smite on the quiet beats for mana.' },
   dps: { id: 'dps', name: 'Ivy', title: 'DPS', hp: 720, armor: 0.15, speed: 186, r: 16, threat: 1, color: '#3D7FC1',
-    blurb: 'Stand still to cast. Freeze them, then shatter them.' },
+    blurb: 'Icicle every beat. Freeze them, then shatter them.' },
 };
 
+/* Each class has a filler (no cooldown, once a beat), a payoff it sets up, and two cooldowns. Charge and Shadowstep
+   move you, so they never wait for the beat; the shield is held. What each button does is src/dungeon/buttons.js. */
 export const AB: Record<GearKey, Record<AbilitySlot, AbilityDef>> = {
   tank: {
-    a1: { key: 'cleave', name: 'Cleave', cd: 2.2, desc: 'Fast, wide axe sweep through foes in front of you. Crushes heavy foes, stunned targets, or clumped packs for bonus damage.', combo: '② Spammable finisher: Crush! bonus damage on heavy foes, stunned targets, or 2+ packs. Bosses are heavy, so Cleave always crushes them' },
-    a2: { key: 'charge', name: 'Charge', cd: 6.5, offBeat: true, desc: 'Rush a mob and shoulder-slam it. Stuns nearby foes (a boss staggers) and shaves 1.2s off Cleave.', combo: '① Charge stuns pack & readies Cleave ➔ ② Cleave crushes. On a boss: a 1s Stagger, not a stun (he keeps attacking), and it counts as a stun for Cleave and Headsman' },
-    a3: { key: 'slam', name: 'Slam', cd: 6.0, desc: 'Drag every nearby foe in, force them onto you, and spin a 360° whirlwind through the pack.', combo: '① Drag pack in + Whirlwind ➔ ② Cleave crushes the clump. On a boss: taunt + Whirlwind, no drag' },
-    a4: { key: 'shield', name: 'Shield', cd: 0, hold: true, desc: 'Hold to block from the front. Block right before a big hit to stun it, counter-strike, and reset Cleave.', combo: '① Perfect block stuns & resets Cleave ➔ ② Cleave crushes. Works on bosses too: a perfect block stuns and exposes them' },
+    a1: { key: 'cleave', name: 'Cleave', cd: 0, filler: true, hit: 60, desc: 'A wide axe sweep through everything in front of you, every beat. Primed, it Crushes for 1.6×.', combo: 'The Cleave after a Charge, a Slam, a perfect block or a Cleave crit Crushes, and a stunned, Staggered or Exposed foe is always Crushed' },
+    a2: { key: 'charge', name: 'Charge', cd: 8, offBeat: true, desc: 'Rush a mob and shoulder-slam it: it stuns the foes round it, stops their casts and primes Crush. A boss staggers.', combo: 'On a boss: a 1s Stagger, not a stun (he keeps attacking), and it still stops his cast' },
+    a3: { key: 'slam', name: 'Slam', cd: 8, desc: 'Drag every foe near you in, make them turn on you, spin a whirlwind through them, and prime Crush.', combo: 'On a boss: a taunt and the whirlwind, no drag' },
+    a4: { key: 'shield', name: 'Shield', cd: 0, hold: true, desc: 'Hold to block from the front. Block right before a big hit to stun it, strike back and prime Crush.', combo: 'A perfect block ends the beat, so Cleave fires the moment the shield comes down. It stuns and exposes a boss too' },
   },
-  // the healer stays off the beat until its rework, when Mend and these four join it together (combat plan, stage 3)
   healer: {
-    a1: { key: 'circle', name: 'Prayer circle', cd: 5, mana: 14, aim: true, range: 520, offBeat: true, desc: 'Allies standing in it heal fast.', combo: '① Drop Circle ➔ ② Smite pulses bonus healing inside it' },
-    a2: { key: 'ward', name: 'Ward', cd: 3.8, mana: 10, offBeat: true, desc: 'Shield the ally who needs it most.', combo: '① Pre-shield tank before big boss swings' },
-    a3: { key: 'sunburst', name: 'Sunburst', cd: 13, mana: 22, offBeat: true, desc: 'Heal everyone and clear nasty effects.', combo: '② Emergency: full-party heal + cleanses roots & curses' },
-    a4: { key: 'smite', name: 'Smite', cd: 2.4, offBeat: true, desc: 'Throw light at the tank’s target. Heals your most hurt ally, restores mana, and pulses active Prayer circles.', combo: '② Payoff: restores mana + pulses active Prayer circle' },
+    a1: { key: 'circle', name: 'Prayer circle', cd: 5, mana: 14, aim: true, range: 520, desc: 'Allies standing in it heal fast.', combo: 'Your Smites pulse it' },
+    a2: { key: 'ward', name: 'Ward', cd: 4, mana: 10, desc: 'Shield the ally who needs it most.', combo: 'Ward the tank before a big boss swing' },
+    a3: { key: 'sunburst', name: 'Sunburst', cd: 13, mana: 22, desc: 'Heal everyone and clear nasty effects.', combo: 'A full-party heal that lifts curses and frees roots' },
+    a4: { key: 'smite', name: 'Smite', cd: 0, filler: true, hit: 60, desc: 'Throw light at the tank’s target, every beat. It heals your most hurt ally for half, gives 4 mana back and pulses your Prayer circles.', combo: 'A crit makes your next Mend free and half again as big' },
   },
   dps: {
-    a1: { key: 'blizzard', name: 'Blizzard', cd: 7.8, aim: true, range: 520, desc: 'Ice storm on the ground. Hits and slows everything in it.', combo: '① Slow pack in Blizzard ➔ ② Rime burst to freeze all. On a boss: it hits, but no slow' },
-    a2: { key: 'nova', name: 'Rime burst', cd: 11.5, desc: 'Freeze everything close to you and stop casts. A boss is Chilled instead.', combo: '① Freeze foes ➔ ② Icicle (3×) or Comet (2×) Shatter! On a boss: Chilled for 4s ➔ Icicle or Comet Shatter for 1.5×' },
-    a3: { key: 'comet', name: 'Comet', cd: 5.6, cast: 0.9, desc: 'Big hit with splash damage. Double damage on frozen targets.', combo: '② Finisher: 2× Shatter damage on frozen targets, 1.5× on a Chilled boss' },
-    a4: { key: 'icicle', name: 'Icicle', cd: 2.6, desc: 'Instant ice shard. Triple damage on frozen targets.', combo: '② Finisher: 3× Shatter damage on frozen targets, 1.5× on a Chilled boss' },
+    a1: { key: 'blizzard', name: 'Blizzard', cd: 7.8, aim: true, range: 520, desc: 'Ice storm on the ground. Hits and slows everything in it.', combo: 'Slow the pack, then Rime burst freezes it. On a boss it hits, but doesn’t slow' },
+    a2: { key: 'nova', name: 'Rime burst', cd: 10, range: 155, desc: 'Freeze everything close to you for 4 seconds and stop their casts. A boss is Chilled instead.', combo: 'Frozen foes Shatter: Icicle 3×, Comet 2×. A Chilled boss Shatters for 1.5×' },
+    a3: { key: 'comet', name: 'Comet', cd: 5.6, cast: 0.9, desc: 'A big hit with splash damage. Double damage on frozen targets.', combo: '2× on frozen targets, 1.5× on a Chilled boss' },
+    a4: { key: 'icicle', name: 'Icicle', cd: 0, filler: true, hit: 62, desc: 'An instant ice shard, every beat. Shatters frozen foes for 3× and a Chilled boss for 1.5×.', combo: 'A crit makes the next Icicle Shatter anything' },
   },
   rogue: {
-    a1: { key: 'viper', name: 'Viper Blades', cd: 2.3, desc: 'Slash a single foe with twin venom-coated daggers and poison them with Viper Venom for 5.5 seconds.', combo: '① Poison boss with Viper Venom ➔ ② Shadowstrike always crits!' },
-    a2: { key: 'ambush', name: 'Shadowstrike', cd: 3.4, desc: 'Strike a single target from the shadows with both daggers. On a poisoned target it always crits and hits 35% harder.', combo: '② Finisher: guaranteed crit + 1.35× damage on poisoned foes, bosses too' },
-    a3: { key: 'flurry', name: 'Fan of Blades', cd: 6.0, desc: 'Whirl and fling throwing knives in a circle around you, interrupting enemy casts, slicing nearby foes, and refreshing active venom.', combo: '① Interrupt enemy casts & refresh venom (modest AoE). On a boss: refreshes venom; bosses don’t cast' },
-    a4: { key: 'shadowstep', name: 'Shadowstep', cd: 5.5, offBeat: true, desc: 'Blink through shadow behind your target, strike it, interrupt casts, gain +35% attack speed for 3.8s, and shave 2s off Shadowstrike.', combo: '① Blink behind boss + shaves 2.0s off Shadowstrike ➔ ② Shadowstrike' },
+    a1: { key: 'viper', name: 'Viper Blades', cd: 0, filler: true, hit: 38, desc: 'Slash with venomed daggers, every beat: it poisons for 5.5 seconds and adds a point (two on a crit).', combo: 'Build five points, then spend them on Shadowstrike' },
+    a2: { key: 'ambush', name: 'Shadowstrike', cd: 0, desc: 'Spend every point on one strike, about 25 a point. On a poisoned target it always crits and hits 35% harder.', combo: 'At five points it’s the biggest hit you have' },
+    a3: { key: 'flurry', name: 'Fan of Blades', cd: 6.0, desc: 'Whirl knives round you: they stop casts, refresh venom and add a point if they hit.', combo: 'Your interrupt for a pack’s casters' },
+    a4: { key: 'shadowstep', name: 'Shadowstep', cd: 8, offBeat: true, desc: 'Blink behind your target, strike it and stop its cast. You swing 35% faster for 3.8 seconds and gain two points.', combo: 'Close the gap, stop a cast, and bank points' },
   },
 };
 
-export const MEND = { heal: 138, mana: 6, gcd: 0.56, range: 560 };
+/** a class's filler: its button and what it does */
+export function fillerOf(k: GearKey): { slot: AbilitySlot; def: AbilityDef } {
+  const slot = SLOTS_AB.find((s) => AB[k][s].filler) || 'a1';
+  return { slot, def: AB[k][slot] };
+}
+/** the set pieces that make a filler hit harder, and by how much: the Barrow's and Thimblebriar's helms */
+export const FILLER_PIECES: Record<string, number> = { bg_helm: 1.25, cg_helm: 1.25, cw_helm: 1.3, rb_helm: 1.25, as_helm: 1.25 };
+/** how much harder these bonuses make a filler hit */
+export function fillerMul(bonuses: Iterable<string>): number {
+  let k = 1;
+  for (const b of bonuses) k *= FILLER_PIECES[b] ?? 1;
+  return k;
+}
 
-/** The beat the four buttons share (see src/dungeon/press.js): firing one starts it, and the rest wait for it to
- *  end. A press up to `queue` seconds early is kept and fires the moment it can; a kept press lapses after
- *  `wait`, which is long enough to wait out a dodge, a Charge, a cast or the shield. Mend keeps its own pause.
- *  The beat is 0.8 s while every button still has its own cooldown, which keeps the run times where they were;
- *  the combat plan's stage 3 gives each class a filler and sets the beat with the new numbers (1.0 s planned). */
-export const BEAT = { len: 0.8, queue: 0.4, wait: 1.0 };
+/** Mend: a tap on a mate's name. On the beat like the four buttons (Quick Hands: it waits for the beat but never
+ *  starts it, only its own short pause, `quick`). */
+export const MEND = { heal: 230, mana: 9, quick: 0.35, range: 560 };
 
+/** The beat the four buttons and Mend share (see src/dungeon/press.js): firing one starts it, and the rest wait
+ *  for it to end. A press up to `queue` seconds early is kept and fires the moment it can; a kept press lapses
+ *  after `wait`, long enough to wait out a dodge, a Charge, a cast or the shield (a tap to Mend waits the whole
+ *  beat). Gear never changes it; brews and Lantern Zeal speed it up as they do cooldowns. */
+export const BEAT = { len: 1.0, queue: 0.4, wait: 1.0 };

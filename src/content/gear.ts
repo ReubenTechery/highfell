@@ -61,23 +61,23 @@ const NAMES: Record<GearKey, Record<SlotId, [string, string, string, string]>> =
 /** Epic weapons roll one of these. They change how a button works, not how hard you hit. */
 export const TRAITS: Record<GearKey, TraitDef[]> = {
   tank: [
-    { id: 'wide', name: 'Wide Swings', desc: 'Your swings hit everything in front of you at full damage.' },
+    { id: 'wide', name: 'Wide Swings', desc: 'Cleave sweeps a wider arc in front of you.' },
     { id: 'ringing', name: 'Ringing Blow', desc: 'Charge hits twice, and everything it hits turns on you.' },
     { id: 'headsman', name: 'Headsman', desc: 'Hits on stunned mobs, or a Staggered boss, always crit.' },
   ],
   healer: [
     { id: 'sunflare', name: 'Sunflare', desc: 'Mend also heals the next most hurt ally for half.' },
-    { id: 'quickhands', name: 'Quick Hands', desc: 'Mend is faster to cast again.' },
+    { id: 'quickhands', name: 'Quick Hands', desc: 'Mend never starts the beat, so your next button can follow it straight away.' },
     { id: 'kindle', name: 'Kindle', desc: 'A Ward that breaks heals its target for 80.' },
   ],
   dps: [
     { id: 'shatterlance', name: 'Shatterlance', desc: 'Comet on a frozen target hits three times as hard, and on a Chilled boss twice as hard.' },
-    { id: 'splinter', name: 'Splinter', desc: 'Frostbolts split to a second enemy.' },
+    { id: 'splinter', name: 'Splinter', desc: 'Icicle splinters: 30% of its hit strikes a second foe.' },
     { id: 'quickfrost', name: 'Quickfrost', desc: 'Comet casts twice as fast.' },
   ],
   rogue: [
     { id: 'twinvenom', name: 'Twin Venom', desc: 'Your twin-dagger swings extend Viper Venom by 1.5s.' },
-    { id: 'arterial', name: 'Venomrush', desc: 'Shadowstrike on a poisoned foe refunds 1.2s of its cooldown.' },
+    { id: 'arterial', name: 'Venomrush', desc: 'Shadowstrike on a poisoned foe gives you a point back.' },
     { id: 'nightstalker', name: 'Nightstalker', desc: 'Shadowstep makes your next Shadowstrike deal 30% bonus damage.' },
   ],
 };

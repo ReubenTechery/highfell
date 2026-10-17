@@ -14,11 +14,12 @@ import { dist, distXY } from '../core/math';
 import { AB, abKey } from '../content/roles';
 import { S, emit } from '../dungeon/state.js';
 import { fx, killMob } from '../dungeon/entities.js';
-import { autoTarget, bestCluster, clampRange, doDodge, heroBy, isFoe, mend } from '../dungeon/heroes.js';
+import { autoTarget, bestCluster, clampRange, doDodge, heroBy, isFoe } from '../dungeon/heroes.js';
 import { chainEnds, cutChain, liftCurse, mashCage as mashEngine } from '../dungeon/mobs.js';
 import { AIM, VIEW, toWorld } from '../dungeon/render.js';
 import { press } from '../dungeon/press.js';
-import { slotForKey } from '../content/keys';
+import { MEND_KEYS, bindOf, slotForKey, usesShift, type BindSlot } from '../content/keys';
+import { ownKeys } from './keybinds';
 import { segPointDist, segsCross } from '../dungeon/world.js';
 
 type Pt = { x: number; y: number; t: number };
@@ -41,6 +42,8 @@ export interface InputUI {
   stick(s: typeof IN.stick): void;
   hintDone(key: string): void;
   holdBtn(slot: string, on: boolean): void;
+  /** a button's key is down: the button shrinks under it, as under a finger */
+  downBtn?(slot: string, on: boolean): void;
   pause(): void;
   /** a Crypt Trial lesson is waiting on a button: this one's key was pressed; true when it was the right one */
   onTutInput?(slot: string): boolean;
@@ -62,7 +65,6 @@ export function playerIntent(h: any): void {
   h.intent.mx = mx; h.intent.my = my;
   h.intent.block = IN.block;
   h.holdFire = false;
-  if (h.queued && h.gcd <= 0) { const q = h.queued; h.queued = null; mend(h, q); }
   for (const slot of IN.held) press(h, slot, h.picked && isFoe(h.picked) ? h.picked : null, true);
 }
 
@@ -103,10 +105,41 @@ function onMechanic(x: number, y: number): boolean {
   return false;
 }
 
+/** a button pressed by its key or mouse button: the shield is held, a dodge rolls, the rest press through the beat */
+function pressBound(h: any, slot: BindSlot, ui: InputUI): void {
+  if (slot === 'dodge') { doDodge(h, h.intent.mx, h.intent.my); return; }
+  const def = AB[abKey(h)][slot];
+  if (def.hold) { IN.block = true; ui.holdBtn(slot, true); return; }
+  ui.downBtn?.(slot, true);
+  let aim: unknown = null;
+  if (def.aim && IN.mouse) aim = toWorld(IN.mouse.x, IN.mouse.y);
+  else if (!def.aim && h.picked && isFoe(h.picked)) aim = h.picked;
+  press(h, slot, aim);
+}
+/** a bound button let go: the shield comes down, and the button comes back up */
+function releaseBound(slot: BindSlot | null, ui: InputUI): void {
+  if (!slot || slot === 'dodge' || !S || !S.player) return;
+  if (AB[abKey(S.player)][slot]?.hold) { IN.block = false; ui.holdBtn(slot, false); } else ui.downBtn?.(slot, false);
+}
+/** the button a mouse button is bound to in a run, if any (the left button picks and Mends, never a button) */
+const mouseSlot = (e: MouseEvent): BindSlot | null => (e.button > 0 && S && S.player ? slotForKey(abKey(S.player), `Mouse${e.button}`, ownKeys(abKey(S.player))) : null);
+
 export function bindInput(layer: HTMLElement, ui: InputUI): void {
+  // a side button bound to a button never sends the browser Back or Forward out of the run
+  for (const ev of ['mouseup', 'auxclick'] as const) window.addEventListener(ev, (e) => { if (ui.active() && mouseSlot(e)) e.preventDefault(); });
   layer.addEventListener('pointerdown', (e) => {
     if (!S || S.over || S.paused) return;
     e.preventDefault();
+    // a mouse button you bound presses its button (held, the shield blocks until it's let go)
+    const ms = e.pointerType === 'mouse' ? mouseSlot(e) : null;
+    if (ms) {
+      if (S.player.alive && S.player.st.caged) { mashCage(S.player, ui); return; }
+      pressBound(S.player, ms, ui);
+      const up = (ev: PointerEvent) => { if (ev.pointerId !== e.pointerId) return; releaseBound(ms, ui); layer.removeEventListener('pointerup', up); layer.removeEventListener('pointercancel', up); };
+      try { layer.setPointerCapture(e.pointerId); } catch { /* fine */ }
+      layer.addEventListener('pointerup', up); layer.addEventListener('pointercancel', up);
+      return;
+    }
     const p = localXY(e);
     // caged: every touch anywhere is a tap on the bars. A touch on a mate's cage hits it, wherever it is.
     if (S.player.alive && S.player.st.caged) { mashCage(S.player, ui); return; }
@@ -163,40 +196,36 @@ export function bindInput(layer: HTMLElement, ui: InputUI): void {
     const c = e.code;
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(c) && !S.over) e.preventDefault();
     if (c === 'Escape' || c === 'KeyP') { ui.pause(); return; }
-    const h = S.player;
-    // a browser shortcut (Ctrl+F, Cmd+R) is never a button
-    const slot = e.ctrlKey || e.metaKey || e.altKey ? null : slotForKey(abKey(h), c);
+    const h = S.player, k = abKey(h), own = ownKeys(k);
+    // your keys (Settings), with Shift held as part of the key; a browser shortcut (Ctrl+F, Cmd+R) is never a button
+    const slot = e.ctrlKey || e.metaKey || e.altKey ? null : slotForKey(k, bindOf(c, e.shiftKey), own);
+    // Shift on its own dodges too, unless one of your buttons uses it
+    const dodge = slot === 'dodge' || ((c === 'ShiftLeft' || c === 'ShiftRight') && !usesShift(k, own));
     // a lesson's own key is its button on a keyboard; nothing else carries it on
     if (S.paused && ui.onTutInput) {
-      if (c === 'Space' || c === 'ShiftLeft' || c === 'ShiftRight') { if (ui.onTutInput('dodge')) return; }
-      if (slot && ui.onTutInput(slot)) return;
+      if (dodge) { if (ui.onTutInput('dodge')) return; }
+      if (slot && slot !== 'dodge' && ui.onTutInput(slot)) return;
     }
     if (S.paused || S.over) return;
     // a held key fires once, as in WoW: every press counts. The shield's key is the exception: held, it blocks,
     // so its repeats keep the shield up if something let it down (a Crypt Trial lesson does)
     if (e.repeat) {
-      if (slot && AB[abKey(h)][slot].hold && !h.st.caged) { IN.block = true; ui.holdBtn(slot, true); }
+      if (slot && slot !== 'dodge' && AB[k][slot].hold && !h.st.caged) { IN.block = true; ui.holdBtn(slot, true); }
       return;
     }
     IN.keys[c] = true;
     if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(c)) ui.hintDone('introMove');
-    if (h.st.caged && (c === 'Space' || c.startsWith('Digit') || c.startsWith('Key'))) { mashCage(h, ui); return; }
-    if (c === 'Space' || c === 'ShiftLeft' || c === 'ShiftRight') { doDodge(h, h.intent.mx, h.intent.my); return; }
-    if (slot) {
-      const def = AB[abKey(h)][slot];
-      if (def.hold) { IN.block = true; ui.holdBtn(slot, true); return; }
-      let aim: unknown = null;
-      if (def.aim && IN.mouse) aim = toWorld(IN.mouse.x, IN.mouse.y);
-      else if (!def.aim && h.picked && isFoe(h.picked)) aim = h.picked;
-      press(h, slot, aim);
-      return;
-    }
-    if (h.role === 'healer' && (c === 'KeyZ' || c === 'KeyX' || c === 'KeyC')) { const r = ({ KeyZ: 'tank', KeyX: 'healer', KeyC: 'dps' } as Record<string, string>)[c]; const t = heroBy(r); if (t) mend(h, t); return; }
+    if (h.st.caged && (dodge || slot || c.startsWith('Digit') || c.startsWith('Key'))) { mashCage(h, ui); return; }
+    if (dodge) { doDodge(h, h.intent.mx, h.intent.my); return; }
+    if (slot) { pressBound(h, slot, ui); return; }
+    if (h.role === 'healer' && MEND_KEYS[c]) { const t = heroBy(MEND_KEYS[c]); if (t) press(h, 'mend', t); return; }
   });
   window.addEventListener('keyup', (e) => {
     IN.keys[e.code] = false;
-    const slot = S && S.player ? slotForKey(abKey(S.player), e.code) : null;
-    if (slot && AB[abKey(S.player)][slot]?.hold) { IN.block = false; ui.holdBtn(slot, false); }
+    if (!S || !S.player) return;
+    const k = abKey(S.player), own = ownKeys(k);
+    // let go of Shift first or the key first: either way the button it pressed comes back up
+    for (const b of new Set([bindOf(e.code, e.shiftKey), e.code, `Shift+${e.code}`])) releaseBound(slotForKey(k, b, own), ui);
   });
   window.addEventListener('blur', () => { IN.keys = {}; IN.block = false; IN.stick = null; IN.held.clear(); ui.stick(null); });
 }
@@ -269,7 +298,7 @@ export function tapWorld(w: { x: number; y: number }, ui: InputUI): void {
   if (cage) { mashCage(cage.hero, ui); return; }
   let best: any = null, bd = 1e9;
   for (const a of S.heroes) { if (!a.alive) continue; const d = distXY(w.x, w.y, a.x, a.y - 40); if (d < 52 && d < bd) { bd = d; best = a; } }
-  if (best && h.role === 'healer') { mend(h, best); return; }
+  if (best && h.role === 'healer') { press(h, 'mend', best); return; }
   let mb: any = null; bd = 1e9;
   for (const m of S.mobs) { if (!isFoe(m) || m.cage) continue; const d = distXY(w.x, w.y, m.x, m.y - (m.isBoss ? 120 : m.M.big ? 70 : 40)); const r = m.isBoss ? 120 : m.M.big ? 70 : 44; if (d < r && d < bd) { bd = d; mb = m; } }
   if (mb) { h.picked = mb; fx({ type: 'ring', x: mb.x, y: mb.y, r0: 10, r1: mb.r + 30, col: '#FF6B5E', dur: 0.25, w: 4, ground: true }); }

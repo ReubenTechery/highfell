@@ -8,6 +8,7 @@
  */
 import { ITEMS, KITS, SETS } from '../content';
 import { ROLE_SLOTS, TRAITS, gearId, gearKey, traitDef } from '../content/gear';
+import { fillerOf } from '../content/roles';
 import { gilded } from '../content/kits';
 import { roleOf, type Hero, type Profile } from '../meta/profile';
 import { compareOn, gildedOn, itemShare, lookId, setChange, weaponTrait, worn, type Effect, type ShelfPiece } from '../meta/gear';
@@ -33,6 +34,10 @@ export function pieceCard(p: Profile, h: Hero, x: ShelfPiece): string {
   const kind = d.kind === 'gear' ? `${look.name} ${slot}` : d.kind === 'set' && d.setId ? `Epic ${slot} · ${SETS[d.setId].name} set` : `Unique ${slot}`;
   const cell = (val: string, label: string, n: number, unit = ''): string => `<span class="pk-s"><b>${val}</b><small>${esc(label)}</small>${on ? '' : tag(n, unit)}</span>`;
   const nums = cell(String(share.ilvl), 'Power', c.ilvl[1] - c.ilvl[0]) + cell(`+${share.power}%`, cap(ROLE_STAT[role].short), c.power, '%') + cell(`+${share.health}%`, 'Health', c.health, '%');
+  // your filler's hit now, and with this piece on: a new weapon shows on the next swing
+  const [h0, h1] = c.hit, moved = !on && h1 !== h0;
+  const fname = esc(fillerOf(gk).def.name);
+  const hit = `<p class="ar-hit" aria-label="${fname} hits ${h0}${moved ? `, then ${h1}` : ''}"><span>${fname}</span><b>${h0}</b>${moved ? `<i>→</i><b class="${h1 > h0 ? 'up' : 'down'}">${h1}</b>` : ''}</p>`;
   // the effects: the set's bonuses have their own row, so they're left out here
   const li = (k: string, mark: string, label: string, desc: string): string => `<li class="${k}"><i aria-hidden="true">${mark}</i><span><b>${esc(label)}</b> ${esc(desc)}</span></li>`;
   const named = (e: Effect, mine: boolean): string => (e.kind === 'trait' ? `${e.name} trait` : mine ? 'When worn' : e.name);
@@ -49,7 +54,7 @@ export function pieceCard(p: Profile, h: Hero, x: ShelfPiece): string {
   return `<article class="pk-cmp v-${v.cls} ar-card" aria-live="polite">
     <p class="pk-v">${v.mark}<b>${esc(v.word)}</b><span>${esc(nameOf(x.found ? lookId(p, d.id) : d.id))}</span></p>
     <div class="ar-kind"><span>${esc(kind)}</span>${gildSwitch(p, d.id)}</div>${drop}
-    <div class="pk-ss">${nums}</div>
+    <div class="pk-ss">${nums}</div>${hit}
     ${setRow(p, now, d, on)}${fx ? `<ul class="ar-fx">${fx}</ul>` : ''}${src}
   </article>`;
 }

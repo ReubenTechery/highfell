@@ -5,7 +5,7 @@
      Sporebloom   2: Mend plants a spore that heals 45 more. 3: Ward leaves a patch-up turret for 6 seconds.
      Arcspark     2: Comet into a frozen foe (or a Chilled boss) arcs to 2 more (with nobody else near, back into it).
                   3: Comet splits into four frost bombs.
-     Gearshade    2: a crit with Shadowstrike or Viper Blades throws a 55 spark. 3: Viper Blades stick a bomb on
+     Gearshade    2: a crit with Shadowstrike throws a 55 spark (Viper Blades 24). 3: Viper Blades stick a bomb on
                   the target and Shadowstrike sets it off.
      Mainspring Maul      Charge winds the spring: the next Cleave hits twice.
      Sporelight Censer    Mend's spore bursts to heal everyone near it; Sunburst sends the bombs near you flying.
@@ -19,11 +19,12 @@ import { dots, fx, fxText, healHero, hurtMob, sfx } from './entities.js';
 import { dropBomb, knockBomb } from './bombs.js';
 import { isFoe, engaged } from './heroes.js';
 
-/** what a hero's Thimblebriar pieces add to a button (1 when they wear none) */
+/** what a hero's Thimblebriar pieces add to a button (1 when they wear none); the helms that make a filler hit
+    harder are FILLER_PIECES in content/roles.ts, with the Barrow's */
 const PIECE = {
-  cg_helm: { cleave: 1.25 }, cg_shoulders: { charge: 1.35 }, cg_chest: { slam: 1.35 },
+  cg_shoulders: { charge: 1.35 }, cg_chest: { slam: 1.35 },
   sb_helm: { mend: 1.15 }, sb_shoulders: { ward: 1.3 }, sb_chest: { circle: 1.25 },
-  as_helm: { icicle: 1.25 }, as_shoulders: { nova: 1.4 }, as_chest: { comet: 1.2 },
+  as_shoulders: { nova: 1.4 }, as_chest: { comet: 1.2 },
   gs_helm: { ambush: 1.25 }, gs_shoulders: { flurry: 1.25 }, gs_chest: { venom: 1.3 },
 };
 export function gearMul(h, key) {
@@ -121,16 +122,17 @@ export function icicleGadgets(h, t, shattered) {
   if (h.unique !== 'arcwright') return;
   const hops = shattered ? 2 : 1;
   for (const o of others(h, t, 240, t).slice(0, 2)) {
-    for (let k = 0; k < hops; k++) S.timers.push({ t: 0.08 + k * 0.12, fn: () => { if (isFoe(o)) hurtMob(o, 40, h, { col: '#C87533', size: 17 }); } });
+    // 15 a hop: Icicle is a filler now, so it chains every beat
+    for (let k = 0; k < hops; k++) S.timers.push({ t: 0.08 + k * 0.12, fn: () => { if (isFoe(o)) hurtMob(o, 15, h, { col: '#C87533', size: 17, tier: 'tick' }); } });
     fx({ type: 'beam', x: t.x, y: t.y - 50, x2: o.x, y2: o.y - 50, col: '#F2A65A', dur: 0.2 });
   }
 }
 
 /* ---------- the rogue ---------- */
-/** a crit with Shadowstrike or Viper Blades: Gearshade's spark */
-export function critSpark(h, t) {
+/** a crit with Shadowstrike (55) or Viper Blades (24: it crits far more often): Gearshade's spark */
+export function critSpark(h, t, amt = 55) {
   if (!h.bonuses.has('gearshade2') || !t.alive) return;
-  hurtMob(t, 55, h, { col: '#FFB070', size: 19, noCrit: true });
+  hurtMob(t, amt, h, { col: '#FFB070', size: 19, noCrit: true });
   dots(t.x, t.y - 50, '#FFE08A', 8, 160);
 }
 /** Viper Blades: Gearshade sticks a little bomb on the target (one at a time) */

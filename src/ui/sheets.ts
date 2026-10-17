@@ -10,7 +10,7 @@ import { SLOT_IDS } from '../content/gear';
 import type { SlotId } from '../content/types';
 import { INGREDIENTS, INGREDIENT_ORDER, LORE, PLANTS, RECIPES, RECIPE_ORDER, SEED_ICON, SEED_ORDER, SKILLS } from '../content/vale';
 import { rankProgress, recipeUnlocked } from '../meta/vale';
-import { freshProfile, heroById, nameProblem, removeHero, renameHero, setActive, type Hero } from '../meta/profile';
+import { activeHero, freshProfile, heroById, nameProblem, removeHero, renameHero, roleOf, setActive, type Hero } from '../meta/profile';
 import { setGilded } from '../meta/gear';
 import type { Tell } from '../meta/loot';
 import { HEARTH_SPOTS, place, setLook, spotById, spotOf } from '../meta/hearth';
@@ -27,6 +27,10 @@ import type { LogView } from './logbook';
 import { markSeen } from '../meta/logs';
 import { looksSheet, pickedLook } from './lookssheet';
 import { settingsSheet } from './settingssheet';
+import { resetKeys, stopWaiting, waitForKey } from './keybinds';
+import type { BindSlot } from '../content/keys';
+import { gearKey } from '../content/gear';
+import { CLASSES } from '../content/folk';
 import { ARMOURY_TABS, armouryActions, armourySheet, countUp, leftSlot, settle, type ArmouryTab, type ArmouryView } from './armoury';
 
 export type SheetSpec =
@@ -108,6 +112,8 @@ export class Sheets {
       gild: (el) => { if (setGilded(this.app.p, el.dataset.id!, el.dataset.v === '1')) { SFX.play(el.dataset.v === '1' ? 'gild' : 'ui'); this.app.save(); } else SFX.play('nope'); },
       place: (el) => { const s = this.spec; if (!s || s.kind !== 'picker') return; if (place(this.app.p, s.spot, el.dataset.id || null)) { SFX.play('place'); this.app.save(); this.close(); } },
       sound: () => { const p = this.app.p; p.settings.sound = !p.settings.sound; SFX.on = p.settings.sound; if (SFX.on) SFX.play('ui'); this.app.save(); },
+      rebind: (el) => { const k = this.keysClass(); if (!k) return; SFX.play('ui'); waitForKey(k.k, el.dataset.slot as BindSlot, () => { SFX.play('ui'); this.refresh(); }); this.refresh(); },
+      keysreset: () => { const k = this.keysClass(); if (!k) return; stopWaiting(); resetKeys(k.k); SFX.play('ui'); this.refresh(); },
       reset: () => {
         if (!this.resetArmed) { this.resetArmed = true; this.refresh(); setTimeout(() => { this.resetArmed = false; this.refresh(); }, 4000); return; }
         this.resetArmed = false;
@@ -180,8 +186,14 @@ export class Sheets {
     this.render(!was);
     if (looked) this.app.save();
   }
+  /** your active hero's class, for Settings' Keys list (none on a touch screen, where there are no keys) */
+  private keysClass(): { k: ReturnType<typeof gearKey>; cls: string } | null {
+    const h = this.app.touch ? null : activeHero(this.app.p);
+    return h ? { k: gearKey({ role: roleOf(h), cls: h.cls }), cls: CLASSES[h.cls as keyof typeof CLASSES]?.name || 'hero' } : null;
+  }
   close(): void {
     if (!this.spec) return;
+    stopWaiting();
     const looked = leftSlot(this.app.p, this.spec, null);
     this.spec = null; this.logView.tryOn = false; this.logView.peek = null; this.logView.ach = null;
     this.root.innerHTML = '';
@@ -219,7 +231,7 @@ export class Sheets {
         ({ head, tabs, body, over } = r); this.logHeroic = r.heroic;
         break;
       }
-      case 'settings': ({ head, body } = settingsSheet(this.app.p, this.app.store.state, this.app.dev, this.resetArmed)); break;
+      case 'settings': ({ head, body } = settingsSheet(this.app.p, this.app.store.state, this.app.dev, this.resetArmed, this.keysClass())); break;
       case 'satchel': ({ head, body } = this.satchel()); break;
       case 'picker': ({ head, body } = this.picker(s.spot)); break;
       case 'item': ({ head, body } = itemSheet(this.app.p, s.id, !!s.back)); break;

@@ -15,9 +15,10 @@
 import { TAU, angDiff, angTo, clamp, dist, lerp } from '../core/math';
 import { vrand } from '../core/rng';
 import { S, SHARED_MOBS, emit } from './state.js';
-import { PERFECT_WINDOW, dots, exposeMob, fx, fxText, hitstop, hurtMob, sfx, shake } from './entities.js';
+import { PERFECT_WINDOW, dots, exposeMob, fx, fxText, hold, hurtMob, sfx, shake } from './entities.js';
 import { curseHero, spawnMob } from './mobs.js';
-import { isFoe, onPerfectBlock } from './heroes.js';
+import { isFoe } from './heroes.js';
+import { onPerfectBlock } from './buttons.js';
 import { canStand } from './world.js';
 
 export const FUSE = 3;
@@ -165,7 +166,8 @@ function batBack(m, t) {
   t.stats.perfect++; S.stats.perfect++;
   if (t.isPlayer) fxText(t.x, t.y - 96, 'PERFECT!', '#F2C230', 30, { dur: 1.3 });
   fx({ type: 'ring', x: t.x, y: t.y - 30, r0: 20, r1: 110, col: '#F2C230', dur: 0.35, w: 6 });
-  sfx('perfect'); shake(5); hitstop(0.06);
+  sfx('perfect', t.isPlayer ? 1 : 0.6);
+  if (t.isPlayer) { shake(5); hold(0.06, t); }
   S.stats.batted = (S.stats.batted || 0) + 1;
   emit({ type: 'block', perfect: true, player: !!t.isPlayer, smash: false });
   emit({ type: 'bomb.batted', player: !!t.isPlayer });

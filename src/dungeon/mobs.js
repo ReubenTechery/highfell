@@ -2,7 +2,7 @@
 import { angTo, dist, distXY, TAU } from '../core/math';
 import { pick, rand, rng } from '../core/rng';
 import { S, emit } from './state.js';
-import { addThreat, aggro, banner, bits, call, dots, exposeMob, fx, fxText, hurtHero, hurtMob, killMob, makeMob, pickTarget, sfx, shake } from './entities.js';
+import { addThreat, aggro, banner, bits, call, dots, exposeMob, fx, fxText, hold, hurtHero, hurtMob, killMob, makeMob, pickTarget, sfx, shake, tunedDmg } from './entities.js';
 import { canStand, moveEnt, roomIndexOf, walkTo } from './world.js';
 
 export function nearestHeroTo(x, y, preferNonTank) {
@@ -19,6 +19,7 @@ export function randomHero(nonTank, except) {
 export function mobTick(m, dt) {
   m.flash -= dt; m.lunge -= dt; m.moving -= dt;
   m.exposed = Math.max(0, (m.exposed || 0) - dt);
+  if (m.burned && m.exposed <= 0) m.burned = null;
   if (!m.alive) { m.deadT += dt; return; }
   // something that isn't a fighter (a bomb) runs itself
   if (m.M.tick) { m.M.tick(m, dt); return; }
@@ -27,7 +28,7 @@ export function mobTick(m, dt) {
     m.bleed.next -= dt;
     if (m.bleed.next <= 0) {
       m.bleed.next += 0.5;
-      hurtMob(m, m.bleed.per, m.bleed.src, { col: '#7CF06A', size: 16, noCrit: true });
+      hurtMob(m, m.bleed.per, m.bleed.src, { col: '#7CF06A', size: 16, noCrit: true, tier: 'tick', key: 'venom' });
       dots(m.x, m.y - 38, '#7CF06A', 2, 70, { size: 4 });
       if (!m.alive) return;
     }
@@ -71,6 +72,7 @@ export function mobTick(m, dt) {
   if (!m.target || !m.target.alive) return;
   if (m.cast) { castTick(m, dt); return; }
   if (m.M.kind === 'caller' && callerTick(m, dt)) return;
+  if (m.M.kind === 'mender' && menderTick(m, dt)) return;
   if (m.M.kind === 'brute' && bruteTick(m, dt)) return;
   if (m.M.ranged && archerTick(m, dt)) return;
   meleeTick(m, dt);
@@ -100,7 +102,7 @@ function meleeTick(m, dt) {
       if (d <= reach + 20) {
         const crush = !!(M.boss || M.big) && t.role !== 'tank';
         const mult = (m.wild ? 1.4 : 1) * (crush ? 1.85 : 1);
-        hurtHero(t, M.dmg * m.dmgMul * mult, m, { heavy: M.heavy || crush, block: true, perfectable: false, crush });
+        hurtHero(t, M.dmg * m.dmgMul * tunedDmg(m.type) * mult, m, { heavy: M.heavy || crush, block: true, perfectable: false, crush });
         if (crush && t.isPlayer) call('Crushing blow! Let the tank hold him!', 'alarm', 1.6);
         fx({ type: 'slash', x: t.x, y: t.y - 36, a: angTo(m, t), r: M.big ? 58 : 38, dur: 0.16, col: crush ? '#FF6B5E' : '#F0E8D2' });
         sfx(M.big ? 'thud' : 'hit', 0.7);
@@ -114,17 +116,32 @@ function meleeTick(m, dt) {
   else { m.face = angTo(m, t); m.flip = Math.cos(m.face) < 0; m.atkT -= dt; if (m.atkT <= 0) { m.wind = M.wind; m.atkSeq = (m.atkSeq || 0) + 1; } }
 }
 
-export function startCast(m, c) { m.cast = Object.assign({ t: 0, taken: 0 }, c); sfx('castup', 0.7); }
+/* ---------- casts ----------
+   A cast with `kick` (the green bar) is stopped only by an interrupt: Charge, Rime burst, Fan of Blades or
+   Shadowstep, a stun, a freeze or a perfect block. Damage alone never stops it. An interrupt Exposes the caster
+   (+35% damage taken, and every class's payoff setup) for 3 seconds. Miss it, and `done` goes off. */
+export function startCast(m, c) {
+  m.cast = Object.assign({ t: 0 }, c);
+  sfx('castup', 0.7);
+  if (c.kick && c.name && !m.isBoss) fxText(m.x, m.y - (m.M.big ? 196 : 150), c.name, '#9BE15D', 17, { dur: 0.9 });
+}
 function castTick(m, dt) {
   const c = m.cast; c.t += dt;
-  if (m.target) { m.face = angTo(m, m.target); m.flip = Math.cos(m.face) < 0; }
+  const look = c.at && c.at.alive ? c.at : m.target;
+  if (look) { m.face = angTo(m, look); m.flip = Math.cos(m.face) < 0; }
   if (c.t >= c.dur) { m.cast = null; c.done(); }
 }
-export function interruptCast(m) {
+/** stop a cast; `by` is the hero whose button did it, if any */
+export function interruptCast(m, by) {
   if (!m.cast) return;
   const kickable = !!m.cast.kick;
   m.cast = null;
-  if (kickable) { fxText(m.x, m.y - 110, 'Interrupted!', '#F2C230', 24, { dur: 1.2 }); sfx('kick'); S.stats.kicks++; }
+  if (!kickable) return;
+  S.stats.kicks++;
+  exposeMob(m, 3.0, 'Interrupted!');
+  sfx('kick');
+  // an interrupt of yours lands like a payoff
+  if (by && by.isPlayer) { shake(3.5); hold(0.07, by, m); }
 }
 
 function archerTick(m, dt) {
@@ -153,10 +170,13 @@ function archerTick(m, dt) {
   return true;
 }
 
+/* the Gravecaller: curses a hero (the healer's), rots the ground, and casts Raise Dead and Grave Bolt (the tank's
+   and the DPS's to stop) */
+export const GRAVE_BOLT = 200;
 function callerTick(m, dt) {
   const ab = m.ab;
-  if (ab.raise === undefined) { ab.raise = 3.5; ab.rot = 5.5; ab.curse = 1.8; }
-  ab.raise -= dt; ab.rot -= dt; ab.curse -= dt;
+  if (ab.raise === undefined) { ab.raise = 3.5; ab.rot = 5.5; ab.curse = 1.8; ab.bolt = 7; }
+  ab.raise -= dt; ab.rot -= dt; ab.curse -= dt; ab.bolt -= dt;
   if (ab.curse <= 0) {
     ab.curse = 8.5;
     const pool = S.heroes.filter((h) => h.alive && !h.st.caged && !h.st.curse);
@@ -164,17 +184,22 @@ function callerTick(m, dt) {
   }
   // one raised by Sir Rattlebones' rally only curses and rots: his fight has adds enough
   if (ab.raise <= 0 && !m.rally) {
-    ab.raise = 11;
-    startCast(m, { key: 'raise', name: 'Raise Dead', dur: 2.6, kick: 110, done: () => {
+    ab.raise = 12;
+    startCast(m, { key: 'raise', name: 'Raise Dead', dur: 2, kick: true, done: () => {
       if (!m.alive) return;
       for (let i = 0; i < 2; i++) {
         const a = rand(0, TAU), x = m.x + Math.cos(a) * 60, y = m.y + Math.sin(a) * 40;
         const r = spawnMob(i ? 'rattler2' : 'rattler', canStand(x, y, 16) ? x : m.x, canStand(x, y, 16) ? y : m.y + 30, m.pack, true);
         aggro(r, m.target || nearestHeroTo(m.x, m.y), 5);
       }
-      banner('He raised more skeletons. Hit or freeze him while he casts!', 'warn', 2.4);
+      banner('He raised more skeletons. Interrupt him while he casts!', 'warn', 2.4);
     } });
     return true;
+  }
+  if (ab.bolt <= 0 && !m.rally) {
+    ab.bolt = 9;
+    const v = randomHero(false);
+    if (v) { startCast(m, { key: 'bolt', name: 'Grave Bolt', dur: 2, kick: true, at: v, done: () => graveBolt(m, v) }); return true; }
   }
   if (ab.rot <= 0) {
     ab.rot = 7.0;
@@ -187,6 +212,50 @@ function callerTick(m, dt) {
   else if (d < 170) { const a = angTo(t, m); walkTo(m, m.x + Math.cos(a) * 80, m.y + Math.sin(a) * 80, m.speed * 0.8, dt); }
   else { m.face = angTo(m, t); m.flip = Math.cos(m.face) < 0; }
   return true;
+}
+
+/* Grave Bolt lands: a hard hit on the hero it was cast at (a dodge rolls out of it; the tank can block it) */
+function graveBolt(m, v) {
+  if (!m.alive || !v.alive) return;
+  fx({ type: 'beam', x: m.x, y: m.y - 70, x2: v.x, y2: v.y - 50, col: '#9BE15D', dur: 0.25 });
+  dots(v.x, v.y - 50, '#9BE15D', 8, 140);
+  hurtHero(v, GRAVE_BOLT * m.dmgMul, m, { magic: true, block: true });
+  sfx('rot', 0.8);
+}
+
+/* the mender: hangs back and casts a heal on the most hurt of its pack (kill it first, or interrupt it) */
+export const MENDER = { every: 6, cast: 2, heal: 0.3 };
+function menderTick(m, dt) {
+  const ab = m.ab;
+  if (ab.heal === undefined) ab.heal = 2.5;
+  ab.heal -= dt;
+  if (ab.heal <= 0) {
+    const hurt = S.mobs.filter((o) => o.alive && o.state === 'fight' && !o.isBoss && !o.cage && !o.M.thing && !o.M.wisp && dist(o, m) < 460 && o.hp < o.maxHp * 0.85)
+      .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);
+    const t = hurt[0];
+    if (t) {
+      ab.heal = MENDER.every;
+      startCast(m, { key: 'mend', name: 'Mending', dur: MENDER.cast, kick: true, at: t, done: () => mobHeal(m, t, Math.round(t.maxHp * MENDER.heal)) });
+      return true;
+    }
+    ab.heal = 1;
+  }
+  const t = m.target, d = dist(m, t);
+  if (d < m.r + t.r + 26) return false;
+  if (d > 300) walkTo(m, t.x, t.y, m.speed, dt);
+  else if (d < 180) { const a = angTo(t, m); walkTo(m, m.x + Math.cos(a) * 80, m.y + Math.sin(a) * 80, m.speed * 0.8, dt); }
+  else { m.face = angTo(m, t); m.flip = Math.cos(m.face) < 0; }
+  return true;
+}
+function mobHeal(m, t, amt) {
+  if (!m.alive || !t.alive) return;
+  t.hp = Math.min(t.maxHp, t.hp + amt);
+  fx({ type: 'beam', x: m.x, y: m.y - 70, x2: t.x, y2: t.y - 50, col: '#9BE15D', dur: 0.3 });
+  fx({ type: 'ring', x: t.x, y: t.y - 40, r0: 10, r1: t.r + 50, col: '#9BE15D', dur: 0.35, w: 5 });
+  dots(t.x, t.y - 50, '#D8FFB8', 10, 120, { up: true });
+  fxText(t.x, t.y - (t.M.big ? 160 : 112), 'Mended!', '#9BE15D', 20, { dur: 1.0 });
+  sfx('heal', 0.6);
+  S.stats.menderHeals = (S.stats.menderHeals || 0) + 1;
 }
 
 function bruteTick(m, dt) {

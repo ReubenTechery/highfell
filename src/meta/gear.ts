@@ -6,6 +6,7 @@ import { ITEMS, KITS, SETS } from '../content';
 import { gilded } from '../content/kits';
 import { EPIC, RARITY, SLOTS, SLOT_IDS, TRAITS, gearId, gearKey, hpMultiplier, powerFromScore, traitDef, weightedScore } from '../content/gear';
 import type { ClassId, RaceId } from '../content/folk';
+import { fillerMul, fillerOf } from '../content/roles';
 import { activeHero, createHero, roleOf, type Hero, type Profile } from './profile';
 
 export interface Worn { slot: SlotId; def: ItemDef; trait?: string; unique: boolean }
@@ -83,6 +84,12 @@ export function partyRar(p: Profile, h: Hero): Rar {
   return Math.round(SLOT_IDS.reduce((a, s) => a + w[s].def.rar, 0) / SLOT_IDS.length) as Rar;
 }
 
+/** what a loadout's filler hits for before a crit (Cleave, Smite, Icicle, Viper Blades): its Power, and the helms
+ *  that make it hit harder. A new weapon shows here, and on the next swing. */
+export function fillerHit(l: Loadout, role: GearKey): number {
+  return Math.round((fillerOf(role).def.hit || 0) * l.power * fillerMul(l.bonuses));
+}
+
 /** Score as a percentage over all-Common, for the gear screen. */
 export const powerPct = (l: Loadout): number => Math.round((l.power - 1) * 100);
 export const healthPct = (l: Loadout): number => Math.round((hpMultiplier(l.power) - 1) * 100);
@@ -117,7 +124,9 @@ export type Verdict = 'wearing' | 'better' | 'worse' | 'same' | 'mixed';
 /** A piece held up against what is worn in its slot: the slot's item level before and after, what the
  *  whole hero gains in power and health (in percent), its set count before and after, and the effects
  *  it adds and takes away. */
-export interface Compare { slot: SlotId; now: Worn; ilvl: [number, number]; power: number; health: number; set: [number, number] | null; gains: Effect[]; loses: Effect[]; verdict: Verdict }
+export interface Compare { slot: SlotId; now: Worn; ilvl: [number, number]; power: number; health: number; set: [number, number] | null; gains: Effect[]; loses: Effect[]; verdict: Verdict;
+  /** the filler's hit before and after (fillerHit) */
+  hit: [number, number] }
 /** Hold a piece up against what a hero wears. Better: more item level or a new effect, nothing lost.
  *  Worse: less, or an effect lost for nothing. Both at once is a trade ('mixed'). A bonus that isn't
  *  ready yet is listed but doesn't make a piece better. */
@@ -137,6 +146,7 @@ export function compareOn(now: Record<SlotId, Worn>, role: GearKey, def: ItemDef
     set: def.setId ? [a.sets[def.setId] || 0, b.sets[def.setId] || 0] : null,
     gains, loses,
     verdict: cur.def.id === def.id ? 'wearing' : plus && minus ? 'mixed' : plus ? 'better' : minus ? 'worse' : 'same',
+    hit: [fillerHit(a, role), fillerHit(b, role)],
   };
 }
 /** The same for one of your heroes, against what they wear. Null when the piece isn't for their role/class. */

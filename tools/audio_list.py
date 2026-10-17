@@ -106,6 +106,19 @@ SFX = {
     'equip': S('Putting on a piece of armour: a chunky metal clank and a buckle snap, then a bright rising sparkle.', 1.0, 0.8, take=3),
     'ach': S('An achievement: a bright three-note bell ding ding DING with a little sparkle.', 1.0, 0.8, take=1, jingle=True),
     'place': S('Setting a heavy thing down on a wooden shelf: one solid satisfying wooden clunk.', 0.5, 0.3, take=2),
+    # ---- hit feel (the combat plan): each plays as a layer of the takes above (LAYERS in src/ui/sound.ts) until it
+    # has a take of its own
+    'axehit': S('A heavy axe biting into bone: one meaty chunky thwack with a dull metal ring, short and dry.', 0.5, 0.25),
+    'bladehit': S('Two daggers slicing across bone: a quick crisp double slash with a sharp leathery tick.', 0.5, 0.22),
+    'icehit': S('A shard of ice cracking against something hard: one bright crisp icy crack, short.', 0.5, 0.22),
+    'holyhit': S('A ball of holy light striking: a soft bright zap with a little bell shimmer, short.', 0.5, 0.25),
+    'crush': S('A crushing axe blow: a huge crunchy bony smash with a deep thump under it, very punchy.', 0.6, 0.45),
+    'finish': S('A finishing dagger strike: a sharp double slash ending in a crunchy critical smack and a bright ting.', 0.6, 0.45),
+    'bless': S('A blessed heal: a warm swelling chime with a bright sparkle on top, gentle and rewarding.', 0.8, 0.6, jingle=True),
+    'healcrit': S('A big heal landing: a bright rising marimba sparkle with one clear bell ting on top.', 0.6, 0.45, jingle=True),
+    'tap': S('A light quick hit: one soft dry tap, like a stick on a sack.', 0.5, 0.1),
+    'exposed': S('An enemy left wide open: a quick bright swelling shimmer with a gong-like ting, urgent and exciting.', 0.8, 0.6),
+    'packdown': S('The last enemy of a group falling: a short low warm brass chord, three notes at once, then silence.', 1.0, 0.6, jingle=True),
     # ---- buttons
     'ui': S('A tiny soft wooden button click.', 0.5, 0.08, take=1),
     'nope': S('A short cartoon no-no: two quick dull wooden bonks, bonk bonk, low and muted.', 0.5, 0.22, take=5),

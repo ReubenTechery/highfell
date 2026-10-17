@@ -11,13 +11,15 @@ import { BARROW } from '../content/barrow';
 import type { DungeonInfo } from '../content/types';
 import { BARROW_ENGINE } from '../content/barrow/engine';
 import { AB, BEAT, MEND, ROLES, abKey } from '../content/roles';
-import { keyLabel } from '../content/keys';
+import { DEFAULT_KEYS, keyLabel } from '../content/keys';
+import { ownKeys } from './keybinds';
 import type { Rar, RoleId } from '../content/types';
 import { newGame, respawn, update } from '../dungeon/game.js';
 import { S, setHooks } from '../dungeon/state.js';
-import { banner, exposeMob, stunned } from '../dungeon/entities.js';
-import { abCd, abMana, bestCluster, doDodge, heroBy, isFoe, mend, useAbility } from '../dungeon/heroes.js';
+import { banner, exposeMob } from '../dungeon/entities.js';
+import { abCd, abMana, doDodge, heroBy, isFoe, useAbility } from '../dungeon/heroes.js';
 import { press } from '../dungeon/press.js';
+import { MAX_POINTS, burnable, crushes, icicleShatter } from '../dungeon/buttons.js';
 import { momentFor } from '../dungeon/coach.js';
 import { CURSE_TIME } from '../dungeon/mobs.js';
 import { inHaz } from '../dungeon/bots.js';
@@ -42,6 +44,7 @@ import { MUSIC, runMusic } from './music';
 import { SFX } from './sound';
 import { openWarband } from '../meta/warband';
 import { RunGuard } from './runguard';
+import { TUT_BY_CLASS, type TutStep } from './trial';
 
 /** A run plays the hero you are playing, from the entrance. `start`, `testRar` and `role` are for the Crypt
  *  Trial and for testing: a run that starts past the entrance or in test gear doesn't count (no loot, kill
@@ -53,39 +56,6 @@ const ROLE_ICON: Record<string, string> = { tank: 'shield', healer: 'mend', dps:
 const HINTS: Record<string, [string, string, string, number?]> = {
   introMove: ['Drag on the left to walk up into the skeletons.', 'Use WASD or the arrow keys to walk up into the skeletons.', 'Walk into the pack', 12],
   introChest: ['The lantern flared gold and the chest knocked twice: a unique is inside! Walk to the chest to open it.', 'The lantern flared gold and the chest knocked twice: a unique is inside! Walk to the chest to open it.', 'The walkout', 8],
-};
-
-/** a lesson of the Crypt Trial: the button it waits on (the card says how to press it), its picture and its words */
-interface TutStep { slot: string; icon: string; step: string; title: string; badge: string; text: string }
-const TUT_BY_CLASS: Record<ClassId, Record<string, TutStep>> = {
-  warrior: {
-    introAb: { slot: 'a1', icon: 'cleave', step: '1 / 5', title: 'Cleave', badge: 'Wide front sweep', text: 'Smash the whole pack in front of you!' },
-    slam: { slot: 'a3', icon: 'slam', step: '2 / 5', title: 'Slam (Taunt)', badge: 'Ivy has aggro! ➔ Pull pack in', text: 'Yank the mobs back onto you.' },
-    dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Roll out of his charge!' },
-    block: { slot: 'a4', icon: 'shield', step: '4 / 5', title: 'Block Gold Hits', badge: 'Gold cone ➔ Block right before hit', text: 'Parry the heavy swing!' },
-    stagger: { slot: 'a2', icon: 'charge', step: '5 / 5', title: 'Boss Exposed!', badge: 'Perfect Block = Stun + +35% DMG!', text: 'Rush in and punish him!' },
-  },
-  cleric: {
-    introAb: { slot: 'a1', icon: 'circle', step: '1 / 5', title: 'Prayer Circle', badge: 'Ground healing zone', text: 'Drop a glowing Prayer Circle under your party!' },
-    slam: { slot: 'a4', icon: 'smite', step: '2 / 5', title: 'Smite (Pulse & Mana)', badge: 'Hit foes + pulse your Circle', text: 'Cast Smite to blast foes, restore mana, and pulse your Circle!' },
-    dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Roll out of Sir Rattlebones’s charge!' },
-    block: { slot: 'a2', icon: 'ward', step: '4 / 5', title: 'Ward the Tank', badge: 'Heavy boss swing incoming!', text: 'Shield your Tank before the heavy swing lands!' },
-    stagger: { slot: 'a3', icon: 'sunburst', step: '5 / 5', title: 'Boss Exposed!', badge: 'Boss staggered (+35% DMG taken)!', text: 'Unleash Sunburst to top up the party and sear the boss!' },
-  },
-  mage: {
-    introAb: { slot: 'a1', icon: 'blizzard', step: '1 / 5', title: 'Blizzard', badge: 'Chilling ice storm', text: 'Call down Blizzard to slow and melt the pack!' },
-    slam: { slot: 'a2', icon: 'nova', step: '2 / 5', title: 'Rime Burst (Freeze)', badge: 'Freeze pack ➔ Shatter combo!', text: 'Freeze nearby foes solid so your ice spells Shatter!' },
-    dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Roll out of Sir Rattlebones’s charge!' },
-    block: { slot: 'a4', icon: 'icicle', step: '4 / 5', title: 'Instant Icicle', badge: 'Fast instant-cast shard', text: 'Fire Icicle while the Tank blocks the heavy swing!' },
-    stagger: { slot: 'a3', icon: 'comet', step: '5 / 5', title: 'Boss Exposed!', badge: 'Boss staggered (+35% DMG taken)!', text: 'Drop a massive Comet during the Exposed window!' },
-  },
-  rogue: {
-    introAb: { slot: 'a1', icon: 'viper', step: '1 / 5', title: 'Viper Blades', badge: 'Apply Viper Venom', text: 'Slash with Viper Blades to poison your target!' },
-    slam: { slot: 'a3', icon: 'flurry', step: '2 / 5', title: 'Fan of Blades', badge: 'AoE knives + refresh venom', text: 'Spin Fan of Blades to slice the pack and spread venom!' },
-    dodge: { slot: 'dodge', icon: 'dodge', step: '3 / 5', title: 'Roll Out of Red', badge: 'Red lane ➔ Dodge aside', text: 'Roll out of Sir Rattlebones’s charge!' },
-    block: { slot: 'a4', icon: 'shadowstep', step: '4 / 5', title: 'Shadowstep Behind', badge: 'Gold cone ➔ Blink behind boss', text: 'Shadowstep behind him while the Tank parries his swing!' },
-    stagger: { slot: 'a2', icon: 'ambush', step: '5 / 5', title: 'Boss Exposed!', badge: 'Poisoned + Exposed (+35% DMG)!', text: 'Strike with Shadowstrike for a guaranteed massive crit!' },
-  },
 };
 
 export class RunScene implements InputUI {
@@ -145,6 +115,7 @@ export class RunScene implements InputUI {
   }
   hintDone(key: string): void { this.hintsDone.add(key); if (this.hintKey === key) { $('hint').hidden = true; this.hintKey = null; } }
   holdBtn(slot: string, on: boolean): void { this.root.querySelector(`.ab[data-slot="${slot}"]`)?.classList.toggle('held', on); }
+  downBtn(slot: string, on: boolean): void { this.root.querySelector(`.ab[data-slot="${slot}"]`)?.classList.toggle('down', on); }
 
   private tutStep(key: string | null): TutStep | null {
     if (!key) return null;
@@ -157,7 +128,7 @@ export class RunScene implements InputUI {
   private tutHow(slot: string): string {
     const def = slot === 'dodge' ? null : AB[abKey(S.player)][slot as 'a1'];
     const name = esc(slot === 'dodge' ? 'Roll' : def?.hold ? 'Block' : def?.name || '');
-    return this.app.touch ? `Tap the glowing <b>${name}</b> button` : `Click the glowing <b>${name}</b> button <i>or press <kbd>${esc(keyLabel(abKey(S.player), slot))}</kbd></i>`;
+    return this.app.touch ? `Tap the glowing <b>${name}</b> button` : `Click the glowing <b>${name}</b> button <i>or press <kbd>${esc(keyLabel(abKey(S.player), slot, ownKeys(abKey(S.player))))}</kbd></i>`;
   }
 
   /** freeze the game in the Crypt Trial to explain a mechanic and highlight the button to press */
@@ -171,6 +142,11 @@ export class RunScene implements InputUI {
     if (step.slot === 'dodge') p.cd.dodge = 0;
     else p.cd[step.slot] = 0;
     p.gcd = 0; p.beat = 0; p.next = null;
+    // the rogue's last lesson spends five points: they're lit on Shadowstrike as the card shows
+    if (key === 'stagger' && p.cls === 'rogue') p.points = MAX_POINTS;
+    // the filler is the button you press every beat; on a phone you can just hold it
+    const filler = step.slot !== 'dodge' && !!AB[abKey(p)][step.slot as 'a1'].filler;
+    const every = filler ? (this.app.touch ? ' Hold it: it fires every beat.' : ' Press it every beat.') : '';
     this.root.classList.add('tut-pause');
     this.root.querySelectorAll('.tut-spot').forEach((el) => el.classList.remove('tut-spot'));
     this.root.querySelector(`.ab[data-slot="${step.slot}"]`)?.classList.add('tut-spot');
@@ -180,7 +156,7 @@ export class RunScene implements InputUI {
     h.innerHTML = `<div class="tut-row"><span class="tile tut-ic" aria-hidden="true">${tile(step.icon)}</span><div class="tut-tx">
       <div class="tut-top"><span class="tut-step">${esc(step.step)}</span><span class="tut-badge">${esc(step.badge)}</span></div>
       <b>${esc(step.title)}</b>
-      <span>${esc(step.text)}</span></div></div>
+      <span>${esc(step.text + every)}</span></div></div>
       <p class="tut-do">${GLYPH.fall}<span>${this.tutHow(step.slot)}</span></p>`;
     h.hidden = false;
     updateCam(0, true);
@@ -622,19 +598,25 @@ export class RunScene implements InputUI {
   /* ---------------------------------------------------------------- HUD */
   private buildHud(): void {
     const p = S.player, A = AB[abKey(p)];
-    const keyOf = (slot: string) => keyLabel(abKey(p), slot);
+    const keyOf = (slot: string) => keyLabel(abKey(p), slot, ownKeys(abKey(p)));
+    // where each button sits: the filler (E) biggest, under the thumb, the payoff or shield (Q) beside it, and the
+    // two cooldowns (F, R) further out. Set by the class, never by your own keys, so a phone looks the same.
+    const POS: Record<string, string> = { KeyE: 'fil', KeyQ: 'pay', KeyF: 'cdf', KeyR: 'cdr' };
+    const posOf = (slot: string) => (slot === 'dodge' ? 'dg' : POS[DEFAULT_KEYS[abKey(p)][slot as 'a1']] || 'cdf');
     $('frames').innerHTML = S.heroes.map((h: any) => `<li class="fr${h.isPlayer ? ' me' : ''}" data-heal="${h.role}" data-role="${h.role}">
       <span class="fr-top"><span class="fi">${tile(h.cls === 'rogue' ? 'viper' : ROLE_ICON[h.role])}</span><span class="fr-n">${h.isPlayer ? 'You' : h.name}</span><i class="ag" aria-hidden="true"></i></span>
       <span class="fb"><i class="hpf"></i><i class="abf"></i></span>${h.role === 'healer' ? '<span class="fb mp"><i class="mpf"></i></span>' : ''}${CURSE_MARK()}</li>`).join('');
-    $('frames').querySelectorAll<HTMLElement>('.fr').forEach((li) => li.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (S.player.role === 'healer') mend(S.player, heroBy(li.dataset.role)); }));
+    $('frames').querySelectorAll<HTMLElement>('.fr').forEach((li) => li.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (S.player.role === 'healer') press(S.player, 'mend', heroBy(li.dataset.role)); }));
     const btn = (slot: string) => {
-      const def = slot === 'dodge' ? { key: 'dodge', name: 'Dodge', desc: 'Roll out of trouble.' } as { key: string; name: string; desc: string; mana?: number; hold?: boolean; combo?: string } : A[slot as 'a1'];
+      const def = slot === 'dodge' ? { key: 'dodge', name: 'Dodge', desc: 'Roll out of trouble.' } as { key: string; name: string; desc: string; mana?: number; hold?: boolean; combo?: string; filler?: boolean } : A[slot as 'a1'];
       const mana = slot === 'dodge' ? 0 : abMana(p, slot);
       const tip = def.combo ? `${def.name}: ${def.desc} (${def.combo})` : `${def.name}: ${def.desc}`;
       const tag = slot === 'dodge' ? 'Roll' : def.hold ? 'Block' : '';
-      const kind = slot === 'dodge' ? ' roll' : def.hold ? ' hold' : slot === 'a1' && (p.role === 'tank' || p.cls === 'rogue') ? ' main' : '';
-      return `<button type="button" class="ab${kind}" data-slot="${slot}" aria-label="${esc(def.name)}" title="${esc(tip)} (${esc(keyOf(slot))})">
-        <span class="face">${tile(def.key)}</span><span class="sweep"></span><span class="cdn"></span><kbd>${esc(keyOf(slot))}</kbd>${mana ? `<span class="cost">${mana}</span>` : ''}${tag ? `<span class="ab-tag">${tag}</span>` : ''}<span class="c-tag" aria-hidden="true"></span><span class="glow"></span></button>`;
+      const kind = slot === 'dodge' ? ' roll' : def.hold ? ' hold' : def.filler ? ' main' : '';
+      // the rogue's points: five pips on Shadowstrike
+      const pips = def.key === 'ambush' ? `<span class="pips" aria-hidden="true">${'<i></i>'.repeat(MAX_POINTS)}</span>` : '';
+      return `<button type="button" class="ab${kind}" data-slot="${slot}" data-pos="${posOf(slot)}" aria-label="${esc(def.name)}" title="${esc(tip)} (${esc(keyOf(slot))})">
+        <span class="face">${tile(def.key)}</span><span class="sweep"></span><span class="cdn"></span><kbd>${esc(keyOf(slot))}</kbd>${mana ? `<span class="cost">${mana}</span>` : ''}${tag ? `<span class="ab-tag">${tag}</span>` : ''}${pips}<span class="c-tag" aria-hidden="true"></span><span class="glow"></span></button>`;
     };
     $('abar').innerHTML = ['a1', 'a2', 'a3', 'a4', 'dodge'].map(btn).join('');
     $('abar').querySelectorAll<HTMLElement>('.ab').forEach((b) => this.bindAbility(b, b.dataset.slot!));
@@ -642,17 +624,26 @@ export class RunScene implements InputUI {
     if (p.role === 'healer') {
       pad.hidden = false;
       pad.innerHTML = S.heroes.map((h: any) => `<button type="button" class="pd" data-heal="${h.role}" data-role="${h.role}" aria-label="Heal ${h.isPlayer ? 'yourself' : h.name}"><span class="pd-n">${h.isPlayer ? 'You' : h.name}</span><span class="fb"><i class="hpf"></i><i class="abf"></i></span>${CURSE_MARK()}</button>`).join('');
-      pad.querySelectorAll<HTMLElement>('.pd').forEach((b) => b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); mend(S.player, heroBy(b.dataset.role)); }));
+      pad.querySelectorAll<HTMLElement>('.pd').forEach((b) => b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); press(S.player, 'mend', heroBy(b.dataset.role)); }));
     } else { pad.hidden = true; pad.innerHTML = ''; }
     this.root.dataset.role = p.role;
     $('bossbar').hidden = true;
   }
   private bindAbility(b: HTMLElement, slot: string): void {
+    // it shrinks the instant you touch it, and comes back when you let go
+    b.addEventListener('pointerdown', () => b.classList.add('down'));
+    for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(ev, () => b.classList.remove('down'));
     b.addEventListener('pointerdown', (e) => {
       e.preventDefault(); e.stopPropagation();
       if (!S || S.over) return;
       // a lesson waits on its own button: any other one shakes
-      if (this.tutKey) { if (!this.onTutInput(slot)) { flash(b, 'nope', 260); SFX.play('nope'); } return; }
+      const filler = slot !== 'dodge' && !!AB[abKey(S.player)][slot as 'a1'].filler;
+      if (this.tutKey) {
+        if (!this.onTutInput(slot)) { flash(b, 'nope', 260); SFX.play('nope'); return; }
+        // the filler's lesson: keep holding it and it keeps going, as in a run
+        if (filler) this.holdRepeat(b, slot, e.pointerId);
+        return;
+      }
       if (S.paused) return;
       const p = S.player;
       if (p.st.caged) { mashCage(p, this); return; }
@@ -681,12 +672,15 @@ export class RunScene implements InputUI {
         return;
       }
       press(p, slot, p.picked && isFoe(p.picked) ? p.picked : null);
-      // held down, it presses again whenever it can (input.ts playerIntent)
-      IN.held.add(slot);
-      try { b.setPointerCapture(e.pointerId); } catch { /* fine */ }
-      const up = () => { IN.held.delete(slot); b.removeEventListener('pointerup', up); b.removeEventListener('pointercancel', up); };
-      b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up);
+      this.holdRepeat(b, slot, e.pointerId);
     });
+  }
+  /** held down, a button presses again whenever it can (input.ts playerIntent) until the finger lifts */
+  private holdRepeat(b: HTMLElement, slot: string, pointerId: number): void {
+    IN.held.add(slot);
+    try { b.setPointerCapture(pointerId); } catch { /* fine */ }
+    const up = () => { IN.held.delete(slot); b.removeEventListener('pointerup', up); b.removeEventListener('pointercancel', up); };
+    b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up);
   }
   private hudTick(dt: number): void {
     if (!S) return;
@@ -715,6 +709,8 @@ export class RunScene implements InputUI {
         const n = el.querySelector('.cu-t'); if (n && n.textContent !== txt) n.textContent = txt;
       }
       el.classList.toggle('teach', !!coach && coach.frame === el.dataset.role);
+      // a Smite crit blessed your next Mend: the frames glow gold (the healer's payoff)
+      el.classList.toggle('blessed', p.role === 'healer' && !!p.mendUp && h.alive);
       el.classList.toggle('aggro', h.alive && h.role !== 'tank' && targeted.has(h.role));
       el.classList.toggle('far', p.role === 'healer' && h.alive && dist(h, p) > MEND.range);
     });
@@ -737,8 +733,10 @@ export class RunScene implements InputUI {
       const enr = M.enrage || 0;
       const left = enr - ((B.ab && B.ab.t) || 0);
       const act = B.act && M.acts && M.acts[B.act.k];
+      // a cast you can stop names itself (the green bar over him)
+      const casting = B.cast && B.cast.kick ? `${B.cast.name}: stop it!` : B.cast ? B.cast.name : '';
       const exp = B.exposed > 0 ? 'EXPOSED! (+35% DMG)' : '';
-      const head = exp || act || '';
+      const head = exp || casting || act || '';
       $('bb-sub').textContent = (head ? head + ' · ' : '') + (enr ? (left > 0 ? 'Enrage in ' + fmtT(left) : 'Enraged') : '');
       $('bb-sub').classList.toggle('hot', !!head || (enr > 0 && left <= 30));
     } else if (!bb.hidden) bb.hidden = true;
@@ -756,15 +754,19 @@ export class RunScene implements InputUI {
       const pr = Math.max(cd > 0 ? cd / max : 0, beatK);
       const sw = b.querySelector<HTMLElement>('.sweep')!; const v = pr.toFixed(3); if (sw.dataset.p !== v) { sw.style.setProperty('--p', v); sw.dataset.p = v; }
       const cdn = b.querySelector('.cdn')!; const txt = cd > 0.95 ? String(Math.ceil(cd)) : ''; if (cdn.textContent !== txt) cdn.textContent = txt;
-      // a class's first runs: only the coach's button glows; after that, every button's own combo prompt
+      // a class's first runs: only the coach's button glows; after that, gold for a payoff and a word for a warning
       const teach = !!coach && coach.slot === slot;
-      const ctag = lesson ? (lesson === slot ? (this.app.touch ? 'TAP!' : 'CLICK!') : '') : teach ? coach.tag : usable && cd <= 0 && !this.learn ? comboFor(p, slot) : '';
+      const combo = !lesson && !teach && usable && cd <= 0 && !this.learn ? comboFor(p, slot) : null;
+      const ctag = lesson ? (lesson === slot ? (this.app.touch ? 'TAP!' : 'CLICK!') : '') : teach ? coach.tag : combo ? combo.tag : '';
       const tagEl = b.querySelector('.c-tag'); if (tagEl && tagEl.textContent !== ctag) tagEl.textContent = ctag;
       b.classList.toggle('dim', !usable);
       b.classList.toggle('queued', !!p.next && p.next.slot === slot);
       b.classList.toggle('held', IN.held.has(slot) || (!!def?.hold && IN.block));
       b.classList.toggle('teach', teach);
-      b.classList.toggle('proc', !!ctag);
+      b.classList.toggle('proc', !!lesson && lesson === slot || (!!combo && combo.gold));
+      b.classList.toggle('warn', !!combo && !combo.gold);
+      // the rogue's points: five pips on Shadowstrike
+      if (def?.key === 'ambush') { const pts = String(p.points || 0); if (b.dataset.pts !== pts) { b.dataset.pts = pts; b.querySelectorAll('.pips i').forEach((pip, i) => pip.classList.toggle('on', i < +pts)); } }
     });
     const bn = $('banner');
     const btxt = S.banner ? S.banner.str : '';
@@ -794,38 +796,38 @@ export class RunScene implements InputUI {
 const CURSE_MARK = (): string => `<span class="cu" aria-hidden="true"><img src="${spriteURL('curse_skull')}" alt="" draggable="false"><b class="cu-t"></b></span>`;
 function setW(el: Element | null, k: number): void { if (!el) return; const v = (clamp(k, 0, 1) * 100).toFixed(1) + '%'; const s = (el as HTMLElement).style; if (s.width !== v) s.width = v; }
 
-/** a gold glow and combo prompt label on a button when a combo chain or reactive window is live */
-function comboFor(p: any, slot: string): string {
+/** After a class's first runs, a button speaks up only for two things: gold for its payoff (Crush, Shatter, a
+ *  five-point Shadowstrike), and a word with no glow for a warning (BLOCK!, KICK!, TAUNT!, PEEL!, SHIELD!,
+ *  CLEANSE!, DODGE!). Suggestions stay quiet, so the one glow you see is the one that matters. */
+type Combo = { tag: string; gold: boolean } | null;
+const pay = (tag: string): Combo => ({ tag, gold: true });
+const warn = (tag: string): Combo => ({ tag, gold: false });
+function comboFor(p: any, slot: string): Combo {
   const def = slot === 'dodge' ? null : AB[abKey(p)][slot as 'a1'];
-  if (!def) return S.hazards.some((z: any) => !z.noDmg && !(z.tankBuster && p.role === 'tank') && z.t > 0.2 && inHaz(z, p.x, p.y, p.r)) || S.rings.some((g: any) => !g.hit.has(p.id) && Math.abs(dist(p, g) - g.r) < 90) ? 'DODGE!' : '';
-  const loose = () => S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && !m.cage && m.forcedT <= 0 && dist(m, p) < 220);
+  if (!def) return S.hazards.some((z: any) => !z.noDmg && !(z.tankBuster && p.role === 'tank') && z.t > 0.2 && inHaz(z, p.x, p.y, p.r)) || S.rings.some((g: any) => !g.hit.has(p.id) && Math.abs(dist(p, g) - g.r) < 90) ? warn('DODGE!') : null;
+  const kickIn = (r: number) => S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < r + m.r);
+  const t = p.picked || p.target;
   switch (def.key) {
-    case 'slam': return loose() ? 'TAUNT!' : S.mobs.filter((m: any) => isFoe(m) && !m.cage && m.state === 'fight' && dist(m, p) < 200 + m.r).length >= 3 ? 'PULL!' : '';
-    case 'shield': return S.hazards.some((z: any) => (z.tankBuster || (z.shape === 'rect' && z.src && z.src.type === 'knight')) && !z.fired && (z.followT === p || inHaz(z, p.x, p.y, p.r)) && z.warn - z.t < 0.9) ? 'BLOCK!' : '';
-    case 'charge': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 420) ? 'KICK!' : S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && !m.cage && dist(m, p) > 200 && dist(m, p) < 420) ? 'PEEL!' : '';
-    case 'cleave': {
-      const near = S.mobs.filter((m: any) => isFoe(m) && !m.cage && m.state === 'fight' && dist(m, p) < 115 + m.r);
-      return near.some((m: any) => stunned(m)) || near.length >= 3 ? 'CRUSH!' : near.length >= 2 ? 'CLEAVE!' : '';
-    }
-    case 'circle': return S.heroes.filter((a: any) => a.alive && a.hp < a.maxHp * 0.78).length >= 2 ? 'CIRCLE!' : '';
-    case 'sunburst': return S.heroes.some((a: any) => a.alive && (a.st.root > 0 || a.st.haunt > 0)) ? 'CLEANSE!' : S.heroes.filter((a: any) => a.alive && a.hp < a.maxHp * 0.6).length >= 2 ? 'BURST!' : '';
-    case 'ward': { const t = heroBy('tank'); return (t && t.alive && t.absorb <= 0 && S.hazards.some((z: any) => z.tankBuster && !z.fired && (z.followT === t || inHaz(z, t.x, t.y, t.r)))) ? 'SHIELD!' : ''; }
-    case 'smite': return S.inCombat && !!(heroBy('tank')?.target) && S.zones.some((z: any) => z.kind === 'heal') ? 'PULSE!' : S.inCombat && S.heroes.every((a: any) => !a.alive || a.hp > a.maxHp * 0.8) && !!(heroBy('tank')?.target) ? 'SMITE!' : '';
-    case 'blizzard': { const c = bestCluster(p, 120, 560); return (c && c.score >= 3) ? 'STORM!' : ''; }
-    case 'nova': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 150 + m.r) ? 'KICK!' : S.mobs.filter((m: any) => isFoe(m) && !m.isBoss && !m.cage && m.state === 'fight' && dist(m, p) < 150 + m.r).length >= 2 ? 'FREEZE!' : S.mobs.some((m: any) => isFoe(m) && m.isBoss && !m.cage && m.state === 'fight' && !(m.st.chill > 0) && dist(m, p) < 150 + m.r) ? 'CHILL!' : '';
+    case 'slam': return S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && !m.cage && m.forcedT <= 0 && dist(m, p) < 220) ? warn('TAUNT!') : null;
+    case 'shield': return S.hazards.some((z: any) => (z.tankBuster || (z.shape === 'rect' && z.src && z.src.isBoss)) && !z.fired && (z.followT === p || inHaz(z, p.x, p.y, p.r)) && z.warn - z.t < 0.9) ? warn('BLOCK!') : null;
+    case 'charge': return kickIn(420) ? warn('KICK!') : S.mobs.some((m: any) => m.alive && m.state === 'fight' && m.target && m.target !== p && !m.M.wisp && !m.cage && dist(m, p) > 200 && dist(m, p) < 420) ? warn('PEEL!') : null;
+    case 'cleave': return S.mobs.some((m: any) => isFoe(m) && !m.cage && m.state === 'fight' && dist(m, p) < 115 + m.r && crushes(p, m)) ? pay('CRUSH!') : null;
+    case 'sunburst': return S.heroes.some((a: any) => a.alive && (a.st.root > 0 || a.st.haunt > 0)) ? warn('CLEANSE!') : null;
+    case 'ward': { const tk = heroBy('tank'); return (tk && tk.alive && tk.absorb <= 0 && S.hazards.some((z: any) => z.tankBuster && !z.fired && (z.followT === tk || inHaz(z, tk.x, tk.y, tk.r)))) ? warn('SHIELD!') : null; }
+    case 'nova': return kickIn(150) ? warn('KICK!') : null;
     case 'comet': {
-      const t = p.picked || p.target, lance = p.traits.has('shatterlance');
-      if (!(t && t.alive && t.st)) return '';
-      return t.st.freeze > 0.6 ? (lance ? 'SHATTER 3×!' : 'SHATTER 2×!') : t.st.chill > 0.6 ? (lance ? 'SHATTER 2×!' : 'SHATTER 1.5×!') : '';
+      if (!(t && t.alive && t.st && !t.cage)) return null;
+      const lance = p.traits.has('shatterlance');
+      return t.st.freeze > 0.6 ? pay(lance ? 'SHATTER 3×!' : 'SHATTER 2×!') : t.st.chill > 0.6 || t.exposed > 0.6 ? pay(lance ? 'SHATTER 2×!' : 'SHATTER 1.5×!') : null;
     }
     case 'icicle': {
-      const near = S.mobs.filter((m: any) => isFoe(m) && m.st && dist(m, p) < 500);
-      return near.some((m: any) => m.st.freeze > 0.3) ? 'SHATTER 3×!' : near.some((m: any) => m.st.chill > 0.3) ? 'SHATTER 1.5×!' : '';
+      if (!(t && t.alive && t.st && !t.cage)) return null;
+      const k = icicleShatter(p, t).k;
+      return k > 1 ? pay(k >= 3 ? 'SHATTER 3×!' : 'SHATTER 1.5×!') : null;
     }
-    case 'viper': { const t = p.picked || p.target; return (t && t.alive && !t.cage && (!t.bleed || t.bleed.left < 1.8) && dist(t, p) < 110 + t.r) ? 'VENOM!' : ''; }
-    case 'ambush': { const t = p.picked || p.target; return (t && t.alive && t.bleed && t.bleed.left > 0 && dist(t, p) < 110 + t.r) ? 'CRIT!' : ''; }
-    case 'flurry': return S.mobs.some((m: any) => isFoe(m) && m.cast && m.cast.kick && dist(m, p) < 135 + m.r) ? 'KICK!' : S.mobs.filter((m: any) => isFoe(m) && !m.cage && m.state === 'fight' && dist(m, p) < 135 + m.r).length >= 2 ? 'FLURRY!' : '';
-    case 'shadowstep': { const t = p.picked || p.target; return (t && t.alive && dist(t, p) > 105 + t.r && dist(t, p) <= 340 + t.r) ? 'BLINK!' : ''; }
+    case 'ambush': return t && t.alive && !t.cage && dist(t, p) < 110 + t.r && (p.points >= MAX_POINTS || burnable(p, t)) ? pay('FINISH!') : null;
+    case 'flurry': return kickIn(135) ? warn('KICK!') : null;
+    case 'shadowstep': return t && t.alive && t.cast && t.cast.kick && dist(t, p) <= 340 + t.r ? warn('KICK!') : null;
   }
-  return '';
+  return null;
 }

@@ -221,31 +221,45 @@ def gn_slinger():
     sprite('gn_slinger', (-42, -114, 102, 120), o, 'Gnome Slinger')
 
 
-def bombwright():
+def bombwright(name='bombwright', medic=False):
+    """the Bombwright; medic=True is the mender: the same gnome in a green coat and a medic's apron, with tonic
+    flasks where the bombs were"""
     o = []
+    coat = '#4F9A6A' if medic else RED
+    glass, glass_l = ('#9BE15D', '#D8FFB8') if medic else (BOMB, BOMB_L)
     hx, hy, k = 0, -64, 1.2
     o.append(both('M-20 -12 H-4 V0 H-25 C-27 -5 -25 -10 -20 -12 Z', BOOT))
     o.append(both('M-16 -26 H-4 V-11 H-18 Z', '#5A4A3A'))
-    o.append(s('M-21 -57 C-29 -47 -29 -31 -22 -21 H22 C29 -31 29 -47 21 -57 Z', RED))
-    o.append(ln('M-12 -50 C-14 -40 -13 -32 -11 -26', '#E0605A', 2.6))
+    o.append(s('M-21 -57 C-29 -47 -29 -31 -22 -21 H22 C29 -31 29 -47 21 -57 Z', coat))
+    if medic:
+        # the apron, with a green plus
+        o.append(s('M-14 -52 H14 L16 -22 H-16 Z', WHITE_H, 3) + s('M-3 -45 H3 V-41 H7 V-35 H3 V-31 H-3 V-35 H-7 V-41 H-3 Z', '#4E9A4A', 2))
+    if not medic:
+        o.append(ln('M-12 -50 C-14 -40 -13 -32 -11 -26', '#E0605A', 2.6))
     o.append(c(13, -46, 3.2, SOOT, 0) + c(-8, -31, 2.6, SOOT, 0))
     o.append(s('M-21 -30 H21 V-23 H-21 Z', '#4A3428', 3) + s('M-5 -31.5 H5 V-21.5 H-5 Z', BRASS, 2.6))
     # the satchel strap and the satchel of bombs on the hip
     o.append(s('M-18 -55 L-12 -57 L24 -28 L18 -24 Z', '#6B4528', 3))
     for bx, by, r in ((14, -37, 8), (27, -39, 7.5)):
         o.append(ln(f'M{f(bx + 1)} {f(by - r)} C{f(bx + 2)} {f(by - r - 4)} {f(bx + 5)} {f(by - r - 5)} {f(bx + 6)} {f(by - r - 8)}', '#C8B08A', 2.6))
-        o.append(c(bx, by, r, BOMB, 3.2) + ln(f'M{f(bx - r * 0.6)} {f(by - r * 0.2)} C{f(bx - r * 0.5)} {f(by - r * 0.6)} {f(bx - r * 0.2)} {f(by - r * 0.75)} {f(bx + r * 0.1)} {f(by - r * 0.8)}', BOMB_L, 2.4))
+        o.append(c(bx, by, r, glass, 3.2) + ln(f'M{f(bx - r * 0.6)} {f(by - r * 0.2)} C{f(bx - r * 0.5)} {f(by - r * 0.6)} {f(bx - r * 0.2)} {f(by - r * 0.75)} {f(bx + r * 0.1)} {f(by - r * 0.8)}', glass_l, 2.4))
     o.append(s('M7 -34 H35 L33 -14 C25 -10 16 -10 9 -14 Z', TAN, 3.4) + s('M7 -34 H35 L34 -27 C25 -24 17 -24 8 -27 Z', TAN_D, 3))
     o.append(c(21, -26, 2.6, BRASS, 2))
     # the arm down at the side
-    o.append(s('M21 -54 C29 -50 33 -45 34 -40 L27 -37 C26 -42 24 -45 18 -47 Z', RED))
+    o.append(s('M21 -54 C29 -50 33 -45 34 -40 L27 -37 C26 -42 24 -45 18 -47 Z', coat))
     o.append(fist(31, -35, 7))
     # the arm up with a lit bomb
-    o.append(s('M-19 -52 C-28 -56 -33 -62 -35 -71 L-27 -73 C-25 -66 -22 -62 -15 -59 Z', RED))
-    o.append(halo(-25, -110, 14, FLAME, 0.35))
-    o.append(c(-32, -90, 11, BOMB) + ln('M-38.6 -94 C-37.8 -97 -35.8 -98.4 -33.4 -98.8', BOMB_L, 2.6))
-    o.append(s('M-36.2 -102.6 L-29.8 -104 L-28.8 -100.2 L-35.2 -98.8 Z', BRASS, 2.4))
-    o.append(ln('M-32.4 -103.6 C-32 -107.4 -29 -109.4 -27 -110.4', '#C8B08A', 2.6) + spark(-25.6, -112.4, 6.2))
+    o.append(s('M-19 -52 C-28 -56 -33 -62 -35 -71 L-27 -73 C-25 -66 -22 -62 -15 -59 Z', coat))
+    if medic:
+        # a tonic flask held up, glowing
+        o.append(halo(-32, -92, 16, '#D8FFB8', 0.4))
+        o.append(c(-32, -90, 10, glass) + ln('M-38 -93 C-37 -96 -35 -97.4 -33 -97.8', glass_l, 2.6))
+        o.append(s('M-35.4 -106 H-28.6 V-99 H-35.4 Z', '#D8D2C6', 2.4) + s('M-36.6 -110 H-27.4 V-105 H-36.6 Z', WOOD, 2.4))
+    else:
+        o.append(halo(-25, -110, 14, FLAME, 0.35))
+        o.append(c(-32, -90, 11, BOMB) + ln('M-38.6 -94 C-37.8 -97 -35.8 -98.4 -33.4 -98.8', BOMB_L, 2.6))
+        o.append(s('M-36.2 -102.6 L-29.8 -104 L-28.8 -100.2 L-35.2 -98.8 Z', BRASS, 2.4))
+        o.append(ln('M-32.4 -103.6 C-32 -107.4 -29 -109.4 -27 -110.4', '#C8B08A', 2.6) + spark(-25.6, -112.4, 6.2))
     o.append(fist(-32, -76, 7))
     o += ghead(hx, hy, k, K, look=0.4)
     # soot on the face
@@ -259,7 +273,7 @@ def bombwright():
     # a mad wide grin
     o.append(s(tp('M-9.5 10.2 C-3 11.6 3 11.6 9.5 10.2 C8 17.6 -8 17.6 -9.5 10.2 Z', hx, hy, k), '#FFFFFF', 2.4))
     o.append(ln(tp('M-8.2 12.6 C-3 14.2 3 14.2 8.2 12.6 M-3 11.4 V15.6 M3 11.4 V15.6', hx, hy, k), K, 1.4))
-    sprite('bombwright', (-48, -124, 92, 130), o, 'Bombwright')
+    sprite(name, (-48, -124, 92, 130), o, 'Gnome Medic' if medic else 'Bombwright')
 
 
 def waddlecap():
@@ -511,6 +525,6 @@ def tinker(clock):
 
 def build():
     import art_thimble2  # the bombs, props, door, decals and the cuckoo clock (it imports this file's helpers)
-    scrapper(); gn_slinger(); bombwright(); waddlecap(); stomper(); toadstool(); tinker(art_thimble2.clock)
+    scrapper(); gn_slinger(); bombwright(); bombwright('tb_mender', medic=True); waddlecap(); stomper(); toadstool(); tinker(art_thimble2.clock)
     art_thimble2.build(sprite)
     return SPR

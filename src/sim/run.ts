@@ -21,7 +21,8 @@ export interface SimResult {
   combat: number;
   packs: PackTime[];
   stats: Record<string, number>;
-  heroes: { role: RoleId; dmg: number; heal: number; taken: number; dodges: number; perfect: number; blocks: number; deaths: number }[];
+  /** auto: damage from automatic swings (the rest is buttons) */
+  heroes: { role: RoleId; cls: string; dmg: number; auto: number; heal: number; taken: number; dodges: number; perfect: number; blocks: number; deaths: number }[];
 }
 
 export function simRun(o: SimOpts): SimResult {
@@ -52,6 +53,6 @@ export function simRun(o: SimOpts): SimResult {
   return {
     role: o.role, seed: o.seed, over: s.over || '', t: +s.t.toFixed(2), clear: s.clearTime || null, wipes: s.stats.wipes,
     combat: +combat.toFixed(1), packs: [...times.values()], stats: { ...s.stats },
-    heroes: s.heroes.map((h: any) => ({ role: h.role, dmg: Math.round(h.stats.dmg), heal: Math.round(h.stats.heal), taken: Math.round(h.stats.taken), dodges: h.stats.dodges, perfect: h.stats.perfect, blocks: h.stats.blocks, deaths: h.stats.deaths })),
+    heroes: s.heroes.map((h: any) => ({ role: h.role, cls: h.cls, dmg: Math.round(h.stats.dmg), auto: Math.round(h.stats.auto || 0), heal: Math.round(h.stats.heal), taken: Math.round(h.stats.taken), dodges: h.stats.dodges, perfect: h.stats.perfect, blocks: h.stats.blocks, deaths: h.stats.deaths })),
   };
 }

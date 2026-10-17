@@ -64,15 +64,17 @@ class Synth {
     const v = vol === undefined ? 1 : vol;
     // the victory sting is music: it plays at music volume, or as the victory jingle with the music off
     if (name === 'fanfare') { const f = this.clips.fanfare; if (f && this.sting?.(f, v)) return; name = 'victory'; }
-    const clip = this.clips[name];
+    const clip = this.clips[name], layers = LAYERS[name];
     try {
       if (clip) this.sample(clip, now, v);
+      // a sound made of the recorded ones, until it has a take of its own
+      else if (layers && layers.every(([n]) => this.clips[n])) for (const [n, k, rate, delay] of layers) this.sample(this.clips[n], now + (delay || 0), v * k, rate || 1);
       else SOUNDS[name]?.(now, v);
     } catch { /* a missed sound is fine */ }
   }
-  private sample(c: Clip, t: number, v: number): void {
+  private sample(c: Clip, t: number, v: number, rate = 1): void {
     const ctx = this.ctx!, s = ctx.createBufferSource(), g = ctx.createGain();
-    s.buffer = c.buf; g.gain.value = v;
+    s.buffer = c.buf; g.gain.value = v; s.playbackRate.value = rate;
     s.connect(g); g.connect(this.out!); s.start(t, c.at);
   }
   tone(t: number, f: number, dur: number, type?: OscillatorType, vol = 0.1, f2?: number | null, delay?: number): void {
@@ -99,6 +101,22 @@ function leadIn(b: AudioBuffer): number {
   for (let i = 0; i < n; i++) if (Math.abs(d[i]) > 0.001) return Math.max(0, (i - b.sampleRate * 0.001) / b.sampleRate);
   return 0;
 }
+
+/* The combat plan's sounds (hit feel): each class's impact on its filler, each class's payoff layer, a soft tap for
+   automatic swings and ticks, the heal crit's chime, the burn window and the pack-down chord. Until they have real
+   takes (tools/audio_list.py), each is made of the recorded effects: [clip, volume, playback rate, delay]. */
+export const LAYERS: Record<string, [string, number, number?, number?][]> = {
+  axehit: [['thud', 0.85, 1.12], ['block', 0.2, 1.4]],
+  bladehit: [['hit', 0.8, 1.3], ['cut', 0.25, 1.25]],
+  icehit: [['bolt', 0.85, 0.9], ['shatter', 0.22, 1.45]],
+  holyhit: [['holy', 0.9, 0.95], ['smite', 0.25, 1.2]],
+  crush: [['crit', 0.8, 0.85], ['smash', 0.45, 1.35]],
+  finish: [['crit', 0.85, 1.1], ['cut', 0.5, 0.9], ['kick', 0.35, 0.8, 0.03]],
+  bless: [['lift', 0.8, 1.1], ['heal', 0.55, 1.3, 0.04]],
+  healcrit: [['heal', 0.7, 1.35], ['coin', 0.3, 1.2, 0.03]],
+  tap: [['hit', 0.45, 1.5]],
+  exposed: [['flare', 0.55, 1.3]],
+};
 
 export const SFX = new Synth();
 const T = (t: number, f: number, dur: number, type?: OscillatorType, vol?: number, f2?: number | null, delay?: number) => SFX.tone(t, f, dur, type, vol, f2, delay);
@@ -171,6 +189,19 @@ export const SOUNDS: Record<string, Play> = {
   fanfare: (t, v) => SOUNDS.victory(t, v),
   chest: (t, v) => { N(t, 0.3, 0.2 * v, 400, 'lowpass'); [784, 988, 1175, 1568].forEach((f, i) => T(t, f, 0.4, 'sine', 0.12 * v, null, 0.2 + i * 0.07)); },
   tick: (t, v) => T(t, 1400 + Math.random() * 400, 0.03, 'square', 0.04 * v),
+  // hit feel (the layers above, synthesised): the class impacts, the payoffs, the soft tap, the heal crit, the
+  // burn window, and the short low chord when the last of a pack goes down
+  axehit: (t, v) => { SOUNDS.thud(t, 0.85 * v); SOUNDS.block(t, 0.2 * v); },
+  bladehit: (t, v) => { SOUNDS.hit(t, 0.8 * v); N(t, 0.06, 0.15 * v, 5000, 'highpass'); },
+  icehit: (t, v) => { SOUNDS.bolt(t, 0.9 * v); T(t, 3200, 0.06, 'triangle', 0.06 * v, 2000); },
+  holyhit: (t, v) => { SOUNDS.holy(t, v); T(t, 1760, 0.12, 'sine', 0.05 * v); },
+  crush: (t, v) => { SOUNDS.crit(t, 0.8 * v); T(t, 70, 0.3, 'sine', 0.4 * v, 35); },
+  finish: (t, v) => { SOUNDS.crit(t, 0.85 * v); SOUNDS.cut(t, 0.5 * v); },
+  bless: (t, v) => { SOUNDS.lift(t, 0.8 * v); SOUNDS.heal(t, 0.5 * v); },
+  healcrit: (t, v) => { SOUNDS.heal(t, 0.7 * v); T(t, 2093, 0.25, 'sine', 0.06 * v, null, 0.04); },
+  tap: (t, v) => { N(t, 0.04, 0.14 * v, 1600, 'lowpass'); T(t, 220, 0.04, 'triangle', 0.06 * v, 140); },
+  exposed: (t, v) => SOUNDS.flare(t, 0.6 * v),
+  packdown: (t, v) => { [196, 247, 294].forEach((f, i) => T(t, f, 0.55, 'triangle', 0.1 * v, null, i * 0.015)); T(t, 98, 0.45, 'sine', 0.18 * v); },
   nope: (t, v) => T(t, 160, 0.1, 'square', 0.06 * v, 120),
   pulse: (t, v) => { T(t, 70, 0.5, 'sine', 0.35 * v, 40); N(t, 0.5, 0.25 * v, 900, 'bandpass', 0.6, 300); },
   sweep: (t, v) => N(t, 0.3, 0.4 * v, 1800, 'bandpass', 1, 400),

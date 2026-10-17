@@ -28,7 +28,7 @@ export const THIMBLEBRIAR_SETS: SetDef[] = [
     id: 'gearshade', name: 'Gearshade', role: 'dps', cls: 'rogue', dungeon: 'thimblebriar', tier: 2,
     look: 'A clockwork lens visor, spring-blade spaulders, a velvet burrower’s coat',
     pieces: ['gearshade.helm', 'gearshade.shoulders', 'gearshade.chest'],
-    bonus2: { id: 'gearshade2', desc: 'Critical hits with Shadowstrike or Viper Blades throw a 55 spark.' },
+    bonus2: { id: 'gearshade2', desc: 'Critical hits throw a spark: 55 from Shadowstrike, 24 from Viper Blades.' },
     bonus3: { id: 'gearshade3', desc: 'Viper Blades stick a little bomb on the target, and Shadowstrike sets it off.', ready: true },
   },
 ];

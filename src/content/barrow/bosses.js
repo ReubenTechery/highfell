@@ -2,8 +2,8 @@
 import { angTo, dist, distXY, lerp } from '../../core/math';
 import { pick, rand, rng, vrand } from '../../core/rng';
 import { HOOKS, S } from '../../dungeon/state.js';
-import { aggro, banner, bits, call, dots, exposeMob, fx, hitstop, hurtHero, sfx, shake } from '../../dungeon/entities.js';
-import { makeCage, makeChain, partyPulse, randomHero, spawnMob } from '../../dungeon/mobs.js';
+import { aggro, banner, bits, call, dots, exposeMob, fx, hurtHero, sfx, shake } from '../../dungeon/entities.js';
+import { makeCage, makeChain, partyPulse, randomHero, spawnMob, startCast } from '../../dungeon/mobs.js';
 import { moveEnt } from '../../dungeon/world.js';
 import { MAP } from './map.js';
 
@@ -15,7 +15,9 @@ const YARD_SPOTS = [
   { x: 640, y: 610 },
 ];
 
-/* ---------- Sir Rattlebones ---------- */
+/* ---------- Sir Rattlebones ----------
+   Cleaving Sweep (the tank blocks it), Shield Charge down a lane (crash him into a wall: Exposed), and at half
+   health the Rally the Dead and the Bone rattle, a cast to interrupt (it Exposes him). */
 export function knightTick(m, dt) {
   const ab = m.ab;
   const intro = S.opts && S.opts.start === 'intro';
@@ -32,7 +34,17 @@ export function knightTick(m, dt) {
     return true;
   }
   m.armorUp = m.phase === 2 && S.mobs.some((o) => o.alive && o.rally) ? 0.6 : 0;
-  if (m.phase === 2) { ab.pulse = (ab.pulse === undefined ? 4 : ab.pulse) - dt; if (ab.pulse <= 0) { ab.pulse = 12; partyPulse(m, 45, 'Bone rattle', '#F0E8D2'); } }
+  // mid-cast he stands and casts (mobs.js runs it)
+  if (m.cast) return false;
+  // Bone rattle: a cast the tank or a DPS can stop (it Exposes him); missed, it rattles the whole party
+  if (m.phase === 2) {
+    ab.pulse = (ab.pulse === undefined ? 4 : ab.pulse) - dt;
+    if (ab.pulse <= 0 && !m.act) {
+      ab.pulse = 12;
+      startCast(m, { key: 'rattle', name: 'Bone rattle', dur: 2, kick: true, done: () => { if (m.alive) partyPulse(m, 45, 'Bone rattle', '#F0E8D2'); } });
+      return false;
+    }
+  }
   if (m.act) return knightAct(m, dt);
   if (m.wind > 0) return false;
   ab.sweep -= dt; ab.charge -= dt;
@@ -152,7 +164,18 @@ export function keeperTick(m, dt) {
     banner('Phase 3: his lantern burns the yard! Stay in his green circle!', 'warn', 2.8); sfx('roar');
     return true;
   }
-  if (m.phase >= 2) { ab.pulse = (ab.pulse === undefined ? 5 : ab.pulse) - dt; if (ab.pulse <= 0) { ab.pulse = m.phase === 2 ? 9 : 11; partyPulse(m, m.phase === 2 ? 55 : 65, m.phase === 2 ? 'Grave cold' : 'Grave dust', m.phase === 2 ? '#C8F5E8' : '#C9B79A'); } }
+  // mid-cast he stands and casts (mobs.js runs it)
+  if (m.cast) return false;
+  // Grave cold (Grave dust in the last phase): a cast to stop (it Exposes him); missed, it hits the whole party
+  if (m.phase >= 2) {
+    ab.pulse = (ab.pulse === undefined ? 5 : ab.pulse) - dt;
+    if (ab.pulse <= 0 && !m.act && !m.hidden) {
+      ab.pulse = m.phase === 2 ? 9 : 11;
+      const cold = m.phase === 2, name = cold ? 'Grave cold' : 'Grave dust';
+      startCast(m, { key: 'cold', name, dur: 2, kick: true, done: () => { if (m.alive) partyPulse(m, cold ? 55 : 65, name, cold ? '#C8F5E8' : '#C9B79A'); } });
+      return false;
+    }
+  }
   if (m.act) return keeperAct(m, dt);
   if (m.wind > 0) return false;
   for (const k of ['smash', 'toss', 'hands', 'wisps', 'chain', 'burrow', 'cage', 'stride']) if (ab[k] !== undefined) ab[k] -= dt;
@@ -220,7 +243,7 @@ function startSmash(m) {
   const z = { shape: 'circle', x: t.x, y: t.y, r: 72, warn: 1.85, t: 0, src: m, followT: t, followFor: 1.4, tankBuster: true, smash: true,
     onFire: (zz) => {
       m.pose = null; m.lunge = 0.25; m.lungeA = angTo(m, zz);
-      shake(11); sfx('smash'); hitstop(0.06);
+      shake(11); sfx('smash');
       fx({ type: 'ring', x: zz.x, y: zz.y, r0: 20, r1: 120, col: '#C9B79A', dur: 0.35, w: 12, ground: true });
       dots(zz.x, zz.y, '#6B4A3A', 16, 280, { size: 7 });
       for (const h of S.heroes) {
@@ -243,7 +266,7 @@ function startBurrow(m) {
   S.hazards.push({ shape: 'circle', x: v.x, y: v.y, r: 112, warn: 3.4, t: 0, src: m, followT: v, followFor: 2.6, followSpeed: 175, burrow: true,
     onFire: (z) => {
       m.x = z.x; m.y = z.y; m.hidden = false; m.untargetable = false; m.home = { x: z.x, y: z.y };
-      shake(10); sfx('erupt'); hitstop(0.05);
+      shake(10); sfx('erupt');
       bits(z.x, z.y, 'shard_dirt', 22, 340);
       for (const h of S.heroes) if (h.alive && distXY(h.x, h.y, z.x, z.y) <= z.r + h.r) { const got = hurtHero(h, 330 * m.dmgMul, m, { block: false, hazard: true }); if (got > 0) h.st.air = 0.6; }
       S.rings.push({ x: z.x, y: z.y, r: 40, speed: 270, w: 26, max: 620, hit: new Set(), dmg: 215, src: m });

@@ -1,9 +1,10 @@
 import { angDiff, dist, distXY, lerp, norm, TAU } from '../core/math';
 import { rand, rng } from '../core/rng';
-import { MEND } from '../content/roles';
+import { AB, MEND } from '../content/roles';
 import { S, emit } from './state.js';
 import { fx, killMob } from './entities.js';
-import { bestCluster, doDodge, heroBy, isFoe, mend, useAbility } from './heroes.js';
+import { bestCluster, bombInReach, doDodge, heroBy, isFoe, useAbility } from './heroes.js';
+import { MAX_POINTS, POINT, burnable, mend } from './buttons.js';
 import { ready } from './press.js';
 import { chainEnds, cutChain, liftCurse, mashCage } from './mobs.js';
 import { canStand, freeSpot, navPoint } from './world.js';
@@ -50,7 +51,9 @@ export function dangerAt(h, x, y, horizon, forSpot) {
   return best;
 }
 /* Rime burst reaches this far past a mob's edge (abNova) */
-const NOVA_REACH = 155;
+const NOVA_REACH = AB.dps.a2.range;
+/* a cast a bot can see and stop: kickable, and it's had a moment to react (a bot's reaction time) */
+const kickable = (h, m) => !!(m.cast && m.cast.kick && m.cast.t >= h.bot.react);
 /* the boss a mage could Chill now: Rime burst is (nearly) ready, he isn't Chilled already, and it's a calm moment
    to step in (he's on the tank and between moves, and nobody is caged) */
 export function chillTarget(h) {
@@ -256,6 +259,11 @@ export function combatGoal(h) {
     }
     return ringClamp(standNear(h, t, 8), h);
   }
+  // a mage with Rime burst ready steps in to stop a cast near the tank
+  if (h.role === 'dps' && h.cd.a2 <= 0.2) {
+    const caster = S.mobs.find((m) => isFoe(m) && m.cast && m.cast.kick && dist(m, h) < 420 && m.cast.dur - m.cast.t > 0.6);
+    if (caster) return ringClamp(standNear(h, caster, NOVA_REACH * 0.5), h);
+  }
   // a mage about to Chill the boss steps into Rime burst's reach, then back out
   const want = chillTarget(h) ? boss.r + NOVA_REACH - 15 : h.role === 'dps' ? 255 : 225;
   if (boss && boss.state === 'fight') {
@@ -349,12 +357,16 @@ export function tankActions(h) {
   const near = loose.filter((m) => dist(m, h) <= 240 + m.r);
   const fresh = foes.filter((m) => m.fightT < 1.6 && dist(m, h) <= 240 + m.r);
   const around = foes.filter((m) => !m.cage && dist(m, h) <= 190 + m.r);
+  // Slam: taunt one that slipped, gather a fresh pack, or (on a boss) taunt and spin: it primes Crush
   if (ready(h, 'a3') && (near.length >= 1 || fresh.length >= 3 || around.length >= 2 || (S.boss && around.includes(S.boss)))) { useAbility(h, 'a3'); return; }
+  // Charge: stop a cast in reach, or fetch a loose mob too far for Slam
   if (ready(h, 'a2')) {
+    const caster = foes.find((m) => kickable(h, m) && dist(m, h) < 420);
     const far = loose.find((m) => { const d = dist(m, h); return d > 200 && d < 420; });
-    if (far) { useAbility(h, 'a2', far); return; }
+    const t = caster || far;
+    if (t) { useAbility(h, 'a2', t); return; }
   }
-  // Cleave whenever something is in reach in front of you
+  // Cleave every beat, whenever something is in reach in front of you
   if (ready(h, 'a1')) {
     const t = h.picked && isFoe(h.picked) ? h.picked : h.target;
     if (t && isFoe(t) && !t.cage && dist(h, t) <= 105 + t.r) { useAbility(h, 'a1', t); return; }
@@ -362,26 +374,49 @@ export function tankActions(h) {
 }
 export function healerActions(h) {
   if (S.opts.noHeal) return;
-  if (h.gcd > 0 || h.st.stun > 0 || h.st.caged || h.st.air > 0) return;
+  if (h.st.stun > 0 || h.st.caged || h.st.air > 0) return;
   const pct = (a) => (a.hp + a.absorb * 0.6) / a.maxHp;
   const allies = S.heroes.filter((a) => a.alive && dist(a, h) <= MEND.range);
   if (!allies.length) return;
   const low = allies.slice().sort((a, b) => pct(a) - pct(b));
   const tank = heroBy('tank');
   const mana = h.mana;
+  const canMend = ready(h, 'mend');
+  // a mate about to drop: Ward them, or Mend them
   if (pct(low[0]) < 0.36) {
     if (ready(h, 'a2') && low[0].absorb <= 0 && mana >= 10 && useAbility(h, 'a2', low[0])) return;
-    if (mend(h, low[0])) return;
+    if (canMend && mend(h, low[0])) return;
   }
   const hurt = allies.filter((a) => pct(a) < 0.62).length;
   const bad = allies.some((a) => a.st.root > 0 || a.st.haunt > 0);
   if (ready(h, 'a3') && mana >= 22 && (hurt >= 2 || (bad && hurt >= 1))) { useAbility(h, 'a3'); return; }
   if (tank && tank.alive && ready(h, 'a2') && mana >= 10 && tank.absorb <= 0 && S.hazards.some((z) => z.tankBuster && !z.fired && (z.followT === tank || inHaz(z, tank.x, tank.y, tank.r)))) { useAbility(h, 'a2', tank); return; }
   if (tank && tank.alive && ready(h, 'a1') && mana >= 34 && pct(tank) < 0.86 && dist(tank, h) < 500 && tank.moving <= 0) { useAbility(h, 'a1', { x: tank.x, y: tank.y }); return; }
-  if (tank && tank.alive && pct(tank) < 0.76 && mana >= 7 && mend(h, tank)) return;
-  if (pct(low[0]) < (mana > 45 ? 0.84 : mana > 20 ? 0.62 : 0.45) && mend(h, low[0])) return;
-  // nobody needs anything: Smite the tank's target (it heals and gives mana back)
-  if (ready(h, 'a4') && pct(low[0]) > 0.5) { const t = tank_or_target(h); if (t && !t.cage && useAbility(h, 'a4', t)) return; }
+  // a blessed Mend (after a Smite crit) is free and bigger: spend it on whoever is lowest
+  if (canMend && h.mendUp && pct(low[0]) < 0.9 && mend(h, low[0])) return;
+  if (canMend && tank && tank.alive && pct(tank) < 0.76 && mana >= 7 && mend(h, tank)) return;
+  if (canMend && pct(low[0]) < (mana > 45 ? 0.84 : mana > 20 ? 0.62 : 0.45) && mend(h, low[0])) return;
+  // otherwise Smite every beat: it tops up the most hurt and gives mana back (a red bomb in reach first)
+  if (ready(h, 'a4')) { const t = bombInReach(h) || tank_or_target(h); if (t && useAbility(h, 'a4', t)) return; }
+}
+/** would this big hit (about `amt` before a crit) pull the boss off the tank? A bot DPS holds it until the tank is
+ *  far enough ahead: bots can read the threat, where you watch for the boss turning (and the orange ring) */
+function pullsBoss(h, t, amt) {
+  if (!t || !t.isBoss) return false;
+  const tank = heroBy('tank');
+  if (!tank || !tank.alive || t.target !== tank) return false;
+  // a crit doubles it, and he turns once someone is 10% ahead of the tank
+  return (t.threat.get(h.id) || 0) + amt * 2 * h.threatMod >= (t.threat.get(tank.id) || 0) * 1.1;
+}
+/** about what a Comet does to this foe now, before a crit */
+function cometFor(h, t) {
+  const k = t.st.freeze > 0 ? 2 : t.st.chill > 0 || t.exposed > 0 ? 1.5 : 1;
+  return 330 * h.power * k * (t.exposed > 0 ? 1.35 : 1);
+}
+/** about what a Shadowstrike would do to this foe now (the bots spend three points on a kill) */
+function strikeFor(h, t) {
+  const bleeding = t.bleed && t.bleed.left > 0;
+  return POINT * (burnable(h, t) ? MAX_POINTS : h.points) * h.power * (bleeding ? 1.35 * 2 : 1);
 }
 export function rogueActions(h) {
   const tank = heroBy('tank');
@@ -390,8 +425,8 @@ export function rogueActions(h) {
   if (cage) tgt = cage;
   const foes = fightingFoes();
   if (!tgt) { const caster = foes.find((m) => m.cast && m.cast.kick && dist(m, h) < 340); if (caster) tgt = caster; }
-  // what the dungeon marks as first to kill (its signature's targets), then Gravecallers: they curse and
-  // raise, and they hang back where the tank can't grab them
+  // what the dungeon marks as first to kill (a mender, its signature's targets), then Gravecallers: they curse
+  // and cast, and they hang back where the tank can't grab them
   if (!tgt) { const first = foes.find((m) => m.M.priority && dist(m, h) < 540); if (first) tgt = first; }
   if (!tgt) { const caller = foes.find((m) => m.M.kind === 'caller' && dist(m, h) < 540); if (caller) tgt = caller; }
   if (!tgt) {
@@ -405,16 +440,21 @@ export function rogueActions(h) {
   if (h.st.stun > 0 || h.st.caged || !tgt) return;
   const d = dist(h, tgt);
   const close = foes.filter((m) => !m.cage && dist(m, h) <= 135 + m.r);
-  const caster = foes.find((m) => m.cast && m.cast.kick && dist(m, h) <= 135 + m.r);
+  const caster = foes.find((m) => kickable(h, m) && dist(m, h) <= 135 + m.r);
+  // Fan of Blades: stop a cast, or a pack round you (a point if it hits)
   if (ready(h, 'a3') && (caster || close.length >= 2)) { useAbility(h, 'a3'); return; }
+  // Shadowstep: close the gap, stop a cast, or bank two points and faster swings
   if (ready(h, 'a4') && !dangerAt(h, tgt.x, tgt.y, 1.0)) {
     const needGap = d > 95 + tgt.r && d <= 340 + tgt.r;
-    const wantSteroid = d <= 95 + tgt.r && !tgt.cage && tgt.bleed && tgt.bleed.left > 0 && h.frenzyT <= 0;
-    if (needGap || wantSteroid) { useAbility(h, 'a4', tgt); return; }
+    const kick = kickable(h, tgt) && d <= 340 + tgt.r;
+    const bank = d <= 95 + tgt.r && !tgt.cage && h.points <= MAX_POINTS - 2 && h.frenzyT <= 0;
+    if (needGap || kick || bank) { useAbility(h, 'a4', tgt); return; }
   }
   if (d <= 95 + tgt.r) {
-    if (!tgt.cage && ready(h, 'a1') && (!tgt.bleed || tgt.bleed.left < 1.8)) { useAbility(h, 'a1', tgt); return; }
-    if (ready(h, 'a2') && (tgt.cage || (tgt.bleed && tgt.bleed.left > 0) || tgt.hp < 220)) { useAbility(h, 'a2', tgt); return; }
+    // Shadowstrike at five points, or three if it will finish the target, or any on an Exposed one
+    const spend = h.points >= MAX_POINTS || (h.points >= 3 && tgt.hp <= strikeFor(h, tgt)) || (burnable(h, tgt) && tgt.exposed > 0.3 && !tgt.cage);
+    if (ready(h, 'a2') && !tgt.cage && spend && !pullsBoss(h, tgt, strikeFor(h, tgt) / 2)) { useAbility(h, 'a2', tgt); return; }
+    // otherwise Viper Blades every beat (it breaks a cage too)
     if (ready(h, 'a1')) { useAbility(h, 'a1', tgt); return; }
   }
 }
@@ -438,20 +478,22 @@ export function dpsActions(h) {
   h.holdFire = !tgt;
   if (h.cast || h.st.stun > 0 || h.st.caged) return;
   const close = foes.filter((m) => !m.isBoss && dist(m, h) <= 140 + m.r);
-  const caster = foes.find((m) => m.cast && m.cast.kick && dist(m, h) <= 150 + m.r);
+  const caster = foes.find((m) => kickable(h, m) && dist(m, h) <= NOVA_REACH + m.r);
   // Chill the boss when he is in reach, so Icicle and Comet shatter him
   const cb = chillTarget(h);
   if (cb && ready(h, 'a2') && dist(cb, h) <= NOVA_REACH + cb.r - 4) { useAbility(h, 'a2'); return; }
+  // Rime burst: stop a cast, or freeze what's on you
   if (ready(h, 'a2') && (close.length >= 2 || caster || close.some((m) => m.target === h))) { useAbility(h, 'a2'); return; }
   if (ready(h, 'a1')) {
     const c = bestCluster(h, 120, 520);
-    if (c && (c.score >= 3 || (c.score >= 2.6 && S.boss)) && (tank && tank.alive ? foes.filter((m) => engagedByTank(m)).length >= 2 || !foes.some((m) => m.fightT < 1.0) : true)) { useAbility(h, 'a1', { x: c.x, y: c.y }); return; }
+    // a pack the tank holds, or the boss (on his own he's worth a storm too)
+    if (c && (c.score >= 3 || (c.score >= 1.5 && S.boss)) && (tank && tank.alive ? foes.filter((m) => engagedByTank(m)).length >= 2 || !foes.some((m) => m.fightT < 1.0) : true)) { useAbility(h, 'a1', { x: c.x, y: c.y }); return; }
   }
-  if (ready(h, 'a3') && tgt && !tgt.cage && !tgt.M.wisp && h.stillT > 0.2 && (tgt.isBoss || tgt.M.big || tgt.st.freeze > 0.9 || tgt.hp > 300) && !dangerAt(h, h.x, h.y, 1.3)) { useAbility(h, 'a3', tgt); return; }
-  // Icicle on cooldown, into something frozen when there is one
+  if (ready(h, 'a3') && tgt && !tgt.cage && !tgt.M.wisp && h.stillT > 0.2 && (tgt.isBoss || tgt.M.big || tgt.st.freeze > 0.9 || tgt.st.chill > 0.9 || tgt.exposed > 0.9 || tgt.hp > 300) && !dangerAt(h, h.x, h.y, 1.3) && !pullsBoss(h, tgt, cometFor(h, tgt))) { useAbility(h, 'a3', tgt); return; }
+  // otherwise Icicle every beat: a red bomb in reach first, then something frozen, then the target (or the cage)
   if (ready(h, 'a4')) {
     const frozen = foes.filter((m) => m.st.freeze > 0.25 && dist(m, h) < 500).sort((a, b) => b.hp - a.hp)[0];
-    const t = frozen || (tgt && !tgt.cage ? tgt : null);
+    const t = cage || bombInReach(h) || frozen || (tgt && !tgt.M.wisp ? tgt : null);
     if (t) useAbility(h, 'a4', t);
   }
 }
@@ -460,7 +502,6 @@ export function botTick(h, dt) {
   const B = h.bot;
   if (!h.alive) { h.intent.mx = h.intent.my = 0; h.intent.block = false; return; }
   if (h.role === 'tank') tankBlockLogic(h);
-  if (h.queued && h.gcd <= 0) { const q = h.queued; h.queued = null; mend(h, q); }
   B.think -= dt;
   if (B.think > 0) return;
   B.think = 0.1;

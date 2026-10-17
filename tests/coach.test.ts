@@ -65,11 +65,17 @@ test('coach: nothing out of a fight, and a hit about to land on you is a roll fi
   assert.equal(momentFor(me), null);
 });
 
-test('coach: the tank blocks a big hit, taunts what is on a mate, pulls a pack, charges what got away, cleaves what is in reach', () => {
+test('coach: the tank blocks a big hit, kicks a cast, taunts what is on a mate, pulls a pack, charges what got away, and glows Cleave only when it will Crush', () => {
   const { s, tank, dps, mobs, me } = fight('tank');
   for (const m of mobs) { m.x = tank.x + 700; m.y = tank.y; m.target = tank; }
   mobs[1].x = tank.x; mobs[1].y = tank.y - 60;
-  assert.deepEqual(momentFor(me), { slot: 'a1', tag: 'CLEAVE!' });
+  assert.equal(momentFor(me), null, 'Cleave is the filler: pressed every beat, it never glows for a plain swing');
+  me.crush = 1;
+  assert.deepEqual(momentFor(me), { slot: 'a1', tag: 'CRUSH!' });
+  me.crush = 0;
+  mobs[1].exposed = 2;
+  assert.deepEqual(momentFor(me), { slot: 'a1', tag: 'CRUSH!' }, 'an Exposed foe is always Crushed');
+  mobs[1].exposed = 0;
   for (const m of mobs) { m.x = tank.x; m.y = tank.y - 60; }
   assert.deepEqual(momentFor(me), { slot: 'a3', tag: 'PULL!' });
   mobs[0].x = dps.x; mobs[0].y = dps.y + 40; mobs[0].target = dps;
@@ -77,6 +83,10 @@ test('coach: the tank blocks a big hit, taunts what is on a mate, pulls a pack, 
   me.cd.a3 = 4;
   mobs[0].x = tank.x + 320; mobs[0].y = tank.y;
   assert.deepEqual(momentFor(me), { slot: 'a2', tag: 'PEEL!' });
+  const caller = mobs.find((m: any) => m.type === 'caller');
+  caller.x = tank.x + 300; caller.y = tank.y;
+  caller.cast = { id: 'bolt', name: 'Grave Bolt', t: 0.5, dur: 2, kick: true };
+  assert.deepEqual(momentFor(me), { slot: 'a2', tag: 'KICK!' }, 'a cast to stop comes before a mob to peel');
   tankBuster(s, tank, 0.9);
   assert.deepEqual(momentFor(me), { slot: 'a4', tag: 'BLOCK!' });
 });
@@ -98,7 +108,7 @@ test('coach: the mage freezes what is on top of it, shatters what is frozen, sto
   assert.deepEqual(momentFor(me), { slot: 'a3', tag: 'COMET!' });
 });
 
-test('coach: the rogue fans a pack, blinks to a far target, poisons a fresh one and crits a poisoned one', () => {
+test('coach: the rogue kicks a cast, fans a pack, blinks to a far target, poisons a fresh one and finishes at five points', () => {
   const { mobs, me } = fight('dps', 'rogue');
   assert.equal(me.cls, 'rogue');
   const t = mobs[0];
@@ -109,7 +119,16 @@ test('coach: the rogue fans a pack, blinks to a far target, poisons a fresh one 
   t.x = me.x + 40;
   assert.deepEqual(momentFor(me), { slot: 'a1', tag: 'VENOM!' });
   t.bleed = { left: 4, per: 30, next: 0.5, src: me };
-  assert.deepEqual(momentFor(me), { slot: 'a2', tag: 'CRIT!' });
+  assert.equal(momentFor(me), null, 'poisoned, and under five points: Viper Blades is just the filler');
+  me.points = 5;
+  assert.deepEqual(momentFor(me), { slot: 'a2', tag: 'FINISH!' });
+  me.points = 1; t.exposed = 2;
+  assert.deepEqual(momentFor(me), { slot: 'a2', tag: 'FINISH!' }, 'an Exposed foe counts as five points');
+  t.exposed = 0;
   mobs[1].x = me.x + 50; mobs[1].y = me.y + 20;
   assert.deepEqual(momentFor(me), { slot: 'a3', tag: 'FAN!' });
+  const caller = mobs.find((m: any) => m.type === 'caller');
+  caller.x = me.x - 60; caller.y = me.y;
+  caller.cast = { id: 'bolt', name: 'Grave Bolt', t: 0.5, dur: 2, kick: true };
+  assert.deepEqual(momentFor(me), { slot: 'a3', tag: 'KICK!' });
 });

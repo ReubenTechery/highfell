@@ -8,7 +8,7 @@ import { TEMPLATE_ENGINE } from '../src/content/_template/engine';
 import { BARROW } from '../src/content/barrow';
 import { activeHero, classRuns, countClassRun, countLift, createHero, dungeonRecord, finishCurseTip, finishHearthTour, finishIntroRun, freshProfile, learnGlow, markClassTrial, migrate, nameProblem, needsClassTrial, needsCurseTip, needsHearthTour, needsIntroRun, needsSwipeHint, PROFILE_VERSION, removeHero, renameHero, roleOf, setActive, startHearthTour, WARBAND_CAP, type Hero, type Profile } from '../src/meta/profile';
 import { DUPE_MARKS, HEROIC_PIECES, grantTrialStarter, heroicOpen, heroicProgress, resolveRun, rollTable, trialStarter } from '../src/meta/loot';
-import { bestRegular, betterFor, buyTrait, compareFor, compareOn, effectsOf, equip, floorWorn, freshForRole, itemScore, loadoutFor, newHero, plainLoadout, putOn, seenSlot, setChange, shelfFor, waiting, waitingFor, weaponTrait, wear, wearerOf, worn, type ShelfPiece } from '../src/meta/gear';
+import { bestRegular, betterFor, buyTrait, compareFor, compareOn, effectsOf, equip, fillerHit, floorWorn, freshForRole, itemScore, loadoutFor, newHero, plainLoadout, putOn, seenSlot, setChange, shelfFor, waiting, waitingFor, weaponTrait, wear, wearerOf, worn, type ShelfPiece } from '../src/meta/gear';
 import { CLASSES, FOUNDERS, HERO_ART, MAX_HEROES, RACES, allHeroArt, canMake, cleanName, defaultSex, heroArt } from '../src/content/folk';
 import { SLOT_IDS, gearId } from '../src/content/gear';
 import { INGREDIENTS, RECIPES } from '../src/content/vale';
@@ -809,6 +809,22 @@ test('gear: a drop held up against what its role wears says plainly if it is bet
   assert.equal(compareFor(p, rogue, 'gravekeeper.rogue')?.verdict, 'better');
 });
 
+test('gear: the armoury shows your filler’s hit before and after a piece, and its helm makes the filler hit harder', () => {
+  // a Common tank's Cleave is its written hit; Power and the Barrowguard Helm raise it
+  assert.equal(fillerHit(plainLoadout('tank', 0), 'tank'), 60);
+  assert.equal(fillerHit(plainLoadout('rogue', 0), 'rogue'), 38, 'Viper Blades');
+  const epic = plainLoadout('tank', 3);
+  assert.equal(fillerHit(epic, 'tank'), Math.round(60 * epic.power));
+  const p = freshProfile();
+  const h = newHero(p, { name: 'Brannoc Stoneshield', race: 'dwarf', cls: 'warrior' })!;
+  const c = compareOn(worn(p, h), 'tank', ITEMS['barrowguard.helm']);
+  assert.equal(c.hit[0], 60);
+  assert.ok(c.hit[1] > Math.round(60 * 1.25), `the helm's Power and its +25% (${c.hit[1]})`);
+  // the mage's Icicle and the healer's Smite too
+  assert.ok(compareOn(floorWorn(p, 'dps'), 'dps', ITEMS['rimebone.helm']).hit[1] > 62 * 1.25);
+  assert.equal(compareOn(floorWorn(p, 'healer'), 'healer', ITEMS[gearId('healer', 'chest', 0)]).hit[0], 60);
+});
+
 test('art: every icon and sprite the content names exists', async () => {
   const fs = await import('node:fs');
   const read = (f: string) => JSON.parse(fs.readFileSync(new URL('../../art/' + f, import.meta.url), 'utf8'));
@@ -922,10 +938,10 @@ test('gear-driven power & boss weapons: power comes strictly from worn gear and 
   assert.equal(loadoutFor(p, h).power, 1, 'power comes strictly from worn gear');
   // All 4 Barrow Crypt boss weapons surface their signature ability buffs in effectsOf
   const weapons = [
-    { id: 'gravekeeper.tank', role: 'tank' as const, cls: 'warrior' as const, race: 'dwarf' as const, effect: 'gravedigger', match: 'Charge resets Cleave' },
+    { id: 'gravekeeper.tank', role: 'tank' as const, cls: 'warrior' as const, race: 'dwarf' as const, effect: 'gravedigger', match: 'Charge primes two Crushes' },
     { id: 'gravekeeper.healer', role: 'healer' as const, cls: 'cleric' as const, race: 'human' as const, effect: 'longnight', match: 'Sunburst sears nearby foes' },
-    { id: 'gravekeeper.dps', role: 'dps' as const, cls: 'mage' as const, race: 'elf' as const, effect: 'gravefrost', match: 'Rime burst resets Icicle' },
-    { id: 'gravekeeper.rogue', role: 'dps' as const, cls: 'rogue' as const, race: 'elf' as const, effect: 'cryptfangs', match: 'Shadowstep resets Shadowstrike' },
+    { id: 'gravekeeper.dps', role: 'dps' as const, cls: 'mage' as const, race: 'elf' as const, effect: 'gravefrost', match: 'Rime burst makes your next two Icicles Shatter' },
+    { id: 'gravekeeper.rogue', role: 'dps' as const, cls: 'rogue' as const, race: 'elf' as const, effect: 'cryptfangs', match: 'Shadowstep gives you one more point' },
   ];
   for (const w of weapons) {
     const hero = newHero(p, { name: `Hero ${w.cls}`, race: w.race, cls: w.cls })!;

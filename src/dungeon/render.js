@@ -3,18 +3,18 @@ import { vrand } from '../core/rng';
 import { AB, abKey } from '../content/roles';
 import { RARITY } from '../content/gear';
 import { S } from './state.js';
-import { BAKE_S, PAT, bakeAll, drawSpr, makePatterns, mkCanvas } from './art.js';
+import { BAKE_S, FONT, K, PAT, bakeAll, drawSpr, makePatterns, mkCanvas } from './art.js';
 import { PERFECT_WINDOW, dots } from './entities.js';
 import { drawWalkout, walkoutFocus } from './walkout.js';
-import { CURSE_COL, CURSE_TIME, chainEnds } from './mobs.js';
+import { CURSE_COL, CURSE_TIME } from './mobs.js';
+import { drawAir, drawFx, drawTexts } from './drawfx.js';
 import { drawMap } from './mapdraw.js';
 import { areaOf } from './world.js';
 
 /* ---------- drawing: the crypt, everyone in it, and the effects ---------- */
 /** @type {any} */
 export const VIEW = { cv: null, ctx: null, W: 0, H: 0, dpr: 1, scale: 1, S: 1, fx: 0, fy: 0, cam: { x: 500, y: 5600 }, dark: null };
-export const K = '#1E1A1A';
-export const FONT = "'Lilita One', 'Trebuchet MS', sans-serif";
+export { K, FONT };
 /* the screen layer tells the renderer what the player is aiming, if anything: () => { key, range, x, y, r } | null */
 /** @type {{ get: null | (() => any) }} */
 export const AIM = { get: null };
@@ -323,7 +323,8 @@ export function drawHero(ctx, h) {
     drawSpr(ctx, name, h.x, h.y - 6, { rot: -Math.PI / 2 * (h.flip ? -1 : 1) * Math.min(1, h.deadT * 5), alpha: 0.5, sx: 0.9, sy: 0.9 });
     return;
   }
-  let x = h.x, y = h.y;
+  const held = h.holdT > 0 && h.holdX !== undefined;
+  let x = held ? h.holdX : h.x, y = held ? h.holdY : h.y;
   let sx = 1, sy = 1, rot = 0;
   const moving = h.moving > 0;
   if (moving) { y -= Math.abs(Math.sin(h.walkT)) * 5; sy = 1 + Math.sin(h.walkT * 2) * 0.03; }
@@ -374,12 +375,19 @@ export function drawHero(ctx, h) {
     if (S.frame % 9 === 0) S.parts.push({ x: h.x + fx_ + vrand(-12, 12), y: h.y, z: -wy + vrand(-10, 10), vx: 0, vy: 0, vz: 0, up: true, col: '#FFF6D0', size: vrand(2.5, 4), t: 0, dur: 0.8 });
   }
   const yy = h.dodgeT > 0 ? y + 26 : y;
+  // something has turned on you (and you're not the tank): an orange ring under you says get to the tank
+  if (h.isPlayer && h.role !== 'tank' && S.mobs.some((m) => m.alive && m.state === 'fight' && m.target === h && !m.cage && !m.M.wisp)) {
+    ctx.globalAlpha = 0.6 + Math.sin(S.t * 9) * 0.2; ctx.lineWidth = 6; ctx.strokeStyle = '#FF8A3D';
+    ctx.beginPath(); ctx.ellipse(h.x, h.y + 2, 46, 21, 0, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
+  }
   // your set's look: gold (the old Gravegold Dye), ghostly (the Ghostly Dye; run.ts lets it win), or
   // glowing like mushrooms in the dark (the Sporeglow Dye, on a Thimblebriar set)
   const gold = h.isPlayer && S.opts.gilded, ghost = (h.st && h.st.ghost > 0) || (!gold && h.isPlayer && S.opts.ghostly);
   const spore = !gold && !ghost && h.isPlayer && S.opts.sporeglow;
   if (spore && S.frame % 8 === 0) S.parts.push({ x: h.x + vrand(-22, 22), y: h.y, z: vrand(10, 70), vx: 0, vy: 0, vz: 0, up: true, col: '#C8F5A8', size: vrand(2, 3.5), t: 0, dur: 1.0 });
-  drawSpr(ctx, name, x, yy, { flip: spinFlip, sx, sy, rot: rot, alpha: ghost ? 0.76 : 1, tint: h.flash > 0 ? 'flash' : gold ? 'gold' : ghost ? 'ghost' : spore ? 'spore' : null, tintA: h.flash > 0 ? Math.max(0, h.flash) / 0.12 : gold ? 0.4 : spore ? 0.3 : 0.45 });
+  // your heal lands: the mate glows green a moment (the spore tint is the green)
+  const glow = !(h.flash > 0) && h.healGlow > 0;
+  drawSpr(ctx, name, x, yy, { flip: spinFlip, sx, sy, rot: rot, alpha: ghost ? 0.76 : 1, tint: h.flash > 0 ? 'flash' : glow ? 'spore' : gold ? 'gold' : ghost ? 'ghost' : spore ? 'spore' : null, tintA: h.flash > 0 ? Math.max(0, h.flash) / 0.12 : glow ? 0.5 * Math.min(1, h.healGlow / 0.12) : gold ? 0.4 : spore ? 0.3 : 0.45 });
   if (h.st && h.st.ghost > 0) {
     ctx.globalAlpha = 0.3 + Math.sin(S.t * 8) * 0.1; ctx.strokeStyle = '#FFE08A'; ctx.lineWidth = 3.5;
     ctx.beginPath(); ctx.ellipse(h.x, h.y + (top + 2) / 2, 48, (24 - top) / 2, 0, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
@@ -464,8 +472,20 @@ export function drawMob(ctx, m) {
   if (m.hidden) return;
   let name = (m.M.phaseSprites && m.M.phaseSprites[m.phase]) || m.M.sp;
   if (m.pose && m.M.poseSprites && m.M.poseSprites[m.pose]) name = m.M.poseSprites[m.pose];
-  let x = m.x, y = m.y, sx = 1, sy = 1, rot = 0, alpha = 1;
-  if (!m.alive) { const k = clamp(m.deadT / 0.25, 0, 1); alpha = 1 - k; sy = 1 - k * 0.5; if (alpha <= 0) return; }
+  // held still on impact a moment (drawn only: the fight goes on)
+  const held = m.holdT > 0 && m.holdX !== undefined;
+  let x = held ? m.holdX : m.x, y = held ? m.holdY : m.y, sx = 1, sy = 1, rot = 0, alpha = 1;
+  if (!m.alive) {
+    // a kill flings a small mob away from whoever landed it, and a big one (a boss too) collapses where it stands
+    if (m.M.wisp) { const k = clamp(m.deadT / 0.25, 0, 1); alpha = 1 - k; sy = 1 - k * 0.5; }
+    else if (m.M.big || m.isBoss) { const k = clamp(m.deadT / 0.6, 0, 1), e = 1 - Math.pow(1 - k, 2); sy = 1 - e * 0.55; sx = 1 + e * 0.18; rot = (m.flip ? -1 : 1) * e * 0.12; alpha = 1 - clamp((k - 0.55) / 0.45, 0, 1); }
+    else {
+      const k = clamp(m.deadT / 0.45, 0, 1), e = 1 - Math.pow(1 - k, 2), a = m.dieA ?? -Math.PI / 2;
+      x += Math.cos(a) * 64 * e; y += Math.sin(a) * 30 * e - Math.sin(k * Math.PI) * 26;
+      rot = (Math.cos(a) >= 0 ? 1 : -1) * e * 1.5; alpha = 1 - clamp((k - 0.5) / 0.5, 0, 1);
+    }
+    if (alpha <= 0) return;
+  }
   if (m.rise > 0) { const k = 1 - m.rise / (m.riseDur || 0.75); alpha = Math.min(1, k * 1.6); sy = 0.3 + k * 0.7; y += (1 - k) * 10; }
   const moving = m.moving > 0;
   if (m.M.wisp) { y -= Math.sin(S.t * 4 + (m.seed || 0)) * 6; }
@@ -474,7 +494,9 @@ export function drawMob(ctx, m) {
   if (m.wind > 0 || m.pose === 'wind') { const a = m.target ? angTo(m, m.target) : m.face; x -= Math.cos(a) * 6; sy *= 1.04; rot = -Math.cos(a) * 0.08; }
   if (m.lunge > 0) { const k = m.lunge / 0.18; x += Math.cos(m.lungeA) * 12 * k; y += Math.sin(m.lungeA) * 8 * k; }
   if (m.jumpZ) y -= m.jumpZ;
-  sx = (2 - sy) * 1;
+  if (m.alive) sx = (2 - sy) * 1;
+  // a small mob squashes for two frames when hit, nudged back from the hit
+  if (m.squash > 0) { const k = m.squash / 0.035, a = m.nudgeA || 0; sx *= 1 + 0.14 * k; sy *= 1 - 0.14 * k; x += Math.cos(a) * 6 * k; y += Math.sin(a) * 3 * k; }
   const frozen = m.st.freeze > 0, chilled = !frozen && m.st.chill > 0;
   if (m.armorUp > 0) { ctx.globalAlpha = 0.12 + Math.sin(S.t * 6) * 0.05; ctx.fillStyle = '#F0E8D2'; ctx.beginPath(); ctx.ellipse(m.x, m.y - 90, 86, 110, 0, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; ctx.lineWidth = 4; ctx.strokeStyle = '#F0E8D2'; ctx.setLineDash([12, 10]); ctx.stroke(); ctx.setLineDash([]); }
   if (m.exposed > 0 && m.alive) {
@@ -482,139 +504,24 @@ export function drawMob(ctx, m) {
     ctx.beginPath(); ctx.ellipse(m.x, m.y + 2, m.r * 1.65, m.r * 0.65, 0, 0, TAU); ctx.fill();
     ctx.globalAlpha = 0.95; ctx.lineWidth = 4; ctx.strokeStyle = '#F2C230'; ctx.stroke(); ctx.globalAlpha = 1;
   }
-  // a Chilled boss wears a lighter frost than a frozen mob, and no ice block round him
-  drawSpr(ctx, name, x, y, { flip: m.flip, sx, sy, rot, alpha, tint: m.flash > 0 ? 'flash' : frozen || chilled ? 'frost' : null, tintA: m.flash > 0 ? (m.isBoss ? 0.4 : 0.7) : chilled ? 0.55 : 1 });
+  // Exposed: a gold edge round the whole body, so everyone sees the window
+  if (m.exposed > 0 && m.alive) drawSpr(ctx, name, x, y + 2, { flip: m.flip, sx: sx * 1.07, sy: sy * 1.04, rot, alpha: 0.75 + Math.sin(S.t * 10) * 0.2, tint: 'gold', tintA: 1, only: true });
+  // a hit flashes white; a payoff flashes white, then gold. A Chilled boss wears a lighter frost than a frozen mob,
+  // and no ice block round him
+  const fk = m.flash > 0 ? m.flash / (m.flashMax || 0.1) : 0, gold = m.flash > 0 && m.flashGold && fk < 0.55;
+  drawSpr(ctx, name, x, y, { flip: m.flip, sx, sy, rot, alpha, tint: gold ? 'gold' : m.flash > 0 ? 'flash' : frozen || chilled ? 'frost' : null, tintA: gold ? 0.7 : m.flash > 0 ? (m.isBoss ? 0.4 : 0.7) : chilled ? 0.55 : 1 });
   if (frozen) { ctx.lineWidth = 3; ctx.strokeStyle = '#DDF3FF'; ctx.globalAlpha = 0.9; const hh = m.M.big ? 150 : 90; roundRect(ctx, m.x - m.r - 12, m.y - hh, (m.r + 12) * 2, hh + 4, 10); ctx.stroke(); ctx.globalAlpha = 1; }
   if (m.st.stun > 0) stars(ctx, m.x, m.y - (m.isBoss ? 220 : m.M.big ? 160 : 108), '#F2C230');
   else if (m.st.stagger > 0) stars(ctx, m.x, m.y - 220, '#FFF8EC');
-  if (m.wild && m.alive && !m.isBoss) { const yy = m.y - (m.M.big ? 168 : 112) - Math.abs(Math.sin(S.t * 8)) * 4; ctx.font = `26px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 6; ctx.strokeStyle = K; ctx.strokeText('!!', m.x, yy); ctx.fillStyle = '#FF6B5E'; ctx.fillText('!!', m.x, yy); }
+  // a mob on anyone but the tank shows a red "!!" straight away (the tank's cue to grab it back); gone wild, it bobs faster
+  const slipped = m.alive && !m.isBoss && !m.M.wisp && m.state === 'fight' && m.target && m.target.role !== 'tank' && !(m.forcedT > 0);
+  if (slipped || (m.wild && m.alive && !m.isBoss)) { const yy = m.y - (m.M.big ? 168 : 112) - Math.abs(Math.sin(S.t * (m.wild ? 12 : 7))) * 4; ctx.font = `26px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 6; ctx.strokeStyle = K; ctx.strokeText('!!', m.x, yy); ctx.fillStyle = '#FF6B5E'; ctx.fillText('!!', m.x, yy); }
   if (!m.alive) return;
   if (m.cast) castBar(ctx, m.x, m.y - (m.M.big ? 170 : 122), 80, m.cast.t / m.cast.dur, m.cast.kick ? '#9BE15D' : '#F2C230');
   if (!m.isBoss && !m.M.wisp && m.state === 'fight' && m.hp < m.maxHp) {
     const w = m.M.big ? 80 : 48, yy = m.y - (m.M.big ? 158 : 106);
     ctx.fillStyle = '#2A2234'; ctx.strokeStyle = K; ctx.lineWidth = 2.5; roundRect(ctx, x - w / 2, yy, w, 8, 4); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#E04A3F'; roundRect(ctx, x - w / 2 + 1.5, yy + 1.5, Math.max(0, (w - 3) * (m.hp / m.maxHp)), 5, 2.5); ctx.fill();
-  }
-}
-
-/* ---------- air layer: projectiles, chains, effects, bits ---------- */
-export function drawAir(ctx, v) {
-  for (const p of S.projs) {
-    const a = p.team === 'hero' ? Math.atan2(p.vy || 0, p.vx || 1) : Math.atan2(p.vy, p.vx);
-    drawSpr(ctx, p.sp, p.x, p.y - p.z, { rot: p.spin ? S.t * 14 : a, sx: p.big ? 1.6 : 1, sy: p.big ? 1.6 : 1 });
-  }
-  for (const ch of S.chains) drawChain(ctx, ch);
-  for (const f of S.fx) if (!f.ground && f.type !== 'hand') drawFx(ctx, f);
-  for (const p of S.parts) {
-    const k = 1 - clamp((p.t - p.dur + 0.25) / 0.25, 0, 1);
-    ctx.globalAlpha = k;
-    if (p.sp) drawSpr(ctx, p.sp, p.x, p.y - p.z, { rot: p.rot });
-    else { ctx.fillStyle = p.col; ctx.beginPath(); ctx.arc(p.x, p.y - p.z, p.size, 0, TAU); ctx.fill(); }
-  }
-  ctx.globalAlpha = 1;
-}
-export function drawChain(ctx, ch) {
-  const e = chainEnds(ch);
-  const n = Math.max(4, Math.round(Math.hypot(e.bx - e.ax, e.by - e.ay) / 22));
-  const sag = 26 + Math.sin(S.t * 4) * 6;
-  const pt = (t) => ({ x: lerp(e.ax, e.bx, t), y: lerp(e.ay, e.by, t) + Math.sin(t * Math.PI) * sag });
-  ctx.globalAlpha = 0.35; ctx.strokeStyle = '#9BE15D'; ctx.lineWidth = 16;
-  ctx.beginPath(); for (let i = 0; i <= n; i++) { const p = pt(i / n); if (i) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y); } ctx.stroke();
-  ctx.globalAlpha = 1;
-  for (let i = 0; i < n; i++) {
-    const p = pt((i + 0.5) / n), q = pt((i + 0.6) / n);
-    const a = Math.atan2(q.y - p.y, q.x - p.x) + (i % 2 ? Math.PI / 2 : 0);
-    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(a);
-    ctx.lineWidth = 6.5; ctx.strokeStyle = K; ctx.beginPath(); ctx.ellipse(0, 0, 10, 5.5, 0, 0, TAU); ctx.stroke();
-    ctx.lineWidth = 3; ctx.strokeStyle = '#C9D2DC'; ctx.stroke();
-    ctx.restore();
-  }
-}
-export function drawFx(ctx, f) {
-  const k = clamp(f.t / f.dur, 0, 1);
-  if (f.type === 'ring') {
-    ctx.globalAlpha = 1 - k;
-    const r = lerp(f.r0, f.r1, 1 - Math.pow(1 - k, 2));
-    ctx.lineWidth = (f.w || 5) + 4; ctx.strokeStyle = K; ctx.beginPath(); if (f.ground) ctx.ellipse(f.x, f.y, r, r * 0.55, 0, 0, TAU); else ctx.arc(f.x, f.y, r, 0, TAU); ctx.stroke();
-    ctx.lineWidth = f.w || 5; ctx.strokeStyle = f.col; ctx.stroke();
-    ctx.globalAlpha = 1;
-  } else if (f.type === 'slash') {
-    ctx.globalAlpha = 1 - k;
-    const span = f.wide ? 2.2 : 1.6, a0 = f.a - span / 2 + k * 0.3, a1 = f.a + span / 2 * (0.4 + k * 0.6);
-    ctx.lineWidth = f.wide ? 16 : 10; ctx.strokeStyle = K; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, a0, a1); ctx.stroke();
-    ctx.lineWidth = f.wide ? 9 : 5.5; ctx.strokeStyle = f.col; ctx.stroke();
-    ctx.globalAlpha = 1;
-  } else if (f.type === 'cleave') {
-    const ease = 1 - Math.pow(1 - k, 2.2);
-    const span = 2.45;
-    const a0 = f.a - span * 0.52 + ease * 0.38;
-    const a1 = f.a - span * 0.1 + span * 0.65 * Math.min(1, ease * 1.45);
-    const rr = f.r * (0.82 + 0.22 * ease);
-    ctx.save();
-    ctx.lineCap = 'round';
-    // Outer shockwave trail
-    ctx.globalAlpha = (1 - k) * 0.35;
-    ctx.lineWidth = f.crush ? 34 : 26;
-    ctx.strokeStyle = f.crush ? '#FF8A4C' : '#F2C230';
-    ctx.beginPath(); ctx.arc(f.x, f.y, rr * 0.94, a0, a1); ctx.stroke();
-    // Main inked blade crescent
-    ctx.globalAlpha = 1 - k * 0.85;
-    ctx.lineWidth = f.crush ? 22 : 18;
-    ctx.strokeStyle = K;
-    ctx.beginPath(); ctx.arc(f.x, f.y, rr, a0, a1); ctx.stroke();
-    ctx.lineWidth = f.crush ? 13 : 10;
-    ctx.strokeStyle = f.col || '#F2C230';
-    ctx.stroke();
-    // Inner white-hot razor edge
-    ctx.lineWidth = 4.5;
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.beginPath(); ctx.arc(f.x, f.y, rr + 2, a0 + 0.18, a1); ctx.stroke();
-    ctx.restore();
-  } else if (f.type === 'whirl') {
-    const wx = f.h ? f.h.x : f.x, wy = (f.h ? f.h.y : f.y) - 28;
-    const spin = k * TAU * 2.1;
-    const fade = k < 0.8 ? 1 : (1 - k) / 0.2;
-    ctx.save();
-    ctx.translate(wx, wy);
-    ctx.scale(1, 0.64);
-    ctx.lineCap = 'round';
-    for (let arm = 0; arm < 2; arm++) {
-      const a0 = spin + arm * Math.PI;
-      const a1 = a0 + 2.05;
-      const rr = f.r * (0.86 + 0.14 * Math.sin(k * Math.PI));
-      ctx.globalAlpha = fade * 0.3;
-      ctx.lineWidth = 28; ctx.strokeStyle = '#FF8A4C';
-      ctx.beginPath(); ctx.arc(0, 0, rr * 0.92, a0, a1); ctx.stroke();
-      ctx.globalAlpha = fade * 0.92;
-      ctx.lineWidth = 17; ctx.strokeStyle = K;
-      ctx.beginPath(); ctx.arc(0, 0, rr, a0, a1); ctx.stroke();
-      ctx.lineWidth = 9.5; ctx.strokeStyle = f.col || '#F2C230';
-      ctx.stroke();
-      ctx.lineWidth = 3.5; ctx.strokeStyle = '#FFFFFF';
-      ctx.beginPath(); ctx.arc(0, 0, rr + 2, a0 + 0.35, a1); ctx.stroke();
-    }
-    ctx.restore();
-  } else if (f.type === 'beam') {
-    ctx.globalAlpha = 1 - k;
-    ctx.lineWidth = 9; ctx.strokeStyle = K; ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(f.x2, f.y2); ctx.stroke();
-    ctx.lineWidth = 5; ctx.strokeStyle = f.col; ctx.stroke();
-    ctx.globalAlpha = 1;
-  } else if (f.type === 'nova') {
-    ctx.globalAlpha = 1 - k;
-    const r = f.r * (0.3 + 0.7 * Math.sqrt(k));
-    ctx.fillStyle = 'rgba(143, 214, 255, 0.25)'; ctx.beginPath(); ctx.ellipse(f.x, f.y, r, r * 0.6, 0, 0, TAU); ctx.fill();
-    ctx.lineWidth = 7; ctx.strokeStyle = K; ctx.stroke(); ctx.lineWidth = 4; ctx.strokeStyle = '#DDF3FF'; ctx.stroke();
-    for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU; drawSpr(ctx, 'shard_ice', f.x + Math.cos(a) * r, f.y + Math.sin(a) * r * 0.6 - 10, { sx: 1.6, sy: 1.6 }); }
-    ctx.globalAlpha = 1;
-  } else if (f.type === 'comet') {
-    const z = (1 - k) * 420;
-    drawSpr(ctx, 'comet', f.x - (1 - k) * 160, f.y - 30 - z, { rot: Math.atan2(420, 160) * 0.5 + 0.3, sx: 1.4, sy: 1.4 });
-  } else if (f.type === 'swipe') {
-    ctx.globalAlpha = 1 - k;
-    ctx.lineWidth = 12; ctx.strokeStyle = K; ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(lerp(f.x, f.x2, Math.min(1, k * 2)), lerp(f.y, f.y2, Math.min(1, k * 2))); ctx.stroke();
-    if (f.col) { ctx.globalAlpha = (1 - k) * 0.4; ctx.lineWidth = 26; ctx.strokeStyle = f.col; ctx.stroke(); ctx.globalAlpha = 1 - k; }
-    ctx.lineWidth = 6; ctx.strokeStyle = f.col || '#FFFFFF'; ctx.stroke();
-    ctx.globalAlpha = 1;
   }
 }
 
@@ -647,18 +554,6 @@ export function drawDark(ctx) {
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(d, 0, 0); ctx.restore();
 }
 
-export function drawTexts(ctx) {
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
-  for (const t of S.texts) {
-    const k = t.t / t.dur;
-    const pop = k < 0.12 ? 1 + (0.12 - k) * 3 : 1;
-    ctx.globalAlpha = 1 - clamp((k - 0.7) / 0.3, 0, 1);
-    ctx.font = `${Math.round(t.size * pop)}px ${FONT}`;
-    ctx.lineWidth = Math.max(4, t.size * 0.26); ctx.strokeStyle = K;
-    ctx.strokeText(t.str, t.x, t.y); ctx.fillStyle = t.col; ctx.fillText(t.str, t.x, t.y);
-  }
-  ctx.globalAlpha = 1;
-}
 export function drawAim(ctx) {
   const a = AIM.get && AIM.get();
   if (!a || !S.player.alive) return;

@@ -20,8 +20,12 @@ export interface RoleDef {
 export interface AbilityDef {
   key: string; name: string; desc: string;
   cd: number; mana?: number; hold?: boolean; aim?: boolean; range?: number; cast?: number;
-  /** never waits for the beat and never starts it: Charge and Shadowstep (they move you), and for now the healer's */
+  /** never waits for the beat and never starts it: Charge and Shadowstep (they move you) */
   offBeat?: boolean;
+  /** the class's filler: no cooldown, pressed every beat (Cleave, Smite, Icicle, Viper Blades) */
+  filler?: boolean;
+  /** a filler's hit before Power and gear (the armoury card shows it before and after a piece) */
+  hit?: number;
   combo?: string;
 }
 

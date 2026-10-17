@@ -11,7 +11,8 @@ import { curseHero, makeChain } from '../src/dungeon/mobs.js';
 import { VIEW, toScreen } from '../src/dungeon/render.js';
 import { BARROW_ENGINE } from '../src/content/barrow/engine';
 import { IN, bindFrameSwipes, bindInput, playerIntent, resetInput } from '../src/ui/input';
-import { slotForKey } from '../src/content/keys';
+import { keyLabel, rebind, slotForKey } from '../src/content/keys';
+import { ownKeys, resetKeys, setKey } from '../src/ui/keybinds';
 import { BEAT } from '../src/content/roles';
 
 type Handler = (e: unknown) => void;
@@ -20,7 +21,7 @@ const layer = { addEventListener: (type: string, fn: Handler) => { on[type] = fn
 // the keyboard: the first bindInput's window listeners, so a test can press keys
 const win: Record<string, Handler> = {};
 (globalThis as unknown as { window: unknown }).window = { addEventListener: (type: string, fn: Handler) => { if (!win[type]) win[type] = fn; } };
-const key = (type: 'keydown' | 'keyup', code: string, repeat = false) => win[type]({ code, repeat, target: null, preventDefault: () => {} });
+const key = (type: 'keydown' | 'keyup', code: string, repeat = false, shiftKey = false) => win[type]({ code, repeat, shiftKey, target: null, preventDefault: () => {} });
 const step = (secs: number) => { for (let i = 0; i < Math.round(secs * 60); i++) update(1 / 60); };
 VIEW.cv = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 390, height: 844 }) } as unknown as typeof VIEW.cv;
 bindInput(layer, { active: () => true, stick: () => {}, hintDone: () => {}, holdBtn: () => {}, pause: () => {} });
@@ -142,6 +143,34 @@ test('each class\'s buttons sit on E, Q, F and R, with the main button on E, and
   assert.equal(slotForKey('tank', 'KeyW'), null, 'WASD still walks');
 });
 
+test('your keys: a rebound key fires its button, a key already in use swaps, Shift and a key is its own key, and Shift then stops dodging', () => {
+  const { me, log } = keyRun('tank');
+  setKey('tank', 'a1', 'KeyG');
+  assert.equal(slotForKey('tank', 'KeyG', ownKeys('tank')), 'a1');
+  assert.equal(keyLabel('tank', 'a1', ownKeys('tank')), 'G');
+  key('keydown', 'KeyG'); key('keyup', 'KeyG');
+  assert.deepEqual(log.fired, ['a1'], 'G is Cleave now');
+  // putting Cleave on Q moves the shield to G, Cleave's old key: no two buttons share one
+  assert.deepEqual(rebind('tank', ownKeys('tank'), 'a1', 'KeyQ'), { a1: 'KeyQ', a4: 'KeyG' });
+  resetKeys('tank');
+  assert.deepEqual(ownKeys('tank'), {});
+  // Charge on Shift+E: Shift no longer dodges, Shift+E Charges and E alone still Cleaves
+  setKey('tank', 'a2', 'Shift+KeyE');
+  log.fired.length = 0; me.beat = 0;
+  const dodgeCd = me.cd.dodge;
+  key('keydown', 'ShiftLeft', false, true);
+  assert.equal(me.cd.dodge, dodgeCd, 'Shift on its own did not roll');
+  key('keydown', 'KeyE', false, true); key('keyup', 'KeyE', false, true); key('keyup', 'ShiftLeft');
+  assert.deepEqual(log.fired, ['a2'], 'Shift+E is Charge');
+  step(1.2);
+  key('keydown', 'KeyE'); key('keyup', 'KeyE');
+  assert.deepEqual(log.fired, ['a2', 'a1'], 'E alone is still Cleave');
+  resetKeys('tank');
+  // with nothing on Shift, it dodges as ever
+  key('keydown', 'ShiftLeft', false, true); key('keyup', 'ShiftLeft');
+  assert.ok(me.dodgeT > 0 || me.cd.dodge > 0, 'Shift rolls');
+});
+
 test('a press a little early waits and fires on time; one far too early is let go with a pulse, not a buzz', () => {
   const { me, log } = keyRun('tank');
   me.cd.a1 = 0.3;
@@ -184,9 +213,9 @@ test('a held key fires once, as in WoW; a held touch button presses again whenev
   assert.deepEqual(log.fired, ['a1'], 'one Cleave for one press, however long the key is held');
   log.fired.length = 0; me.cd.a1 = 0; me.beat = 0;
   IN.held.add('a1');
-  step(3);
+  step(2.5);
   IN.held.delete('a1');
-  assert.deepEqual(log.fired, ['a1', 'a1'], 'held for 3 s, Cleave (2.2 s) fires twice');
+  assert.deepEqual(log.fired, ['a1', 'a1', 'a1'], 'held for 2.5 s, Cleave fires once a beat: three times');
   assert.deepEqual(log.nope, [], 'and nothing buzzed while it waited');
 });
 

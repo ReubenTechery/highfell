@@ -74,8 +74,11 @@ looks at the same power, in a log of their own. Teamwork between roles is the he
 | Beginner gear is meant to struggle: dungeons hit hard, telegraphs pierce shields | Tanking, healing, dodging and blocking matter |
 | Only the tank is caged; inside, the boss turns on someone else | The party feels the tank's absence |
 | You see only your own numbers; mates' spell effects stay | Less noise, your numbers mean more |
-| The four buttons share a beat (0.8 s, a second once every class has a filler to press on it); a press made up to 0.4 s early waits and fires on time, and nothing buzzes for being early | Mashing is never wrong, as in WoW (the combat plan, `docs/combat.md`) |
-| On the phone a held button repeats; on a computer each class's buttons sit on E, Q, F and R beside WASD, and a held key fires once | The thumb can rest, and your fingers never leave WASD |
+| The four buttons and Mend share a one-second beat; a press made up to 0.4 s early waits and fires on time, and nothing buzzes for being early | Mashing is never wrong, as in WoW (the combat plan, `docs/combat.md`) |
+| Every class has a filler with no cooldown to press every beat (Cleave, Smite, Icicle, Viper Blades), a payoff it sets up and two cooldowns; casters have no automatic attacks, melee keep small ones | Your presses do the damage, and every beat has something worth pressing |
+| Casts stop only to interrupts (Charge, Rime burst, Fan of Blades, Shadowstep), never to damage, and an interrupt Exposes the caster; Exposed is every class's payoff setup | A job for the tank and the DPS, and burn windows the party hits together |
+| The gold glow is for payoffs only; warnings keep their words without it | One glow you can't miss beats five you learn to ignore |
+| On the phone a held button repeats and the filler is the big button under the thumb; on a computer each class's buttons sit on E, Q, F and R beside WASD, a held key fires once, and Settings rebinds them, kept in the browser, never the save | The thumb can rest, your fingers never leave WASD, and bindings belong to a keyboard |
 | The first garden harvest gives the Hill Goat | Earned, and it stands in the paddock |
 | Every mount in the game has a place in the paddock beside the house; one you lack is a shadow with a "?" | Like the collection log, you see what's left to chase |
 | No trading or selling between players, ever | The collection log has to mean "I did this" |
@@ -121,13 +124,14 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   and the tests catch broken ids.
 - `src/dungeon`: the engine, plain JS with no DOM: state `S`, entities, heroes, mobs, bots, the loop,
   rendering to a canvas, `walkout.js` (the lantern tells; `cuckoo.js`, Thimblebriar's clock) and `coach.js`
-  (which button's moment has come, for a class's first runs). `press.js` is the beat and the press queue: every
+  (which button's moment has come, for a class's first runs). `buttons.js` is what each class's four buttons and Mend
+  do (the fillers and their payoffs), and `heroes.js` fires them. `press.js` is the beat and the press queue: every
   press of yours goes through it, and bots ask its `ready()` before they press. `bombs.js` is Thimblebriar's bombs as a shared
   part (any hit knocks one back, a perfect block bats one back, the Sticky Bomb) and `gadgets.js` its sets'
   bonuses and boss weapons. A dungeon's layout is data built by `layout.js` (rooms and the doors between them,
   any shape) and drawn by `mapdraw.js`; its bosses are built from the shared moves in `moves.js`; its run
-  script and themes come from `template.js`. It reaches the screen only through `HOOKS`
-  and `emit`.
+  script and themes come from `template.js`. `render.js` draws the dungeon and everyone in it, and `drawfx.js` what
+  flies over them (shots, effects, the numbers). It reaches the screen only through `HOOKS` and `emit`.
 - `src/meta`: TypeScript rules for everything that lasts: the profile and its migrations (heroes live here),
   loot (and when heroic opens), gear, achievements, what the collection log gives (`logs.ts`), the hearth,
   the party's seats and the under-powered warning (`party.ts`), when your Warband opens (`warband.ts`), `vale.ts` (seeds, planter beds, harvests,
@@ -137,9 +141,9 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   `housecanvas.ts` from pictures `housepaint.ts` makes, its bits moved by `housemotion.ts`; its drawing
   `houseart.ts`, every room in each look, the Toadstool Workshop's in `houseworkshop.ts`, the cellar's doors
   `halldoors.ts`, your hero's name tag `nametag.ts`, its tour and tips as data `tours.ts`), the hero maker, the garden (`garden.ts`, `valeart.ts`, `toys.ts` for the
-  close-ups), the cauldron (`brew.ts`), the run (HUD and input; `runguard.ts` keeps a back swipe from leaving it) and the reveal. Sheets over them: the dungeons
+  close-ups), the cauldron (`brew.ts`), the run (HUD and input; `runguard.ts` keeps a back swipe from leaving it; the Crypt Trial's lessons in `trial.ts`) and the reveal. Sheets over them: the dungeons
   (`dungeonsheet.ts`, its door's picture in `stage.ts`), a hero and your heroes (`herosheet.ts`), an item and how it compares (`itemsheet.ts`), the house's looks
-  (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`, an achievement's row and card in `achcard.ts`), settings (`settingssheet.ts`), a hero's gear in the armoury
+  (`lookssheet.ts`), the logs and the mounts (`logsheet.ts`; the collection log as a wardrobe in `logbook.ts`, a slot's closer look in `logpeek.ts`, an achievement's row and card in `achcard.ts`), settings (`settingssheet.ts`; your keys on a computer in `keybinds.ts`), a hero's gear in the armoury
   (`armoury.ts`; the card for the piece you pick in `armourycard.ts`), the satchel and the spot picker. A hero is a body wearing a layer per gear slot, put together from the save by `heroart.ts`. Toasts, sound (`sound.ts`: the embedded effects, each with its synthesised fallback) and music
   (`music.ts`: the streamed loops and the victory sting). The Share card (`sharecard.ts`: a moment drawn on a canvas)
   and its screen (`share.ts`: the share sheet, or the picture to save). `styles.css` is inlined by the build.
@@ -147,7 +151,7 @@ boss mechanics, the house and its looks, the garden and brews, onboarding, saves
   build embeds it), `music/*.mp3` and `music.json` (streamed from the live page's own files, never embedded).
 - `src/sim` and `scripts/sim.mjs`: headless bot runs of the real engine (the balance numbers).
 - `tools/`: the art pipeline (Python writes SVG into `art/*.json`; the log's armour stands are in `art_wardrobe.py`; the heroes are drawn in layers: bodies with their anchors in `art_bodies.py`, each class's gear drawn once in `art_gear_tank.py`, `_healer`, `_mage` and `_rogue`, put together by `art_gear.py`, shared shapes in `art_heroes.py` and faces in `art_heads.py`), `art_sheet.py` (look at your art), `pw_check.py` (screenshot the built game),
-  `pw_perf.py` (measure the house's speed on a slowed-down phone), `audio.py` (the sounds: ElevenLabs takes,
+  `pw_perf.py` (measure the house's speed on a slowed-down phone, or a run's with `--run`), `audio.py` (the sounds: ElevenLabs takes,
   trimmed, levelled and compressed; needs ffmpeg).
 - `tests/`: `balance.test.ts` (bot clears must stay in their bands), `dungeon.test.ts` (threat, cages,
   curses, numbers, tuning, where each hero's weapon and head are), `coach.test.ts` (which button the coach
@@ -166,7 +170,7 @@ npm run preview        # play it: http://localhost:5173, and a phone address on 
 npm run sim            # the balance table (--gear 3, --solo, --seeds N)
 python3 tools/pw_check.py shot.png --w 390 --h 844 --touch    # a phone screenshot of the built game
 python3 tools/pw_check.py shot.png --w 1440 --h 900           # a desktop screenshot
-python3 tools/pw_perf.py                                      # how heavy the house is on a slowed-down phone
+python3 tools/pw_perf.py                                      # how heavy the house is on a slowed-down phone (--run: a fight)
 python3 tools/art_sheet.py shots/art.png art/vale.json        # a contact sheet of the art
 python3 tools/audio.py takes crit --n 3     # new takes of a sound (needs ELEVENLABS_API_KEY), into .cache/audio
 python3 tools/audio.py page shots/takes.html crit   # a page to listen to every take of it

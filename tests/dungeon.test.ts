@@ -7,8 +7,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, update } from '../src/dungeon/game.js';
 import { S } from '../src/dungeon/state.js';
-import { aggro, exposeMob, healHero, hurtHero, hurtMob, pickTarget } from '../src/dungeon/entities.js';
-import { abCd, onPerfectBlock, useAbility } from '../src/dungeon/heroes.js';
+import { LAST, aggro, exposeMob, healHero, hurtHero, hurtMob, pickTarget } from '../src/dungeon/entities.js';
+import { abCd, useAbility } from '../src/dungeon/heroes.js';
+import { MAX_POINTS, onPerfectBlock } from '../src/dungeon/buttons.js';
+import { AB, BEAT } from '../src/content/roles';
 import { CURSE_TIME, breakCage, curseHero, cutChain, liftCurse, makeCage, makeChain, mashCage, spawnMob } from '../src/dungeon/mobs.js';
 import { GIVE_UP, KEEP_UP } from '../src/dungeon/bots.js';
 import { navPoint } from '../src/dungeon/world.js';
@@ -35,7 +37,8 @@ test('tune: Barrow Crypt hits half as hard again as written, and its ordinary mo
   hurtHero(dps, 100, null, { pierce: true, dodge: false, block: false });
   assert.equal(before - dps.hp, 150);
   const rattler = s.mobs.find((m: any) => m.type === 'rattler');
-  assert.equal(rattler.maxHp, Math.round(BARROW_ENGINE.mobs.rattler.hp * 1.3));
+  assert.ok(BARROW_ENGINE.tune.trashHp > 1);
+  assert.equal(rattler.maxHp, Math.round(BARROW_ENGINE.mobs.rattler.hp * BARROW_ENGINE.tune.trashHp));
 });
 
 test('threat: hit harder than the tank and it comes for you; Slam grabs it back and drags it in', () => {
@@ -60,6 +63,21 @@ test('threat: hit harder than the tank and it comes for you; Slam grabs it back 
   step(0.6);
   const near = Math.hypot(m.x - tank.x, m.y - tank.y);
   assert.ok(near < far - 80, `dragged from ${far.toFixed(0)} to ${near.toFixed(0)}`);
+});
+
+test('threat: a tank pressing Cleave every beat holds a pack against a mage pressing Icicle every beat from the first second', () => {
+  const { s, tank, dps } = game('tank');
+  const m = s.packs[0].mobs[0];
+  m.hp = m.maxHp = 1e6;
+  tank.x = m.x; tank.y = m.y + 60; tank.face = Math.atan2(m.y - tank.y, m.x - tank.x);
+  for (let beat = 1; beat <= 12; beat++) {
+    // the mage's Icicle lands first, then the tank's Cleave: Cleave is the tank's threat engine (2×, a Crush 3×)
+    hurtMob(m, AB.dps.a4.hit!, dps, { crit: 0.25, tier: 'filler', key: 'icicle' });
+    tank.beat = 0;
+    assert.ok(useAbility(tank, 'a1', m));
+    m.target = pickTarget(m);
+    assert.equal(m.target, tank, `beat ${beat}: the mage took it`);
+  }
 });
 
 test('cages: only the tank, nothing can target him inside, and he has to win the boss back', () => {
@@ -165,42 +183,59 @@ test('intro: the Crypt Trial plays as any class, and every one of them gets Sir 
   }
 });
 
-test('combat: Cleave is a1 (2.2s cd), Perfect Block resets Cleave, and Boss Weapons buff core abilities', () => {
+test('combat: Cleave is the filler (no cooldown, once a beat); a perfect block, Charge and Slam prime Crush; the boss weapons change what buttons do', () => {
   const { s, tank, healer, dps } = game('tank');
-  assert.equal(abCd(tank, 'a1'), 2.2);
-
-  // Baseline Perfect Block resets Cleave (a1) and Barrowguard 2-piece grants 150 absorb
-  tank.cd.a1 = 2.0;
-  tank.bonuses.add('barrowguard2');
-  onPerfectBlock(tank, s.packs[0].mobs[0]);
-  assert.equal(tank.cd.a1, 0, 'Perfect Block resets Cleave cooldown');
-  assert.equal(tank.absorb, Math.round(150 * tank.power), 'Barrowguard 2-piece grants 150 absorb on Perfect Block');
-
-  // Tank Boss Weapon (gravedigger): Charge (a2) resets Cleave cooldown on impact
+  assert.equal(abCd(tank, 'a1'), 0, 'Cleave has no cooldown');
   const m = s.packs[0].mobs[0];
   m.hp = m.maxHp = 50000;
-  tank.unique = 'gravedigger';
-  tank.x = m.x; tank.y = m.y + 120;
-  tank.cd.a1 = 2.0; tank.cd.a2 = 0; tank.gcd = 0;
+  tank.x = m.x; tank.y = m.y + 70; tank.face = Math.atan2(m.y - tank.y, m.x - tank.x);
+  assert.ok(useAbility(tank, 'a1', m));
+  assert.equal(tank.cd.a1, 0, 'nothing to wait for but the beat');
+  assert.equal(tank.beat, BEAT.len, 'it starts the beat');
+  assert.equal(useAbility(tank, 'a1', m), false, 'once a beat');
+
+  // a perfect block primes a Crush and ends the beat; Barrowguard 2pc gives a 150 bone shield
+  tank.crush = 0;
+  tank.bonuses.add('barrowguard2');
+  onPerfectBlock(tank, m);
+  assert.equal(tank.crush, 1, 'the next Cleave Crushes');
+  assert.equal(tank.beat, 0, 'so Cleave fires the moment the shield comes down');
+  assert.equal(tank.absorb, Math.round(150 * tank.power), 'Barrowguard 2-piece grants 150 absorb on Perfect Block');
+  assert.ok(useAbility(tank, 'a1', m));
+  assert.equal(LAST.tier, 'payoff', 'a Crush');
+  assert.equal(tank.crush, 0, 'and it used the prime');
+  tank.beat = 0;
+  assert.ok(useAbility(tank, 'a1', m));
+  assert.equal(LAST.tier, 'filler', 'the Cleave after a Crush is a plain one (a Crush’s crit never chains)');
+
+  // Slam primes a Crush too
+  tank.beat = 0; tank.cd.a3 = 0; tank.crush = 0;
+  assert.ok(useAbility(tank, 'a3', null));
+  assert.equal(tank.crush, 1, 'Slam primes Crush');
+
+  // the Gravedigger: Charge primes two Crushes
+  tank.unique = 'gravedigger'; tank.crush = 0;
+  tank.x = m.x; tank.y = m.y + 160;
+  tank.cd.a2 = 0; tank.beat = 0;
   assert.ok(useAbility(tank, 'a2', m));
-  step(0.35);
-  assert.equal(tank.cd.a1, 0, 'The Gravedigger makes Charge reset Cleave cooldown');
+  step(0.6);
+  assert.equal(tank.crush, 2, 'The Gravedigger: Charge primes two Crushes');
 
   // Healer Boss Weapon (longnight): Sunburst (a3) sears nearby enemies and wards allies for 75
   healer.unique = 'longnight';
   healer.x = m.x + 40; healer.y = m.y;
-  healer.cd.a3 = 0; healer.gcd = 0;
+  healer.cd.a3 = 0; healer.beat = 0;
   const mHpBefore = m.hp;
   assert.ok(useAbility(healer, 'a3', null));
   assert.ok(m.hp < mHpBefore, 'Lantern of the Long Night makes Sunburst sear nearby foes');
   assert.ok(healer.absorb >= Math.round(75 * healer.power), 'Lantern of the Long Night makes Sunburst ward allies');
 
-  // Mage Boss Weapon (gravefrost): Rime burst resets Icicle and spawns a frost storm
+  // Mage Boss Weapon (gravefrost): Rime burst primes two Shatters and spawns a frost storm
   dps.unique = 'gravefrost';
-  dps.cd.a2 = 0; dps.cd.a4 = 5.0; dps.gcd = 0;
+  dps.cd.a2 = 0; dps.beat = 0; dps.shatter = 0;
   const zonesBefore = s.zones.length;
   assert.ok(useAbility(dps, 'a2', null));
-  assert.equal(dps.cd.a4, 0, 'Gravefrost Staff makes Rime burst reset Icicle cooldown');
+  assert.equal(dps.shatter, 2, 'Gravefrost Staff: the next two Icicles Shatter');
   assert.equal(s.zones.length, zonesBefore + 1, 'Gravefrost Staff makes Rime burst leave a frost storm');
 });
 
@@ -235,7 +270,7 @@ test('cooperative roles & lethal telegraphs: only healer can banish wisps and cu
   assert.ok(hp0 - tank.hp < 50, 'Blocked hazard receives both block reduction and armor mitigation');
 });
 
-test('rogue: +10% movement speed always, glass cannon stats, twin-dagger autos, Viper Venom DoT, Shadowstrike guaranteed crit, Fan kick, Shadowstep blink, and Cryptfangs reset', () => {
+test('rogue: fast and fragile; Viper Blades poisons and builds points, Shadowstrike spends them (always a crit on a poisoned foe), Fan stops a cast, Shadowstep blinks behind and banks two', () => {
   newGame(BARROW_ENGINE, { role: 'dps', seed: 77, start: 'entrance', auto: false, quiet: true, noEvents: true, loadouts: { dps: { cls: 'rogue' } } });
   const s = S as any;
   const rogue = s.heroes.find((h: any) => h.role === 'dps');
@@ -249,48 +284,54 @@ test('rogue: +10% movement speed always, glass cannon stats, twin-dagger autos, 
   const m = s.packs[0].mobs[0];
   m.hp = m.maxHp = 100000;
   rogue.x = m.x; rogue.y = m.y + 45;
+  const again = () => { rogue.beat = 0; };
 
-  // 1. Shadowstrike (a2) on unpoisoned target vs Viper Blades (a1) poisoned target
-  const hp0 = m.hp;
-  assert.ok(useAbility(rogue, 'a2', m));
-  const dryHit = hp0 - m.hp;
-  assert.ok(dryHit > 0);
-  rogue.cd.a2 = 0; rogue.gcd = 0; rogue.beat = 0;
+  // Shadowstrike spends points: with none, it doesn't fire
+  assert.equal(useAbility(rogue, 'a2', m), false, 'no points, no Shadowstrike');
 
-  // Apply Viper Blades (a1): immediate twin-dagger hit + 5s Viper Venom DoT
+  // Viper Blades: a slash, 5 s of venom, and a point (two on a crit)
   assert.ok(useAbility(rogue, 'a1', m));
-  assert.ok(m.bleed && m.bleed.left >= 5, 'Viper Blades applies 5s Viper Venom DoT');
+  assert.ok(m.bleed && m.bleed.left >= 5, 'Viper Blades applies Viper Venom');
+  assert.equal(rogue.points, LAST.crit ? 2 : 1, 'a point, two on a crit');
   const hpAfterViper = m.hp;
   step(1.1);
-  assert.ok(m.hp < hpAfterViper, 'Viper Blades DoT ticks every 0.5s');
+  assert.ok(m.hp < hpAfterViper, 'Viper Venom ticks');
+  for (let i = 0; i < 6; i++) { again(); useAbility(rogue, 'a1', m); }
+  assert.equal(rogue.points, MAX_POINTS, 'points stop at five');
 
-  // Shadowstrike (a2) on poisoned target: guaranteed 100% crit + +25% crit damage
-  rogue.cd.a2 = 0; rogue.gcd = 0; rogue.beat = 0;
-  const hpBeforeCrit = m.hp;
+  // Shadowstrike on a poisoned foe at five points: always a crit, the payoff, and the points are spent
+  again();
   assert.ok(useAbility(rogue, 'a2', m));
-  const bleedCritHit = hpBeforeCrit - m.hp;
-  assert.ok(bleedCritHit > dryHit * 1.8, `Shadowstrike on poisoned target (${bleedCritHit}) hits much harder than unpoisoned (${dryHit})`);
+  assert.ok(LAST.crit, 'a poisoned foe is always crit');
+  assert.equal(LAST.tier, 'payoff', 'five points is the payoff');
+  assert.equal(rogue.points, 0, 'every point spent');
 
-  // 2. Shadowstep (a4): teleports behind target, grants Shadow Frenzy, shaves 2s off Shadowstrike cd (or resets it with The Cryptfangs)
-  rogue.cd.a2 = 5.0; rogue.gcd = 0; rogue.beat = 0;
-  rogue.x = m.x; rogue.y = m.y + 220;
+  // an Exposed foe takes one Shadowstrike a window as if you had five points
+  again(); m.exposed = 3;
+  assert.ok(useAbility(rogue, 'a2', m), 'Exposed: no points needed');
+  assert.equal(LAST.tier, 'payoff');
+  again();
+  assert.equal(useAbility(rogue, 'a2', m), false, 'once a window');
+  m.exposed = 0; m.burned = null;
+
+  // Shadowstep: blinks behind, swings faster, and banks two points (three with the Cryptfangs)
+  rogue.points = 0; rogue.x = m.x; rogue.y = m.y + 220;
   assert.ok(useAbility(rogue, 'a4', m));
   assert.ok(Math.hypot(rogue.x - m.x, rogue.y - m.y) < 80, 'Shadowstep blinks into melee behind target');
   assert.ok(rogue.frenzyT >= 3.7, 'Shadowstep grants Shadow Frenzy attack speed buff');
-  assert.ok(rogue.cd.a2 <= 3.05, 'Shadowstep shaves 2s off Shadowstrike cooldown');
-
-  rogue.unique = 'cryptfangs';
-  rogue.cd.a2 = 5.0; rogue.cd.a4 = 0; rogue.gcd = 0; rogue.beat = 0;
+  assert.equal(rogue.points, 2, 'two points');
+  rogue.unique = 'cryptfangs'; rogue.points = 0; rogue.cd.a4 = 0;
   assert.ok(useAbility(rogue, 'a4', m));
-  assert.equal(rogue.cd.a2, 0, 'The Cryptfangs makes Shadowstep completely reset Shadowstrike cooldown');
+  assert.equal(rogue.points, 3, 'The Cryptfangs: one more point');
 
-  // 3. Fan of Blades (a3): modest AoE + interrupts kickable casts + refreshes Viper Venom duration
+  // Fan of Blades: stops a cast, refreshes venom, and adds a point
   m.bleed.left = 1.2;
   m.cast = { k: 'volley', t: 0.5, dur: 1.5, kick: true, fn: () => {} };
-  rogue.cd.a3 = 0; rogue.gcd = 0; rogue.beat = 0;
+  rogue.cd.a3 = 0; again(); rogue.points = 0;
   assert.ok(useAbility(rogue, 'a3', null));
   assert.equal(m.cast, null, 'Fan of Blades interrupts enemy cast');
   assert.ok(m.bleed.left >= 4.9, 'Fan of Blades refreshes Viper Blades duration');
+  assert.equal(rogue.points, 1, 'and adds a point');
 });
 
 test('barrow revamp: Crushing Blows on non-tanks, hazard Ward bleed-through, Exposed windows, 3-piece sets, moving Phase 3 ring, and Heroic Crypt Seals', () => {
@@ -559,7 +600,7 @@ test('crypt seals: only on heroic Barrow; normal Barrow has none', () => {
   assert.ok((S as any).seal && (S as any).seal.pads.length === 3, 'heroic Barrow has one');
 });
 
-test('the Gravekeeper: two phases on Normal at 65% of his health, all three on Heroic at his full health', () => {
+test('the Gravekeeper: two phases on Normal with a little over half his written health, all three on Heroic with more', () => {
   // pull him with a party that won't fall over: this is about what he does, not whether they live
   const pull = (heroic: boolean) => {
     const g = game('tank', 'keeper', heroic);
@@ -585,7 +626,8 @@ test('the Gravekeeper: two phases on Normal at 65% of his health, all three on H
   };
 
   const n = pull(false);
-  assert.equal(n.boss.maxHp, Math.round(BARROW_ENGINE.mobs.keeper.hp * 0.65));
+  assert.ok(BARROW_ENGINE.tune.hp.keeper > 0.5 && BARROW_ENGINE.tune.hp.keeper < 0.7);
+  assert.equal(n.boss.maxHp, Math.round(BARROW_ENGINE.mobs.keeper.hp * BARROW_ENGINE.tune.hp.keeper));
   const n1 = watch(n, 0.49, 3);
   assert.equal(n.boss.phase, 2, 'lights out at half health');
   assert.equal(n.s.darkTarget, 1);
@@ -595,7 +637,7 @@ test('the Gravekeeper: two phases on Normal at 65% of his health, all three on H
   for (const k of ['leap', 'bury', 'stride', 'burrow', 'ring']) assert.ok(!n1.has(k) && !n2.has(k), `no ${k} on Normal`);
 
   const h = pull(true);
-  assert.equal(h.boss.maxHp, Math.round(BARROW_ENGINE.mobs.keeper.hp * 1.63));
+  assert.equal(h.boss.maxHp, Math.round(BARROW_ENGINE.mobs.keeper.hp * BARROW_ENGINE.heroic.bossHp));
   const h1 = watch(h, 0.6, 3);
   assert.equal(h.boss.phase, 2);
   assert.ok(h1.has('leap'), 'Heroic leaps in for the dark');
@@ -633,7 +675,7 @@ test('boss weapons: every boss weapon’s power is one the engine knows, and the
   const { ITEMS } = await import('../src/content');
   const { TEMPLATE_ITEMS } = await import('../src/content/_template/items');
   const { trialWeapon } = await import('../src/meta/gear');
-  const engine = ['heroes.js', 'gadgets.js', 'bombs.js'].map((f) => readFileSync(`src/dungeon/${f}`, 'utf8')).join('\n');
+  const engine = ['heroes.js', 'buttons.js', 'gadgets.js', 'bombs.js'].map((f) => readFileSync(`src/dungeon/${f}`, 'utf8')).join('\n');
   for (const it of [...Object.values(ITEMS), ...TEMPLATE_ITEMS].filter((i) => i.kind === 'unique' && i.slot === 'weapon')) {
     assert.ok(it.effect && engine.includes(`'${it.effect}'`), `${it.id}: its power "${it.effect}" does nothing in the engine`);
   }

@@ -46,15 +46,15 @@ test('combos: Rime burst Chills a boss for 4s instead of freezing him, and Icicl
   s.quiet = false;
   me.cd.a4 = 0; me.beat = 0;
   assert.ok(useAbility(me, 'a4', boss));
-  for (let i = 0; i < 40 && !s.texts.some((t: any) => t.str === 'Shatter'); i++) update(1 / 60);
+  for (let i = 0; i < 40 && !s.texts.some((t: any) => t.str === 'Shatter!'); i++) update(1 / 60);
   setHooks({ sound: () => {} });
   s.quiet = true;
-  assert.ok(s.texts.some((t: any) => t.str === 'Shatter'), 'the shatter text');
+  assert.ok(s.texts.some((t: any) => t.str === 'Shatter!'), 'the shatter text');
   assert.ok(sounds.includes('shatter'), 'the shatter sound');
   assert.ok(boss.flash > 0, 'the boss flashes');
 
-  // it wears off (a little after 4s: the shatter's hitstop held the world still for a moment)
-  step(CHILL + 0.5);
+  // it wears off
+  step(CHILL + 0.1);
   assert.equal(boss.st.chill, 0);
   assert.equal(hit(boss, me, { noCrit: true, shatter: 3 }), plain, 'no shatter once the chill is gone');
 });
@@ -103,9 +103,9 @@ test('combos: Charge Staggers a boss without stunning him or stopping his swing,
 test('combos: the Gravedigger’s tremor Staggers a boss; Slam taunts him and spins but never drags him', () => {
   const { boss, me } = yard('tank');
   boss.y = me.y - 100;
-  me.unique = 'gravedigger'; me.swings = 4;
+  me.unique = 'gravedigger'; me.cleaves = 7;
   assert.ok(useAbility(me, 'a1', boss));
-  assert.ok(boss.st.stagger > 0, 'the fifth swing Staggers him');
+  assert.ok(boss.st.stagger > 0, 'the eighth Cleave Staggers him');
   assert.equal(boss.st.stun, 0, 'not stunned');
 
   boss.y = me.y - 150;

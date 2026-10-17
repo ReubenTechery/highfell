@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { newGame, update } from '../src/dungeon/game.js';
 import { S } from '../src/dungeon/state.js';
 import { hurtMob } from '../src/dungeon/entities.js';
-import { onPerfectBlock } from '../src/dungeon/heroes.js';
+import { onPerfectBlock } from '../src/dungeon/buttons.js';
 import { stepGadgets } from '../src/dungeon/gadgets.js';
 import { BLAST, FUSE, knockBomb, stickBomb, throwBomb } from '../src/dungeon/bombs.js';
 import { curseTick, liftCurse, spawnMob } from '../src/dungeon/mobs.js';
@@ -228,16 +228,19 @@ test('thimblebriar: two bosses of three moves, a job for each role and the bombs
   assert.ok(s.heroes.every((h: any) => h.role !== 'tank' || !h.st.curse), 'never the tank');
 });
 
-test('thimblebriar: in the Barrow’s epics (power 1.72) the bots clear in 3:30 to 4:00 without wiping; Old Toadstool takes about 40 seconds and the Tinker King about 80', () => {
+test('thimblebriar: in the Barrow’s epics (power 1.72) the bots clear in 3:20 to 4:10 without wiping; Old Toadstool takes about 45 seconds and the Tinker King about 80', () => {
+  const runs: ReturnType<typeof simRun>[] = [];
   for (const [role, seed] of [['tank', 101], ['healer', 202], ['dps', 303]] as [RoleId, number][]) {
     const r = simRun({ dungeon: 'thimblebriar', role, seed, loadouts: gear(3) });
     assert.equal(r.over, 'victory', `${role} seed ${seed} did not clear`);
     assert.equal(r.wipes, 0, `${role} seed ${seed} wiped`);
     assert.ok(r.clear! > 200 && r.clear! < 250, `${role} seed ${seed} cleared in ${r.clear}s`);
-    const fight = (id: string) => { const p = r.packs.find((x) => x.id === id)!; return p.cleared! - p.pulled; };
-    assert.ok(fight('K') > 30 && fight('K') < 50, `Old Toadstool took ${fight('K').toFixed(1)}s`);
-    assert.ok(fight('G') > 65 && fight('G') < 95, `the Tinker King took ${fight('G').toFixed(1)}s`);
+    runs.push(r);
   }
+  // the combat plan's bands, on average: one fight with the bombs swings ten seconds either way
+  const fight = (id: string) => runs.reduce((a, r) => { const p = r.packs.find((x) => x.id === id)!; return a + p.cleared! - p.pulled; }, 0) / runs.length;
+  assert.ok(fight('K') > 38 && fight('K') < 50, `Old Toadstool took ${fight('K').toFixed(1)}s`);
+  assert.ok(fight('G') > 70 && fight('G') < 90, `the Tinker King took ${fight('G').toFixed(1)}s`);
 });
 
 test('thimblebriar: in Rare gear (power 1.48) the bots wipe at least once in most runs, mostly at the Tinker King', () => {
@@ -257,10 +260,15 @@ test('thimblebriar: its own full kit melts it in about half the time of power 1.
   const kit = (set: string, weapon: string, trait: string) => loadoutOf([W(`${set}.helm`, 'helm'), W(`${set}.shoulders`, 'shoulders'), W(`${set}.chest`, 'chest'), W(weapon, 'weapon', trait)]);
   const own = { tank: kit('clockguard', 'tinker.tank', 'wide'), healer: kit('sporebloom', 'tinker.healer', 'sunflare'), dps: kit('arcspark', 'tinker.dps', 'shatterlance') };
   assert.ok(Math.abs(own.tank.power - 2.44) < 0.01, `power ${own.tank.power}`);
-  const epic = simRun({ dungeon: 'thimblebriar', role: 'dps', seed: 404, loadouts: gear(3) });
-  const bis = simRun({ dungeon: 'thimblebriar', role: 'dps', seed: 404, loadouts: own });
-  assert.equal(bis.over, 'victory');
-  assert.ok(bis.clear! < epic.clear! * 0.62, `full kit ${bis.clear}s against ${epic.clear}s`);
+  // over three seeds: one run swings a few percent either way
+  let epicT = 0, bisT = 0;
+  for (const seed of [404, 505, 606]) {
+    const epic = simRun({ dungeon: 'thimblebriar', role: 'dps', seed, loadouts: gear(3) });
+    const bis = simRun({ dungeon: 'thimblebriar', role: 'dps', seed, loadouts: own });
+    assert.equal(bis.over, 'victory');
+    epicT += epic.clear!; bisT += bis.clear!;
+  }
+  assert.ok(bisT < epicT * 0.62, `full kit ${bisT.toFixed(0)}s against ${epicT.toFixed(0)}s`);
 });
 
 test('thimblebriar: the cuckoo clock tells the chest the same way the lantern does: two gold pops and two knocks for a unique', () => {

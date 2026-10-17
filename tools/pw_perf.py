@@ -1,7 +1,8 @@
-# How heavy the house is: opens the built game in headless Chromium (Chrome's engine, as on Android) at phone
+# How heavy the game is: opens the built game in headless Chromium (Chrome's engine, as on Android) at phone
 # size with the CPU slowed down, and measures the hearth standing still, being dragged, zoomed with the wheel,
-# flown out to the whole house and back, and saved. Numbers come from Chrome's own trace.
-# Usage: python3 tools/pw_perf.py [--w 390] [--h 844] [--dpr 3] [--cpu 4] [--look barrow] [--page dist/highfell.html]
+# flown out to the whole house and back, and saved. With --run it measures a dungeon run instead: a big pull and
+# a boss fight, with the bots playing you. Numbers come from Chrome's own trace.
+# Usage: python3 tools/pw_perf.py [--w 390] [--h 844] [--dpr 3] [--cpu 4] [--look barrow] [--run] [--page dist/highfell.html]
 #   main thread: how busy the page's main thread was (near 100% and everything feels slow)
 #   repaints: how often the page redrew its picture, per second (standing still it should be 0)
 #   raster: time spent turning the picture into pixels, per second
@@ -51,6 +52,7 @@ def main():
     ap.add_argument('--dpr', type=float, default=3)
     ap.add_argument('--cpu', type=float, default=4, help='how many times slower the CPU runs')
     ap.add_argument('--look', default='', help='a look for every room, like barrow')
+    ap.add_argument('--run', action='store_true', help='measure a dungeon run instead of the house')
     ap.add_argument('--page', default=ROOT + '/dist/highfell.html')
     a = ap.parse_args()
     path = wrap(a.page)
@@ -78,6 +80,12 @@ def main():
             pg.evaluate("() => { const t = document.querySelector('#toasts'); if (t) t.innerHTML = ''; }")
             pg.wait_for_timeout(1500)
             client = ctx.new_cdp_session(pg)
+            if a.run:
+                run(pg, client, a)
+                for e in errs:
+                    print('pageerror:', e)
+                b.close()
+                return
             client.send('Emulation.setCPUThrottlingRate', {'rate': a.cpu})
 
             def drag():
@@ -114,6 +122,21 @@ def main():
             b.close()
     finally:
         os.remove(path)
+
+
+def run(pg, client, a):
+    """a run of the Barrow in Common gear with the bots playing you: the hits, numbers and effects of a big pull,
+    then of Sir Rattlebones. The bots fast-forward to each fight at full speed; only the fight is slowed down."""
+    pg.evaluate("() => highfell.startRun({ start: 'entrance', testRar: 0 })")
+    pg.wait_for_timeout(1500)
+    print(f'a run at {a.w}x{a.h} @{a.dpr:g}x, CPU {a.cpu:g}x slower')
+    fights = [('a pack fight     ', "(s) => s.inCombat && s.mobs.filter((m) => m.alive && m.state === 'fight').length >= 4", 40),
+              ('Sir Rattlebones  ', "(s) => !!s.boss && s.boss.alive && s.boss.fightT > 3", 240)]
+    for label, until, secs in fights:
+        client.send('Emulation.setCPUThrottlingRate', {'rate': 1})
+        pg.evaluate(f"() => highfell.run.autoplay({secs}, {until})")
+        client.send('Emulation.setCPUThrottlingRate', {'rate': a.cpu})
+        print('  ' + label, measure(pg, client, lambda: None, 4000))
 
 
 if __name__ == '__main__':

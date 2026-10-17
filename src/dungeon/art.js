@@ -2,6 +2,9 @@ import { TAU } from '../core/math';
 import { ART } from './assets.js';
 
 /* ---------- art: SVG sprites baked to bitmaps at the current zoom, plus floor and wall patterns ---------- */
+/** the one black line, and the font the fight's words and numbers are drawn in */
+export const K = '#1E1A1A';
+export const FONT = "'Lilita One', 'Trebuchet MS', sans-serif";
 export const SPR = {};
 export let BAKE_S = 0;
 export const mkCanvas = (w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, w); c.height = Math.max(1, h); return c; };
@@ -81,7 +84,8 @@ export function variant(s, kind) {
   s[kind] = c;
   return c;
 }
-/* draw a sprite with its ground point at (x, y) in world units; sx/sy scale, flip mirrors */
+/* draw a sprite with its ground point at (x, y) in world units; sx/sy scale, flip mirrors, tint lays a coloured
+   copy over it (tintA strong), and only draws that coloured copy alone (a silhouette, for an outline behind it) */
 export function drawSpr(ctx, name, x, y, o) {
   const s = SPR[name];
   if (!s || !s.bmp) return;
@@ -93,7 +97,7 @@ export function drawSpr(ctx, name, x, y, o) {
   if (o.rot) ctx.rotate(o.rot);
   ctx.scale(sx, sy);
   if (o.alpha !== undefined) ctx.globalAlpha *= o.alpha;
-  ctx.drawImage(s.bmp, vx, vy, w, h);
+  if (!o.only) ctx.drawImage(s.bmp, vx, vy, w, h);
   if (o.tint) { const v = variant(s, o.tint); if (v) { ctx.globalAlpha *= (o.tintA === undefined ? 1 : o.tintA); ctx.drawImage(v, vx, vy, w, h); } }
   ctx.restore();
 }

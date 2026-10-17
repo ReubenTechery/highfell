@@ -190,6 +190,15 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .fine { margin: 0; font-size: 15px; line-height: 1.45; color: #6B5A4E; }
 .lede { margin: 0; font-size: 17px; line-height: 1.5; color: var(--soft); }
 .box { border: 3px solid var(--ink); border-radius: 16px; background: var(--panel-2); padding: 12px 14px; display: grid; gap: 10px; }
+/* Settings' Keys list: each button with its key; tap the key, then press the new one */
+.kb-list { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 14px; }
+.kb-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.kb-ic { width: 34px; height: 34px; border: 2px solid var(--ink); border-radius: 9px; overflow: hidden; }
+.kb-ic svg { display: block; width: 100%; height: 100%; }
+.kb-n { font-family: var(--f-display); font-size: 16px; color: var(--ink); }
+.kb-k { min-width: 64px; font-family: var(--f-mono); font-size: 14px; }
+.kb-k.wait { background: var(--gold); }
+.kb-err { color: var(--red); }
 /* a piece's gilded look on its sheet: its kit, and the switch between plain and gilded */
 .gild-box.on { background: #FFF3C8; box-shadow: inset 0 0 0 3px #F2C230; }
 .gild-row { display: flex; align-items: center; gap: 10px; }
@@ -672,9 +681,14 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 
 /* buttons: a thumb cluster on phones, a row on desktop */
 .controls { position: absolute; right: 10px; bottom: calc(var(--pad-b) + 12px); z-index: 4; display: flex; flex-direction: column; align-items: flex-end; gap: 18px; }
-.abar { display: grid; grid-template-columns: repeat(3, 64px); grid-template-areas: "a1 a2 a3" ". a4 dg"; gap: 10px 9px; pointer-events: auto; }
-.ab[data-slot="a1"] { grid-area: a1; } .ab[data-slot="a2"] { grid-area: a2; } .ab[data-slot="a3"] { grid-area: a3; } .ab[data-slot="a4"] { grid-area: a4; } .ab[data-slot="dodge"] { grid-area: dg; }
-.ab { position: relative; width: 64px; height: 64px; border: 0; padding: 0; background: none; cursor: pointer; touch-action: none; transition: transform 0.06s; }
+/* on a phone the filler is the big button under the thumb, the payoff (or the shield) right above it, and the two
+   cooldowns and the roll further out */
+.abar { display: grid; grid-template-columns: 60px 60px 84px; grid-template-rows: 60px 84px; grid-template-areas: "cdf cdr pay" ". dg fil"; gap: 10px 9px; align-items: end; justify-items: center; pointer-events: auto; }
+.ab[data-pos="fil"] { grid-area: fil; } .ab[data-pos="pay"] { grid-area: pay; } .ab[data-pos="cdf"] { grid-area: cdf; } .ab[data-pos="cdr"] { grid-area: cdr; } .ab[data-pos="dg"] { grid-area: dg; }
+.ab { position: relative; width: 60px; height: 60px; border: 0; padding: 0; background: none; cursor: pointer; touch-action: none; transition: transform 0.06s; }
+.ab.main { width: 84px; height: 84px; }
+.ab.main .face { border-radius: 18px; } .ab.main .sweep { border-radius: 15px; } .ab.main .glow { border-radius: 23px; }
+.ab.main .cdn { font-size: 30px; }
 .ab .face { position: absolute; inset: 0; border-radius: 14px; overflow: hidden; border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink); transition: filter 0.12s; }
 .ab .face svg { display: block; width: 100%; height: 100%; }
 .ab .sweep { position: absolute; inset: 3px; border-radius: 11px; background: conic-gradient(rgba(10, 8, 14, 0.74) calc(var(--p, 0) * 1turn), transparent 0); pointer-events: none; }
@@ -706,6 +720,18 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .ab.proc .glow { opacity: 1; }
 .ab .c-tag { position: absolute; left: 50%; top: -11px; transform: translateX(-50%); z-index: 5; font-family: var(--f-mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.04em; line-height: 14px; padding: 1px 6px; border-radius: 999px; background: var(--gold); color: var(--ink); border: 2px solid var(--ink); box-shadow: 0 2px 0 var(--ink); white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.12s; }
 .ab.proc .c-tag:not(:empty) { opacity: 1; }
+/* a warning keeps its word without the glow: BLOCK!, KICK!, TAUNT!, PEEL!, SHIELD!, CLEANSE!, DODGE! */
+.ab.warn .c-tag:not(:empty) { opacity: 1; background: var(--panel); }
+/* a press shrinks the button the moment you touch it (or press its key) */
+.ab.down .face { transform: scale(0.94); }
+/* the rogue's points: five pips along Shadowstrike's bottom edge, gold when banked */
+.ab .pips { position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%); display: flex; gap: 3px; pointer-events: none; z-index: 2; }
+.ab .pips i { width: 7px; height: 7px; border-radius: 50%; background: rgba(30, 26, 26, 0.6); border: 1.5px solid var(--ink); }
+.ab .pips i.on { background: var(--gold); box-shadow: 0 0 4px rgba(242, 194, 48, 0.9); }
+/* a Smite crit blessed your next Mend: every frame you could tap glows gold */
+.fr.blessed, .pd.blessed { box-shadow: 0 0 0 3px var(--gold), 0 0 14px 3px rgba(242, 194, 48, 0.7), 0 3px 0 var(--ink); }
+@media (prefers-reduced-motion: no-preference) { .pd.blessed { animation: blesspulse 0.5s ease-in-out infinite alternate; } }
+@keyframes blesspulse { from { box-shadow: 0 0 0 3px var(--gold), 0 0 8px 2px rgba(242, 194, 48, 0.55), 0 3px 0 var(--ink); } to { box-shadow: 0 0 0 4px var(--gold), 0 0 18px 5px rgba(242, 194, 48, 0.85), 0 3px 0 var(--ink); } }
 @media (prefers-reduced-motion: no-preference) { .ab.proc .glow { animation: procpulse 0.45s ease-in-out infinite alternate; } .ab.proc .c-tag:not(:empty) { animation: ctagbob 0.6s ease-in-out infinite; } }
 @keyframes procpulse { from { transform: scale(1); } to { transform: scale(1.06); } }
 /* a class's first runs: the one button whose moment has come glows, fading a little more each run (--learn) */
@@ -733,8 +759,9 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
   .fr { grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 4px 8px; }
   .fr .fb.mp { grid-column: 2; }
   .controls { left: 50%; right: auto; transform: translateX(-50%); bottom: calc(var(--pad-b) + 14px); flex-direction: row; align-items: flex-end; }
-  .abar { grid-template-columns: repeat(3, 68px) 82px 72px; grid-template-areas: "a1 a2 a3 a4 dg"; }
+  .abar { grid-template-columns: 78px 72px 68px 68px 72px; grid-template-rows: auto; grid-template-areas: "fil pay cdf cdr dg"; }
   .ab { width: 68px; height: 68px; }
+  .ab.main { width: 78px; height: 78px; }
   .ab.hold, .ab.roll { justify-self: end; }
   .hint { bottom: 136px; }
   /* the buttons sit under the card here: the lesson's arrow points straight down */
@@ -757,8 +784,9 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
   .hint { font-size: 13px; width: min(300px, calc(100% - 32px)); padding: 6px 10px; bottom: auto; top: 56px; }
   .banner { top: 30%; }
   .controls { bottom: 8px; gap: 6px; }
-  .abar { grid-template-columns: repeat(5, 52px); grid-template-areas: "a1 a2 a3 a4 dg"; gap: 6px; }
+  .abar { grid-template-columns: 60px repeat(4, 52px); grid-template-rows: auto; grid-template-areas: "fil pay cdf cdr dg"; gap: 6px; }
   .ab { width: 52px; height: 52px; }
+  .ab.main { width: 60px; height: 60px; }
   .pad { width: 130px; gap: 4px; }
 }
 
@@ -1263,6 +1291,11 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gold);
 .ar-kind .gild-sw .sg { min-height: 34px; padding: 0 11px; font-size: 14px; box-shadow: 0 2px 0 var(--ink); }
 .ar-drop { margin: 0; padding: 3px 12px 0; font-family: var(--f-mono); font-size: 12px; line-height: 1.45; color: #6A4A8A; }
 .ar-card .pk-ss { border-bottom: 2px dashed var(--panel-3); }
+/* the filler's hit before and after the piece: "Cleave 74 → 96" */
+.ar-hit { display: flex; align-items: baseline; justify-content: center; gap: 8px; margin: 0; padding: 6px 12px 7px; border-bottom: 2px dashed var(--panel-3); font-family: var(--f-display); font-size: 20px; line-height: 1; color: var(--ink); }
+.ar-hit span { font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--dim); }
+.ar-hit i { font-style: normal; color: var(--dim); }
+.ar-hit b.up { color: #2F7D2C; } .ar-hit b.down { color: var(--red); }
 .ar-set { display: grid; gap: 7px; padding: 10px 12px; border-bottom: 2px dashed var(--panel-3); }
 .ar-set-h { display: flex; align-items: center; gap: 8px; margin: 0; }
 .ar-set-h b { font-family: var(--f-display); font-weight: 400; font-size: 15px; }

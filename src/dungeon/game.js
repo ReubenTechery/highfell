@@ -5,7 +5,8 @@ import { ORDER } from '../content/roles';
 import { HOOKS, S, emit, setS } from './state.js';
 import { aggro, banner, bits, brewFx, dots, fx, fxText, healHero, hurtHero, hurtMob, makeHero, makeMob, sfx, shake } from './entities.js';
 import { botTick, inHaz } from './bots.js';
-import { applyBleed, heroBy, heroTick, isFoe, later, projHit } from './heroes.js';
+import { applyBleed, heroBy, heroTick, isFoe, later } from './heroes.js';
+import { projHit } from './buttons.js';
 import { tickPress } from './press.js';
 import { chainTick, curseTick, mobTick, nearestHeroTo, spawnMob } from './mobs.js';
 import { canStand, inWalk, moveEnt, roomIndexOf, walkTo } from './world.js';
@@ -18,11 +19,12 @@ export function newGame(dg, opts) {
   setS({
     dg, t: 0, frame: 0, seq: 1, opts, heroes: [], mobs: [], packs: [], projs: [], hazards: [], zones: [], thralls: [], fx: [], texts: [], parts: [], timers: [], rings: [], chains: [],
     gates: JSON.parse(JSON.stringify(dg.gates)), props: [],
-    inCombat: false, lastCombat: -99, combatStart: 0, boss: null, bossFight: null, ring: null, seal: null, dark: 0, darkTarget: 0, shake: 0, hitstop: 0, hurtFlash: 0,
+    inCombat: false, lastCombat: -99, combatStart: 0, boss: null, bossFight: null, ring: null, seal: null, dark: 0, darkTarget: 0, shake: 0, hurtFlash: 0,
     banner: null, call: null, walkout: null, hush: false, looks: new Set(opts.looks || []), stats: { deaths: 0, perfect: 0, kicks: 0, cuts: 0, cages: 0, wipes: 0, start: 0 }, hints: {}, over: false, chest: null,
     cp: 0, quiet: !!opts.quiet, auto: !!opts.auto, noEvents: !!opts.noEvents, cleared: 0, total: dg.packs.length, startedAt: 0,
     // how hard this dungeon is: hit (everything that hurts a hero), trashHp (health of everything but the
-    // bosses), bossHp (the bosses' health). opts.heroic plays it at the dungeon's heroic tune instead.
+    // bosses), bossHp (the bosses' health), and for a mob named in them, its own health (hp) and how hard its
+    // swings hit (dmg). opts.heroic plays it at the dungeon's heroic tune instead.
     tune: Object.assign({ hit: 1, trashHp: 1, bossHp: 1 }, opts.start === 'intro' ? { hit: 0.55, trashHp: 0.65, bossHp: 0.6 } : (opts.heroic && dg.heroic) || dg.tune || {}),
   });
   S.props = dg.props.map((p) => Object.assign({}, p, { room: roomIndexOf(p.x, p.y), sp0: p.sp }));
@@ -97,6 +99,8 @@ export function checkPack(p) {
     const dur = S.t - (p.pulledAt || S.combatStart || S.t);
     const melted = dur > 0.2 && dur < 13.5;
     fxText(S.player.x, S.player.y - 140, melted ? 'MELTED!' : 'Pack down', melted ? '#F2C230' : '#9BE15D', melted ? 25 : 20, { dur: 1.25 });
+    // the last of a pack down: a short low chord
+    sfx('packdown', 0.8);
   }
 }
 export function triggerAmbush(p) {
@@ -118,7 +122,7 @@ export function respawn() {
   const cp = cps[Math.min(room, cps.length - 1)];
   S.hazards = []; S.zones = []; S.thralls = []; S.projs = []; S.rings = []; S.chains = []; S.timers = []; S.ring = null; S.dark = 0; S.darkTarget = 0;
   for (const h of S.heroes) {
-    Object.assign(h, { alive: true, hp: h.maxHp, mana: h.maxMana, absorb: 0, absorbT: 0, dodgeT: 0, dash: null, cast: null, blocking: false, target: null, picked: null, holdFire: false, hots: [], ghostSaved: false, beat: 0, next: null });
+    Object.assign(h, { alive: true, hp: h.maxHp, mana: h.maxMana, absorb: 0, absorbT: 0, dodgeT: 0, dash: null, cast: null, blocking: false, target: null, picked: null, holdFire: false, hots: [], ghostSaved: false, beat: 0, next: null, crush: 0, shatter: 0, points: 0, mendUp: false });
     h.st = { stun: 0, root: 0, haunt: 0, air: 0, ghost: 0, surge: 0, zeal: 0, kx: 0, ky: 0, chained: null, caged: null, curse: null };
     for (const k in h.cd) h.cd[k] = 0;
     h.bot.ignore = new Set(); h.bot.seen = new Set();
@@ -164,7 +168,6 @@ export function runSummary() {
 /* ---------- the loop ---------- */
 export function update(dt) {
   if (S.over === 'victory' || S.over === 'lost' || S.paused) return;
-  if (S.hitstop > 0) { S.hitstop -= dt; return; }
   S.t += dt; S.frame++;
   for (let i = S.timers.length - 1; i >= 0; i--) { const tm = S.timers[i]; tm.t -= dt; if (tm.t <= 0) { S.timers.splice(i, 1); tm.fn(); } }
   if (S.over) { tickFx(dt); return; }
@@ -218,6 +221,8 @@ function onCombatEnd() {
     h.ghostSaved = false;
     if (h.st) { h.st.ghost = 0; h.st.curse = null; }
   }
+  // a rogue's points stay on them, and fade 10 s after the fight (unless the next one has started by then)
+  later(10, () => { if (S.inCombat) return; for (const h of S.heroes) h.points = 0; });
   const dead = S.heroes.filter((h) => !h.alive);
   if (!dead.length || S.over) return;
   later(2.4, () => {
@@ -383,7 +388,7 @@ function tickZones(dt) {
         if (rb3) bits(z.x + Math.cos(S.t * 7 + i) * z.r * 0.45, z.y + Math.sin(S.t * 5 + i) * z.r * 0.35, 'shard_bone', 1, 95);
         for (const m of S.mobs) {
           if (!isFoe(m) || m.cage || distXY(m.x, m.y, z.x, z.y) > z.r + m.r * 0.5) continue;
-          hurtMob(m, z.val || 20, z.src, { crit: 0.06, size: 17, col: '#DDF3FF' });
+          hurtMob(m, z.val || 20, z.src, { crit: 0.06, size: 17, col: '#DDF3FF', tier: 'tick', key: 'blizzard' });
           if (m.alive && !m.isBoss) { m.st.slow = Math.max(m.st.slow, 0.4); m.st.slowT = 0.8; }
         }
       } else if (z.kind === 'ice') {
@@ -454,5 +459,8 @@ function tickFx(dt) {
   if (S.call) { S.call.t += dt; if (S.call.t > S.call.dur) S.call = null; }
   S.shake = Math.max(0, S.shake - dt * 30);
   S.hurtFlash = Math.max(0, S.hurtFlash - dt * 1.6);
+  // what's only drawn: a body held still on impact, a mob's squash, a healed mate's glow (render.js)
+  for (const h of S.heroes) { if (h.holdT > 0) h.holdT -= dt; if (h.healGlow > 0) h.healGlow -= dt; }
+  for (const m of S.mobs) { if (m.holdT > 0) m.holdT -= dt; if (m.squash > 0) m.squash -= dt; }
   for (const h of S.heroes) { if (h.say && h.sayT <= 0) h.say = null; if (!h.alive && S.over) h.deadT += dt; }
 }

@@ -1,6 +1,7 @@
 /* Thimblebriar Hollow: who lives here and where they stand. The shared kinds dressed as gnomes and clockwork
-   (the Scrapper, the Slinger, the Brass Stomper), the two new enemies (the Bombwright lobs bombs; the Waddlecap
-   bursts into a spore cloud when it dies), the bombs, and the two bosses. */
+   (the Scrapper, the Slinger, the Brass Stomper, the Gnome Medic), the two new enemies (the Bombwright lobs bombs;
+   the Waddlecap bursts into a spore cloud when it dies), the bombs, and the two bosses. Each pack is fodder plus
+   one or two jobs. */
 import { tinkerAi, toadstoolAi } from './bosses.js';
 import { SIGNATURE } from './signature.js';
 
@@ -11,6 +12,8 @@ export const MOBS = {
   stomper: { name: 'Brass Stomper', kind: 'brute', hp: 2460, r: 30, speed: 100, dmg: 140, every: 2.2, wind: 0.5, reach: 30, aggro: 240, sp: 'stomper', heavy: true, big: true, shard: 'shard_cog' },
   // the two new enemies
   bombwright: { name: 'Bombwright', kind: 'melee', hp: 770, r: 15, speed: 115, dmg: 32, every: 1.6, wind: 0.3, reach: 22, aggro: 300, sp: 'bombwright', shard: 'shard_cog', ai: SIGNATURE.bombwrightAi },
+  // the mender: a gnome medic who casts a heal on the most hurt of its pack (kill it first, or interrupt it)
+  medic: { name: 'Gnome Medic', kind: 'mender', hp: 770, r: 15, speed: 115, dmg: 28, every: 1.6, wind: 0.3, reach: 22, aggro: 300, sp: 'tb_mender', shard: 'shard_cog', priority: true },
   waddlecap: { name: 'Waddlecap', kind: 'melee', hp: 700, r: 17, speed: 118, dmg: 55, every: 1.5, wind: 0.35, reach: 22, aggro: 230, sp: 'waddlecap', shard: 'shard_spore', tally: 'waddlecaps', onDeath: SIGNATURE.sporeCloud },
   ...SIGNATURE.mobs,
   toadstool: {
@@ -27,8 +30,8 @@ export const MOBS = {
 export const PACKS = [
   { id: 'A', room: 1, label: 'Mushroom Hall', mobs: [['scrapper', 790, 4950], ['scrapper', 800, 5060], ['bombwright', 650, 4900], ['bombwright', 680, 5110]] },
   { id: 'B', room: 2, label: 'Spore Cellar', mobs: [['waddlecap', 800, 4180], ['waddlecap', 920, 4210], ['waddlecap', 860, 4090], ['slinger', 700, 4040]] },
-  { id: 'C', room: 3, label: 'Root Tunnel', mobs: [['stomper', 1720, 4090], ['waddlecap', 1640, 4200], ['bombwright', 1830, 4040], ['scrapper', 1780, 4220]] },
+  { id: 'C', room: 3, label: 'Root Tunnel', mobs: [['stomper', 1720, 4090], ['medic', 1830, 4040], ['scrapper', 1700, 4210]] },
   { id: 'K', room: 4, label: 'Old Toadstool', boss: 'toadstool', mobs: [['toadstool', 1700, 3230]] },
-  { id: 'D', room: 5, label: 'Gearworks', mobs: [['stomper', 860, 3250], ['scrapper', 790, 3330], ['waddlecap', 930, 3330], ['bombwright', 860, 3110]] },
+  { id: 'D', room: 5, label: 'Gearworks', mobs: [['stomper', 860, 3250], ['scrapper', 860, 3340], ['bombwright', 860, 3110]] },
   { id: 'G', room: 6, label: 'The Tinker King', boss: 'tinker', approach: 'arena', mobs: [['tinker', 860, 2190]] },
 ];

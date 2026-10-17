@@ -4,7 +4,8 @@
    Old Toadstool, the mini boss: a giant old mushroom, about 40 seconds. From half health everything comes faster.
      Cap Slam         a heavy circle on the tank: block it, and a perfect block knocks him dizzy (Exposed)    tank
      Puffball Volley  a puffball at everyone's feet: knock them back into him (each one opens him up)          DPS, everyone
-     Spore Burst      a puff that hits the whole party; nobody can dodge it                                    healer
+     Spore Burst      a 2 s cast: the tank or a DPS stops it (and he's Exposed); missed, it hits the whole party
+                      and the healer heals through it                                                           tank, dps, healer
 
    The Tinker King, the final boss: a gnome inventor in a giant clockwork suit, about 80 seconds, two phases.
      Wrench Smash     a heavy circle that follows the tank for a moment: block it, a perfect block opens him up tank
@@ -12,7 +13,7 @@
      Sticky Bomb      stuck on a mate of the tank's: only the healer swipes it off, and it flies back at him  healer
    Phase 2 at half health: the suit cracks open, the Barrage comes every 11 seconds instead of 16, and two
    Sticky Bombs at once. */
-import { brain, circle, pulse } from '../../dungeon/moves.js';
+import { brain, cast, circle, pulse } from '../../dungeon/moves.js';
 import { SIGNATURE } from './signature.js';
 
 /* the boss stands a moment while a move with no telegraph goes off, so the boss bar can name it */
@@ -24,7 +25,7 @@ export const TOADSTOOL = {
   moves: [
     { id: 'slam', job: 'tank', first: 4, every: [8, 6.5], use: (m) => circle(m, { block: true, r: 92, dmg: 230, warn: 1.5, follow: 0.9, col: '#C8F5A8', call: 'Cap Slam! Tank, block it' }) },
     { id: 'volley', job: 'dps, everyone', signature: true, first: 7, every: [12, 9], use: (m) => SIGNATURE.volley(m, 3) && stand(m, 0.7) },
-    { id: 'burst', job: 'healer', first: 10.5, every: [11, 8.5], use: (m) => pulse(m, { dmg: 75, name: 'Spore Burst', col: '#C8F5A8' }) && stand(m, 0.5) },
+    { id: 'burst', job: 'tank or dps to stop it, healer if it lands', first: 10.5, every: [11, 8.5], use: (m) => cast(m, { id: 'burst', name: 'Spore Burst', done: (b) => pulse(b, { dmg: 75, name: 'Spore Burst', col: '#C8F5A8' }) }) },
   ],
 };
 

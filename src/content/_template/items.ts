@@ -31,7 +31,7 @@ export const TEMPLATE_SETS: SetDef[] = [
     id: 'gearshade', name: 'Gearshade', role: 'dps', cls: 'rogue', dungeon: 'template', tier: 2,
     look: 'Clockwork lens visor, spring-blade spaulders, velvet burrower coat',
     pieces: ['gearshade.helm', 'gearshade.shoulders', 'gearshade.chest'],
-    bonus2: { id: 'gearshade2', desc: 'Critical hits with Shadowstrike or Viper Blades discharge a 55-damage clockwork spark.' },
+    bonus2: { id: 'gearshade2', desc: 'Critical hits discharge a clockwork spark: 55 from Shadowstrike, 24 from Viper Blades.' },
     bonus3: { id: 'gearshade3', desc: 'Shadowstep leaves a Wind-Up Double for 6s that slashes your target and refreshes Viper Venom.', ready: true },
   },
 ];
@@ -54,8 +54,8 @@ export const TEMPLATE_ITEMS: ItemDef[] = [
   { id: 'gearshade.shoulders', name: 'Gearshade Spaulders', slot: 'shoulders', role: 'dps', cls: 'rogue', rar: EPIC, tier: 2, kind: 'set', setId: 'gearshade', icon: 's_rogue_shoulders', effect: 'gearshade.shoulders', effectDesc: 'Fan of Blades radius and damage increased by 25%.' },
   { id: 'gearshade.chest', name: 'Gearshade Jerkin', slot: 'chest', role: 'dps', cls: 'rogue', rar: EPIC, tier: 2, kind: 'set', setId: 'gearshade', icon: 's_rogue_chest', effect: 'gearshade.chest', effectDesc: 'Shadowstrike deals +20% critical strike damage.' },
   // Boss Weapons (1/40 from Final Boss)
-  { id: 'sovereign.tank', name: 'The Brass Bastion', slot: 'weapon', role: 'tank', rar: EPIC, tier: 2, kind: 'unique', icon: 'u_gravedigger', effect: 'gravedigger', effectDesc: 'Every fifth swing triggers a stunning tremor, and Charge resets Cleave.' },
+  { id: 'sovereign.tank', name: 'The Brass Bastion', slot: 'weapon', role: 'tank', rar: EPIC, tier: 2, kind: 'unique', icon: 'u_gravedigger', effect: 'gravedigger', effectDesc: 'Charge primes two Crushes, and every eighth Cleave triggers a stunning tremor.' },
   { id: 'sovereign.healer', name: 'Censer of the Glowcap', slot: 'weapon', role: 'healer', rar: EPIC, tier: 2, kind: 'unique', icon: 'u_lantern', effect: 'longnight', effectDesc: 'Mend wards its target for 60, and Sunburst sears nearby foes and wards the party.' },
-  { id: 'sovereign.dps', name: 'Spire of Living Sparks', slot: 'weapon', role: 'dps', rar: EPIC, tier: 2, kind: 'unique', icon: 'u_gravefrost', effect: 'gravefrost', effectDesc: 'Comet freezes everything it hits for 2s, and Rime burst resets Icicle.' },
-  { id: 'sovereign.rogue', name: 'The Mainspring Razors', slot: 'weapon', role: 'dps', cls: 'rogue', rar: EPIC, tier: 2, kind: 'unique', icon: 'u_cryptfangs', effect: 'cryptfangs', effectDesc: 'Every fourth slash strikes twice and refreshes Viper Venom, and Shadowstep resets Shadowstrike.' },
+  { id: 'sovereign.dps', name: 'Spire of Living Sparks', slot: 'weapon', role: 'dps', rar: EPIC, tier: 2, kind: 'unique', icon: 'u_gravefrost', effect: 'gravefrost', effectDesc: 'Comet freezes everything it hits for 2s, and Rime burst makes your next two Icicles Shatter.' },
+  { id: 'sovereign.rogue', name: 'The Mainspring Razors', slot: 'weapon', role: 'dps', cls: 'rogue', rar: EPIC, tier: 2, kind: 'unique', icon: 'u_cryptfangs', effect: 'cryptfangs', effectDesc: 'Every fourth slash strikes twice and refreshes Viper Venom, and Shadowstep gives you one more point.' },
 ];

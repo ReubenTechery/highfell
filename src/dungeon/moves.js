@@ -11,14 +11,17 @@
      adds(m, o)    mobs join the fight. They go when the boss does; with `expose`, the last one down opens
                    the boss up for that many seconds.
      pulse(m, o)   a hit on the whole party that nobody can dodge: the healer heals through it.
-   Exposed windows (+35% damage taken) come from a perfect block, a crash, the last add down, or exposeMob().
+     cast(m, o)    a cast with the green bar: the tank or a DPS stops it with an interrupt (Charge, Rime burst,
+                   Fan of Blades, Shadowstep), which Exposes the boss; missed, `done` goes off (a pulse, say).
+   Exposed windows (+35% damage taken, and every class's payoff setup) come from a perfect block, a crash, the
+   last add down, an interrupt, or exposeMob().
    brain(def) turns the moves into the boss's `ai`: phases at a share of its health, one move at a time on its
    own clock, its ordinary swings in between, and an enrage. Example: src/content/_template/bosses.js. */
 import { TAU, angTo, dist } from '../core/math';
 import { rand } from '../core/rng';
 import { S } from './state.js';
 import { aggro, banner, call, dots, exposeMob, fx, hurtHero, sfx, shake } from './entities.js';
-import { partyPulse, randomHero, spawnMob } from './mobs.js';
+import { partyPulse, randomHero, spawnMob, startCast } from './mobs.js';
 import { canStand, moveEnt } from './world.js';
 
 const faceTo = (m, a) => { m.face = a; m.flip = Math.cos(a) < 0; };
@@ -102,6 +105,13 @@ export function pulse(m, o = {}) {
   return true;
 }
 
+/** a cast to interrupt: `name` on the boss bar, `dur` seconds (2), then `done(m)` if nobody stopped it */
+export function cast(m, o) {
+  startCast(m, { key: o.id || 'cast', name: o.name, dur: o.dur ?? 2, kick: true, done: () => { if (m.alive) o.done(m); } });
+  if (o.call) call(o.call, 'alarm', 1.4);
+  return true;
+}
+
 /** Turn a boss's moves into its `ai`.
  *  def: { moves: [{ id, use(m) -> truthy when it went, every (seconds, or one per phase), first, phases }],
  *         phases: [{ at, text, enter(m) }] (the first starts phase 2 below `at` of its health),
@@ -117,6 +127,8 @@ export function brain(def) {
     if (def.tick) def.tick(m, dt);
     // the last of its adds down opens it up
     if (ab.adds && !ab.adds.some((a) => a.alive)) { ab.adds = null; exposeMob(m, ab.addsExpose, 'Guards down! Exposed!'); }
+    // mid-cast he stands and casts (mobs.js runs it): nothing else until it lands or someone stops it
+    if (m.cast) return false;
     const next = def.phases && def.phases[m.phase - 1];
     if (next && !m.act && m.hp < m.maxHp * next.at) {
       m.phase++; m.wind = 0; m.pose = null;

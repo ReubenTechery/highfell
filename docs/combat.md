@@ -67,8 +67,8 @@ Sixteen calls, each with my pick, in the order the stages need them. Set each on
 | 4 | Pulls carry more of the run: packs 12 to 20 s, the Gravekeeper 60 to 75 s, the clear bands unchanged | Yes | More pulls with jobs, same run length | Agree |
 | 5 | Exposed counts as the setup for every class's payoff | Yes | The group's burst, earned by skill | Agree |
 | 6 | Keys can be rebound, per device, kept in the browser, not the save | Yes | No save change; bindings belong to a keyboard | Agree |
-| 3 | Mend joins the beat, with a bigger heal (about 230) | Yes | Each beat the healer chooses: heal, or Smite for mana | To ask before stage 3 |
-| 3 | Rework the gear the fillers break (the gear audit under Numbers, Power and gear) | Yes | Otherwise a few traits and boss weapons stop working | To ask before stage 3 |
+| 3 | Mend joins the beat, with a bigger heal (about 230) | Yes | Each beat the healer chooses: heal, or Smite for mana | Built with my pick, to play-test |
+| 3 | Rework the gear the fillers break (the gear audit under Numbers, Power and gear) | Yes | Otherwise a few traits and boss weapons stop working | Built with my pick, to play-test |
 
 ## The beat
 
@@ -93,7 +93,7 @@ A press is never thrown away:
 
 | What | Value | Why |
 | --- | --- | --- |
-| The beat | 1.0 s | WoW's rogue beat: busy on a phone, but every press still matters. Until stage 3 it's 0.8 s (see Stage 1, as built) |
+| The beat | 1.0 s | WoW's rogue beat: busy on a phone, but every press still matters. It was 0.8 s while stage 1 stood alone (see Stage 1, as built) |
 | Queue window | 0.4 s | WoW's default: catches a mash, but not a press you made by accident |
 | Queue during a dodge, Charge, Shadowstep or cast | Until it ends | Charge into Cleave, or a dodge into a strike, lands as one move |
 | A filler's own cooldown | None, only the beat | Something worth pressing on every beat |
@@ -123,6 +123,46 @@ Live since 17 October 2026: the beat, the queue, holding on the phone, no buzz, 
 - **A held key fires once, except the shield's,** which keeps blocking for as long as it's held. A browser shortcut (Ctrl, Cmd or Alt with a key) never fires a button.
 
 Clear times barely moved (18 bot runs each; Barrow Crypt and the template dungeon in Common, Thimblebriar in Epic): Barrow Crypt 202 s (was 200), Thimblebriar 239 s (238) and the template dungeon 195 s (194). Heroic in full Epic wiped in 1 run in 60, down from 4.
+
+### Stages 2 to 6, as built
+
+Built together on 17 October 2026, at the owner's ask ("smash through all stages and we test at the end"), with my picks for the last two calls. What differs from the plan, and what the sims say (18 bot runs each unless named):
+
+**Every hit lands (stage 2).**
+- The freeze is drawn (`hold()` in `entities.js`): the hitter and the target are held still on screen for 0.025 s (filler), 0.05 s (crit) or 0.07 s (payoff) while the fight goes on. The old stop-the-world `hitstop` is gone. Only your own hits shake or freeze.
+- Hits have tiers (`FEEL` in `entities.js`): tick, filler, hit, crit, payoff. A crit's number reads "N!", tilts and bounces; a payoff's is gold with its word (Crush!, Shatter!, Shadowstrike!, Blessed!). Numbers that would land on one another step upward (`fxText`).
+- Small mobs squash for two frames and are nudged back; a boss flashes on your filler, crits and payoffs (white, then gold for a payoff); a kill flings a small mob and collapses a big one; an Exposed mob wears a gold edge round its whole body; the mate your heal lands on glows green. Cleave and Viper Blades swing left, then right; Icicle and Smite trail the weapon's rarity colour.
+- Eleven new sounds (axe, blade, ice and holy impacts, the four payoffs, the heal crit's chime, the soft tick for swings and ticks, the Exposed call and the pack-down chord). There was no ElevenLabs key in this session, so until they get takes of their own each plays as a layer of the recorded clips, pitched (`LAYERS` in `sound.ts`), with a synthesised fallback; their entries wait in `tools/audio_list.py`.
+- Buttons shrink to 0.94 the moment your finger or key goes down.
+- `tools/pw_perf.py --run` measures a pack fight and Sir Rattlebones on a slowed-down phone. In this workspace's software rendering the old and the new build both hold 10 fps at 4× slower, so the hit feel costs nothing measurable; check it on a real phone.
+
+**Rotations (stage 3).**
+- The beat is 1.0 s, and the healer's buttons and Mend are on it. Fillers hit for 60 (Cleave, Smite), 62 (Icicle) and 38 (Viper Blades) before Power; their numbers live on the buttons in `roles.ts` (`hit`), with the helms that raise them (`FILLER_PIECES`).
+- Payoffs as planned: Crush 1.6×; an Icicle crit makes the next Icicle Shatter anything (the Gravefrost Staff's Rime burst primes two); a Smite crit blesses the next Mend (free, 1.5×, the frames glow gold); the rogue's points, 24 a point on Shadowstrike (the plan's "about 25").
+- **Threat moved:** Cleave makes 2× threat and a Crush 3× (the plan said 1.5× and 2×). At 1.5× a mage's Comet crit on an Exposed boss, four seconds in, took him off the tank and he crushed the mage, in one Tinker King fight in four. Bot DPS also hold a big hit (Comet, a five-point Shadowstrike) that would pull a boss off the tank (`pullsBoss` in `bots.js`): bots can read the threat; you watch for the boss turning and the orange ring.
+- Mend is 230 for 9 mana on the beat, and a tap waits the whole beat. Quick Hands: Mend never starts the beat.
+- Automatic swings: the tank 25 every 1.5 s, the rogue 16 every 0.7 s, casters none. They're 10 to 12% of the damage.
+- The coach glows Cleave only when it will Crush (CRUSH!), Shadowstrike at five points or on an Exposed foe (FINISH!), and the tank's or a DPS's interrupt when a cast is under way (KICK!). The Crypt Trial's filler lessons say to hold it on a phone (press it every beat on a computer), and the rogue's last lesson lights five points.
+- The gear audit as planned, with every text rewritten: Wide Swings, Quick Hands, Splinter, Venomrush, the Gravedigger, the Gravefrost Staff, the Cryptfangs, the Shadeveil Spaulders, and the per-hit effects scaled to a filler (the Barrowguard Helm heals 11, the Rimebone Crown splashes 15, the Candlewake Crown gives 1 mana, Shadeveil's and Gearshade's sparks are 24 on Viper Blades, the Arcwright's Coil hops for 15).
+- Mage against rogue over a Barrow run: 3:33 and 3:32. On the Gravekeeper the rogue takes 58 s to the mage's 66; on packs the mage is ahead (pack A 13 s to 18).
+
+**Packs with jobs (stage 4).**
+- Casts stop only to Charge, Rime burst, Fan of Blades, Shadowstep, a stun, a freeze or a perfect block; the caster is Exposed for 3 s. The Gravecaller casts Grave Bolt (200, a 2 s cast every 9 s at a random hero) and Raise Dead; menders (the Gravemender, the Gnome Medic, and the template's Mender) cast a 2 s heal of 30% on their most hurt packmate every 6 s, and bots kill them first.
+- **Pull lists moved:** ordinary mobs got 65% more health in the Barrow (from 30%; the Bonebrute 40%), so pack A has 4 Rattlers and the ambush (E) 4 Rattlers and the Bonebrute, not 3 and 6. Thimblebriar's Root Tunnel (C) is the Brass Stomper, the Gnome Medic and a Scrapper, and the Gearworks (D) the Stomper, a Scrapper and a Bombwright; the Stomper has 3.6× its written health (from 4.7×), because one big body took the party's single-target damage 25 s.
+- The red "!!" shows the moment a mob is on anyone but the tank, and an orange ring rings you when something has turned on you.
+- Barrow packs, Common bots: A 13 s, B 14, C 17, D 17, E 18; the trash is 42% of the fighting. **Interrupts are 5 to 6 a run, short of the 6 to 10 target**: the bots kill the casters first, so they cast less. A tank or DPS who kicks on purpose gets more.
+
+**Bosses (stage 5).**
+- The casts as planned: Bone rattle (Sir Rattlebones' second phase, every 12 s), Grave cold (the Gravekeeper's second phase, every 9 s), Heroic's Grave dust (his third, every 11 s) and Old Toadstool's Spore Burst (`cast()` in `moves.js`, the template's README rule). Exposed lights every payoff, and a boss's window calls "EXPOSED! Hit him now!" with its own sound.
+- Fights, bots: Sir Rattlebones 43 s and the Gravekeeper 66 s in Common (55% of his written health, from 65%; Sir Rattlebones 93%); Old Toadstool 45 s and the Tinker King 80 s in Epic (92% of his written health).
+- **Thimblebriar's gear check moved:** in Rare the healer used to run dry at the Tinker King, but Smite's mana every beat keeps a healer going, so Rare cleared clean. His ordinary swings now hit 36% harder on Normal (`tune.dmg`, a new per-mob setting for swings only, beside `hp`), and Rare bots wipe at him in 7 runs in 9 while Epic bots clear clean.
+- **Heroic moved** to `hit: 3.4, trashHp: 2.35, bossHp: 1.65` (from 2.8, 1.95 and 1.63): a Common party used to run its healer dry and get buried, and with the new healer it limped through. Full Epic clears in 3:50 to 4:10, about one run in twenty with a wipe.
+
+**Your keys (stage 6).**
+- Settings has a Keys list on a computer: each of your class's buttons and the dodge. Tap one, then press a key, Shift and a key, or a mouse button (not the left, which picks your target). W, A, S, D, the arrows, Esc and P are kept, and the healer's Z, X and C; a key another button has swaps the two. Kept in this browser (`highfell.keys`, `src/ui/keybinds.ts`), never the save. If a button uses Shift, Shift on its own stops dodging. The buttons, the coach and the Crypt Trial show your keys. A side mouse button you bind never sends the browser Back.
+- On a phone the filler is the big button in the bottom corner, the payoff (or the tank's shield) above it, and the two cooldowns and the roll further out. On a computer they're a row, E, Q, F, R and Space, the filler biggest.
+- The armoury card shows your filler's hit before and after the piece ("Cleave 60 → 89"), from `fillerHit` in `src/meta/gear.ts`.
+- Weapon sounds aren't built: a sound per boss weapon needs ElevenLabs takes. The class impacts stand in.
 
 ## Tank
 
@@ -615,16 +655,16 @@ The scratch scripts behind this plan's numbers (damage by source, dead air, pack
 
 ## Build stages
 
-Six stages, each a playable build on the live game, with a gate you sign off before the next starts. Stage 1 barely touches balance, so it can ship first; its gate checks that the run times still hold. **Stage 1 is live**; what it changed from the plan is under [Stage 1, as built](#stage-1-as-built).
+Six stages, each a playable build on the live game, with a gate you sign off before the next starts. Stage 1 barely touches balance, so it can ship first; its gate checks that the run times still hold. **All six are live**: stage 1 on its own, and stages 2 to 6 together, at the owner's ask, for one play test; what they changed from the plan is under [Stage 1, as built](#stage-1-as-built) and [Stages 2 to 6, as built](#stages-2-to-6-as-built).
 
 | Stage | What it builds | You'll feel | The gate before the next |
 | --- | --- | --- | --- |
 | 1. Every press counts (live) | The beat, the queue, holding on the phone, no buzz. E, Q, F and R on a computer. Bots on the beat | Mashing works and nothing buzzes | You play it on a phone and a computer, and the run times hold |
-| 2. Every hit lands | Impact sounds, flashes, the two-body freeze, flinches. New crit and payoff looks; gold only for payoffs | Hits crunch; big ones stand out | Smooth on a slowed-down phone, and you play it |
-| 3. Rotations | Fillers, smaller auto-attacks, Crush, the rogue's points. Mend on the beat, heal crits, the coach and the trial updated | Each class has a beat and a payoff | The sims land in the new bands, and you play all four classes |
-| 4. Packs with jobs | Casts only interrupts stop, menders, new pull lists. Today's !! shows at once on mobs that slip | Every pull asks something of you | Packs land in their bands, with 6 to 10 interrupts a run |
-| 5. Bosses | A cast to interrupt on each boss. Exposed lights everyone's payoff at once | Burn windows you all hit together | Boss fights land in their bands, and you play both dungeons |
-| 6. Your keys | Rebinding in Settings, a bigger filler on the phone. The armoury card's before and after, weapon sounds | Your keys, your weapon's sound | |
+| 2. Every hit lands (live) | Impact sounds, flashes, the two-body freeze, flinches. New crit and payoff looks; gold only for payoffs | Hits crunch; big ones stand out | Smooth on a slowed-down phone, and you play it |
+| 3. Rotations (live) | Fillers, smaller auto-attacks, Crush, the rogue's points. Mend on the beat, heal crits, the coach and the trial updated | Each class has a beat and a payoff | The sims land in the new bands, and you play all four classes |
+| 4. Packs with jobs (live) | Casts only interrupts stop, menders, new pull lists. Today's !! shows at once on mobs that slip | Every pull asks something of you | Packs land in their bands, with 6 to 10 interrupts a run |
+| 5. Bosses (live) | A cast to interrupt on each boss. Exposed lights everyone's payoff at once | Burn windows you all hit together | Boss fights land in their bands, and you play both dungeons |
+| 6. Your keys (live) | Rebinding in Settings, a bigger filler on the phone. The armoury card's before and after, weapon sounds | Your keys, your weapon's sound | |
 
 - I build each stage here, run `npm run all`, check phone and desktop screenshots, then push to `main` and publish, as with any change you ask for. A stage can go to another agent as a pull request instead, with this doc as its brief.
 - Stages 2 and 6 don't touch balance, so they can run alongside the others.

@@ -211,26 +211,34 @@ def brute():
     sprite('brute', (-84, -160, 160, 168), o, 'Bonebrute')
 
 
-def caller():
+def caller(name='caller', robe='#3F6B4A', robe_d='#2F5238', glow=GRN, trim='#6FA05A', note='Gravecaller', mender=False):
     o = []
     # staff with hanging lantern (viewer's right)
     o.append(beam('M24 2 L22 -100', '#6B5A48', 4.5) + ln('M22 -100 C22 -108 34 -108 34 -98', K, 3))
-    o.append(halo(34, -82, 24, GRN, 0.3))
-    o.append(ln('M34 -98 V-94', K, 2.5) + s('M27 -94 H41 L39 -70 H29 Z', '#4A4458', 3) + s('M34 -90 C38 -84 38 -78 34 -74 C30 -78 30 -84 34 -90 Z', GRN, 2) + s('M27 -70 H41 L38 -66 H30 Z', '#4A4458', 2.5))
+    o.append(halo(34, -82, 24, glow, 0.3))
+    o.append(ln('M34 -98 V-94', K, 2.5) + s('M27 -94 H41 L39 -70 H29 Z', '#4A4458', 3) + s('M34 -90 C38 -84 38 -78 34 -74 C30 -78 30 -84 34 -90 Z', glow, 2) + s('M27 -70 H41 L38 -66 H30 Z', '#4A4458', 2.5))
     # robe with ragged hem
-    o.append(s('M-16 -64 C-20 -40 -24 -18 -26 -4 L-20 1 L-14 -5 L-8 1 L-2 -5 L4 1 L10 -5 L16 1 L22 -4 L26 -2 C24 -18 20 -40 16 -64 Z', '#3F6B4A'))
-    o.append(ln('M-20 -30 C-8 -26 8 -26 20 -30', '#2F5238', 2.5))
+    o.append(s('M-16 -64 C-20 -40 -24 -18 -26 -4 L-20 1 L-14 -5 L-8 1 L-2 -5 L4 1 L10 -5 L16 1 L22 -4 L26 -2 C24 -18 20 -40 16 -64 Z', robe))
+    o.append(ln('M-20 -30 C-8 -26 8 -26 20 -30', robe_d, 2.5))
     o.append(s('M-16 -42 C-6 -38 6 -38 16 -42 L16 -37 C6 -33 -6 -33 -16 -37 Z', '#7A6248', 3) + c(0, -38, 3.5, BONE, 2.4))
+    if mender:
+        # the mender's mark on its chest: a green plus
+        o.append(s('M-3 -58 H3 V-54 H7 V-48 H3 V-44 H-3 V-48 H-7 V-54 H-3 Z', GRN, 2))
     # sleeves and bony hands
-    o.append(s('M-16 -62 C-26 -54 -30 -42 -30 -32 L-20 -30 C-20 -40 -16 -48 -12 -54 Z', '#3F6B4A', 3.5) + c(-25, -28, 4.5, BONE, 3))
-    o.append(s('M16 -62 C22 -58 24 -52 24 -46 L18 -42 C16 -48 14 -52 12 -54 Z', '#3F6B4A', 3.5) + c(22, -44, 4.5, BONE, 3))
+    o.append(s('M-16 -62 C-26 -54 -30 -42 -30 -32 L-20 -30 C-20 -40 -16 -48 -12 -54 Z', robe, 3.5) + c(-25, -28, 4.5, BONE, 3))
+    o.append(s('M16 -62 C22 -58 24 -52 24 -46 L18 -42 C16 -48 14 -52 12 -54 Z', robe, 3.5) + c(22, -44, 4.5, BONE, 3))
     # hood with a dark opening and glowing eyes
-    o.append(s('M-18 -64 C-21 -88 -10 -102 0 -104 C10 -102 21 -88 18 -64 C12 -58 -12 -58 -18 -64 Z', '#3F6B4A'))
+    o.append(s('M-18 -64 C-21 -88 -10 -102 0 -104 C10 -102 21 -88 18 -64 C12 -58 -12 -58 -18 -64 Z', robe))
     o.append(s('M-11 -68 C-12 -86 12 -86 11 -68 C6 -64 -6 -64 -11 -68 Z', K, 2))
-    o.append(halo(-5, -78, 6, GRN, 0.45) + halo(5, -78, 6, GRN, 0.45) + c(-5, -78, 2.3, GRN, 0) + c(5, -78, 2.3, GRN, 0))
+    o.append(halo(-5, -78, 6, glow, 0.45) + halo(5, -78, 6, glow, 0.45) + c(-5, -78, 2.3, glow, 0) + c(5, -78, 2.3, glow, 0))
     o.append(s('M-6 -70 H6 C6 -67 3 -66 0 -66 C-3 -66 -6 -67 -6 -70 Z', BONE, 2) + ln('M-2 -70 V-67 M2 -70 V-67', K, 1.4))
-    o.append(ln('M-14 -66 C-8 -61 8 -61 14 -66', '#6FA05A', 2.4))
-    sprite('caller', (-36, -112, 84, 118), o, 'Gravecaller')
+    o.append(ln('M-14 -66 C-8 -61 8 -61 14 -66', trim, 2.4))
+    sprite(name, (-36, -112, 84, 118), o, note)
+
+
+def mender():
+    # the Barrow's mender: a Gravecaller in pale robes, its lantern burning mint
+    caller('mender', '#D8D2C6', '#B5AD9F', '#C8F5E8', '#9BE15D', 'Gravemender', mender=True)
 
 
 def wisp():
@@ -531,7 +539,7 @@ def projectiles():
 def build():
     import art_thimble  # Thimblebriar's mobs, bosses, bombs and props: here, not at the top, as it imports this file
     SPRITES.update(art_thimble.build())
-    rattler(); rattler(True); archer(); brute(); caller(); wisp(); knight(); keeper(); keeper_smash()
+    rattler(); rattler(True); archer(); brute(); caller(); mender(); wisp(); knight(); keeper(); keeper_smash()
     pillar(); coffin(); coffin(True); torch(); candles(); bones(); skullpile(); urn(); banner()
     tombstone(0); tombstone(1); tombstone(2); grave(); tree(); chest(); chest(True); gate(); hand(); cage(); arch(); curse_skull()
     projectiles()
